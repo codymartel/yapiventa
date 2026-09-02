@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../../core/routing/rutas.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../providers/auth_provider.dart';
 
@@ -41,7 +42,7 @@ class VerificacionEmailScreen extends StatelessWidget {
         final yaConfigurado = await authProvider.negocioYaConfigurado();
         if (!context.mounted) return;
         Navigator.of(context).pushNamedAndRemoveUntil(
-          yaConfigurado ? '/home' : '/elegir-rubro',
+          yaConfigurado ? Rutas.home : Rutas.elegirRubro,
           (route) => false,
         );
       });
