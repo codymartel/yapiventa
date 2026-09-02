@@ -7,22 +7,14 @@ import '../providers/auth_provider.dart';
 // VerificacionEmailScreen
 // ═════════════════════════════════════════════════════════════════════════
 // Pantalla que se muestra cuando el AuthProvider está en
-// AuthStatus.emailNotVerified — o sea, alguien se registró o inició
-// sesión con email/contraseña pero todavía no confirmó su correo.
+// AuthStatus.emailNotVerified — alguien se registró o inició sesión con
+// email/contraseña pero todavía no confirmó su correo.
 //
-// Google NUNCA llega a esta pantalla — su correo ya viene verificado
-// por Google, así que auth_provider.dart nunca pone emailNotVerified
-// para ese flujo.
-//
-// Botones (equivalentes a tu Kotlin):
-//   - "Ya verifiqué mi correo" → revisarSiYaVerificoEmail()
-//   - "Reenviar correo"        → reenviarEmailDeVerificacion()
-//                                 (deshabilitado mientras bloqueoBoton > 0)
-//   - "Cancelar"               → cancelarRegistro() y vuelve al login
-//
-// Cuando el provider pasa a AuthStatus.success, esta pantalla navega
-// sola a Home (por ahora con un placeholder, hasta que migres
-// home_screen.dart de verdad).
+// Cuando el status pasa a success (correo confirmado + perfil creado),
+// esta pantalla consulta negocioYaConfigurado() y navega a la ruta
+// correcta — '/elegir-rubro' (caso normal: registro recién verificado)
+// o '/home' (caso raro: alguien que ya había configurado su negocio
+// antes, no verificó al toque, y ahora vuelve a confirmar).
 // ═════════════════════════════════════════════════════════════════════════
 
 class VerificacionEmailScreen extends StatelessWidget {
@@ -32,8 +24,6 @@ class VerificacionEmailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final authProvider = context.watch<AuthProvider>();
 
-    // Reacciona a mensajes nuevos (éxito de reenvío, o errores) con un
-    // SnackBar — mismo patrón que usamos en login_form_screen.dart.
     if (authProvider.errorMessage != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -43,13 +33,16 @@ class VerificacionEmailScreen extends StatelessWidget {
       });
     }
 
-    // Cuando ya verificó y el perfil se creó, el provider pasa a
-    // success — navegamos a Home. pushReplacement para que no pueda
-    // volver "atrás" a esta pantalla con el botón físico/gesto.
+    // FIX: antes navegaba a un _HomePlaceholder fijo definido en este
+    // mismo archivo, ignorando si el negocio estaba configurado o no.
+    // Ahora consulta negocioYaConfigurado() y usa las rutas nombradas.
     if (authProvider.status == AuthStatus.success) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const _HomePlaceholder()),
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        final yaConfigurado = await authProvider.negocioYaConfigurado();
+        if (!context.mounted) return;
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          yaConfigurado ? '/home' : '/elegir-rubro',
+          (route) => false,
         );
       });
     }
@@ -62,7 +55,7 @@ class VerificacionEmailScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: AppColors.fondo,
         elevation: 0,
-        automaticallyImplyLeading: false, // no queremos flecha "atrás" aquí
+        automaticallyImplyLeading: false,
         title: Text(
           'Verifica tu correo',
           style: TextStyle(color: AppColors.texto),
@@ -96,7 +89,6 @@ class VerificacionEmailScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 32),
 
-                // ── YA VERIFIQUÉ ────────────────────────────────────
                 SizedBox(
                   width: double.infinity,
                   height: 50,
@@ -125,7 +117,6 @@ class VerificacionEmailScreen extends StatelessWidget {
 
                 const SizedBox(height: 14),
 
-                // ── REENVIAR (con contador) ──────────────────────────
                 TextButton(
                   onPressed: puedeReenviar
                       ? () => authProvider.reenviarEmailDeVerificacion()
@@ -142,7 +133,6 @@ class VerificacionEmailScreen extends StatelessWidget {
 
                 const SizedBox(height: 8),
 
-                // ── CANCELAR ──────────────────────────────────────
                 TextButton(
                   onPressed: authProvider.isLoading
                       ? null
@@ -160,28 +150,6 @@ class VerificacionEmailScreen extends StatelessWidget {
               ],
             ),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────
-// Placeholder temporal de Home — SOLO para poder probar el flujo completo
-// de login/registro hasta acá. Reemplazar por el home_screen.dart real
-// cuando migres esa feature.
-// ─────────────────────────────────────────────────────────────────────────
-class _HomePlaceholder extends StatelessWidget {
-  const _HomePlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.fondo,
-      body: Center(
-        child: Text(
-          '¡Bienvenido! (Home pendiente de migrar)',
-          style: TextStyle(color: AppColors.texto, fontSize: 18),
         ),
       ),
     );

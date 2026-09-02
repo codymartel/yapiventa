@@ -33,6 +33,31 @@ class _LoginFormScreenState extends State<LoginFormScreen> {
     super.dispose();
   }
 
+  // FIX: se extrajo la lógica del botón a su propio método, en vez de
+  // dejarla inline dentro de onPressed — así es menos probable que se
+  // pierda por accidente al editar el archivo, y es más fácil de leer.
+  Future<void> _manejarIngresar(AuthProvider authProvider) async {
+    await authProvider.iniciarSesion(
+      _emailController.text.trim(),
+      _passwordController.text,
+    );
+    if (!mounted) return;
+
+    if (authProvider.status == AuthStatus.success) {
+      // Antes había un TODO vacío aquí — el login validaba bien pero
+      // nunca navegaba a ningún lado. Ahora consulta si el negocio ya
+      // está configurado y decide la ruta correcta.
+      final yaConfigurado = await authProvider.negocioYaConfigurado();
+      if (!mounted) return;
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        yaConfigurado ? '/home' : '/elegir-rubro',
+        (route) => false,
+      );
+    } else if (authProvider.status == AuthStatus.emailNotVerified) {
+      Navigator.of(context).pushReplacementNamed('/verificar-correo');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // watch() = se redibuja cada vez que AuthProvider llama notifyListeners().
@@ -225,25 +250,7 @@ class _LoginFormScreenState extends State<LoginFormScreen> {
                               ),
                             ),
                             onPressed: formularioValido
-                                ? () async {
-                                    await authProvider.iniciarSesion(
-                                      _emailController.text.trim(),
-                                      _passwordController.text,
-                                    );
-                                    if (!mounted) return;
-                                    if (authProvider.status == AuthStatus.success) {
-                                      // TODO: navegar a HomeScreen cuando la migres
-                                    } else if (authProvider.status ==
-                                        AuthStatus.emailNotVerified) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            'Verifica tu correo para continuar.',
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                  }
+                                ? () => _manejarIngresar(authProvider)
                                 : null,
                             child: authProvider.isLoading
                                 ? const SizedBox(
