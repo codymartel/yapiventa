@@ -322,10 +322,9 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
       final tipo = MetodoPagoTipo.porId(config.metodoId);
       if (tipo == null) continue;
       if (config.activo && tipo.permiteNumeroPersonalizado) {
-        final digitos = config.numeroPago.replaceAll(RegExp(r'[^0-9]'), '');
-        if (digitos.length != 9) {
-          _errorValidacion =
-              'El número de ${tipo.nombre} debe tener exactamente 9 dígitos.';
+        if (!telefonoValidoParaPais(config.numeroPago, _paisTelefono)) {
+          _errorValidacion = 'El número de ${tipo.nombre} debe tener '
+              'exactamente ${_paisTelefono.digitosEsperados} dígitos.';
           notifyListeners();
           return false;
         }

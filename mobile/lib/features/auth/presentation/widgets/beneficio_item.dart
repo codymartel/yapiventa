@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../../core/theme/app_colors.dart';
 
 /// Migración directa de tu @Composable BeneficioItem(icono, texto).
 /// Un StatelessWidget en Flutter es el equivalente exacto a un @Composable

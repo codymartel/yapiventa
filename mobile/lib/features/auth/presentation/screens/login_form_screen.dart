@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../../core/routing/rutas.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../providers/auth_provider.dart';
 
@@ -50,11 +51,11 @@ class _LoginFormScreenState extends State<LoginFormScreen> {
       final yaConfigurado = await authProvider.negocioYaConfigurado();
       if (!mounted) return;
       Navigator.of(context).pushNamedAndRemoveUntil(
-        yaConfigurado ? '/home' : '/elegir-rubro',
+        yaConfigurado ? Rutas.home : Rutas.elegirRubro,
         (route) => false,
       );
     } else if (authProvider.status == AuthStatus.emailNotVerified) {
-      Navigator.of(context).pushReplacementNamed('/verificar-correo');
+      Navigator.of(context).pushReplacementNamed(Rutas.verificarCorreo);
     }
   }
 

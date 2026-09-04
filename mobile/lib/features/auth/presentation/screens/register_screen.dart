@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../../core/routing/rutas.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../data/google_sign_in_service.dart';
 import '../providers/auth_provider.dart';
-import 'verificacion_email_screen.dart';
 
 /// Migración de tu @Composable RegisterScreen.
 ///
@@ -104,31 +104,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (authProvider.status == AuthStatus.emailNotVerified) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const VerificacionEmailScreen()),
-        );
+        Navigator.of(context).pushReplacementNamed(Rutas.verificarCorreo);
       });
     }
 
-    // NUEVO — flujo de Google: éxito va DIRECTO a success (nunca pasa
-    // por emailNotVerified, como explicamos antes). Por ahora navega al
-    // mismo placeholder de Home que usa VerificacionEmailScreen — se
-    // reemplaza cuando migres home_screen.dart de verdad.
+    // Flujo de Google: éxito va DIRECTO a success (nunca pasa por
+    // emailNotVerified). Se consulta si el negocio ya está configurado
+    // para decidir entre el wizard y Home, igual que en el login.
     if (authProvider.status == AuthStatus.success) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
         if (!mounted) return;
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(
-            builder: (_) => Scaffold(
-              backgroundColor: AppColors.fondo,
-              body: Center(
-                child: Text(
-                  '¡Bienvenido! (Home pendiente de migrar)',
-                  style: TextStyle(color: AppColors.texto, fontSize: 18),
-                ),
-              ),
-            ),
-          ),
+        final navigator = Navigator.of(context);
+        final yaConfigurado = await authProvider.negocioYaConfigurado();
+        if (!mounted) return;
+        navigator.pushNamedAndRemoveUntil(
+          yaConfigurado ? Rutas.home : Rutas.elegirRubro,
           (route) => false,
         );
       });
