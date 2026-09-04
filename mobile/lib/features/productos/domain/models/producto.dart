@@ -1,6 +1,8 @@
 // ═════════════════════════════════════════════════════════════════════════
 // Producto
 // ═════════════════════════════════════════════════════════════════════════
+// fec/2026: agregado fechaVencimiento (DateTime?, opcional). Si es null,
+// el producto no tiene caducidad y no se muestra gestión de vencimiento.
 // Migración de tu `data class Producto`. Dos campos agregados respecto
 // al Kotlin original, por decisiones tomadas en esta sesión:
 //   - negocioId: hoy vale lo mismo que el uid del dueño, pero deja la
@@ -11,6 +13,8 @@
 //     de Cloudinary en el futuro sin tener que rastrear fotos viejas
 //     sin ID.
 // ═════════════════════════════════════════════════════════════════════════
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Producto {
   final String id;
@@ -27,6 +31,7 @@ class Producto {
   final String? cloudinaryPublicId;
   final String unidadMedidaNombre;
   final List<String> fraccionesSeleccionadas;
+  final DateTime? fechaVencimiento;
 
   Producto({
     this.id = '',
@@ -43,6 +48,7 @@ class Producto {
     this.cloudinaryPublicId,
     this.unidadMedidaNombre = '',
     this.fraccionesSeleccionadas = const [],
+    this.fechaVencimiento,
   });
 
   static Producto? fromMap(String id, Map<String, dynamic>? data) {
@@ -66,6 +72,8 @@ class Producto {
       unidadMedidaNombre: data['unidadMedidaNombre'] as String? ?? '',
       fraccionesSeleccionadas:
           (data['fraccionesSeleccionadas'] as List?)?.cast<String>() ?? [],
+      fechaVencimiento:
+          (data['fechaVencimiento'] as Timestamp?)?.toDate(),
     );
   }
 
@@ -84,6 +92,7 @@ class Producto {
       'cloudinaryPublicId': cloudinaryPublicId,
       'unidadMedidaNombre': unidadMedidaNombre,
       'fraccionesSeleccionadas': fraccionesSeleccionadas,
+      'fechaVencimiento': fechaVencimiento,
     };
   }
 }
