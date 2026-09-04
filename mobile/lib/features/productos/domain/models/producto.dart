@@ -1,5 +1,20 @@
+// ═════════════════════════════════════════════════════════════════════════
+// Producto
+// ═════════════════════════════════════════════════════════════════════════
+// Migración de tu `data class Producto`. Dos campos agregados respecto
+// al Kotlin original, por decisiones tomadas en esta sesión:
+//   - negocioId: hoy vale lo mismo que el uid del dueño, pero deja la
+//     puerta abierta a colaboradores/roles compartiendo un negocio sin
+//     tener que migrar datos después.
+//   - cloudinaryPublicId: no se usa todavía (Cloudinary aún no está
+//     conectado), pero se guarda desde ya para poder borrar imágenes
+//     de Cloudinary en el futuro sin tener que rastrear fotos viejas
+//     sin ID.
+// ═════════════════════════════════════════════════════════════════════════
+
 class Producto {
   final String id;
+  final String negocioId;
   final String nombre;
   final double precio;
   final int stock;
@@ -9,11 +24,13 @@ class Producto {
   final bool disponible;
   final bool tieneDelivery;
   final String urlImagen;
+  final String? cloudinaryPublicId;
   final String unidadMedidaNombre;
   final List<String> fraccionesSeleccionadas;
 
   Producto({
     this.id = '',
+    required this.negocioId,
     required this.nombre,
     this.precio = 0.0,
     this.stock = 0,
@@ -23,16 +40,19 @@ class Producto {
     this.disponible = true,
     this.tieneDelivery = false,
     this.urlImagen = '',
+    this.cloudinaryPublicId,
     this.unidadMedidaNombre = '',
     this.fraccionesSeleccionadas = const [],
   });
 
   static Producto? fromMap(String id, Map<String, dynamic>? data) {
     final nombre = data?['nombre'] as String?;
-    if (data == null || nombre == null) return null;
+    final negocioId = data?['negocioId'] as String?;
+    if (data == null || nombre == null || negocioId == null) return null;
 
     return Producto(
       id: id,
+      negocioId: negocioId,
       nombre: nombre,
       precio: (data['precio'] as num?)?.toDouble() ?? 0.0,
       stock: (data['stock'] as num?)?.toInt() ?? 0,
@@ -42,6 +62,7 @@ class Producto {
       disponible: data['disponible'] as bool? ?? true,
       tieneDelivery: data['tieneDelivery'] as bool? ?? false,
       urlImagen: data['urlImagen'] as String? ?? '',
+      cloudinaryPublicId: data['cloudinaryPublicId'] as String?,
       unidadMedidaNombre: data['unidadMedidaNombre'] as String? ?? '',
       fraccionesSeleccionadas:
           (data['fraccionesSeleccionadas'] as List?)?.cast<String>() ?? [],
@@ -50,6 +71,7 @@ class Producto {
 
   Map<String, dynamic> toMap() {
     return {
+      'negocioId': negocioId,
       'nombre': nombre,
       'precio': precio,
       'stock': stock,
@@ -59,6 +81,7 @@ class Producto {
       'disponible': disponible,
       'tieneDelivery': tieneDelivery,
       'urlImagen': urlImagen,
+      'cloudinaryPublicId': cloudinaryPublicId,
       'unidadMedidaNombre': unidadMedidaNombre,
       'fraccionesSeleccionadas': fraccionesSeleccionadas,
     };
