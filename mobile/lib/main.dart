@@ -5,6 +5,7 @@ import 'firebase_options.dart';
 import 'core/theme/app_colors.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
+import 'features/productos/presentation/screens/productos_screen.dart';
 import 'features/negocio/presentation/providers/configuracion_negocio_provider.dart';
 import 'features/negocio/presentation/screens/seleccion_negocio_screen.dart';
 import 'features/negocio/presentation/screens/configuracion_negocio_screen.dart';
@@ -36,6 +37,8 @@ class MyApp extends StatelessWidget {
         // — ver cómo se navega hacia ella en seleccion_negocio_screen.dart.
         // '/home' es a donde va todo el mundo una vez que el negocio
         // ya está configurado (o recién se terminó de configurar).
+        // '/productos' es el listado de productos del negocio (todavía
+        // placeholder — se migra en el próximo paso).
         initialRoute: '/',
         routes: {
           '/': (context) => const LoginScreen(),
@@ -48,6 +51,7 @@ class MyApp extends StatelessWidget {
                 },
               ),
           '/home': (context) => const _HomePlaceholder(),
+          '/productos': (context) => const ProductosScreen(),
         },
         // '/configurar-negocio' necesita el argumento `rubro`, así que
         // se arma aparte con onGenerateRoute en vez de en el mapa
