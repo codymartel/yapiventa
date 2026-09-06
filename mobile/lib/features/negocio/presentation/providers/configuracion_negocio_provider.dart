@@ -78,11 +78,15 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
   // NUEVO — reemplaza el "+51" fijo del Kotlin por un país seleccionable.
   // Por defecto Perú, porque sigue siendo tu mercado principal, pero el
   // usuario puede cambiarlo.
-  PaisTelefono _paisTelefono =
-      paisesLatam.firstWhere((p) => p.nombre == 'Perú');
+  PaisTelefono _paisTelefono = paisesLatam.firstWhere(
+    (p) => p.nombre == 'Perú',
+  );
   PaisTelefono get paisTelefono => _paisTelefono;
   set paisTelefono(PaisTelefono v) {
     _paisTelefono = v;
+    if (_telefono.length > v.digitosEsperados) {
+      _telefono = _telefono.substring(0, v.digitosEsperados);
+    }
     notifyListeners();
   }
 
@@ -155,7 +159,13 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
     if (link.isEmpty) return true;
     if (!link.startsWith('https://')) return false;
     const sitiosProhibidos = [
-      'onlyfans', 'fansly', 'pornhub', 'xvideos', 'cam4', 'chaturbate', 'adult',
+      'onlyfans',
+      'fansly',
+      'pornhub',
+      'xvideos',
+      'cam4',
+      'chaturbate',
+      'adult',
     ];
     final lower = link.toLowerCase();
     return !sitiosProhibidos.any((s) => lower.contains(s));
@@ -255,7 +265,10 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
   List<ConfigPagoMetodo> get metodosPagoConfig =>
       List.unmodifiable(_metodosPagoConfig);
 
-  void actualizarMetodoPago(int index, ConfigPagoMetodo Function(ConfigPagoMetodo) actualizar) {
+  void actualizarMetodoPago(
+    int index,
+    ConfigPagoMetodo Function(ConfigPagoMetodo) actualizar,
+  ) {
     _metodosPagoConfig = List.of(_metodosPagoConfig);
     _metodosPagoConfig[index] = actualizar(_metodosPagoConfig[index]);
     notifyListeners();
@@ -263,20 +276,25 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
 
   // ── Validaciones reactivas (equivalen a las `val` de tu Kotlin) ─────
   bool get faltaNombre => _nombreNegocio.trim().length < 3;
-  bool get faltaTelefono =>
-      _telefono.length != _paisTelefono.digitosEsperados;
+  bool get faltaTelefono => _telefono.length != _paisTelefono.digitosEsperados;
   bool get faltaDireccion => _direccion.trim().length < 5;
   bool get faltaReferencia => _referencia.trim().length < 5;
   bool get faltaCategoria => _categorias.isEmpty;
   bool get faltaZonas => _tieneDelivery && _zonasDelivery.isEmpty;
 
   bool get puedeAvanzarPaso0 =>
-      !faltaNombre && !faltaTelefono && !faltaDireccion && !faltaReferencia && !linksMalos;
+      !faltaNombre &&
+      !faltaTelefono &&
+      !faltaDireccion &&
+      !faltaReferencia &&
+      !linksMalos;
   bool get puedeAvanzarPaso1 => !faltaCategoria;
   bool get puedeAvanzarPaso2 => !faltaZonas;
-  bool get puedeAvanzarPaso3 => true; // pagos son opcionales, igual que en Kotlin
+  bool get puedeAvanzarPaso3 =>
+      true; // pagos son opcionales, igual que en Kotlin
 
-  bool get camposCompletos => puedeAvanzarPaso0 && puedeAvanzarPaso1 && puedeAvanzarPaso2;
+  bool get camposCompletos =>
+      puedeAvanzarPaso0 && puedeAvanzarPaso1 && puedeAvanzarPaso2;
 
   bool get puedeAvanzarActual {
     switch (_pasoActual) {
@@ -332,11 +350,15 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
       }
       if (config.activo && tipo.permiteDescuento && config.descuentoActivo) {
         if (config.valorDescuento.isEmpty) {
-          _errorValidacion = 'Ingresa un valor de descuento para ${tipo.nombre}.';
+          _errorValidacion =
+              'Ingresa un valor de descuento para ${tipo.nombre}.';
           notifyListeners();
           return false;
         }
-        if (!valorDescuentoValido(config.valorDescuento, config.tipoDescuento)) {
+        if (!valorDescuentoValido(
+          config.valorDescuento,
+          config.tipoDescuento,
+        )) {
           _errorValidacion = config.tipoDescuento == TipoDescuento.porcentaje
               ? 'El descuento de ${tipo.nombre} debe estar entre 0% y 100%.'
               : 'El descuento de ${tipo.nombre} debe ser un monto válido.';
@@ -371,12 +393,14 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
         youtube: _linkYoutube,
         categorias: _categorias,
         unidadesMedida: _unidadesMedida
-            .map((u) => UnidadInfoResumen(
-                  nombre: u.nombre,
-                  tipo: u.tipo == TipoUnidad.entera ? 'entera' : 'fraccionaria',
-                  fraccionesPermitidas: u.fraccionesPermitidas,
-                  esOpcional: u.esOpcional,
-                ))
+            .map(
+              (u) => UnidadInfoResumen(
+                nombre: u.nombre,
+                tipo: u.tipo == TipoUnidad.entera ? 'entera' : 'fraccionaria',
+                fraccionesPermitidas: u.fraccionesPermitidas,
+                esOpcional: u.esOpcional,
+              ),
+            )
             .toList(),
         tieneDelivery: _tieneDelivery,
         zonasDelivery: _zonasDelivery,

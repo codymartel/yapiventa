@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/models/pais_telefono.dart';
@@ -17,8 +18,28 @@ import '../providers/configuracion_negocio_provider.dart';
 // sin tocar la lógica de este archivo.
 // ═════════════════════════════════════════════════════════════════════════
 
-class PasoNegocio extends StatelessWidget {
+class PasoNegocio extends StatefulWidget {
   const PasoNegocio({super.key});
+
+  @override
+  State<PasoNegocio> createState() => _PasoNegocioState();
+}
+
+class _PasoNegocioState extends State<PasoNegocio> {
+  final _telefonoController = TextEditingController();
+
+  @override
+  void dispose() {
+    _telefonoController.dispose();
+    super.dispose();
+  }
+
+  void _actualizarTelefonoVisible(String telefono) {
+    _telefonoController.value = TextEditingValue(
+      text: telefono,
+      selection: TextSelection.collapsed(offset: telefono.length),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,21 +48,32 @@ class PasoNegocio extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        Text('Datos del negocio',
-            style: TextStyle(
-                color: AppColors.texto, fontWeight: FontWeight.bold, fontSize: 16)),
+        Text(
+          'Datos del negocio',
+          style: TextStyle(
+            color: AppColors.texto,
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
         const SizedBox(height: 12),
 
         TextField(
           onChanged: (v) => p.nombreNegocio = v,
           style: TextStyle(color: AppColors.texto),
-          decoration: _decoracion('Nombre del negocio *', 'Ej: Carnes Don José'),
+          decoration: _decoracion(
+            'Nombre del negocio *',
+            'Ej: Carnes Don José',
+          ),
         ),
         if (p.faltaNombre && p.nombreNegocio.isNotEmpty)
           _error('Mínimo 3 caracteres'),
 
         const SizedBox(height: 16),
-        Text('WhatsApp *', style: TextStyle(color: AppColors.muted, fontSize: 12)),
+        Text(
+          'WhatsApp *',
+          style: TextStyle(color: AppColors.muted, fontSize: 12),
+        ),
         const SizedBox(height: 6),
         Row(
           children: [
@@ -52,29 +84,45 @@ class PasoNegocio extends StatelessWidget {
               underline: const SizedBox(),
               style: TextStyle(color: AppColors.texto),
               items: paisesLatam
-                  .map((pais) => DropdownMenuItem(
-                        value: pais,
-                        child: Text('${pais.prefijo} ${pais.nombre}'),
-                      ))
+                  .map(
+                    (pais) => DropdownMenuItem(
+                      value: pais,
+                      child: Text('${pais.prefijo} ${pais.nombre}'),
+                    ),
+                  )
                   .toList(),
               onChanged: (pais) {
-                if (pais != null) p.paisTelefono = pais;
+                if (pais != null) {
+                  p.paisTelefono = pais;
+                  _actualizarTelefonoVisible(p.telefono);
+                }
               },
             ),
             const SizedBox(width: 8),
             Expanded(
               child: TextField(
+                controller: _telefonoController,
                 onChanged: (v) => p.telefono = v,
                 keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(
+                    p.paisTelefono.digitosEsperados,
+                  ),
+                ],
                 style: TextStyle(color: AppColors.texto),
                 decoration: _decoracion(
-                    null, '${p.paisTelefono.digitosEsperados} dígitos'),
+                  null,
+                  '${p.paisTelefono.digitosEsperados} dígitos',
+                ),
               ),
             ),
           ],
         ),
         if (p.telefono.isNotEmpty && p.faltaTelefono)
-          _error('Faltan ${p.paisTelefono.digitosEsperados - p.telefono.length} dígito(s)'),
+          _error(
+            'Faltan ${p.paisTelefono.digitosEsperados - p.telefono.length} dígito(s)',
+          ),
 
         const SizedBox(height: 16),
         TextField(
@@ -88,7 +136,9 @@ class PasoNegocio extends StatelessWidget {
           onChanged: (v) => p.referencia = v,
           style: TextStyle(color: AppColors.texto),
           decoration: _decoracion(
-              'Referencia *', 'Ej: Frente a la plaza, al lado de farmacia'),
+            'Referencia *',
+            'Ej: Frente a la plaza, al lado de farmacia',
+          ),
         ),
 
         const SizedBox(height: 24),
@@ -129,16 +179,19 @@ class PasoNegocio extends StatelessWidget {
   }
 
   InputDecoration _decoracion(String? label, String hint) => InputDecoration(
-        labelText: label,
-        hintText: hint,
-        hintStyle: TextStyle(color: AppColors.dim),
-        filled: true,
-        fillColor: AppColors.card,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-      );
+    labelText: label,
+    hintText: hint,
+    hintStyle: TextStyle(color: AppColors.dim),
+    filled: true,
+    fillColor: AppColors.card,
+    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+  );
 
   Widget _error(String msg) => Padding(
-        padding: const EdgeInsets.only(top: 4),
-        child: Text('⚠ $msg', style: TextStyle(color: AppColors.error, fontSize: 12)),
-      );
+    padding: const EdgeInsets.only(top: 4),
+    child: Text(
+      '⚠ $msg',
+      style: TextStyle(color: AppColors.error, fontSize: 12),
+    ),
+  );
 }
