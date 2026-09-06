@@ -10,12 +10,12 @@ import 'subidor_de_imagenes.dart';
 // MediaManager). Guarda public_id junto a la URL, preparado para poder
 // borrar más adelante o migrar a otro proveedor sin perder datos.
 //
-// Cloud name y preset: dym0jam5e / webb_enprendimiento (cuenta ya creada).
+// Cloud name y preset: dym0jam5e / webb_enprendimient (cuenta ya creada).
 // ═════════════════════════════════════════════════════════════════════════
 
 class CloudinaryService implements SubidorDeImagenes {
   static const _cloudName = 'dym0jam5e';
-  static const _uploadPreset = 'webb_enprendimiento';
+  static const _uploadPreset = 'webb_enprendimient';
 
   @override
   Future<ResultadoSubida> subir({
