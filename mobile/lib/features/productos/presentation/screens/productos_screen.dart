@@ -6,12 +6,15 @@
 // desde initState; los rebuilds solo leen el estado ya cargado.
 // ═════════════════════════════════════════════════════════════════════════
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../data/productos_repository.dart';
+import '../../domain/models/producto.dart';
 import '../providers/productos_provider.dart';
+import '../widgets/formulario_producto.dart';
 import '../widgets/producto_card.dart';
 
 class ProductosScreen extends StatefulWidget {
@@ -23,6 +26,9 @@ class ProductosScreen extends StatefulWidget {
 
 class _ProductosScreenState extends State<ProductosScreen> {
   ProductosProvider? _provider;
+  List<String> _categoriasDisponibles = const [];
+  List<Map<String, dynamic>> _unidadesDisponibles = const [];
+  bool _catalogoCargado = false;
 
   @override
   void initState() {
@@ -32,6 +38,28 @@ class _ProductosScreenState extends State<ProductosScreen> {
 
     _provider = ProductosProvider(uid: uid, repository: ProductosRepository())
       ..cargarProductos();
+    _cargarConfiguracionCatalogo(uid);
+  }
+
+  Future<void> _cargarConfiguracionCatalogo(String uid) async {
+    try {
+      final datos =
+          (await FirebaseFirestore.instance.collection('users').doc(uid).get())
+              .data();
+      if (!mounted) return;
+      setState(() {
+        _categoriasDisponibles =
+            (datos?['categorias'] as List?)?.cast<String>() ?? const [];
+        _unidadesDisponibles = (datos?['unidadesMedida'] as List?)
+                ?.whereType<Map>()
+                .map((unidad) => Map<String, dynamic>.from(unidad))
+                .toList() ??
+            const [];
+        _catalogoCargado = true;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _catalogoCargado = true);
+    }
   }
 
   @override
@@ -57,13 +85,25 @@ class _ProductosScreenState extends State<ProductosScreen> {
 
     return ChangeNotifierProvider.value(
       value: provider,
-      child: const _ContenidoProductos(),
+      child: _ContenidoProductos(
+        categoriasDisponibles: _categoriasDisponibles,
+        unidadesDisponibles: _unidadesDisponibles,
+        catalogoCargado: _catalogoCargado,
+      ),
     );
   }
 }
 
 class _ContenidoProductos extends StatelessWidget {
-  const _ContenidoProductos();
+  final List<String> categoriasDisponibles;
+  final List<Map<String, dynamic>> unidadesDisponibles;
+  final bool catalogoCargado;
+
+  const _ContenidoProductos({
+    required this.categoriasDisponibles,
+    required this.unidadesDisponibles,
+    required this.catalogoCargado,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -130,15 +170,13 @@ class _ContenidoProductos extends StatelessWidget {
                           return ProductoCard(
                             key: ValueKey(producto.id),
                             producto: producto,
-                            onEditar: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'La edicion estara disponible pronto.',
-                                  ),
-                                ),
-                              );
-                            },
+                            onEditar: catalogoCargado
+                                ? () => _abrirFormulario(
+                                      context,
+                                      provider,
+                                      producto: producto,
+                                    )
+                                : () {},
                             onEliminar: () => _confirmarEliminacion(
                               context,
                               provider,
@@ -156,6 +194,35 @@ class _ContenidoProductos extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        tooltip: catalogoCargado
+            ? 'Agregar producto'
+            : 'Cargando configuración del catálogo',
+        onPressed: catalogoCargado
+            ? () => _abrirFormulario(context, provider)
+            : null,
+        icon: const Icon(Icons.add),
+        label: const Text('Producto'),
+      ),
+    );
+  }
+
+  Future<void> _abrirFormulario(
+    BuildContext context,
+    ProductosProvider provider, {
+    Producto? producto,
+  }) {
+    return showDialog<void>(
+      context: context,
+      builder: (dialogContext) => ChangeNotifierProvider.value(
+        value: provider,
+        child: FormularioProducto(
+          producto: producto,
+          categoriasDisponibles: categoriasDisponibles,
+          unidadesDisponibles: unidadesDisponibles,
+          onCancelar: () => Navigator.of(dialogContext).pop(),
         ),
       ),
     );
