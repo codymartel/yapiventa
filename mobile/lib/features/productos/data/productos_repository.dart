@@ -1,33 +1,75 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../domain/models/producto.dart';
 
+// Una pagina conserva los documentos ya convertidos y el cursor real de
+// Firestore. La pantalla nunca calcula posiciones: entrega este cursor al
+// repositorio para continuar exactamente despues del ultimo documento leido.
+class PaginaProductos {
+  final List<Producto> productos;
+  final DocumentSnapshot<Map<String, dynamic>>? ultimoDocumento;
+  final bool hayMas;
+
+  const PaginaProductos({
+    required this.productos,
+    required this.ultimoDocumento,
+    required this.hayMas,
+  });
+}
+
 class ProductosRepository {
   final FirebaseFirestore _db;
 
-  ProductosRepository(this._db);
+  ProductosRepository([FirebaseFirestore? db])
+    : _db = db ?? FirebaseFirestore.instance;
 
   CollectionReference<Map<String, dynamic>> _coleccionProductos(String uid) =>
       _db.collection('users').doc(uid).collection('productos');
 
-  Future<List<Producto>> obtenerProductos(String uid) async {
-    final snapshot = await _coleccionProductos(uid)
-        .orderBy('fechaCreacion', descending: true)
-        .get();
+  // Equivale a pedir una pagina manual del catalogo: la primera consulta
+  // trae los 10 productos mas recientes y las siguientes continuan desde
+  // [despuesDe], sin volver a leer los documentos de paginas anteriores.
+  Future<PaginaProductos> obtenerProductos(
+    String uid, {
+    DocumentSnapshot<Map<String, dynamic>>? despuesDe,
+    int limite = 10,
+  }) async {
+    Query<Map<String, dynamic>> query = _coleccionProductos(
+      uid,
+    ).orderBy('fechaCreacion', descending: true);
 
-    return snapshot.docs
-        .map((doc) => Producto.fromMap(doc.id, doc.data()))
+    if (despuesDe != null) {
+      query = query.startAfterDocument(despuesDe);
+    }
+
+    query = query.limit(limite);
+
+    final snapshot = await query.get();
+
+    final productos = snapshot.docs
+        .map((documento) {
+          return Producto.fromMap(documento.id, documento.data());
+        })
         .whereType<Producto>()
         .toList();
+
+    return PaginaProductos(
+      productos: productos,
+      ultimoDocumento: snapshot.docs.isNotEmpty ? snapshot.docs.last : null,
+      hayMas: snapshot.docs.length == limite,
+    );
   }
 
-  Future<void> guardarProducto(String uid, Producto producto) async {
-    final datos = producto.toMap()
-      ..['fechaCreacion'] = FieldValue.serverTimestamp();
-
+  Future<String> guardarProducto(String uid, Producto producto) async {
     if (producto.id.isEmpty) {
-      await _coleccionProductos(uid).add(datos);
+      final datos = producto.toMap()
+        ..['fechaCreacion'] = FieldValue.serverTimestamp();
+      final documento = await _coleccionProductos(uid).add(datos);
+      return documento.id;
     } else {
-      await _coleccionProductos(uid).doc(producto.id).update(datos);
+      // Una edicion conserva fechaCreacion para no mover un producto antiguo
+      // al inicio de la consulta ordenada por productos nuevos primero.
+      await _coleccionProductos(uid).doc(producto.id).update(producto.toMap());
+      return producto.id;
     }
   }
 
@@ -35,7 +77,13 @@ class ProductosRepository {
     await _coleccionProductos(uid).doc(productoId).delete();
   }
 
-  Future<void> toggleDisponible(String uid, String productoId, bool disponible) async {
-    await _coleccionProductos(uid).doc(productoId).update({'disponible': disponible});
+  Future<void> toggleDisponible(
+    String uid,
+    String productoId,
+    bool disponible,
+  ) async {
+    await _coleccionProductos(
+      uid,
+    ).doc(productoId).update({'disponible': disponible});
   }
 }

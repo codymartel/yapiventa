@@ -59,14 +59,59 @@ void main() {
         'fechaCreacion': Timestamp.fromDate(DateTime(2026, 3, 1)),
       });
 
-      final productos = await repository.obtenerProductos('usuario-1');
+      final pagina = await repository.obtenerProductos('usuario-1');
 
-      expect(productos.map((producto) => producto.nombre), [
+      expect(pagina.productos.map((producto) => producto.nombre), [
         'Reciente',
         'Antiguo',
       ]);
+      expect(pagina.ultimoDocumento?.id, 'antiguo');
+      expect(pagina.hayMas, isFalse);
     },
   );
+
+  test('pagina de diez en diez sin volver a leer productos previos', () async {
+    final coleccion = firestore
+        .collection('users')
+        .doc('usuario-1')
+        .collection('productos');
+    for (var i = 1; i <= 25; i++) {
+      await coleccion.doc('producto-$i').set({
+        ...producto(nombre: 'Producto $i').toMap(),
+        'fechaCreacion': Timestamp.fromDate(DateTime(2026, 1, i)),
+      });
+    }
+
+    final primera = await repository.obtenerProductos('usuario-1');
+    final segunda = await repository.obtenerProductos(
+      'usuario-1',
+      despuesDe: primera.ultimoDocumento,
+    );
+    final tercera = await repository.obtenerProductos(
+      'usuario-1',
+      despuesDe: segunda.ultimoDocumento,
+    );
+
+    expect(primera.productos, hasLength(10));
+    expect(primera.productos.first.nombre, 'Producto 25');
+    expect(primera.productos.last.nombre, 'Producto 16');
+    expect(primera.hayMas, isTrue);
+    expect(segunda.productos, hasLength(10));
+    expect(segunda.productos.first.nombre, 'Producto 15');
+    expect(segunda.productos.last.nombre, 'Producto 6');
+    expect(segunda.hayMas, isTrue);
+    expect(tercera.productos, hasLength(5));
+    expect(tercera.productos.first.nombre, 'Producto 5');
+    expect(tercera.productos.last.nombre, 'Producto 1');
+    expect(tercera.hayMas, isFalse);
+
+    final ids = [
+      ...primera.productos,
+      ...segunda.productos,
+      ...tercera.productos,
+    ].map((producto) => producto.id);
+    expect(ids.toSet(), hasLength(25));
+  });
 
   test('actualiza disponibilidad y elimina un producto existente', () async {
     await firestore
@@ -78,6 +123,15 @@ void main() {
           ...producto(id: 'producto-1').toMap(),
           'fechaCreacion': Timestamp.now(),
         });
+
+    final fechaCreacion =
+        (await firestore
+                .collection('users')
+                .doc('usuario-1')
+                .collection('productos')
+                .doc('producto-1')
+                .get())
+            .data()!['fechaCreacion'];
 
     await repository.guardarProducto(
       'usuario-1',
@@ -93,6 +147,7 @@ void main() {
         .get();
     expect(actualizado.data(), containsPair('nombre', 'Te'));
     expect(actualizado.data(), containsPair('disponible', false));
+    expect(actualizado.data(), containsPair('fechaCreacion', fechaCreacion));
 
     await repository.eliminarProducto('usuario-1', 'producto-1');
 

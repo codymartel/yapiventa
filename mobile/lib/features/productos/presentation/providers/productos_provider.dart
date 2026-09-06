@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../../data/productos_repository.dart';
 import '../../domain/models/producto.dart';
@@ -30,10 +31,14 @@ class ProductosProvider extends ChangeNotifier {
   }) : _repository = repository;
 
   List<Producto> _productos = [];
-  bool _cargando = true;
+  bool _cargando = false;
+  bool _cargandoMas = false;
   bool _refrescando = false;
+  bool _hayMas = false;
   String _busqueda = '';
   String? _errorMessage;
+  DocumentSnapshot<Map<String, dynamic>>? _ultimoDocumento;
+  bool _disposed = false;
 
   // Valores fijos temporales — reemplazar cuando migres AppConfig y el
   // plan real del usuario (igual que webActivaInicial en user_repository.dart).
@@ -41,7 +46,9 @@ class ProductosProvider extends ChangeNotifier {
   final int _minimoProductos = 1;
 
   bool get cargando => _cargando;
+  bool get cargandoMas => _cargandoMas;
   bool get refrescando => _refrescando;
+  bool get hayMas => _hayMas;
   String get busqueda => _busqueda;
   String? get errorMessage => _errorMessage;
   int get totalProductos => _productos.length;
@@ -54,7 +61,7 @@ class ProductosProvider extends ChangeNotifier {
   // Equivale a tu `productosFiltrados` — busca en nombre, categoría y
   // descripción, igual que en Kotlin.
   List<Producto> get productosFiltrados {
-    if (_busqueda.isBlank) return _productos;
+    if (_busqueda.isBlank) return List.unmodifiable(_productos);
     final q = _busqueda.toLowerCase();
     return _productos.where((p) {
       return p.nombre.toLowerCase().contains(q) ||
@@ -65,29 +72,70 @@ class ProductosProvider extends ChangeNotifier {
 
   void actualizarBusqueda(String texto) {
     _busqueda = texto;
-    notifyListeners();
+    _notificar();
   }
 
   // Equivale a tu `LaunchedEffect(uid) { cargarProductos() }` — se llama
-  // una vez al abrir la pantalla.
+  // una vez al abrir la pantalla. Reinicia el cursor y reemplaza la lista
+  // con los 10 productos mas recientes.
   Future<void> cargarProductos() async {
+    if (_cargando || _cargandoMas) return;
+
     _cargando = true;
-    notifyListeners();
+    _ultimoDocumento = null;
+    _hayMas = false;
+    _errorMessage = null;
+    _notificar();
     try {
-      _productos = await _repository.obtenerProductos(uid);
+      final pagina = await _repository.obtenerProductos(uid);
+      _productos = pagina.productos;
+      _ultimoDocumento = pagina.ultimoDocumento;
+      _hayMas = pagina.hayMas;
     } catch (e) {
       _errorMessage = 'No se pudieron cargar tus productos.';
     } finally {
       _cargando = false;
       _refrescando = false;
-      notifyListeners();
+      _notificar();
+    }
+  }
+
+  // Equivale al boton "Ver mas": continua desde el cursor guardado y
+  // anexa solo la siguiente pagina. Los IDs ya presentes se descartan para
+  // proteger la lista ante respuestas repetidas o cambios concurrentes.
+  Future<void> cargarMasProductos() async {
+    if (_cargando || _cargandoMas || !_hayMas || _ultimoDocumento == null) {
+      return;
+    }
+
+    _cargandoMas = true;
+    _errorMessage = null;
+    _notificar();
+    try {
+      final pagina = await _repository.obtenerProductos(
+        uid,
+        despuesDe: _ultimoDocumento,
+      );
+      final idsCargados = _productos.map((producto) => producto.id).toSet();
+      _productos.addAll(
+        pagina.productos.where((producto) => idsCargados.add(producto.id)),
+      );
+      _ultimoDocumento = pagina.ultimoDocumento;
+      _hayMas = pagina.hayMas;
+    } catch (e) {
+      _errorMessage = 'No se pudieron cargar mas productos.';
+    } finally {
+      _cargandoMas = false;
+      _notificar();
     }
   }
 
   // Equivale a tu PullToRefreshBox → onRefresh.
   Future<void> refrescar() async {
+    if (_cargando || _cargandoMas || _refrescando) return;
+
     _refrescando = true;
-    notifyListeners();
+    _notificar();
     await cargarProductos();
   }
 
@@ -113,13 +161,48 @@ class ProductosProvider extends ChangeNotifier {
         cloudinaryPublicId: producto.cloudinaryPublicId,
         unidadMedidaNombre: producto.unidadMedidaNombre,
         fraccionesSeleccionadas: producto.fraccionesSeleccionadas,
+        fechaVencimiento: producto.fechaVencimiento,
       );
-      await _repository.guardarProducto(uid, productoConNegocioId);
-      await cargarProductos();
+      final esNuevo = productoConNegocioId.id.isEmpty;
+      final productoId = await _repository.guardarProducto(
+        uid,
+        productoConNegocioId,
+      );
+      final productoGuardado = Producto(
+        id: productoId,
+        negocioId: productoConNegocioId.negocioId,
+        nombre: productoConNegocioId.nombre,
+        precio: productoConNegocioId.precio,
+        stock: productoConNegocioId.stock,
+        esStockInfinito: productoConNegocioId.esStockInfinito,
+        descripcion: productoConNegocioId.descripcion,
+        categoria: productoConNegocioId.categoria,
+        disponible: productoConNegocioId.disponible,
+        tieneDelivery: productoConNegocioId.tieneDelivery,
+        urlImagen: productoConNegocioId.urlImagen,
+        cloudinaryPublicId: productoConNegocioId.cloudinaryPublicId,
+        unidadMedidaNombre: productoConNegocioId.unidadMedidaNombre,
+        fraccionesSeleccionadas: productoConNegocioId.fraccionesSeleccionadas,
+        fechaVencimiento: productoConNegocioId.fechaVencimiento,
+      );
+
+      final indiceExistente = _productos.indexWhere(
+        (productoCargado) => productoCargado.id == productoId,
+      );
+      if (esNuevo) {
+        _productos.removeWhere(
+          (productoCargado) => productoCargado.id == productoId,
+        );
+        _productos.insert(0, productoGuardado);
+      } else if (indiceExistente != -1) {
+        _productos[indiceExistente] = productoGuardado;
+      }
+      _errorMessage = null;
+      _notificar();
       return true;
     } catch (e) {
       _errorMessage = 'No se pudo guardar el producto.';
-      notifyListeners();
+      _notificar();
       return false;
     }
   }
@@ -130,7 +213,7 @@ class ProductosProvider extends ChangeNotifier {
       await cargarProductos();
     } catch (e) {
       _errorMessage = 'No se pudo eliminar el producto.';
-      notifyListeners();
+      _notificar();
     }
   }
 
@@ -140,13 +223,23 @@ class ProductosProvider extends ChangeNotifier {
       await cargarProductos();
     } catch (e) {
       _errorMessage = 'No se pudo actualizar el producto.';
-      notifyListeners();
+      _notificar();
     }
   }
 
   void limpiarError() {
     _errorMessage = null;
-    notifyListeners();
+    _notificar();
+  }
+
+  void _notificar() {
+    if (!_disposed) notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
   }
 }
 
