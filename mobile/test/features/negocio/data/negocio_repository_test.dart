@@ -24,6 +24,7 @@ void main() {
 
       await repository.guardarConfiguracionNegocio(
         uid: 'usuario-1',
+        rubro: 'Bodega',
         nombreNegocio: '  Bodega Ana  ',
         slug: 'bodega-ana',
         telefonoCompleto: '+51999999999',
@@ -71,6 +72,7 @@ void main() {
           .data()!;
 
       expect(datos['email'], 'ana@example.com');
+      expect(datos['rubro'], 'Bodega');
       expect(datos['nombreNegocio'], 'Bodega Ana');
       expect(datos['setupComplete'], isTrue);
       expect(datos['deliveryZonas'], [

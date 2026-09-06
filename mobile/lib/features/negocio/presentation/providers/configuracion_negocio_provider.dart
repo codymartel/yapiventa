@@ -359,6 +359,7 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
     try {
       await _repository.guardarConfiguracionNegocio(
         uid: uid,
+        rubro: rubro,
         nombreNegocio: _nombreNegocio,
         slug: slugFinal,
         telefonoCompleto: '${_paisTelefono.prefijo}$_telefono',

@@ -45,6 +45,7 @@ class NegocioRepository {
   /// hacia abajo).
   Future<void> guardarConfiguracionNegocio({
     required String uid,
+    required String rubro,
     required String nombreNegocio,
     required String slug,
     required String telefonoCompleto, // ya con prefijo de país incluido
@@ -115,6 +116,7 @@ class NegocioRepository {
         .toList();
 
     final updateMap = <String, dynamic>{
+      'rubro': rubro,
       'nombreNegocio': nombreNegocio.trim(),
       'slug': slug,
       'telefono': telefonoCompleto,
