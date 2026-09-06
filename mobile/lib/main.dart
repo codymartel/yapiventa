@@ -41,9 +41,11 @@ class MyApp extends StatelessWidget {
           '/': (context) => const LoginScreen(),
           '/elegir-rubro': (context) => SeleccionNegocioScreen(
             onTipoSeleccionado: (rubro) {
+              // Conserva Rubro en el historial mientras se configura el
+              // negocio, para que el usuario pueda cambiar su eleccion.
               Navigator.of(
                 context,
-              ).pushReplacementNamed('/configurar-negocio', arguments: rubro);
+              ).pushNamed('/configurar-negocio', arguments: rubro);
             },
           ),
           '/home': (context) => const _HomePlaceholder(),
@@ -61,6 +63,7 @@ class MyApp extends StatelessWidget {
                 create: (_) => ConfiguracionNegocioProvider(rubro: rubro),
                 child: ConfiguracionNegocioScreen(
                   rubro: rubro,
+                  onVolver: () => Navigator.of(context).pop(),
                   onFinalizar: () {
                     Navigator.of(
                       context,

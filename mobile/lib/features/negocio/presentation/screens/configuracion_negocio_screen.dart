@@ -24,11 +24,13 @@ import '../widgets/paso_pagos.dart';
 
 class ConfiguracionNegocioScreen extends StatelessWidget {
   final String rubro;
+  final VoidCallback onVolver;
   final VoidCallback onFinalizar;
 
   const ConfiguracionNegocioScreen({
     super.key,
     required this.rubro,
+    required this.onVolver,
     required this.onFinalizar,
   });
 
@@ -48,24 +50,44 @@ class ConfiguracionNegocioScreen extends StatelessWidget {
               width: double.infinity,
               color: AppColors.superficie,
               padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-              child: Column(
+              child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Configura tu $rubro',
-                      style: TextStyle(
-                          color: AppColors.texto,
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 4),
-                  Text('Crea tu tienda virtual.',
-                      style: TextStyle(color: AppColors.muted, fontSize: 13)),
-                  const SizedBox(height: 16),
-                  _BarraPasos(
-                    pasoActual: p.pasoActual,
-                    nombres: _nombresPasos,
-                    onPasoClick: (i) {
-                      if (i < p.pasoActual) p.irAPaso(i);
-                    },
+                  IconButton(
+                    tooltip: 'Cambiar rubro',
+                    onPressed: onVolver,
+                    icon: const Icon(Icons.arrow_back),
+                  ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Configura tu $rubro',
+                          style: TextStyle(
+                            color: AppColors.texto,
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Crea tu tienda virtual.',
+                          style: TextStyle(
+                            color: AppColors.muted,
+                            fontSize: 13,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _BarraPasos(
+                          pasoActual: p.pasoActual,
+                          nombres: _nombresPasos,
+                          onPasoClick: (i) {
+                            if (i < p.pasoActual) p.irAPaso(i);
+                          },
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -97,6 +119,14 @@ class ConfiguracionNegocioScreen extends StatelessWidget {
                       ),
                     ),
                   if (p.pasoActual > 0) const SizedBox(width: 12),
+                  if (p.pasoActual == 0)
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: onVolver,
+                        child: const Text('Cambiar rubro'),
+                      ),
+                    ),
+                  if (p.pasoActual == 0) const SizedBox(width: 12),
                   Expanded(
                     flex: 2,
                     child: ElevatedButton(
@@ -107,11 +137,13 @@ class ConfiguracionNegocioScreen extends StatelessWidget {
                       onPressed: !p.puedeAvanzarActual || p.guardando
                           ? null
                           : () async {
-                              if (p.pasoActual < ConfiguracionNegocioProvider.totalPasos - 1) {
+                              if (p.pasoActual <
+                                  ConfiguracionNegocioProvider.totalPasos - 1) {
                                 p.siguiente();
                                 return;
                               }
-                              final uid = FirebaseAuth.instance.currentUser?.uid;
+                              final uid =
+                                  FirebaseAuth.instance.currentUser?.uid;
                               if (uid == null) return;
                               final exito = await p.guardar(uid);
                               if (exito) onFinalizar();
@@ -120,10 +152,15 @@ class ConfiguracionNegocioScreen extends StatelessWidget {
                           ? const SizedBox(
                               width: 20,
                               height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
                             )
                           : Text(
-                              p.pasoActual < ConfiguracionNegocioProvider.totalPasos - 1
+                              p.pasoActual <
+                                      ConfiguracionNegocioProvider.totalPasos -
+                                          1
                                   ? 'Siguiente'
                                   : 'Finalizar',
                             ),
@@ -173,15 +210,21 @@ class _BarraPasos extends StatelessWidget {
                   onTap: () => onPasoClick(i),
                   child: Column(
                     children: [
-                      Text('${i + 1}',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: i == pasoActual
-                                ? AppColors.texto
-                                : (i < pasoActual ? AppColors.blueLt : AppColors.muted),
-                          )),
-                      Text(nombres[i],
-                          style: TextStyle(fontSize: 10, color: AppColors.muted)),
+                      Text(
+                        '${i + 1}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: i == pasoActual
+                              ? AppColors.texto
+                              : (i < pasoActual
+                                    ? AppColors.blueLt
+                                    : AppColors.muted),
+                        ),
+                      ),
+                      Text(
+                        nombres[i],
+                        style: TextStyle(fontSize: 10, color: AppColors.muted),
+                      ),
                     ],
                   ),
                 ),

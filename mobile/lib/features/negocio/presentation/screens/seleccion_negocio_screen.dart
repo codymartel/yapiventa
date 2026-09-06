@@ -35,13 +35,17 @@ import 'package:flutter/material.dart';
 // ));
 // ═════════════════════════════════════════════════════════════════════════
 
-class SeleccionNegocioScreen extends StatelessWidget {
+class SeleccionNegocioScreen extends StatefulWidget {
   final void Function(String rubro) onTipoSeleccionado;
 
-  const SeleccionNegocioScreen({
-    super.key,
-    required this.onTipoSeleccionado,
-  });
+  const SeleccionNegocioScreen({super.key, required this.onTipoSeleccionado});
+
+  @override
+  State<SeleccionNegocioScreen> createState() => _SeleccionNegocioScreenState();
+}
+
+class _SeleccionNegocioScreenState extends State<SeleccionNegocioScreen> {
+  String? _rubroSeleccionado;
 
   // Paleta de colores oficial YapaVenta — idéntica a la versión Kotlin,
   // no se tocó ningún valor hexadecimal.
@@ -94,8 +98,9 @@ class SeleccionNegocioScreen extends StatelessWidget {
             // contenido con un ancho máximo, para que no se vea
             // estirado de borde a borde. En mobile, anchoMaximo termina
             // siendo el mismo anchoDisponible (no limita nada).
-            final anchoMaximoContenido =
-                anchoDisponible > 1000 ? 900.0 : anchoDisponible;
+            final anchoMaximoContenido = anchoDisponible > 1000
+                ? 900.0
+                : anchoDisponible;
 
             return Center(
               child: ConstrainedBox(
@@ -125,7 +130,8 @@ class SeleccionNegocioScreen extends StatelessWidget {
                         '¿A qué se dedica\ntu negocio?',
                         style: TextStyle(
                           color: blancoPuro,
-                          fontWeight: FontWeight.w900, // equivalente a FontWeight.Black de Compose
+                          fontWeight: FontWeight
+                              .w900, // equivalente a FontWeight.Black de Compose
                           fontSize: 32,
                           height: 1.2, // equivalente a lineHeight: 38.sp
                         ),
@@ -136,10 +142,7 @@ class SeleccionNegocioScreen extends StatelessWidget {
                       // ── Subtítulo descriptivo ──
                       Text(
                         'Configuraremos las medidas automáticas.',
-                        style: TextStyle(
-                          color: grisTenue,
-                          fontSize: 14,
-                        ),
+                        style: TextStyle(color: grisTenue, fontSize: 14),
                       ),
 
                       const SizedBox(height: 40),
@@ -150,15 +153,15 @@ class SeleccionNegocioScreen extends StatelessWidget {
                           itemCount: _rubros.length,
                           gridDelegate:
                               SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: columnas,
-                            crossAxisSpacing: 16,
-                            mainAxisSpacing: 16,
-                            // childAspectRatio controla el alto de cada
-                            // card en relación a su ancho. 130dp de alto
-                            // fijo en Compose; acá lo aproximamos con un
-                            // ratio que se ve bien en 2-4 columnas.
-                            childAspectRatio: 1.3,
-                          ),
+                                crossAxisCount: columnas,
+                                crossAxisSpacing: 16,
+                                mainAxisSpacing: 16,
+                                // childAspectRatio controla el alto de cada
+                                // card en relación a su ancho. 130dp de alto
+                                // fijo en Compose; acá lo aproximamos con un
+                                // ratio que se ve bien en 2-4 columnas.
+                                childAspectRatio: 1.3,
+                              ),
                           itemBuilder: (context, index) {
                             final rubro = _rubros[index];
                             return _RubroCard(
@@ -168,9 +171,30 @@ class SeleccionNegocioScreen extends StatelessWidget {
                               marinoBorde: marinoBorde,
                               azulAcento: azulAcento,
                               blancoPuro: blancoPuro,
-                              onTap: () => onTipoSeleccionado(rubro.nombre),
+                              seleccionado: _rubroSeleccionado == rubro.nombre,
+                              onTap: () {
+                                setState(
+                                  () => _rubroSeleccionado = rubro.nombre,
+                                );
+                              },
                             );
                           },
+                        ),
+                      ),
+
+                      // Equivale a confirmar la opcion elegida antes de
+                      // entrar al wizard. El usuario puede cambiar de rubro
+                      // tantas veces como quiera hasta tocar este boton.
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: _rubroSeleccionado == null
+                              ? null
+                              : () => widget.onTipoSeleccionado(
+                                  _rubroSeleccionado!,
+                                ),
+                          icon: const Icon(Icons.arrow_forward),
+                          label: const Text('Confirmar rubro'),
                         ),
                       ),
 
@@ -242,6 +266,7 @@ class _RubroCard extends StatefulWidget {
   final Color marinoBorde;
   final Color azulAcento;
   final Color blancoPuro;
+  final bool seleccionado;
   final VoidCallback onTap;
 
   const _RubroCard({
@@ -251,6 +276,7 @@ class _RubroCard extends StatefulWidget {
     required this.marinoBorde,
     required this.azulAcento,
     required this.blancoPuro,
+    required this.seleccionado,
     required this.onTap,
   });
 
@@ -285,9 +311,12 @@ class _RubroCardState extends State<_RubroCard> {
               color: widget.marinoCard,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                // Borde cambia a azul acento en hover, igual que en Kotlin.
-                color: _hover ? widget.azulAcento : widget.marinoBorde,
-                width: 1,
+                // El rubro elegido conserva el borde azul hasta confirmar,
+                // para que se pueda revisar o cambiar la seleccion.
+                color: _hover || widget.seleccionado
+                    ? widget.azulAcento
+                    : widget.marinoBorde,
+                width: widget.seleccionado ? 2 : 1,
               ),
               boxShadow: _hover
                   ? [
