@@ -12,9 +12,7 @@ import 'features/negocio/presentation/screens/configuracion_negocio_screen.dart'
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   runApp(const MyApp());
 }
 
@@ -35,21 +33,19 @@ class MyApp extends StatelessWidget {
         // setupComplete == false (usuario nuevo).
         // '/configurar-negocio' recibe el rubro elegido como argumento
         // — ver cómo se navega hacia ella en seleccion_negocio_screen.dart.
-        // '/home' es a donde va todo el mundo una vez que el negocio
-        // ya está configurado (o recién se terminó de configurar).
-        // '/productos' es el listado de productos del negocio (todavía
-        // placeholder — se migra en el próximo paso).
+        // '/home' queda como placeholder temporal.
+        // '/productos' es el listado de productos del negocio y recibe al
+        // usuario al terminar la configuración inicial.
         initialRoute: '/',
         routes: {
           '/': (context) => const LoginScreen(),
           '/elegir-rubro': (context) => SeleccionNegocioScreen(
-                onTipoSeleccionado: (rubro) {
-                  Navigator.of(context).pushReplacementNamed(
-                    '/configurar-negocio',
-                    arguments: rubro,
-                  );
-                },
-              ),
+            onTipoSeleccionado: (rubro) {
+              Navigator.of(
+                context,
+              ).pushReplacementNamed('/configurar-negocio', arguments: rubro);
+            },
+          ),
           '/home': (context) => const _HomePlaceholder(),
           '/productos': (context) => const ProductosScreen(),
         },
@@ -66,10 +62,9 @@ class MyApp extends StatelessWidget {
                 child: ConfiguracionNegocioScreen(
                   rubro: rubro,
                   onFinalizar: () {
-                    Navigator.of(context).pushNamedAndRemoveUntil(
-                      '/home',
-                      (route) => false,
-                    );
+                    Navigator.of(
+                      context,
+                    ).pushNamedAndRemoveUntil('/productos', (route) => false);
                   },
                 ),
               ),
