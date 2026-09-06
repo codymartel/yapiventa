@@ -35,6 +35,8 @@ class ProductosProvider extends ChangeNotifier {
   bool _cargandoMas = false;
   bool _refrescando = false;
   bool _hayMas = false;
+  static const _tamanoPagina = 10;
+  int _productosMostrados = _tamanoPagina;
   String _busqueda = '';
   String? _errorMessage;
   DocumentSnapshot<Map<String, dynamic>>? _ultimoDocumento;
@@ -48,7 +50,7 @@ class ProductosProvider extends ChangeNotifier {
   bool get cargando => _cargando;
   bool get cargandoMas => _cargandoMas;
   bool get refrescando => _refrescando;
-  bool get hayMas => _hayMas;
+  bool get hayMas => _hayMas || _productos.length > _productosMostrados;
   String get busqueda => _busqueda;
   String? get errorMessage => _errorMessage;
   int get totalProductos => _productos.length;
@@ -61,13 +63,18 @@ class ProductosProvider extends ChangeNotifier {
   // Equivale a tu `productosFiltrados` — busca en nombre, categoría y
   // descripción, igual que en Kotlin.
   List<Producto> get productosFiltrados {
-    if (_busqueda.isBlank) return List.unmodifiable(_productos);
+    if (_busqueda.isBlank) {
+      return List.unmodifiable(_productos.take(_productosMostrados));
+    }
     final q = _busqueda.toLowerCase();
-    return _productos.where((p) {
-      return p.nombre.toLowerCase().contains(q) ||
-          p.categoria.toLowerCase().contains(q) ||
-          p.descripcion.toLowerCase().contains(q);
-    }).toList();
+    return _productos
+        .where((p) {
+          return p.nombre.toLowerCase().contains(q) ||
+              p.categoria.toLowerCase().contains(q) ||
+              p.descripcion.toLowerCase().contains(q);
+        })
+        .take(_productosMostrados)
+        .toList();
   }
 
   void actualizarBusqueda(String texto) {
@@ -84,6 +91,7 @@ class ProductosProvider extends ChangeNotifier {
     _cargando = true;
     _ultimoDocumento = null;
     _hayMas = false;
+    _productosMostrados = _tamanoPagina;
     _errorMessage = null;
     _notificar();
     try {
@@ -104,10 +112,19 @@ class ProductosProvider extends ChangeNotifier {
   // anexa solo la siguiente pagina. Los IDs ya presentes se descartan para
   // proteger la lista ante respuestas repetidas o cambios concurrentes.
   Future<void> cargarMasProductos() async {
-    if (_cargando || _cargandoMas || !_hayMas || _ultimoDocumento == null) {
+    if (_cargando || _cargandoMas || !hayMas) {
       return;
     }
 
+    final nuevoLimite = _productosMostrados + _tamanoPagina;
+    final productosOcultos = _productos.length - _productosMostrados;
+    if (productosOcultos >= _tamanoPagina || !_hayMas) {
+      _productosMostrados = nuevoLimite;
+      _notificar();
+      return;
+    }
+
+    if (_ultimoDocumento == null) return;
     _cargandoMas = true;
     _errorMessage = null;
     _notificar();
@@ -122,6 +139,7 @@ class ProductosProvider extends ChangeNotifier {
       );
       _ultimoDocumento = pagina.ultimoDocumento;
       _hayMas = pagina.hayMas;
+      _productosMostrados = nuevoLimite;
     } catch (e) {
       _errorMessage = 'No se pudieron cargar mas productos.';
     } finally {
@@ -168,6 +186,11 @@ class ProductosProvider extends ChangeNotifier {
         uid,
         productoConNegocioId,
       );
+      if (esNuevo) {
+        _productos.removeWhere(
+          (productoCargado) => productoCargado.id == productoId,
+        );
+      }
       final productoGuardado = Producto(
         id: productoId,
         negocioId: productoConNegocioId.negocioId,
@@ -190,9 +213,6 @@ class ProductosProvider extends ChangeNotifier {
         (productoCargado) => productoCargado.id == productoId,
       );
       if (esNuevo) {
-        _productos.removeWhere(
-          (productoCargado) => productoCargado.id == productoId,
-        );
         _productos.insert(0, productoGuardado);
       } else if (indiceExistente != -1) {
         _productos[indiceExistente] = productoGuardado;

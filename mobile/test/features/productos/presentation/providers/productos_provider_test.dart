@@ -62,7 +62,7 @@ void main() {
   });
 
   test(
-    'inserta un producto nuevo al inicio sin recargar la primera pagina',
+    'mantiene diez productos visibles al crear un producto nuevo',
     () async {
       await crearProductos(10);
       await provider.cargarProductos();
@@ -72,12 +72,13 @@ void main() {
       );
 
       expect(guardado, isTrue);
-      expect(provider.productosFiltrados, hasLength(11));
+      expect(provider.productosFiltrados, hasLength(10));
       expect(provider.productosFiltrados.first.nombre, 'Producto nuevo');
       expect(provider.productosFiltrados.first.id, isNotEmpty);
+      expect(provider.hayMas, isTrue);
       expect(
-        provider.productosFiltrados.map((producto) => producto.id).toSet(),
-        hasLength(11),
+        provider.totalProductos,
+        11,
       );
     },
   );
@@ -85,10 +86,6 @@ void main() {
   test('oculta ver mas al consultar despues de una pagina exacta', () async {
     await crearProductos(10);
     await provider.cargarProductos();
-
-    expect(provider.hayMas, isTrue);
-
-    await provider.cargarMasProductos();
 
     expect(provider.productosFiltrados, hasLength(10));
     expect(provider.hayMas, isFalse);

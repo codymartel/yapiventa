@@ -41,11 +41,13 @@ class ProductosRepository {
       query = query.startAfterDocument(despuesDe);
     }
 
-    query = query.limit(limite);
+    // Se pide un documento adicional solo para saber si existe otra página.
+    query = query.limit(limite + 1);
 
     final snapshot = await query.get();
+    final documentosPagina = snapshot.docs.take(limite).toList();
 
-    final productos = snapshot.docs
+    final productos = documentosPagina
         .map((documento) {
           return Producto.fromMap(documento.id, documento.data());
         })
@@ -54,8 +56,9 @@ class ProductosRepository {
 
     return PaginaProductos(
       productos: productos,
-      ultimoDocumento: snapshot.docs.isNotEmpty ? snapshot.docs.last : null,
-      hayMas: snapshot.docs.length == limite,
+      ultimoDocumento:
+          documentosPagina.isNotEmpty ? documentosPagina.last : null,
+      hayMas: snapshot.docs.length > limite,
     );
   }
 
