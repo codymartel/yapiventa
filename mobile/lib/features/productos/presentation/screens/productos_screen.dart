@@ -135,64 +135,70 @@ class _ContenidoProductos extends StatelessWidget {
         ],
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-          child: Column(
-            children: [
-              if (provider.errorMessage != null) ...[
-                _MensajeError(
-                  mensaje: provider.errorMessage!,
-                  onCerrar: provider.limpiarError,
-                ),
-                const SizedBox(height: 12),
-              ],
-              Expanded(
-                child: provider.cargando && productos.isEmpty
-                    ? const Center(child: CircularProgressIndicator())
-                    : productos.isEmpty && !provider.hayMas
-                    ? Center(
-                        child: Text(
-                          'Todavia no tienes productos.',
-                          style: TextStyle(color: AppColors.muted),
-                        ),
-                      )
-                    : ListView.builder(
-                        // No usa ScrollController: la siguiente pagina se
-                        // solicita exclusivamente al pulsar "Ver mas".
-                        padding: const EdgeInsets.only(bottom: 24),
-                        itemCount: productos.length + (provider.hayMas ? 1 : 0),
-                        itemBuilder: (context, index) {
-                          if (index == productos.length) {
-                            return _BotonVerMas(provider: provider);
-                          }
-
-                          final producto = productos[index];
-                          return ProductoCard(
-                            key: ValueKey(producto.id),
-                            producto: producto,
-                            onEditar: catalogoCargado
-                                ? () => _abrirFormulario(
-                                      context,
-                                      provider,
-                                      producto: producto,
-                                    )
-                                : () {},
-                            onEliminar: () => _confirmarEliminacion(
-                              context,
-                              provider,
-                              producto.id,
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1100),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: Column(
+                children: [
+                  if (provider.errorMessage != null) ...[
+                    _MensajeError(
+                      mensaje: provider.errorMessage!,
+                      onCerrar: provider.limpiarError,
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  Expanded(
+                    child: provider.cargando && productos.isEmpty
+                        ? const Center(child: CircularProgressIndicator())
+                        : productos.isEmpty && !provider.hayMas
+                        ? Center(
+                            child: Text(
+                              'Todavia no tienes productos.',
+                              style: TextStyle(color: AppColors.muted),
                             ),
-                            onToggleDisponible: () {
-                              provider.toggleDisponible(
-                                producto.id,
-                                !producto.disponible,
+                          )
+                        : ListView.builder(
+                            // No usa ScrollController: la siguiente pagina se
+                            // solicita exclusivamente al pulsar "Ver mas".
+                            padding: const EdgeInsets.only(bottom: 24),
+                            itemCount:
+                                productos.length + (provider.hayMas ? 1 : 0),
+                            itemBuilder: (context, index) {
+                              if (index == productos.length) {
+                                return _BotonVerMas(provider: provider);
+                              }
+
+                              final producto = productos[index];
+                              return ProductoCard(
+                                key: ValueKey(producto.id),
+                                producto: producto,
+                                onEditar: catalogoCargado
+                                    ? () => _abrirFormulario(
+                                          context,
+                                          provider,
+                                          producto: producto,
+                                        )
+                                    : () {},
+                                onEliminar: () => _confirmarEliminacion(
+                                  context,
+                                  provider,
+                                  producto.id,
+                                ),
+                                onToggleDisponible: () {
+                                  provider.toggleDisponible(
+                                    producto.id,
+                                    !producto.disponible,
+                                  );
+                                },
                               );
                             },
-                          );
-                        },
-                      ),
+                          ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
