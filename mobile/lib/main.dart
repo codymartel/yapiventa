@@ -57,10 +57,19 @@ class MyApp extends StatelessWidget {
         // fácilmente antes de construir la pantalla).
         onGenerateRoute: (settings) {
           if (settings.name == '/configurar-negocio') {
-            final rubro = settings.arguments as String;
+            final argumentos = settings.arguments;
+            final configuracionInicial = argumentos is Map<String, dynamic>
+                ? argumentos['configuracionInicial'] as Map<String, dynamic>?
+                : null;
+            final rubro = argumentos is Map<String, dynamic>
+                ? argumentos['rubro'] as String
+                : argumentos as String;
             return MaterialPageRoute(
               builder: (context) => ChangeNotifierProvider(
-                create: (_) => ConfiguracionNegocioProvider(rubro: rubro),
+                create: (_) => ConfiguracionNegocioProvider(
+                  rubro: rubro,
+                  configuracionInicial: configuracionInicial,
+                ),
                 child: ConfiguracionNegocioScreen(
                   rubro: rubro,
                   onVolver: () => Navigator.of(context).pop(),

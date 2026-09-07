@@ -19,11 +19,19 @@ class PasoPagos extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        Text('Métodos de pago (opcional)',
-            style: TextStyle(color: AppColors.texto, fontWeight: FontWeight.bold, fontSize: 16)),
+        Text(
+          'Métodos de pago (opcional)',
+          style: TextStyle(
+            color: AppColors.texto,
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
         const SizedBox(height: 4),
-        Text('Selecciona los que aceptarás.',
-            style: TextStyle(color: AppColors.muted, fontSize: 12)),
+        Text(
+          'Selecciona los que aceptarás.',
+          style: TextStyle(color: AppColors.muted, fontSize: 12),
+        ),
         const SizedBox(height: 16),
 
         for (var i = 0; i < p.metodosPagoConfig.length; i++)
@@ -38,7 +46,10 @@ class PasoPagos extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: AppColors.error.withValues(alpha: 0.4)),
             ),
-            child: Text(p.errorValidacion!, style: TextStyle(color: AppColors.error)),
+            child: Text(
+              p.errorValidacion!,
+              style: TextStyle(color: AppColors.error),
+            ),
           ),
         ],
       ],
@@ -65,7 +76,9 @@ class _MetodoPagoCard extends StatelessWidget {
         color: AppColors.card,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: config.activo ? AppColors.blueLt.withValues(alpha: 0.4) : AppColors.border,
+          color: config.activo
+              ? AppColors.blueLt.withValues(alpha: 0.4)
+              : AppColors.border,
         ),
       ),
       child: Column(
@@ -78,8 +91,13 @@ class _MetodoPagoCard extends StatelessWidget {
                 children: [
                   Text(tipo.icono, style: const TextStyle(fontSize: 20)),
                   const SizedBox(width: 10),
-                  Text(tipo.nombre,
-                      style: TextStyle(color: AppColors.texto, fontWeight: FontWeight.w600)),
+                  Text(
+                    tipo.nombre,
+                    style: TextStyle(
+                      color: AppColors.texto,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ],
               ),
               Switch(
@@ -92,49 +110,70 @@ class _MetodoPagoCard extends StatelessWidget {
           if (config.activo) ...[
             const SizedBox(height: 12),
             if (tipo.permiteNumeroPersonalizado)
-              TextField(
+              TextFormField(
+                key: ValueKey('${config.metodoId}-numero'),
+                initialValue: config.numeroPago,
                 onChanged: (v) => p.actualizarMetodoPago(
-                    index, (c) => c.copyWith(numeroPago: v)),
+                  index,
+                  (c) => c.copyWith(numeroPago: v),
+                ),
                 keyboardType: TextInputType.phone,
                 style: TextStyle(color: AppColors.texto),
                 decoration: InputDecoration(
                   labelText: 'Número de ${tipo.nombre} (9 dígitos)',
                   filled: true,
                   fillColor: AppColors.fondo,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
               ),
             if (tipo.permiteDescuento) ...[
               const SizedBox(height: 10),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: Text('¿Descuento por pagar con ${tipo.nombre}?',
-                    style: TextStyle(color: AppColors.texto, fontSize: 13)),
+                title: Text(
+                  '¿Descuento por pagar con ${tipo.nombre}?',
+                  style: TextStyle(color: AppColors.texto, fontSize: 13),
+                ),
                 value: config.descuentoActivo,
                 onChanged: (v) => p.actualizarMetodoPago(
-                    index, (c) => c.copyWith(descuentoActivo: v)),
+                  index,
+                  (c) => c.copyWith(descuentoActivo: v),
+                ),
               ),
               if (config.descuentoActivo) ...[
                 Row(
                   children: [
                     ChoiceChip(
                       label: const Text('% Porcentaje'),
-                      selected: config.tipoDescuento == TipoDescuento.porcentaje,
+                      selected:
+                          config.tipoDescuento == TipoDescuento.porcentaje,
                       onSelected: (_) => p.actualizarMetodoPago(
-                          index, (c) => c.copyWith(tipoDescuento: TipoDescuento.porcentaje)),
+                        index,
+                        (c) =>
+                            c.copyWith(tipoDescuento: TipoDescuento.porcentaje),
+                      ),
                     ),
                     const SizedBox(width: 8),
                     ChoiceChip(
                       label: const Text('S/ Monto fijo'),
                       selected: config.tipoDescuento == TipoDescuento.montoFijo,
                       onSelected: (_) => p.actualizarMetodoPago(
-                          index, (c) => c.copyWith(tipoDescuento: TipoDescuento.montoFijo)),
+                        index,
+                        (c) =>
+                            c.copyWith(tipoDescuento: TipoDescuento.montoFijo),
+                      ),
                     ),
                   ],
                 ),
-                TextField(
+                TextFormField(
+                  key: ValueKey('${config.metodoId}-descuento'),
+                  initialValue: config.valorDescuento,
                   onChanged: (v) => p.actualizarMetodoPago(
-                      index, (c) => c.copyWith(valorDescuento: v)),
+                    index,
+                    (c) => c.copyWith(valorDescuento: v),
+                  ),
                   keyboardType: TextInputType.number,
                   style: TextStyle(color: AppColors.texto),
                   decoration: InputDecoration(
@@ -143,19 +182,27 @@ class _MetodoPagoCard extends StatelessWidget {
                         : 'Valor del descuento (S/)',
                     filled: true,
                     fillColor: AppColors.fondo,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
-                TextField(
+                TextFormField(
+                  key: ValueKey('${config.metodoId}-minimo'),
+                  initialValue: config.montoMinimo,
                   onChanged: (v) => p.actualizarMetodoPago(
-                      index, (c) => c.copyWith(montoMinimo: v)),
+                    index,
+                    (c) => c.copyWith(montoMinimo: v),
+                  ),
                   keyboardType: TextInputType.number,
                   style: TextStyle(color: AppColors.texto),
                   decoration: InputDecoration(
                     labelText: 'Monto mínimo para el descuento',
                     filled: true,
                     fillColor: AppColors.fondo,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
               ],

@@ -39,12 +39,113 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
 
   ConfiguracionNegocioProvider({
     required this.rubro,
+    Map<String, dynamic>? configuracionInicial,
     NegocioRepository? repository,
   }) : _repository = repository ?? NegocioRepository() {
     // Igual que tu Kotlin: las categorías y unidades iniciales se cargan
     // según el rubro elegido en la pantalla anterior.
     _categorias = List.of(Categorias.obtener(rubro));
     _unidadesMedida = List.of(UnidadesMedida.obtener(rubro));
+    if (configuracionInicial != null) {
+      _restaurarConfiguracion(configuracionInicial);
+    }
+  }
+
+  void _restaurarConfiguracion(Map<String, dynamic> datos) {
+    _nombreNegocio = datos['nombreNegocio'] as String? ?? '';
+    _ruc = datos['ruc'] as String? ?? '';
+    _linkFacebook = datos['facebook'] as String? ?? '';
+    _linkTiktok = datos['tiktok'] as String? ?? '';
+    _linkInstagram = datos['instagram'] as String? ?? '';
+    _linkYoutube = datos['youtube'] as String? ?? '';
+
+    final telefonoCompleto = datos['telefono'] as String? ?? '';
+    _paisTelefono = paisesLatam.firstWhere(
+      (pais) => telefonoCompleto.startsWith(pais.prefijo),
+      orElse: () => _paisTelefono,
+    );
+    _telefono = telefonoCompleto
+        .replaceFirst(_paisTelefono.prefijo, '')
+        .replaceAll(RegExp(r'[^0-9]'), '');
+
+    final direccionCompleta = datos['direccion'] as String? ?? '';
+    const referenciaInicio = ' (Ref: ';
+    final indiceReferencia = direccionCompleta.lastIndexOf(referenciaInicio);
+    if (indiceReferencia != -1 && direccionCompleta.endsWith(')')) {
+      _direccion = direccionCompleta.substring(0, indiceReferencia);
+      _referencia = direccionCompleta.substring(
+        indiceReferencia + referenciaInicio.length,
+        direccionCompleta.length - 1,
+      );
+    } else {
+      _direccion = direccionCompleta;
+    }
+
+    final categoriasGuardadas = (datos['categorias'] as List?)?.cast<String>();
+    if (categoriasGuardadas != null) _categorias = categoriasGuardadas;
+
+    final unidadesGuardadas = (datos['unidadesMedida'] as List?)
+        ?.whereType<Map>()
+        .map(
+          (unidad) => UnidadInfo(
+            nombre: unidad['nombre'] as String? ?? '',
+            tipo: unidad['tipo'] == 'fraccionaria'
+                ? TipoUnidad.fraccionaria
+                : TipoUnidad.entera,
+            fraccionesPermitidas:
+                (unidad['fraccionesPermitidas'] as List?)?.cast<String>() ??
+                const [],
+            esOpcional: unidad['esOpcional'] as bool? ?? false,
+          ),
+        )
+        .where((unidad) => unidad.nombre.isNotEmpty)
+        .toList();
+    if (unidadesGuardadas != null) _unidadesMedida = unidadesGuardadas;
+
+    _tieneDelivery = datos['delivery'] as bool? ?? false;
+    _zonasDelivery
+      ..clear()
+      ..addAll(
+        (datos['deliveryZonas'] as List?)?.whereType<Map>().map(
+              (zona) => ZonaDelivery(
+                zona: zona['zona'] as String? ?? '',
+                costo: (zona['costo'] as num?)?.toString() ?? '',
+              ),
+            ) ??
+            const [],
+      );
+    _horarios
+      ..clear()
+      ..addAll(
+        (datos['horarios'] as List?)?.whereType<Map>().map(
+              (horario) => HorarioDia(
+                dia: horario['dia'] as String? ?? '',
+                apertura: horario['apertura'] as String? ?? '',
+                cierre: horario['cierre'] as String? ?? '',
+                activo: horario['activo'] as bool? ?? false,
+              ),
+            ) ??
+            const [],
+      );
+
+    final metodosActivos = (datos['metodosPago'] as List?)?.cast<String>() ??
+        const [];
+    final configuracionesPago =
+        (datos['configPagos'] as Map?)?.cast<String, dynamic>() ?? const {};
+    _metodosPagoConfig = MetodoPagoTipo.todos.map((tipo) {
+      final config = configuracionesPago[tipo.id] as Map? ?? const {};
+      return ConfigPagoMetodo(
+        metodoId: tipo.id,
+        activo: metodosActivos.contains(tipo.id),
+        numeroPago: config['numero'] as String? ?? '',
+        descuentoActivo: config['descuentoActivo'] as bool? ?? false,
+        tipoDescuento: config['tipoDescuento'] == 'monto_fijo'
+            ? TipoDescuento.montoFijo
+            : TipoDescuento.porcentaje,
+        valorDescuento: (config['valorDescuento'] as num?)?.toString() ?? '',
+        montoMinimo: (config['montoMinimo'] as num?)?.toString() ?? '',
+      );
+    }).toList();
   }
 
   // ── Paso actual del stepper ─────────────────────────────────────────

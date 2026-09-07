@@ -26,11 +26,46 @@ class PasoNegocio extends StatefulWidget {
 }
 
 class _PasoNegocioState extends State<PasoNegocio> {
+  final _nombreController = TextEditingController();
   final _telefonoController = TextEditingController();
+  final _direccionController = TextEditingController();
+  final _referenciaController = TextEditingController();
+  final _rucController = TextEditingController();
+  final _facebookController = TextEditingController();
+  final _tiktokController = TextEditingController();
+  final _instagramController = TextEditingController();
+  final _youtubeController = TextEditingController();
+  bool _camposInicializados = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_camposInicializados) return;
+
+    final p = context.read<ConfiguracionNegocioProvider>();
+    _nombreController.text = p.nombreNegocio;
+    _telefonoController.text = p.telefono;
+    _direccionController.text = p.direccion;
+    _referenciaController.text = p.referencia;
+    _rucController.text = p.ruc;
+    _facebookController.text = p.linkFacebook;
+    _tiktokController.text = p.linkTiktok;
+    _instagramController.text = p.linkInstagram;
+    _youtubeController.text = p.linkYoutube;
+    _camposInicializados = true;
+  }
 
   @override
   void dispose() {
+    _nombreController.dispose();
     _telefonoController.dispose();
+    _direccionController.dispose();
+    _referenciaController.dispose();
+    _rucController.dispose();
+    _facebookController.dispose();
+    _tiktokController.dispose();
+    _instagramController.dispose();
+    _youtubeController.dispose();
     super.dispose();
   }
 
@@ -59,6 +94,7 @@ class _PasoNegocioState extends State<PasoNegocio> {
         const SizedBox(height: 12),
 
         TextField(
+          controller: _nombreController,
           onChanged: (v) => p.nombreNegocio = v,
           style: TextStyle(color: AppColors.texto),
           decoration: _decoracion(
@@ -126,6 +162,7 @@ class _PasoNegocioState extends State<PasoNegocio> {
 
         const SizedBox(height: 16),
         TextField(
+          controller: _direccionController,
           onChanged: (v) => p.direccion = v,
           style: TextStyle(color: AppColors.texto),
           decoration: _decoracion('Dirección *', 'Ej: Av. Perú 123'),
@@ -133,6 +170,7 @@ class _PasoNegocioState extends State<PasoNegocio> {
 
         const SizedBox(height: 16),
         TextField(
+          controller: _referenciaController,
           onChanged: (v) => p.referencia = v,
           style: TextStyle(color: AppColors.texto),
           decoration: _decoracion(
@@ -145,30 +183,35 @@ class _PasoNegocioState extends State<PasoNegocio> {
         Text('Opcional', style: TextStyle(color: AppColors.dim, fontSize: 11)),
         const SizedBox(height: 8),
         TextField(
+          controller: _rucController,
           onChanged: (v) => p.ruc = v,
           style: TextStyle(color: AppColors.texto),
           decoration: _decoracion('RUC / documento tributario', 'Opcional'),
         ),
         const SizedBox(height: 12),
         TextField(
+          controller: _facebookController,
           onChanged: (v) => p.linkFacebook = v,
           style: TextStyle(color: AppColors.texto),
           decoration: _decoracion('Facebook', 'https://facebook.com/...'),
         ),
         const SizedBox(height: 12),
         TextField(
+          controller: _tiktokController,
           onChanged: (v) => p.linkTiktok = v,
           style: TextStyle(color: AppColors.texto),
           decoration: _decoracion('TikTok', 'https://tiktok.com/...'),
         ),
         const SizedBox(height: 12),
         TextField(
+          controller: _instagramController,
           onChanged: (v) => p.linkInstagram = v,
           style: TextStyle(color: AppColors.texto),
           decoration: _decoracion('Instagram', 'https://instagram.com/...'),
         ),
         const SizedBox(height: 12),
         TextField(
+          controller: _youtubeController,
           onChanged: (v) => p.linkYoutube = v,
           style: TextStyle(color: AppColors.texto),
           decoration: _decoracion('YouTube', 'https://youtube.com/...'),
