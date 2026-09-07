@@ -6,7 +6,9 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/core/services/subidor_de_imagenes.dart';
 import 'package:mobile/features/productos/application/use_cases/crear_producto.dart';
+import 'package:mobile/features/productos/application/use_cases/obtener_pagina_productos.dart';
 import 'package:mobile/features/productos/data/productos_repository.dart';
+import 'package:mobile/features/productos/domain/models/pagina_productos.dart';
 import 'package:mobile/features/productos/domain/models/producto.dart';
 import 'package:mobile/features/productos/domain/repositories/repositorio_productos.dart';
 import 'package:mobile/features/productos/presentation/providers/productos_provider.dart';
@@ -17,20 +19,22 @@ void main() {
   late _RepositorioProductosCreacionFake repositorioCreacion;
   late _SubidorDeImagenesFake subidorDeImagenes;
 
-  Producto producto({String nombre = 'Cafe'}) =>
-      Producto(negocioId: 'usuario-1', nombre: nombre, precio: 12.5);
+  Producto producto({String id = '', String nombre = 'Cafe'}) =>
+      Producto(id: id, negocioId: 'usuario-1', nombre: nombre, precio: 12.5);
 
   setUp(() {
     firestore = FakeFirebaseFirestore();
     repositorioCreacion = _RepositorioProductosCreacionFake();
     subidorDeImagenes = _SubidorDeImagenesFake();
+    final repository = ProductosRepository(firestore);
     provider = ProductosProvider(
       uid: 'usuario-1',
-      repository: ProductosRepository(firestore),
+      repository: repository,
       crearProducto: CrearProducto(
         repositorioProductos: repositorioCreacion,
         subidorDeImagenes: subidorDeImagenes,
       ),
+      obtenerPaginaProductos: ObtenerPaginaProductos(repository),
       subidorDeImagenes: subidorDeImagenes,
     );
   });
@@ -48,6 +52,21 @@ void main() {
         'fechaCreacion': Timestamp.fromDate(DateTime(2026, 1, i)),
       });
     }
+  }
+
+  ProductosProvider crearProviderPaginado(
+    _RepositorioProductosCreacionFake repository,
+  ) {
+    return ProductosProvider(
+      uid: 'usuario-1',
+      repository: repository,
+      crearProducto: CrearProducto(
+        repositorioProductos: repository,
+        subidorDeImagenes: subidorDeImagenes,
+      ),
+      obtenerPaginaProductos: ObtenerPaginaProductos(repository),
+      subidorDeImagenes: subidorDeImagenes,
+    );
   }
 
   test('carga paginas de diez y evita duplicados', () async {
@@ -99,6 +118,67 @@ void main() {
     expect(provider.productosFiltrados, hasLength(10));
     expect(provider.hayMas, isFalse);
     expect(provider.cargandoMas, isFalse);
+  });
+
+  test('bloquea cargas iniciales concurrentes y usa cursor nulo', () async {
+    final repository = _RepositorioProductosCreacionFake();
+    final pendiente = Completer<PaginaProductos>();
+    repository.paginaPendiente = pendiente;
+    final providerPaginado = crearProviderPaginado(repository);
+    addTearDown(providerPaginado.dispose);
+
+    final primera = providerPaginado.cargarProductos();
+    final segunda = providerPaginado.cargarProductos();
+
+    expect(repository.llamadasPagina, 1);
+    expect(repository.cursores.single, isNull);
+    expect(repository.limites.single, 10);
+
+    pendiente.complete(
+      PaginaProductos(
+        productos: [producto(nombre: 'Primero')],
+        ultimoCursor: const _CursorProductosPrueba('pagina-1'),
+        hayMas: false,
+      ),
+    );
+    await Future.wait([primera, segunda]);
+
+    expect(providerPaginado.cargando, isFalse);
+    expect(providerPaginado.productosFiltrados, hasLength(1));
+  });
+
+  test('bloquea dos solicitudes de la siguiente página', () async {
+    final repository = _RepositorioProductosCreacionFake();
+    const primerCursor = _CursorProductosPrueba('pagina-1');
+    repository.pagina = PaginaProductos(
+      productos: [producto(id: 'producto-1', nombre: 'Primero')],
+      ultimoCursor: primerCursor,
+      hayMas: true,
+    );
+    final providerPaginado = crearProviderPaginado(repository);
+    addTearDown(providerPaginado.dispose);
+    await providerPaginado.cargarProductos();
+
+    final pendiente = Completer<PaginaProductos>();
+    repository.paginaPendiente = pendiente;
+    final primera = providerPaginado.cargarMasProductos();
+    final segunda = providerPaginado.cargarMasProductos();
+
+    expect(repository.llamadasPagina, 2);
+    expect(repository.cursores, [null, same(primerCursor)]);
+
+    pendiente.complete(
+      PaginaProductos(
+        productos: [producto(id: 'producto-2', nombre: 'Segundo')],
+        ultimoCursor: const _CursorProductosPrueba('pagina-2'),
+        hayMas: false,
+      ),
+    );
+    await Future.wait([primera, segunda]);
+
+    expect(providerPaginado.cargandoMas, isFalse);
+    expect(providerPaginado.productosFiltrados, hasLength(2));
+    expect(providerPaginado.hayMas, isFalse);
   });
 
   test('mantiene estado de creación y añade el producto una vez', () async {
@@ -171,9 +251,30 @@ void main() {
 
 class _RepositorioProductosCreacionFake implements RepositorioProductos {
   int llamadas = 0;
+  int llamadasPagina = 0;
+  final List<CursorProductos?> cursores = [];
+  final List<int> limites = [];
   Producto? ultimoProducto;
   Object? error;
   Completer<Producto>? respuestaPendiente;
+  PaginaProductos pagina = const PaginaProductos(
+    productos: [],
+    ultimoCursor: null,
+    hayMas: false,
+  );
+  Completer<PaginaProductos>? paginaPendiente;
+
+  @override
+  Future<PaginaProductos> obtenerPaginaProductos(
+    String uid, {
+    CursorProductos? despuesDe,
+    int limite = 10,
+  }) {
+    llamadasPagina++;
+    cursores.add(despuesDe);
+    limites.add(limite);
+    return paginaPendiente?.future ?? Future.value(pagina);
+  }
 
   @override
   Future<Producto> crearProducto(String uid, Producto producto) {
@@ -184,6 +285,27 @@ class _RepositorioProductosCreacionFake implements RepositorioProductos {
     if (pendiente != null) return pendiente.future;
     return Future.value(producto.copyWith(id: 'producto-creado-$llamadas'));
   }
+
+  @override
+  Future<String> guardarProducto(String uid, Producto producto) async {
+    return producto.id;
+  }
+
+  @override
+  Future<void> eliminarProducto(String uid, String productoId) async {}
+
+  @override
+  Future<void> toggleDisponible(
+    String uid,
+    String productoId,
+    bool disponible,
+  ) async {}
+}
+
+class _CursorProductosPrueba implements CursorProductos {
+  final String valor;
+
+  const _CursorProductosPrueba(this.valor);
 }
 
 class _SubidorDeImagenesFake implements SubidorDeImagenes {

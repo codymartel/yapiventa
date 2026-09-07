@@ -1,20 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../domain/models/pagina_productos.dart';
 import '../domain/models/producto.dart';
 import '../domain/repositories/repositorio_productos.dart';
 
-// Una pagina conserva los documentos ya convertidos y el cursor real de
-// Firestore. La pantalla nunca calcula posiciones: entrega este cursor al
-// repositorio para continuar exactamente despues del ultimo documento leido.
-class PaginaProductos {
-  final List<Producto> productos;
-  final DocumentSnapshot<Map<String, dynamic>>? ultimoDocumento;
-  final bool hayMas;
+class _CursorProductosFirestore implements CursorProductos {
+  final DocumentSnapshot<Map<String, dynamic>> documento;
 
-  const PaginaProductos({
-    required this.productos,
-    required this.ultimoDocumento,
-    required this.hayMas,
-  });
+  const _CursorProductosFirestore(this.documento);
 }
 
 class ProductosRepository implements RepositorioProductos {
@@ -29,9 +21,10 @@ class ProductosRepository implements RepositorioProductos {
   // Equivale a pedir una pagina manual del catalogo: la primera consulta
   // trae los 10 productos mas recientes y las siguientes continuan desde
   // [despuesDe], sin volver a leer los documentos de paginas anteriores.
-  Future<PaginaProductos> obtenerProductos(
+  @override
+  Future<PaginaProductos> obtenerPaginaProductos(
     String uid, {
-    DocumentSnapshot<Map<String, dynamic>>? despuesDe,
+    CursorProductos? despuesDe,
     int limite = 10,
   }) async {
     Query<Map<String, dynamic>> query = _coleccionProductos(
@@ -39,7 +32,14 @@ class ProductosRepository implements RepositorioProductos {
     ).orderBy('fechaCreacion', descending: true);
 
     if (despuesDe != null) {
-      query = query.startAfterDocument(despuesDe);
+      if (despuesDe is! _CursorProductosFirestore) {
+        throw ArgumentError.value(
+          despuesDe,
+          'despuesDe',
+          'El cursor no pertenece a ProductosRepository.',
+        );
+      }
+      query = query.startAfterDocument(despuesDe.documento);
     }
 
     // Se pide un documento adicional solo para saber si existe otra página.
@@ -57,13 +57,14 @@ class ProductosRepository implements RepositorioProductos {
 
     return PaginaProductos(
       productos: productos,
-      ultimoDocumento: documentosPagina.isNotEmpty
-          ? documentosPagina.last
+      ultimoCursor: documentosPagina.isNotEmpty
+          ? _CursorProductosFirestore(documentosPagina.last)
           : null,
       hayMas: snapshot.docs.length > limite,
     );
   }
 
+  @override
   Future<String> guardarProducto(String uid, Producto producto) async {
     if (producto.id.isEmpty) {
       return (await crearProducto(uid, producto)).id;
@@ -83,10 +84,12 @@ class ProductosRepository implements RepositorioProductos {
     return producto.copyWith(id: documento.id);
   }
 
+  @override
   Future<void> eliminarProducto(String uid, String productoId) async {
     await _coleccionProductos(uid).doc(productoId).delete();
   }
 
+  @override
   Future<void> toggleDisponible(
     String uid,
     String productoId,

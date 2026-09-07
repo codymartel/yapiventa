@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/core/services/subidor_de_imagenes.dart';
 import 'package:mobile/features/productos/application/use_cases/crear_producto.dart';
+import 'package:mobile/features/productos/domain/models/pagina_productos.dart';
 import 'package:mobile/features/productos/domain/models/producto.dart';
 import 'package:mobile/features/productos/domain/repositories/repositorio_productos.dart';
 
@@ -95,12 +96,40 @@ class _RepositorioProductosFake implements RepositorioProductos {
   Object? error;
 
   @override
+  Future<PaginaProductos> obtenerPaginaProductos(
+    String uid, {
+    CursorProductos? despuesDe,
+    int limite = 10,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<Producto> crearProducto(String uid, Producto producto) async {
     llamadas++;
     ultimoUid = uid;
     ultimoProducto = producto;
     if (error != null) throw error!;
     return producto.copyWith(id: 'producto-1');
+  }
+
+  @override
+  Future<String> guardarProducto(String uid, Producto producto) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> eliminarProducto(String uid, String productoId) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> toggleDisponible(
+    String uid,
+    String productoId,
+    bool disponible,
+  ) {
+    throw UnimplementedError();
   }
 }
 

@@ -59,13 +59,13 @@ void main() {
         'fechaCreacion': Timestamp.fromDate(DateTime(2026, 3, 1)),
       });
 
-      final pagina = await repository.obtenerProductos('usuario-1');
+      final pagina = await repository.obtenerPaginaProductos('usuario-1');
 
       expect(pagina.productos.map((producto) => producto.nombre), [
         'Reciente',
         'Antiguo',
       ]);
-      expect(pagina.ultimoDocumento?.id, 'antiguo');
+      expect(pagina.ultimoCursor, isNotNull);
       expect(pagina.hayMas, isFalse);
     },
   );
@@ -82,14 +82,14 @@ void main() {
       });
     }
 
-    final primera = await repository.obtenerProductos('usuario-1');
-    final segunda = await repository.obtenerProductos(
+    final primera = await repository.obtenerPaginaProductos('usuario-1');
+    final segunda = await repository.obtenerPaginaProductos(
       'usuario-1',
-      despuesDe: primera.ultimoDocumento,
+      despuesDe: primera.ultimoCursor,
     );
-    final tercera = await repository.obtenerProductos(
+    final tercera = await repository.obtenerPaginaProductos(
       'usuario-1',
-      despuesDe: segunda.ultimoDocumento,
+      despuesDe: segunda.ultimoCursor,
     );
 
     expect(primera.productos, hasLength(10));

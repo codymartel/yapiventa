@@ -1,9 +1,10 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../../../../core/services/subidor_de_imagenes.dart';
 import '../../application/use_cases/crear_producto.dart';
-import '../../data/productos_repository.dart';
+import '../../application/use_cases/obtener_pagina_productos.dart';
+import '../../domain/models/pagina_productos.dart';
 import '../../domain/models/producto.dart';
+import '../../domain/repositories/repositorio_productos.dart';
 
 // ═════════════════════════════════════════════════════════════════════════
 // ProductosProvider
@@ -24,18 +25,21 @@ import '../../domain/models/producto.dart';
 // ═════════════════════════════════════════════════════════════════════════
 
 class ProductosProvider extends ChangeNotifier {
-  final ProductosRepository _repository;
+  final RepositorioProductos _repository;
   final CrearProducto _crearProducto;
+  final ObtenerPaginaProductos _obtenerPaginaProductos;
   final SubidorDeImagenes _subidorDeImagenes;
   final String uid;
 
   ProductosProvider({
     required this.uid,
-    required ProductosRepository repository,
+    required RepositorioProductos repository,
     required CrearProducto crearProducto,
+    required ObtenerPaginaProductos obtenerPaginaProductos,
     required SubidorDeImagenes subidorDeImagenes,
   }) : _repository = repository,
        _crearProducto = crearProducto,
+       _obtenerPaginaProductos = obtenerPaginaProductos,
        _subidorDeImagenes = subidorDeImagenes;
 
   List<Producto> _productos = [];
@@ -48,7 +52,7 @@ class ProductosProvider extends ChangeNotifier {
   int _productosMostrados = _tamanoPagina;
   String _busqueda = '';
   String? _errorMessage;
-  DocumentSnapshot<Map<String, dynamic>>? _ultimoDocumento;
+  CursorProductos? _ultimoCursor;
   bool _disposed = false;
 
   // Valores fijos temporales — reemplazar cuando migres AppConfig y el
@@ -99,16 +103,17 @@ class ProductosProvider extends ChangeNotifier {
     if (_cargando || _cargandoMas) return;
 
     _cargando = true;
-    _ultimoDocumento = null;
-    _hayMas = false;
-    _productosMostrados = _tamanoPagina;
     _errorMessage = null;
     _notificar();
     try {
-      final pagina = await _repository.obtenerProductos(uid);
-      _productos = pagina.productos;
-      _ultimoDocumento = pagina.ultimoDocumento;
+      final pagina = await _obtenerPaginaProductos(
+        uid: uid,
+        limite: _tamanoPagina,
+      );
+      _productos = List<Producto>.of(pagina.productos);
+      _ultimoCursor = pagina.ultimoCursor;
       _hayMas = pagina.hayMas;
+      _productosMostrados = _tamanoPagina;
     } catch (e) {
       _errorMessage = 'No se pudieron cargar tus productos.';
     } finally {
@@ -134,20 +139,21 @@ class ProductosProvider extends ChangeNotifier {
       return;
     }
 
-    if (_ultimoDocumento == null) return;
+    if (_ultimoCursor == null) return;
     _cargandoMas = true;
     _errorMessage = null;
     _notificar();
     try {
-      final pagina = await _repository.obtenerProductos(
-        uid,
-        despuesDe: _ultimoDocumento,
+      final pagina = await _obtenerPaginaProductos(
+        uid: uid,
+        despuesDe: _ultimoCursor,
+        limite: _tamanoPagina,
       );
       final idsCargados = _productos.map((producto) => producto.id).toSet();
       _productos.addAll(
         pagina.productos.where((producto) => idsCargados.add(producto.id)),
       );
-      _ultimoDocumento = pagina.ultimoDocumento;
+      _ultimoCursor = pagina.ultimoCursor;
       _hayMas = pagina.hayMas;
       _productosMostrados = nuevoLimite;
     } catch (e) {
