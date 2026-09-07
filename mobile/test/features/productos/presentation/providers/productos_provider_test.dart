@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/core/services/subidor_de_imagenes.dart';
 import 'package:mobile/features/productos/application/use_cases/crear_producto.dart';
 import 'package:mobile/features/productos/application/use_cases/editar_producto.dart';
+import 'package:mobile/features/productos/application/use_cases/eliminar_producto.dart';
 import 'package:mobile/features/productos/application/use_cases/obtener_pagina_productos.dart';
 import 'package:mobile/features/productos/data/productos_repository.dart';
 import 'package:mobile/features/productos/domain/models/pagina_productos.dart';
@@ -36,6 +37,7 @@ void main() {
         subidorDeImagenes: subidorDeImagenes,
       ),
       editarProducto: EditarProducto(repositorioCreacion, subidorDeImagenes),
+      eliminarProducto: EliminarProducto(repositorioCreacion),
       obtenerPaginaProductos: ObtenerPaginaProductos(repository),
     );
   });
@@ -66,6 +68,7 @@ void main() {
         subidorDeImagenes: subidorDeImagenes,
       ),
       editarProducto: EditarProducto(repository, subidorDeImagenes),
+      eliminarProducto: EliminarProducto(repository),
       obtenerPaginaProductos: ObtenerPaginaProductos(repository),
     );
   }
@@ -324,17 +327,66 @@ void main() {
     expect(providerEdicion.errorMessage, isNull);
     expect(providerEdicion.productosFiltrados.single.nombre, 'Reintento');
   });
+
+  test('elimina el producto local sin recargar la página', () async {
+    final repository = _RepositorioProductosCreacionFake();
+    repository.pagina = PaginaProductos(
+      productos: [
+        producto(id: 'producto-1', nombre: 'Primero'),
+        producto(id: 'producto-2', nombre: 'Segundo'),
+      ],
+      ultimoCursor: const _CursorProductosPrueba('pagina-1'),
+      hayMas: false,
+    );
+    final providerEliminacion = crearProviderPaginado(repository);
+    addTearDown(providerEliminacion.dispose);
+    await providerEliminacion.cargarProductos();
+
+    final exito = await providerEliminacion.eliminarProducto('producto-1');
+
+    expect(exito, isTrue);
+    expect(repository.llamadasEliminar, 1);
+    expect(repository.llamadasPagina, 1);
+    expect(providerEliminacion.productosFiltrados, hasLength(1));
+    expect(providerEliminacion.productosFiltrados.single.id, 'producto-2');
+  });
+
+  test('muestra el error y conserva la lista si eliminar falla', () async {
+    final repository = _RepositorioProductosCreacionFake();
+    repository.pagina = PaginaProductos(
+      productos: [producto(id: 'producto-1', nombre: 'Primero')],
+      ultimoCursor: const _CursorProductosPrueba('pagina-1'),
+      hayMas: false,
+    );
+    repository.errorEliminar = Exception('Firestore no disponible');
+    final providerEliminacion = crearProviderPaginado(repository);
+    addTearDown(providerEliminacion.dispose);
+    await providerEliminacion.cargarProductos();
+
+    final exito = await providerEliminacion.eliminarProducto('producto-1');
+
+    expect(exito, isFalse);
+    expect(repository.llamadasEliminar, 1);
+    expect(repository.llamadasPagina, 1);
+    expect(
+      providerEliminacion.errorMessage,
+      'No se pudo eliminar el producto.',
+    );
+    expect(providerEliminacion.productosFiltrados.single.id, 'producto-1');
+  });
 }
 
 class _RepositorioProductosCreacionFake implements RepositorioProductos {
   int llamadas = 0;
   int llamadasGuardado = 0;
+  int llamadasEliminar = 0;
   int llamadasPagina = 0;
   final List<CursorProductos?> cursores = [];
   final List<int> limites = [];
   Producto? ultimoProducto;
   Object? error;
   Object? errorGuardado;
+  Object? errorEliminar;
   Completer<Producto>? respuestaPendiente;
   Completer<String>? guardadoPendiente;
   PaginaProductos pagina = const PaginaProductos(
@@ -374,7 +426,10 @@ class _RepositorioProductosCreacionFake implements RepositorioProductos {
   }
 
   @override
-  Future<void> eliminarProducto(String uid, String productoId) async {}
+  Future<void> eliminarProducto(String uid, String productoId) async {
+    llamadasEliminar++;
+    if (errorEliminar != null) throw errorEliminar!;
+  }
 
   @override
   Future<void> toggleDisponible(

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../../application/use_cases/crear_producto.dart';
 import '../../application/use_cases/editar_producto.dart';
+import '../../application/use_cases/eliminar_producto.dart';
 import '../../application/use_cases/obtener_pagina_productos.dart';
 import '../../domain/models/pagina_productos.dart';
 import '../../domain/models/producto.dart';
@@ -28,19 +29,36 @@ class ProductosProvider extends ChangeNotifier {
   final RepositorioProductos _repository;
   final CrearProducto _crearProducto;
   final EditarProducto _editarProducto;
+  final EliminarProducto _eliminarProducto;
   final ObtenerPaginaProductos _obtenerPaginaProductos;
   final String uid;
 
-  ProductosProvider({
-    required this.uid,
+  factory ProductosProvider({
+    required String uid,
     required RepositorioProductos repository,
     required CrearProducto crearProducto,
     required EditarProducto editarProducto,
+    required EliminarProducto eliminarProducto,
     required ObtenerPaginaProductos obtenerPaginaProductos,
-  }) : _repository = repository,
-       _crearProducto = crearProducto,
-       _editarProducto = editarProducto,
-       _obtenerPaginaProductos = obtenerPaginaProductos;
+  }) {
+    return ProductosProvider._(
+      uid,
+      repository,
+      crearProducto,
+      editarProducto,
+      eliminarProducto,
+      obtenerPaginaProductos,
+    );
+  }
+
+  ProductosProvider._(
+    this.uid,
+    this._repository,
+    this._crearProducto,
+    this._editarProducto,
+    this._eliminarProducto,
+    this._obtenerPaginaProductos,
+  );
 
   List<Producto> _productos = [];
   bool _cargando = false;
@@ -256,13 +274,18 @@ class ProductosProvider extends ChangeNotifier {
     return 'No se pudo guardar el producto: $detalle';
   }
 
-  Future<void> eliminarProducto(String productoId) async {
+  Future<bool> eliminarProducto(String productoId) async {
+    _errorMessage = null;
+    _notificar();
     try {
-      await _repository.eliminarProducto(uid, productoId);
-      await cargarProductos();
-    } catch (e) {
+      await _eliminarProducto(uid: uid, productoId: productoId);
+      _productos.removeWhere((producto) => producto.id == productoId);
+      _notificar();
+      return true;
+    } catch (_) {
       _errorMessage = 'No se pudo eliminar el producto.';
       _notificar();
+      return false;
     }
   }
 

@@ -15,6 +15,7 @@ import '../../../negocio/presentation/providers/catalogo_negocio_provider.dart';
 import '../../domain/models/producto.dart';
 import '../../productos_dependencies.dart';
 import '../providers/productos_provider.dart';
+import '../widgets/dialogo_eliminar_producto.dart';
 import '../widgets/formulario_producto.dart';
 import '../widgets/producto_card.dart';
 
@@ -47,6 +48,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
       repository: dependencies.repository,
       crearProducto: dependencies.crearProducto,
       editarProducto: dependencies.editarProducto,
+      eliminarProducto: dependencies.eliminarProducto,
       obtenerPaginaProductos: dependencies.obtenerPaginaProductos,
     )..cargarProductos();
   }
@@ -247,20 +249,7 @@ class _ContenidoProductos extends StatelessWidget {
   ) async {
     final confirmar = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Eliminar producto'),
-        content: const Text('Esta accion no se puede deshacer.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Eliminar'),
-          ),
-        ],
-      ),
+      builder: (context) => const DialogoEliminarProducto(),
     );
 
     if (confirmar == true) {
