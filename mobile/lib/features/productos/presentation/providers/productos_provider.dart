@@ -1,11 +1,11 @@
 import 'package:flutter/foundation.dart';
+import '../../application/use_cases/cambiar_disponibilidad_producto.dart';
 import '../../application/use_cases/crear_producto.dart';
 import '../../application/use_cases/editar_producto.dart';
 import '../../application/use_cases/eliminar_producto.dart';
 import '../../application/use_cases/obtener_pagina_productos.dart';
 import '../../domain/models/pagina_productos.dart';
 import '../../domain/models/producto.dart';
-import '../../domain/repositories/repositorio_productos.dart';
 
 // ═════════════════════════════════════════════════════════════════════════
 // ProductosProvider
@@ -26,7 +26,7 @@ import '../../domain/repositories/repositorio_productos.dart';
 // ═════════════════════════════════════════════════════════════════════════
 
 class ProductosProvider extends ChangeNotifier {
-  final RepositorioProductos _repository;
+  final CambiarDisponibilidadProducto _cambiarDisponibilidadProducto;
   final CrearProducto _crearProducto;
   final EditarProducto _editarProducto;
   final EliminarProducto _eliminarProducto;
@@ -35,7 +35,7 @@ class ProductosProvider extends ChangeNotifier {
 
   factory ProductosProvider({
     required String uid,
-    required RepositorioProductos repository,
+    required CambiarDisponibilidadProducto cambiarDisponibilidadProducto,
     required CrearProducto crearProducto,
     required EditarProducto editarProducto,
     required EliminarProducto eliminarProducto,
@@ -43,7 +43,7 @@ class ProductosProvider extends ChangeNotifier {
   }) {
     return ProductosProvider._(
       uid,
-      repository,
+      cambiarDisponibilidadProducto,
       crearProducto,
       editarProducto,
       eliminarProducto,
@@ -53,7 +53,7 @@ class ProductosProvider extends ChangeNotifier {
 
   ProductosProvider._(
     this.uid,
-    this._repository,
+    this._cambiarDisponibilidadProducto,
     this._crearProducto,
     this._editarProducto,
     this._eliminarProducto,
@@ -66,6 +66,7 @@ class ProductosProvider extends ChangeNotifier {
   bool _refrescando = false;
   bool _creandoProducto = false;
   bool _editandoProducto = false;
+  final Set<String> _productosCambiandoDisponibilidad = {};
   bool _hayMas = false;
   static const _tamanoPagina = 10;
   int _productosMostrados = _tamanoPagina;
@@ -84,6 +85,8 @@ class ProductosProvider extends ChangeNotifier {
   bool get refrescando => _refrescando;
   bool get creandoProducto => _creandoProducto;
   bool get editandoProducto => _editandoProducto;
+  bool cambiandoDisponibilidad(String productoId) =>
+      _productosCambiandoDisponibilidad.contains(productoId);
   bool get hayMas => _hayMas || _productos.length > _productosMostrados;
   String get busqueda => _busqueda;
   String? get errorMessage => _errorMessage;
@@ -289,12 +292,31 @@ class ProductosProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> toggleDisponible(String productoId, bool disponible) async {
+  Future<bool> toggleDisponible(String productoId, bool disponible) async {
+    if (!_productosCambiandoDisponibilidad.add(productoId)) return false;
+
+    _errorMessage = null;
+    _notificar();
     try {
-      await _repository.toggleDisponible(uid, productoId, disponible);
-      await cargarProductos();
-    } catch (e) {
+      await _cambiarDisponibilidadProducto(
+        uid: uid,
+        productoId: productoId,
+        disponible: disponible,
+      );
+      final indice = _productos.indexWhere(
+        (producto) => producto.id == productoId,
+      );
+      if (indice != -1) {
+        _productos[indice] = _productos[indice].copyWith(
+          disponible: disponible,
+        );
+      }
+      return true;
+    } catch (_) {
       _errorMessage = 'No se pudo actualizar el producto.';
+      return false;
+    } finally {
+      _productosCambiandoDisponibilidad.remove(productoId);
       _notificar();
     }
   }

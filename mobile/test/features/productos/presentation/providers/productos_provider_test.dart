@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/core/services/subidor_de_imagenes.dart';
+import 'package:mobile/features/productos/application/use_cases/cambiar_disponibilidad_producto.dart';
 import 'package:mobile/features/productos/application/use_cases/crear_producto.dart';
 import 'package:mobile/features/productos/application/use_cases/editar_producto.dart';
 import 'package:mobile/features/productos/application/use_cases/eliminar_producto.dart';
@@ -31,7 +32,7 @@ void main() {
     final repository = ProductosRepository(firestore);
     provider = ProductosProvider(
       uid: 'usuario-1',
-      repository: repository,
+      cambiarDisponibilidadProducto: CambiarDisponibilidadProducto(repository),
       crearProducto: CrearProducto(
         repositorioProductos: repositorioCreacion,
         subidorDeImagenes: subidorDeImagenes,
@@ -62,7 +63,7 @@ void main() {
   ) {
     return ProductosProvider(
       uid: 'usuario-1',
-      repository: repository,
+      cambiarDisponibilidadProducto: CambiarDisponibilidadProducto(repository),
       crearProducto: CrearProducto(
         repositorioProductos: repository,
         subidorDeImagenes: subidorDeImagenes,
@@ -374,12 +375,108 @@ void main() {
     );
     expect(providerEliminacion.productosFiltrados.single.id, 'producto-1');
   });
+
+  test('actualiza la disponibilidad local sin recargar la lista', () async {
+    final repository = _RepositorioProductosCreacionFake();
+    repository.pagina = PaginaProductos(
+      productos: [producto(id: 'producto-1')],
+      ultimoCursor: const _CursorProductosPrueba('pagina-1'),
+      hayMas: false,
+    );
+    final providerDisponibilidad = crearProviderPaginado(repository);
+    addTearDown(providerDisponibilidad.dispose);
+    await providerDisponibilidad.cargarProductos();
+
+    final exito = await providerDisponibilidad.toggleDisponible(
+      'producto-1',
+      false,
+    );
+
+    expect(exito, isTrue);
+    expect(repository.llamadasDisponibilidad, 1);
+    expect(repository.ultimaDisponibilidad, isFalse);
+    expect(repository.llamadasPagina, 1);
+    expect(
+      providerDisponibilidad.productosFiltrados.single.disponible,
+      isFalse,
+    );
+  });
+
+  test('conserva la disponibilidad local si la actualización falla', () async {
+    final repository = _RepositorioProductosCreacionFake();
+    repository.pagina = PaginaProductos(
+      productos: [producto(id: 'producto-1')],
+      ultimoCursor: const _CursorProductosPrueba('pagina-1'),
+      hayMas: false,
+    );
+    repository.errorDisponibilidad = Exception('Firestore no disponible');
+    final providerDisponibilidad = crearProviderPaginado(repository);
+    addTearDown(providerDisponibilidad.dispose);
+    await providerDisponibilidad.cargarProductos();
+
+    final exito = await providerDisponibilidad.toggleDisponible(
+      'producto-1',
+      false,
+    );
+
+    expect(exito, isFalse);
+    expect(repository.llamadasDisponibilidad, 1);
+    expect(repository.llamadasPagina, 1);
+    expect(
+      providerDisponibilidad.errorMessage,
+      'No se pudo actualizar el producto.',
+    );
+    expect(providerDisponibilidad.productosFiltrados.single.disponible, isTrue);
+  });
+
+  test('bloquea llamadas concurrentes para el mismo producto', () async {
+    final repository = _RepositorioProductosCreacionFake();
+    repository.pagina = PaginaProductos(
+      productos: [producto(id: 'producto-1')],
+      ultimoCursor: const _CursorProductosPrueba('pagina-1'),
+      hayMas: false,
+    );
+    final pendiente = Completer<void>();
+    repository.disponibilidadPendiente = pendiente;
+    final providerDisponibilidad = crearProviderPaginado(repository);
+    addTearDown(providerDisponibilidad.dispose);
+    await providerDisponibilidad.cargarProductos();
+
+    final primera = providerDisponibilidad.toggleDisponible(
+      'producto-1',
+      false,
+    );
+    final segunda = await providerDisponibilidad.toggleDisponible(
+      'producto-1',
+      false,
+    );
+
+    expect(segunda, isFalse);
+    expect(
+      providerDisponibilidad.cambiandoDisponibilidad('producto-1'),
+      isTrue,
+    );
+    expect(repository.llamadasDisponibilidad, 1);
+    expect(providerDisponibilidad.productosFiltrados.single.disponible, isTrue);
+
+    pendiente.complete();
+    expect(await primera, isTrue);
+    expect(
+      providerDisponibilidad.cambiandoDisponibilidad('producto-1'),
+      isFalse,
+    );
+    expect(
+      providerDisponibilidad.productosFiltrados.single.disponible,
+      isFalse,
+    );
+  });
 }
 
 class _RepositorioProductosCreacionFake implements RepositorioProductos {
   int llamadas = 0;
   int llamadasGuardado = 0;
   int llamadasEliminar = 0;
+  int llamadasDisponibilidad = 0;
   int llamadasPagina = 0;
   final List<CursorProductos?> cursores = [];
   final List<int> limites = [];
@@ -387,8 +484,11 @@ class _RepositorioProductosCreacionFake implements RepositorioProductos {
   Object? error;
   Object? errorGuardado;
   Object? errorEliminar;
+  Object? errorDisponibilidad;
   Completer<Producto>? respuestaPendiente;
   Completer<String>? guardadoPendiente;
+  Completer<void>? disponibilidadPendiente;
+  bool? ultimaDisponibilidad;
   PaginaProductos pagina = const PaginaProductos(
     productos: [],
     ultimoCursor: null,
@@ -436,7 +536,14 @@ class _RepositorioProductosCreacionFake implements RepositorioProductos {
     String uid,
     String productoId,
     bool disponible,
-  ) async {}
+  ) {
+    llamadasDisponibilidad++;
+    ultimaDisponibilidad = disponible;
+    if (errorDisponibilidad != null) {
+      return Future.error(errorDisponibilidad!);
+    }
+    return disponibilidadPendiente?.future ?? Future.value();
+  }
 }
 
 class _CursorProductosPrueba implements CursorProductos {

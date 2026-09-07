@@ -45,7 +45,7 @@ class _ProductosScreenState extends State<ProductosScreen> {
     final dependencies = ProductosDependencies.production();
     _provider = ProductosProvider(
       uid: uid,
-      repository: dependencies.repository,
+      cambiarDisponibilidadProducto: dependencies.cambiarDisponibilidadProducto,
       crearProducto: dependencies.crearProducto,
       editarProducto: dependencies.editarProducto,
       eliminarProducto: dependencies.eliminarProducto,
