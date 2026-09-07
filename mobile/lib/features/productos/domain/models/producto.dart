@@ -51,6 +51,43 @@ class Producto {
     this.fechaVencimiento,
   });
 
+  Producto copyWith({
+    String? id,
+    String? negocioId,
+    String? nombre,
+    double? precio,
+    int? stock,
+    bool? esStockInfinito,
+    String? descripcion,
+    String? categoria,
+    bool? disponible,
+    bool? tieneDelivery,
+    String? urlImagen,
+    String? cloudinaryPublicId,
+    String? unidadMedidaNombre,
+    List<String>? fraccionesSeleccionadas,
+    DateTime? fechaVencimiento,
+  }) {
+    return Producto(
+      id: id ?? this.id,
+      negocioId: negocioId ?? this.negocioId,
+      nombre: nombre ?? this.nombre,
+      precio: precio ?? this.precio,
+      stock: stock ?? this.stock,
+      esStockInfinito: esStockInfinito ?? this.esStockInfinito,
+      descripcion: descripcion ?? this.descripcion,
+      categoria: categoria ?? this.categoria,
+      disponible: disponible ?? this.disponible,
+      tieneDelivery: tieneDelivery ?? this.tieneDelivery,
+      urlImagen: urlImagen ?? this.urlImagen,
+      cloudinaryPublicId: cloudinaryPublicId ?? this.cloudinaryPublicId,
+      unidadMedidaNombre: unidadMedidaNombre ?? this.unidadMedidaNombre,
+      fraccionesSeleccionadas:
+          fraccionesSeleccionadas ?? this.fraccionesSeleccionadas,
+      fechaVencimiento: fechaVencimiento ?? this.fechaVencimiento,
+    );
+  }
+
   static Producto? fromMap(String id, Map<String, dynamic>? data) {
     final nombre = data?['nombre'] as String?;
     final negocioId = data?['negocioId'] as String?;
@@ -72,8 +109,7 @@ class Producto {
       unidadMedidaNombre: data['unidadMedidaNombre'] as String? ?? '',
       fraccionesSeleccionadas:
           (data['fraccionesSeleccionadas'] as List?)?.cast<String>() ?? [],
-      fechaVencimiento:
-          (data['fechaVencimiento'] as Timestamp?)?.toDate(),
+      fechaVencimiento: (data['fechaVencimiento'] as Timestamp?)?.toDate(),
     );
   }
 

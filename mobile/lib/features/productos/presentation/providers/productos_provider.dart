@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import '../../../../core/services/subidor_de_imagenes.dart';
+import '../../application/use_cases/crear_producto.dart';
 import '../../data/productos_repository.dart';
 import '../../domain/models/producto.dart';
 
@@ -23,17 +25,24 @@ import '../../domain/models/producto.dart';
 
 class ProductosProvider extends ChangeNotifier {
   final ProductosRepository _repository;
+  final CrearProducto _crearProducto;
+  final SubidorDeImagenes _subidorDeImagenes;
   final String uid;
 
   ProductosProvider({
     required this.uid,
     required ProductosRepository repository,
-  }) : _repository = repository;
+    required CrearProducto crearProducto,
+    required SubidorDeImagenes subidorDeImagenes,
+  }) : _repository = repository,
+       _crearProducto = crearProducto,
+       _subidorDeImagenes = subidorDeImagenes;
 
   List<Producto> _productos = [];
   bool _cargando = false;
   bool _cargandoMas = false;
   bool _refrescando = false;
+  bool _creandoProducto = false;
   bool _hayMas = false;
   static const _tamanoPagina = 10;
   int _productosMostrados = _tamanoPagina;
@@ -44,12 +53,13 @@ class ProductosProvider extends ChangeNotifier {
 
   // Valores fijos temporales — reemplazar cuando migres AppConfig y el
   // plan real del usuario (igual que webActivaInicial en user_repository.dart).
-  int _limiteProductos = 20;
+  final int _limiteProductos = 20;
   final int _minimoProductos = 1;
 
   bool get cargando => _cargando;
   bool get cargandoMas => _cargandoMas;
   bool get refrescando => _refrescando;
+  bool get creandoProducto => _creandoProducto;
   bool get hayMas => _hayMas || _productos.length > _productosMostrados;
   String get busqueda => _busqueda;
   String? get errorMessage => _errorMessage;
@@ -157,74 +167,94 @@ class ProductosProvider extends ChangeNotifier {
     await cargarProductos();
   }
 
-  // Equivale al onGuardar del FormularioProducto — crea o actualiza
-  // según si el producto ya tiene id.
-  Future<bool> guardarProducto(Producto producto) async {
+  Future<bool> crearProducto(
+    Producto producto, {
+    Uint8List? imagenBytes,
+    String? nombreArchivo,
+  }) async {
+    if (_creandoProducto) return false;
+
+    _creandoProducto = true;
+    _errorMessage = null;
+    _notificar();
     try {
-      // NUEVO — negocioId siempre se fuerza al uid actual aquí, para
-      // que quien llame a este método no tenga que acordarse de
-      // pasarlo bien cada vez.
-      final productoConNegocioId = Producto(
-        id: producto.id,
-        negocioId: uid,
-        nombre: producto.nombre,
-        precio: producto.precio,
-        stock: producto.stock,
-        esStockInfinito: producto.esStockInfinito,
-        descripcion: producto.descripcion,
-        categoria: producto.categoria,
-        disponible: producto.disponible,
-        tieneDelivery: producto.tieneDelivery,
-        urlImagen: producto.urlImagen,
-        cloudinaryPublicId: producto.cloudinaryPublicId,
-        unidadMedidaNombre: producto.unidadMedidaNombre,
-        fraccionesSeleccionadas: producto.fraccionesSeleccionadas,
-        fechaVencimiento: producto.fechaVencimiento,
-      );
-      final esNuevo = productoConNegocioId.id.isEmpty;
-      final productoId = await _repository.guardarProducto(
-        uid,
-        productoConNegocioId,
-      );
-      if (esNuevo) {
-        _productos.removeWhere(
-          (productoCargado) => productoCargado.id == productoId,
-        );
-      }
-      final productoGuardado = Producto(
-        id: productoId,
-        negocioId: productoConNegocioId.negocioId,
-        nombre: productoConNegocioId.nombre,
-        precio: productoConNegocioId.precio,
-        stock: productoConNegocioId.stock,
-        esStockInfinito: productoConNegocioId.esStockInfinito,
-        descripcion: productoConNegocioId.descripcion,
-        categoria: productoConNegocioId.categoria,
-        disponible: productoConNegocioId.disponible,
-        tieneDelivery: productoConNegocioId.tieneDelivery,
-        urlImagen: productoConNegocioId.urlImagen,
-        cloudinaryPublicId: productoConNegocioId.cloudinaryPublicId,
-        unidadMedidaNombre: productoConNegocioId.unidadMedidaNombre,
-        fraccionesSeleccionadas: productoConNegocioId.fraccionesSeleccionadas,
-        fechaVencimiento: productoConNegocioId.fechaVencimiento,
+      final productoGuardado = await _crearProducto(
+        uid: uid,
+        producto: producto,
+        imagenBytes: imagenBytes,
+        nombreArchivo: nombreArchivo,
       );
 
       final indiceExistente = _productos.indexWhere(
-        (productoCargado) => productoCargado.id == productoId,
+        (productoCargado) => productoCargado.id == productoGuardado.id,
       );
-      if (esNuevo) {
+      if (indiceExistente == -1) {
         _productos.insert(0, productoGuardado);
-      } else if (indiceExistente != -1) {
+      } else {
         _productos[indiceExistente] = productoGuardado;
       }
-      _errorMessage = null;
+      return true;
+    } catch (e) {
+      _errorMessage = _mensajeErrorGuardado(e);
+      return false;
+    } finally {
+      _creandoProducto = false;
+      _notificar();
+    }
+  }
+
+  // Se conserva para edición; las creaciones se delegan al caso de uso.
+  Future<bool> guardarProducto(
+    Producto producto, {
+    Uint8List? imagenBytes,
+    String? nombreArchivo,
+  }) async {
+    if (producto.id.isEmpty) {
+      return crearProducto(
+        producto,
+        imagenBytes: imagenBytes,
+        nombreArchivo: nombreArchivo,
+      );
+    }
+
+    _errorMessage = null;
+    _notificar();
+    try {
+      var productoConNegocioId = producto.copyWith(negocioId: uid);
+      if (imagenBytes != null) {
+        if (nombreArchivo == null || nombreArchivo.trim().isEmpty) {
+          throw ArgumentError('La imagen debe incluir un nombre de archivo.');
+        }
+        final imagenSubida = await _subidorDeImagenes.subir(
+          bytes: imagenBytes,
+          carpeta: 'usuarios/$uid/productos',
+          nombreArchivo: nombreArchivo,
+        );
+        productoConNegocioId = productoConNegocioId.copyWith(
+          urlImagen: imagenSubida.url,
+          cloudinaryPublicId: imagenSubida.identificador,
+        );
+      }
+
+      await _repository.guardarProducto(uid, productoConNegocioId);
+      final indiceExistente = _productos.indexWhere(
+        (productoCargado) => productoCargado.id == productoConNegocioId.id,
+      );
+      if (indiceExistente != -1) {
+        _productos[indiceExistente] = productoConNegocioId;
+      }
       _notificar();
       return true;
     } catch (e) {
-      _errorMessage = 'No se pudo guardar el producto.';
+      _errorMessage = _mensajeErrorGuardado(e);
       _notificar();
       return false;
     }
+  }
+
+  String _mensajeErrorGuardado(Object error) {
+    final detalle = error.toString().replaceFirst('Exception: ', '');
+    return 'No se pudo guardar el producto: $detalle';
   }
 
   Future<void> eliminarProducto(String productoId) async {

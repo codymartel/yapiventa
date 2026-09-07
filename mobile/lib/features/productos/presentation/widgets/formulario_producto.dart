@@ -1,8 +1,9 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/services/cloudinary_service.dart';
 import '../../domain/models/producto.dart';
 import '../providers/productos_provider.dart';
 
@@ -10,10 +11,8 @@ import '../providers/productos_provider.dart';
 // FormularioProducto
 // ═════════════════════════════════════════════════════════════════════════
 // Migración de tu @Composable FormularioProducto. Diálogo para crear o
-// editar un producto. La foto se sube directo a Cloudinary (vía la
-// interfaz SubidorDeImagenes) y solo entonces se llama a
-// productosProvider.guardarProducto() — mismo orden que tu Kotlin
-// (sube primero, guarda con la URL después).
+// editar un producto. El formulario entrega los datos y los bytes al
+// provider; la coordinación entre imagen y persistencia vive fuera de UI.
 //
 // unidadesDisponibles llega como List<Map<String,dynamic>> porque así
 // se guardó en Firestore desde ConfiguracionNegocioProvider (nombre,
@@ -40,24 +39,37 @@ class FormularioProducto extends StatefulWidget {
 }
 
 class _FormularioProductoState extends State<FormularioProducto> {
-  late final _nombreCtrl = TextEditingController(text: widget.producto?.nombre ?? '');
+  late final _nombreCtrl = TextEditingController(
+    text: widget.producto?.nombre ?? '',
+  );
   late final _precioCtrl = TextEditingController(
-    text: (widget.producto?.precio ?? 0) > 0 ? widget.producto!.precio.toString() : '',
+    text: (widget.producto?.precio ?? 0) > 0
+        ? widget.producto!.precio.toString()
+        : '',
   );
   late final _stockCtrl = TextEditingController(
-    text: (widget.producto?.stock ?? 0) > 0 ? widget.producto!.stock.toString() : '',
+    text: (widget.producto?.stock ?? 0) > 0
+        ? widget.producto!.stock.toString()
+        : '',
   );
-  late final _descripcionCtrl = TextEditingController(text: widget.producto?.descripcion ?? '');
+  late final _descripcionCtrl = TextEditingController(
+    text: widget.producto?.descripcion ?? '',
+  );
 
   late bool _esStockInfinito = widget.producto?.esStockInfinito ?? false;
   late bool _tieneDelivery = widget.producto?.tieneDelivery ?? true;
-  late String _categoria = widget.producto?.categoria ??
-      (widget.categoriasDisponibles.isNotEmpty ? widget.categoriasDisponibles.first : '');
+  late String _categoria =
+      widget.producto?.categoria ??
+      (widget.categoriasDisponibles.isNotEmpty
+          ? widget.categoriasDisponibles.first
+          : '');
   late String _unidad = widget.producto?.unidadMedidaNombre ?? '';
-  late String _fraccion = widget.producto?.fraccionesSeleccionadas.firstOrNull ?? '';
+  late String _fraccion =
+      widget.producto?.fraccionesSeleccionadas.firstOrNull ?? '';
   String _urlImagenActual = '';
   XFile? _fotoNueva;
-  bool _subiendo = false;
+  Uint8List? _fotoNuevaBytes;
+  bool _guardando = false;
 
   @override
   void initState() {
@@ -74,11 +86,9 @@ class _FormularioProductoState extends State<FormularioProducto> {
     super.dispose();
   }
 
-  Map<String, dynamic>? get _unidadActual =>
-      widget.unidadesDisponibles.cast<Map<String, dynamic>?>().firstWhere(
-            (u) => u?['nombre'] == _unidad,
-            orElse: () => null,
-          );
+  Map<String, dynamic>? get _unidadActual => widget.unidadesDisponibles
+      .cast<Map<String, dynamic>?>()
+      .firstWhere((u) => u?['nombre'] == _unidad, orElse: () => null);
 
   List<String> get _fraccionesPermitidas =>
       (_unidadActual?['fraccionesPermitidas'] as List?)?.cast<String>() ?? [];
@@ -86,7 +96,8 @@ class _FormularioProductoState extends State<FormularioProducto> {
   bool get _esFraccionaria => _unidadActual?['tipo'] == 'fraccionaria';
 
   bool get _precioValido => (double.tryParse(_precioCtrl.text) ?? 0) > 0;
-  bool get _stockValido => _esStockInfinito || (int.tryParse(_stockCtrl.text) ?? 0) > 0;
+  bool get _stockValido =>
+      _esStockInfinito || (int.tryParse(_stockCtrl.text) ?? 0) > 0;
   bool get _fraccionValida => !_esFraccionaria || _fraccion.isNotBlank;
   bool get _camposOk =>
       _nombreCtrl.text.isNotBlank &&
@@ -95,203 +106,275 @@ class _FormularioProductoState extends State<FormularioProducto> {
       _categoria.isNotBlank &&
       _unidad.isNotBlank &&
       _fraccionValida &&
-      !_subiendo;
+      !_guardando;
 
   Future<void> _elegirFoto() async {
-    final picker = ImagePicker();
-    final archivo = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
-    if (archivo != null) setState(() => _fotoNueva = archivo);
+    try {
+      final archivo = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 70,
+      );
+      if (archivo == null) return;
+
+      final bytes = await archivo.readAsBytes();
+      if (!mounted) return;
+      setState(() {
+        _fotoNueva = archivo;
+        _fotoNuevaBytes = bytes;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('No se pudo leer la foto: $e')));
+    }
   }
 
   Future<void> _guardar() async {
-    if (!_camposOk) return;
+    if (!_camposOk || _guardando) return;
 
-    setState(() => _subiendo = true);
-
-    var urlFinal = _urlImagenActual;
-    if (_fotoNueva != null) {
-      final provider = context.read<ProductosProvider>();
-      final bytes = await _fotoNueva!.readAsBytes();
-      try {
-        final resultado = await CloudinaryService().subir(
-          bytes: bytes,
-          carpeta: 'usuarios/${provider.uid}/productos',
-          nombreArchivo: _fotoNueva!.name,
-        );
-        urlFinal = resultado.url;
-      } catch (e) {
-        if (mounted) {
-          setState(() => _subiendo = false);
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text('Error al subir la foto: $e')));
-        }
-        return;
-      }
-    }
-
-    if (!mounted) return;
+    setState(() => _guardando = true);
     final nuevo = Producto(
       id: widget.producto?.id ?? '',
-      negocioId: '', // el provider lo fuerza al uid actual, no hace falta ponerlo bien aquí
+      negocioId: widget.producto?.negocioId ?? '',
       nombre: _nombreCtrl.text.trim(),
       precio: double.tryParse(_precioCtrl.text) ?? 0,
       stock: _esStockInfinito ? 9999 : (int.tryParse(_stockCtrl.text) ?? 0),
       esStockInfinito: _esStockInfinito,
       descripcion: _descripcionCtrl.text.trim(),
       categoria: _categoria,
+      disponible: widget.producto?.disponible ?? true,
       tieneDelivery: _tieneDelivery,
-      urlImagen: urlFinal,
+      urlImagen: _urlImagenActual,
+      cloudinaryPublicId: widget.producto?.cloudinaryPublicId,
       unidadMedidaNombre: _unidad,
       fraccionesSeleccionadas: _fraccion.isNotBlank ? [_fraccion] : [],
+      fechaVencimiento: widget.producto?.fechaVencimiento,
     );
 
-    final exito = await context.read<ProductosProvider>().guardarProducto(nuevo);
-    setState(() => _subiendo = false);
-    if (exito && mounted) widget.onCancelar(); // cierra el diálogo
+    final provider = context.read<ProductosProvider>();
+    final exito = widget.producto == null
+        ? await provider.crearProducto(
+            nuevo,
+            imagenBytes: _fotoNuevaBytes,
+            nombreArchivo: _fotoNueva?.name,
+          )
+        : await provider.guardarProducto(
+            nuevo,
+            imagenBytes: _fotoNuevaBytes,
+            nombreArchivo: _fotoNueva?.name,
+          );
+
+    if (!mounted) return;
+    setState(() => _guardando = false);
+    final messenger = ScaffoldMessenger.of(context);
+    if (exito) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            widget.producto == null
+                ? 'Producto creado correctamente.'
+                : 'Producto actualizado correctamente.',
+          ),
+        ),
+      );
+      widget.onCancelar();
+    } else {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            provider.errorMessage ?? 'No se pudo guardar el producto.',
+          ),
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      backgroundColor: AppColors.superficie,
-      title: Text(
-        widget.producto == null ? 'Agregar producto' : 'Editar producto',
-        style: TextStyle(color: AppColors.texto),
-      ),
-      content: SizedBox(
-        width: 420,
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // ── FOTO ──────────────────────────────────
-              GestureDetector(
-                onTap: _subiendo ? null : _elegirFoto,
-                child: Container(
-                  height: 160,
-                  decoration: BoxDecoration(
-                    color: AppColors.card,
-                    borderRadius: BorderRadius.circular(14),
+    return PopScope(
+      canPop: !_guardando,
+      child: AlertDialog(
+        backgroundColor: AppColors.superficie,
+        title: Text(
+          widget.producto == null ? 'Agregar producto' : 'Editar producto',
+          style: TextStyle(color: AppColors.texto),
+        ),
+        content: SizedBox(
+          width: 420,
+          child: AbsorbPointer(
+            absorbing: _guardando,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // ── FOTO ──────────────────────────────────
+                  GestureDetector(
+                    onTap: _guardando ? null : _elegirFoto,
+                    child: Container(
+                      height: 160,
+                      decoration: BoxDecoration(
+                        color: AppColors.card,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: _fotoNuevaBytes != null
+                          ? Image.memory(_fotoNuevaBytes!, fit: BoxFit.cover)
+                          : (_urlImagenActual.isNotEmpty
+                                ? Image.network(
+                                    _urlImagenActual,
+                                    fit: BoxFit.cover,
+                                  )
+                                : Center(
+                                    child: Text(
+                                      'Foto del producto (opcional)\ntoca para elegir',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: AppColors.muted,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  )),
+                    ),
                   ),
-                  clipBehavior: Clip.antiAlias,
-                  child: _fotoNueva != null
-                      ? Image.network(_fotoNueva!.path, fit: BoxFit.cover) // web usa blob path
-                      : (_urlImagenActual.isNotEmpty
-                          ? Image.network(_urlImagenActual, fit: BoxFit.cover)
-                          : Center(
-                              child: Text(
-                                'Foto del producto (opcional)\ntoca para elegir',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(color: AppColors.muted, fontSize: 12),
-                              ),
-                            )),
-                ),
-              ),
-              const SizedBox(height: 14),
+                  const SizedBox(height: 14),
 
-              TextField(
-                controller: _nombreCtrl,
-                onChanged: (_) => setState(() {}),
-                style: TextStyle(color: AppColors.texto),
-                decoration: const InputDecoration(labelText: 'Nombre del producto *'),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _precioCtrl,
-                onChanged: (_) => setState(() {}),
-                keyboardType: TextInputType.number,
-                style: TextStyle(color: AppColors.texto),
-                decoration: const InputDecoration(labelText: 'Precio S/ *'),
-              ),
-              const SizedBox(height: 10),
+                  TextField(
+                    controller: _nombreCtrl,
+                    onChanged: (_) => setState(() {}),
+                    style: TextStyle(color: AppColors.texto),
+                    decoration: const InputDecoration(
+                      labelText: 'Nombre del producto *',
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _precioCtrl,
+                    onChanged: (_) => setState(() {}),
+                    keyboardType: TextInputType.number,
+                    style: TextStyle(color: AppColors.texto),
+                    decoration: const InputDecoration(labelText: 'Precio S/ *'),
+                  ),
+                  const SizedBox(height: 10),
 
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Stock infinito', style: TextStyle(fontSize: 13)),
-                value: _esStockInfinito,
-                onChanged: (v) => setState(() => _esStockInfinito = v),
-              ),
-              if (!_esStockInfinito)
-                TextField(
-                  controller: _stockCtrl,
-                  onChanged: (_) => setState(() {}),
-                  keyboardType: TextInputType.number,
-                  style: TextStyle(color: AppColors.texto),
-                  decoration: const InputDecoration(labelText: 'Cantidad en stock *'),
-                ),
-              const SizedBox(height: 10),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text(
+                      'Stock infinito',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                    value: _esStockInfinito,
+                    onChanged: (v) => setState(() => _esStockInfinito = v),
+                  ),
+                  if (!_esStockInfinito)
+                    TextField(
+                      controller: _stockCtrl,
+                      onChanged: (_) => setState(() {}),
+                      keyboardType: TextInputType.number,
+                      style: TextStyle(color: AppColors.texto),
+                      decoration: const InputDecoration(
+                        labelText: 'Cantidad en stock *',
+                      ),
+                    ),
+                  const SizedBox(height: 10),
 
-              DropdownButtonFormField<String>(
-                initialValue: _categoria.isNotBlank ? _categoria : null,
-                decoration: const InputDecoration(labelText: 'Categoría *'),
-                items: widget.categoriasDisponibles
-                    .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                    .toList(),
-                onChanged: (v) => setState(() => _categoria = v ?? ''),
-              ),
-              const SizedBox(height: 10),
+                  DropdownButtonFormField<String>(
+                    initialValue: _categoria.isNotBlank ? _categoria : null,
+                    decoration: const InputDecoration(labelText: 'Categoría *'),
+                    items: widget.categoriasDisponibles
+                        .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                        .toList(),
+                    onChanged: (v) => setState(() => _categoria = v ?? ''),
+                  ),
+                  const SizedBox(height: 10),
 
-              DropdownButtonFormField<String>(
-                initialValue: _unidad.isNotBlank ? _unidad : null,
-                decoration: const InputDecoration(labelText: 'Unidad de medida *'),
-                items: widget.unidadesDisponibles
-                    .map((u) => DropdownMenuItem(
-                          value: u['nombre'] as String,
-                          child: Text(u['nombre'] as String),
-                        ))
-                    .toList(),
-                onChanged: (v) => setState(() {
-                  _unidad = v ?? '';
-                  _fraccion = '';
-                }),
-              ),
-              if (_esFraccionaria && _fraccionesPermitidas.isNotEmpty) ...[
-                const SizedBox(height: 10),
-                DropdownButtonFormField<String>(
-                  initialValue: _fraccion.isNotBlank ? _fraccion : null,
-                  decoration: const InputDecoration(labelText: 'Fracción *'),
-                  items: _fraccionesPermitidas
-                      .map((f) => DropdownMenuItem(value: f, child: Text(f)))
-                      .toList(),
-                  onChanged: (v) => setState(() => _fraccion = v ?? ''),
-                ),
-              ],
-              const SizedBox(height: 10),
+                  DropdownButtonFormField<String>(
+                    initialValue: _unidad.isNotBlank ? _unidad : null,
+                    decoration: const InputDecoration(
+                      labelText: 'Unidad de medida *',
+                    ),
+                    items: widget.unidadesDisponibles
+                        .map(
+                          (u) => DropdownMenuItem(
+                            value: u['nombre'] as String,
+                            child: Text(u['nombre'] as String),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (v) => setState(() {
+                      _unidad = v ?? '';
+                      _fraccion = '';
+                    }),
+                  ),
+                  if (_esFraccionaria && _fraccionesPermitidas.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    DropdownButtonFormField<String>(
+                      initialValue: _fraccion.isNotBlank ? _fraccion : null,
+                      decoration: const InputDecoration(
+                        labelText: 'Fracción *',
+                      ),
+                      items: _fraccionesPermitidas
+                          .map(
+                            (f) => DropdownMenuItem(value: f, child: Text(f)),
+                          )
+                          .toList(),
+                      onChanged: (v) => setState(() => _fraccion = v ?? ''),
+                    ),
+                  ],
+                  const SizedBox(height: 10),
 
-              TextField(
-                controller: _descripcionCtrl,
-                style: TextStyle(color: AppColors.texto),
-                minLines: 2,
-                maxLines: 4,
-                decoration: const InputDecoration(labelText: 'Descripción (opcional)'),
-              ),
-              const SizedBox(height: 10),
+                  TextField(
+                    controller: _descripcionCtrl,
+                    style: TextStyle(color: AppColors.texto),
+                    minLines: 2,
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                      labelText: 'Descripción (opcional)',
+                    ),
+                  ),
+                  const SizedBox(height: 10),
 
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Tiene delivery', style: TextStyle(fontSize: 13)),
-                value: _tieneDelivery,
-                onChanged: (v) => setState(() => _tieneDelivery = v),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text(
+                      'Tiene delivery',
+                      style: TextStyle(fontSize: 13),
+                    ),
+                    value: _tieneDelivery,
+                    onChanged: (v) => setState(() => _tieneDelivery = v),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
+        actions: [
+          TextButton(
+            onPressed: _guardando ? null : widget.onCancelar,
+            child: Text('Cancelar', style: TextStyle(color: AppColors.muted)),
+          ),
+          ElevatedButton(
+            onPressed: _camposOk ? _guardar : null,
+            child: _guardando
+                ? const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      ),
+                      SizedBox(width: 8),
+                      Text('Guardando...'),
+                    ],
+                  )
+                : const Text('Guardar producto'),
+          ),
+        ],
       ),
-      actions: [
-        TextButton(
-          onPressed: _subiendo ? null : widget.onCancelar,
-          child: Text('Cancelar', style: TextStyle(color: AppColors.muted)),
-        ),
-        ElevatedButton(
-          onPressed: _camposOk ? _guardar : null,
-          child: _subiendo
-              ? const SizedBox(
-                  width: 18, height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                )
-              : const Text('Guardar producto'),
-        ),
-      ],
     );
   }
 }

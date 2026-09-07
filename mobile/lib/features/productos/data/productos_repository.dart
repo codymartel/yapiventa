@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../domain/models/producto.dart';
+import '../domain/repositories/repositorio_productos.dart';
 
 // Una pagina conserva los documentos ya convertidos y el cursor real de
 // Firestore. La pantalla nunca calcula posiciones: entrega este cursor al
@@ -16,7 +17,7 @@ class PaginaProductos {
   });
 }
 
-class ProductosRepository {
+class ProductosRepository implements RepositorioProductos {
   final FirebaseFirestore _db;
 
   ProductosRepository([FirebaseFirestore? db])
@@ -56,24 +57,30 @@ class ProductosRepository {
 
     return PaginaProductos(
       productos: productos,
-      ultimoDocumento:
-          documentosPagina.isNotEmpty ? documentosPagina.last : null,
+      ultimoDocumento: documentosPagina.isNotEmpty
+          ? documentosPagina.last
+          : null,
       hayMas: snapshot.docs.length > limite,
     );
   }
 
   Future<String> guardarProducto(String uid, Producto producto) async {
     if (producto.id.isEmpty) {
-      final datos = producto.toMap()
-        ..['fechaCreacion'] = FieldValue.serverTimestamp();
-      final documento = await _coleccionProductos(uid).add(datos);
-      return documento.id;
+      return (await crearProducto(uid, producto)).id;
     } else {
       // Una edicion conserva fechaCreacion para no mover un producto antiguo
       // al inicio de la consulta ordenada por productos nuevos primero.
       await _coleccionProductos(uid).doc(producto.id).update(producto.toMap());
       return producto.id;
     }
+  }
+
+  @override
+  Future<Producto> crearProducto(String uid, Producto producto) async {
+    final datos = producto.toMap()
+      ..['fechaCreacion'] = FieldValue.serverTimestamp();
+    final documento = await _coleccionProductos(uid).add(datos);
+    return producto.copyWith(id: documento.id);
   }
 
   Future<void> eliminarProducto(String uid, String productoId) async {

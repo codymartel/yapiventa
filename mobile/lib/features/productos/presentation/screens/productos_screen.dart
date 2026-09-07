@@ -11,8 +11,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../data/productos_repository.dart';
 import '../../domain/models/producto.dart';
+import '../../productos_dependencies.dart';
 import '../providers/productos_provider.dart';
 import '../widgets/formulario_producto.dart';
 import '../widgets/producto_card.dart';
@@ -36,8 +36,13 @@ class _ProductosScreenState extends State<ProductosScreen> {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
 
-    _provider = ProductosProvider(uid: uid, repository: ProductosRepository())
-      ..cargarProductos();
+    final dependencies = ProductosDependencies.production();
+    _provider = ProductosProvider(
+      uid: uid,
+      repository: dependencies.repository,
+      crearProducto: dependencies.crearProducto,
+      subidorDeImagenes: dependencies.subidorDeImagenes,
+    )..cargarProductos();
     _cargarConfiguracionCatalogo(uid);
   }
 
@@ -227,6 +232,7 @@ class _ContenidoProductos extends StatelessWidget {
   }) {
     return showDialog<void>(
       context: context,
+      barrierDismissible: false,
       builder: (dialogContext) => ChangeNotifierProvider.value(
         value: provider,
         child: FormularioProducto(
