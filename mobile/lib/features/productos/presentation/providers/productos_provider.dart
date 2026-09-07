@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
-import '../../../../core/services/subidor_de_imagenes.dart';
 import '../../application/use_cases/crear_producto.dart';
+import '../../application/use_cases/editar_producto.dart';
 import '../../application/use_cases/obtener_pagina_productos.dart';
 import '../../domain/models/pagina_productos.dart';
 import '../../domain/models/producto.dart';
@@ -27,26 +27,27 @@ import '../../domain/repositories/repositorio_productos.dart';
 class ProductosProvider extends ChangeNotifier {
   final RepositorioProductos _repository;
   final CrearProducto _crearProducto;
+  final EditarProducto _editarProducto;
   final ObtenerPaginaProductos _obtenerPaginaProductos;
-  final SubidorDeImagenes _subidorDeImagenes;
   final String uid;
 
   ProductosProvider({
     required this.uid,
     required RepositorioProductos repository,
     required CrearProducto crearProducto,
+    required EditarProducto editarProducto,
     required ObtenerPaginaProductos obtenerPaginaProductos,
-    required SubidorDeImagenes subidorDeImagenes,
   }) : _repository = repository,
        _crearProducto = crearProducto,
-       _obtenerPaginaProductos = obtenerPaginaProductos,
-       _subidorDeImagenes = subidorDeImagenes;
+       _editarProducto = editarProducto,
+       _obtenerPaginaProductos = obtenerPaginaProductos;
 
   List<Producto> _productos = [];
   bool _cargando = false;
   bool _cargandoMas = false;
   bool _refrescando = false;
   bool _creandoProducto = false;
+  bool _editandoProducto = false;
   bool _hayMas = false;
   static const _tamanoPagina = 10;
   int _productosMostrados = _tamanoPagina;
@@ -64,6 +65,7 @@ class ProductosProvider extends ChangeNotifier {
   bool get cargandoMas => _cargandoMas;
   bool get refrescando => _refrescando;
   bool get creandoProducto => _creandoProducto;
+  bool get editandoProducto => _editandoProducto;
   bool get hayMas => _hayMas || _productos.length > _productosMostrados;
   String get busqueda => _busqueda;
   String? get errorMessage => _errorMessage;
@@ -209,7 +211,6 @@ class ProductosProvider extends ChangeNotifier {
     }
   }
 
-  // Se conserva para edición; las creaciones se delegan al caso de uso.
   Future<bool> guardarProducto(
     Producto producto, {
     Uint8List? imagenBytes,
@@ -222,39 +223,31 @@ class ProductosProvider extends ChangeNotifier {
         nombreArchivo: nombreArchivo,
       );
     }
+    if (_editandoProducto) return false;
 
+    _editandoProducto = true;
     _errorMessage = null;
     _notificar();
     try {
-      var productoConNegocioId = producto.copyWith(negocioId: uid);
-      if (imagenBytes != null) {
-        if (nombreArchivo == null || nombreArchivo.trim().isEmpty) {
-          throw ArgumentError('La imagen debe incluir un nombre de archivo.');
-        }
-        final imagenSubida = await _subidorDeImagenes.subir(
-          bytes: imagenBytes,
-          carpeta: 'usuarios/$uid/productos',
-          nombreArchivo: nombreArchivo,
-        );
-        productoConNegocioId = productoConNegocioId.copyWith(
-          urlImagen: imagenSubida.url,
-          cloudinaryPublicId: imagenSubida.identificador,
-        );
-      }
-
-      await _repository.guardarProducto(uid, productoConNegocioId);
+      final productoGuardado = await _editarProducto(
+        uid: uid,
+        producto: producto,
+        imagenBytes: imagenBytes,
+        nombreArchivo: nombreArchivo,
+      );
       final indiceExistente = _productos.indexWhere(
-        (productoCargado) => productoCargado.id == productoConNegocioId.id,
+        (productoCargado) => productoCargado.id == productoGuardado.id,
       );
       if (indiceExistente != -1) {
-        _productos[indiceExistente] = productoConNegocioId;
+        _productos[indiceExistente] = productoGuardado;
       }
-      _notificar();
       return true;
     } catch (e) {
       _errorMessage = _mensajeErrorGuardado(e);
-      _notificar();
       return false;
+    } finally {
+      _editandoProducto = false;
+      _notificar();
     }
   }
 

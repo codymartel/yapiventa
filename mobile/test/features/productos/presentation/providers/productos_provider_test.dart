@@ -6,6 +6,7 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/core/services/subidor_de_imagenes.dart';
 import 'package:mobile/features/productos/application/use_cases/crear_producto.dart';
+import 'package:mobile/features/productos/application/use_cases/editar_producto.dart';
 import 'package:mobile/features/productos/application/use_cases/obtener_pagina_productos.dart';
 import 'package:mobile/features/productos/data/productos_repository.dart';
 import 'package:mobile/features/productos/domain/models/pagina_productos.dart';
@@ -34,8 +35,8 @@ void main() {
         repositorioProductos: repositorioCreacion,
         subidorDeImagenes: subidorDeImagenes,
       ),
+      editarProducto: EditarProducto(repositorioCreacion, subidorDeImagenes),
       obtenerPaginaProductos: ObtenerPaginaProductos(repository),
-      subidorDeImagenes: subidorDeImagenes,
     );
   });
 
@@ -64,8 +65,8 @@ void main() {
         repositorioProductos: repository,
         subidorDeImagenes: subidorDeImagenes,
       ),
+      editarProducto: EditarProducto(repository, subidorDeImagenes),
       obtenerPaginaProductos: ObtenerPaginaProductos(repository),
-      subidorDeImagenes: subidorDeImagenes,
     );
   }
 
@@ -247,16 +248,95 @@ void main() {
     expect(await reintento, isTrue);
     expect(provider.creandoProducto, isFalse);
   });
+
+  test('actualiza el producto local después de editarlo', () async {
+    final repository = _RepositorioProductosCreacionFake();
+    repository.pagina = PaginaProductos(
+      productos: [producto(id: 'producto-1', nombre: 'Original')],
+      ultimoCursor: const _CursorProductosPrueba('pagina-1'),
+      hayMas: false,
+    );
+    final providerEdicion = crearProviderPaginado(repository);
+    addTearDown(providerEdicion.dispose);
+    await providerEdicion.cargarProductos();
+
+    final exito = await providerEdicion.guardarProducto(
+      producto(id: 'producto-1', nombre: 'Editado'),
+    );
+
+    expect(exito, isTrue);
+    expect(repository.llamadasGuardado, 1);
+    expect(providerEdicion.productosFiltrados, hasLength(1));
+    expect(providerEdicion.productosFiltrados.single.nombre, 'Editado');
+  });
+
+  test('bloquea un segundo envío mientras edita', () async {
+    final repository = _RepositorioProductosCreacionFake();
+    final pendiente = Completer<String>();
+    repository.guardadoPendiente = pendiente;
+    final providerEdicion = crearProviderPaginado(repository);
+    addTearDown(providerEdicion.dispose);
+
+    final primera = providerEdicion.guardarProducto(
+      producto(id: 'producto-1', nombre: 'Primero'),
+    );
+    final segunda = await providerEdicion.guardarProducto(
+      producto(id: 'producto-1', nombre: 'Segundo'),
+    );
+
+    expect(providerEdicion.editandoProducto, isTrue);
+    expect(segunda, isFalse);
+    expect(repository.llamadasGuardado, 1);
+
+    pendiente.complete('producto-1');
+    expect(await primera, isTrue);
+    expect(providerEdicion.editandoProducto, isFalse);
+  });
+
+  test('restaura el estado y conserva la lista si la edición falla', () async {
+    final repository = _RepositorioProductosCreacionFake();
+    repository.pagina = PaginaProductos(
+      productos: [producto(id: 'producto-1', nombre: 'Original')],
+      ultimoCursor: const _CursorProductosPrueba('pagina-1'),
+      hayMas: false,
+    );
+    final providerEdicion = crearProviderPaginado(repository);
+    addTearDown(providerEdicion.dispose);
+    await providerEdicion.cargarProductos();
+    repository.errorGuardado = Exception('Firestore no disponible');
+
+    final exito = await providerEdicion.guardarProducto(
+      producto(id: 'producto-1', nombre: 'Editado'),
+    );
+
+    expect(exito, isFalse);
+    expect(providerEdicion.editandoProducto, isFalse);
+    expect(providerEdicion.errorMessage, contains('Firestore no disponible'));
+    expect(providerEdicion.productosFiltrados.single.nombre, 'Original');
+
+    repository.errorGuardado = null;
+    expect(
+      await providerEdicion.guardarProducto(
+        producto(id: 'producto-1', nombre: 'Reintento'),
+      ),
+      isTrue,
+    );
+    expect(providerEdicion.errorMessage, isNull);
+    expect(providerEdicion.productosFiltrados.single.nombre, 'Reintento');
+  });
 }
 
 class _RepositorioProductosCreacionFake implements RepositorioProductos {
   int llamadas = 0;
+  int llamadasGuardado = 0;
   int llamadasPagina = 0;
   final List<CursorProductos?> cursores = [];
   final List<int> limites = [];
   Producto? ultimoProducto;
   Object? error;
+  Object? errorGuardado;
   Completer<Producto>? respuestaPendiente;
+  Completer<String>? guardadoPendiente;
   PaginaProductos pagina = const PaginaProductos(
     productos: [],
     ultimoCursor: null,
@@ -287,8 +367,10 @@ class _RepositorioProductosCreacionFake implements RepositorioProductos {
   }
 
   @override
-  Future<String> guardarProducto(String uid, Producto producto) async {
-    return producto.id;
+  Future<String> guardarProducto(String uid, Producto producto) {
+    llamadasGuardado++;
+    if (errorGuardado != null) return Future.error(errorGuardado!);
+    return guardadoPendiente?.future ?? Future.value(producto.id);
   }
 
   @override

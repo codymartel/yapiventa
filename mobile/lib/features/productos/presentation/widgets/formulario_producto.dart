@@ -47,9 +47,7 @@ class _FormularioProductoState extends State<FormularioProducto> {
         : '',
   );
   late final _stockCtrl = TextEditingController(
-    text: (widget.producto?.stock ?? 0) > 0
-        ? widget.producto!.stock.toString()
-        : '',
+    text: widget.producto == null ? '' : widget.producto!.stock.toString(),
   );
   late final _descripcionCtrl = TextEditingController(
     text: widget.producto?.descripcion ?? '',
@@ -121,8 +119,11 @@ class _FormularioProductoState extends State<FormularioProducto> {
   bool get _esFraccionaria => _unidadActual?.tipo == TipoUnidad.fraccionaria;
 
   bool get _precioValido => (double.tryParse(_precioCtrl.text) ?? 0) > 0;
-  bool get _stockValido =>
-      _esStockInfinito || (int.tryParse(_stockCtrl.text) ?? 0) > 0;
+  bool get _stockValido {
+    final stock = int.tryParse(_stockCtrl.text);
+    return _esStockInfinito || (stock != null && stock >= 0);
+  }
+
   bool get _fraccionValida => !_esFraccionaria || _fraccion.isNotBlank;
   bool get _camposOk =>
       _nombreCtrl.text.isNotBlank &&
@@ -276,7 +277,9 @@ class _FormularioProductoState extends State<FormularioProducto> {
                   TextField(
                     controller: _precioCtrl,
                     onChanged: (_) => setState(() {}),
-                    keyboardType: TextInputType.number,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     style: TextStyle(color: AppColors.texto),
                     decoration: const InputDecoration(labelText: 'Precio S/ *'),
                   ),

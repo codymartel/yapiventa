@@ -46,8 +46,8 @@ class _ProductosScreenState extends State<ProductosScreen> {
       uid: uid,
       repository: dependencies.repository,
       crearProducto: dependencies.crearProducto,
+      editarProducto: dependencies.editarProducto,
       obtenerPaginaProductos: dependencies.obtenerPaginaProductos,
-      subidorDeImagenes: dependencies.subidorDeImagenes,
     )..cargarProductos();
   }
 
