@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../domain/models/tipo_unidad.dart';
 import '../../domain/models/producto.dart';
 import '../providers/productos_provider.dart';
 
@@ -14,16 +15,14 @@ import '../providers/productos_provider.dart';
 // editar un producto. El formulario entrega los datos y los bytes al
 // provider; la coordinación entre imagen y persistencia vive fuera de UI.
 //
-// unidadesDisponibles llega como List<Map<String,dynamic>> porque así
-// se guardó en Firestore desde ConfiguracionNegocioProvider (nombre,
-// tipo, fraccionesPermitidas, esOpcional) — no se reconstruye como
-// UnidadInfo aquí, para no duplicar lógica de conversión.
+// Las unidades ya llegan tipadas desde el catálogo del negocio. El widget
+// no conoce el formato usado para persistirlas en Firestore.
 // ═════════════════════════════════════════════════════════════════════════
 
 class FormularioProducto extends StatefulWidget {
   final Producto? producto;
   final List<String> categoriasDisponibles;
-  final List<Map<String, dynamic>> unidadesDisponibles;
+  final List<UnidadInfo> unidadesDisponibles;
   final VoidCallback onCancelar;
 
   const FormularioProducto({
@@ -86,14 +85,40 @@ class _FormularioProductoState extends State<FormularioProducto> {
     super.dispose();
   }
 
-  Map<String, dynamic>? get _unidadActual => widget.unidadesDisponibles
-      .cast<Map<String, dynamic>?>()
-      .firstWhere((u) => u?['nombre'] == _unidad, orElse: () => null);
+  List<String> get _categoriasEfectivas {
+    final categorias = <String>{...widget.categoriasDisponibles};
+    final categoriaGuardada = widget.producto?.categoria ?? '';
+    if (categoriaGuardada.isNotBlank) categorias.add(categoriaGuardada);
+    return categorias.toList();
+  }
 
-  List<String> get _fraccionesPermitidas =>
-      (_unidadActual?['fraccionesPermitidas'] as List?)?.cast<String>() ?? [];
+  List<UnidadInfo> get _unidadesEfectivas {
+    final unidades = <String, UnidadInfo>{
+      for (final unidad in widget.unidadesDisponibles) unidad.nombre: unidad,
+    };
+    final nombreGuardado = widget.producto?.unidadMedidaNombre ?? '';
+    if (nombreGuardado.isNotBlank && !unidades.containsKey(nombreGuardado)) {
+      final fracciones = widget.producto?.fraccionesSeleccionadas ?? const [];
+      unidades[nombreGuardado] = UnidadInfo(
+        nombre: nombreGuardado,
+        tipo: fracciones.isEmpty ? TipoUnidad.entera : TipoUnidad.fraccionaria,
+        fraccionesPermitidas: fracciones,
+      );
+    }
+    return unidades.values.toList();
+  }
 
-  bool get _esFraccionaria => _unidadActual?['tipo'] == 'fraccionaria';
+  UnidadInfo? get _unidadActual => _unidadesEfectivas
+      .cast<UnidadInfo?>()
+      .firstWhere((u) => u?.nombre == _unidad, orElse: () => null);
+
+  List<String> get _fraccionesPermitidas {
+    final fracciones = <String>{...?_unidadActual?.fraccionesPermitidas};
+    if (_fraccion.isNotBlank) fracciones.add(_fraccion);
+    return fracciones.toList();
+  }
+
+  bool get _esFraccionaria => _unidadActual?.tipo == TipoUnidad.fraccionaria;
 
   bool get _precioValido => (double.tryParse(_precioCtrl.text) ?? 0) > 0;
   bool get _stockValido =>
@@ -281,7 +306,7 @@ class _FormularioProductoState extends State<FormularioProducto> {
                   DropdownButtonFormField<String>(
                     initialValue: _categoria.isNotBlank ? _categoria : null,
                     decoration: const InputDecoration(labelText: 'Categoría *'),
-                    items: widget.categoriasDisponibles
+                    items: _categoriasEfectivas
                         .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                         .toList(),
                     onChanged: (v) => setState(() => _categoria = v ?? ''),
@@ -293,11 +318,11 @@ class _FormularioProductoState extends State<FormularioProducto> {
                     decoration: const InputDecoration(
                       labelText: 'Unidad de medida *',
                     ),
-                    items: widget.unidadesDisponibles
+                    items: _unidadesEfectivas
                         .map(
                           (u) => DropdownMenuItem(
-                            value: u['nombre'] as String,
-                            child: Text(u['nombre'] as String),
+                            value: u.nombre,
+                            child: Text(u.nombre),
                           ),
                         )
                         .toList(),

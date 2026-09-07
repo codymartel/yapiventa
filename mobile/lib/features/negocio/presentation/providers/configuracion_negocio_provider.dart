@@ -392,16 +392,7 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
         instagram: _linkInstagram,
         youtube: _linkYoutube,
         categorias: _categorias,
-        unidadesMedida: _unidadesMedida
-            .map(
-              (u) => UnidadInfoResumen(
-                nombre: u.nombre,
-                tipo: u.tipo == TipoUnidad.entera ? 'entera' : 'fraccionaria',
-                fraccionesPermitidas: u.fraccionesPermitidas,
-                esOpcional: u.esOpcional,
-              ),
-            )
-            .toList(),
+        unidadesMedida: _unidadesMedida,
         tieneDelivery: _tieneDelivery,
         zonasDelivery: _zonasDelivery,
         horarios: _horarios,

@@ -1,5 +1,6 @@
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mobile/domain/models/tipo_unidad.dart';
 import 'package:mobile/features/negocio/data/negocio_repository.dart';
 import 'package:mobile/features/negocio/domain/models/config_pago_metodo.dart';
 import 'package:mobile/features/negocio/domain/models/horario_dia.dart';
@@ -13,6 +14,65 @@ void main() {
   setUp(() {
     firestore = FakeFirebaseFirestore();
     repository = NegocioRepository(firestore: firestore);
+  });
+
+  test('obtiene categorías y unidades tipadas en una lectura', () async {
+    await firestore.collection('users').doc('usuario-1').set({
+      'rubro': 'Bodega',
+      'categorias': ['Bebidas', ' Snacks ', 'Bebidas', 7],
+      'unidadesMedida': [
+        {
+          'nombre': 'Unidad',
+          'tipo': 'entera',
+          'fraccionesPermitidas': ['1', '2'],
+          'esOpcional': false,
+        },
+        {
+          'nombre': 'kg',
+          'tipo': 'fraccionaria',
+          'fraccionesPermitidas': ['0.5', '1'],
+          'esOpcional': true,
+        },
+      ],
+    });
+
+    final catalogo = await repository.obtenerCatalogoNegocio('usuario-1');
+
+    expect(catalogo.rubro, 'Bodega');
+    expect(catalogo.categorias, ['Bebidas', 'Snacks']);
+    expect(catalogo.unidadesMedida, hasLength(2));
+    expect(catalogo.unidadesMedida.first.nombre, 'Unidad');
+    expect(catalogo.unidadesMedida.first.tipo, TipoUnidad.entera);
+    expect(catalogo.unidadesMedida.last.fraccionesPermitidas, ['0.5', '1']);
+    expect(catalogo.unidadesMedida.last.esOpcional, isTrue);
+  });
+
+  test(
+    'devuelve un catálogo vacío cuando el documento no tiene datos',
+    () async {
+      await firestore.collection('users').doc('usuario-1').set({});
+
+      final catalogo = await repository.obtenerCatalogoNegocio('usuario-1');
+
+      expect(catalogo.categorias, isEmpty);
+      expect(catalogo.unidadesMedida, isEmpty);
+    },
+  );
+
+  test('tolera datos incompletos sin crear unidades inválidas', () async {
+    await firestore.collection('users').doc('usuario-1').set({
+      'categorias': 'Bebidas',
+      'unidadesMedida': [
+        {'nombre': 'Unidad'},
+        {'tipo': 'entera'},
+        'kg',
+      ],
+    });
+
+    final catalogo = await repository.obtenerCatalogoNegocio('usuario-1');
+
+    expect(catalogo.categorias, isEmpty);
+    expect(catalogo.unidadesMedida, isEmpty);
   });
 
   test(
@@ -36,9 +96,9 @@ void main() {
         youtube: '',
         categorias: ['Bebidas'],
         unidadesMedida: const [
-          UnidadInfoResumen(
+          UnidadInfo(
             nombre: 'Unidad',
-            tipo: 'entera',
+            tipo: TipoUnidad.entera,
             fraccionesPermitidas: [],
             esOpcional: false,
           ),

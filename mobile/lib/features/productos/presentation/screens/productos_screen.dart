@@ -6,11 +6,12 @@
 // desde initState; los rebuilds solo leen el estado ya cargado.
 // ═════════════════════════════════════════════════════════════════════════
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../negocio/catalogo_negocio_dependencies.dart';
+import '../../../negocio/presentation/providers/catalogo_negocio_provider.dart';
 import '../../domain/models/producto.dart';
 import '../../productos_dependencies.dart';
 import '../providers/productos_provider.dart';
@@ -26,15 +27,19 @@ class ProductosScreen extends StatefulWidget {
 
 class _ProductosScreenState extends State<ProductosScreen> {
   ProductosProvider? _provider;
-  List<String> _categoriasDisponibles = const [];
-  List<Map<String, dynamic>> _unidadesDisponibles = const [];
-  bool _catalogoCargado = false;
+  CatalogoNegocioProvider? _catalogoProvider;
 
   @override
   void initState() {
     super.initState();
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
+
+    final catalogoDependencies = CatalogoNegocioDependencies.production();
+    _catalogoProvider = CatalogoNegocioProvider(
+      uid: uid,
+      obtenerCatalogoNegocio: catalogoDependencies.obtenerCatalogoNegocio,
+    )..cargar();
 
     final dependencies = ProductosDependencies.production();
     _provider = ProductosProvider(
@@ -44,40 +49,20 @@ class _ProductosScreenState extends State<ProductosScreen> {
       obtenerPaginaProductos: dependencies.obtenerPaginaProductos,
       subidorDeImagenes: dependencies.subidorDeImagenes,
     )..cargarProductos();
-    _cargarConfiguracionCatalogo(uid);
-  }
-
-  Future<void> _cargarConfiguracionCatalogo(String uid) async {
-    try {
-      final datos =
-          (await FirebaseFirestore.instance.collection('users').doc(uid).get())
-              .data();
-      if (!mounted) return;
-      setState(() {
-        _categoriasDisponibles =
-            (datos?['categorias'] as List?)?.cast<String>() ?? const [];
-        _unidadesDisponibles = (datos?['unidadesMedida'] as List?)
-                ?.whereType<Map>()
-                .map((unidad) => Map<String, dynamic>.from(unidad))
-                .toList() ??
-            const [];
-        _catalogoCargado = true;
-      });
-    } catch (_) {
-      if (mounted) setState(() => _catalogoCargado = true);
-    }
   }
 
   @override
   void dispose() {
     _provider?.dispose();
+    _catalogoProvider?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final provider = _provider;
-    if (provider == null) {
+    final catalogoProvider = _catalogoProvider;
+    if (provider == null || catalogoProvider == null) {
       return Scaffold(
         backgroundColor: AppColors.fondo,
         body: Center(
@@ -89,31 +74,23 @@ class _ProductosScreenState extends State<ProductosScreen> {
       );
     }
 
-    return ChangeNotifierProvider.value(
-      value: provider,
-      child: _ContenidoProductos(
-        categoriasDisponibles: _categoriasDisponibles,
-        unidadesDisponibles: _unidadesDisponibles,
-        catalogoCargado: _catalogoCargado,
-      ),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider.value(value: provider),
+        ChangeNotifierProvider.value(value: catalogoProvider),
+      ],
+      child: const _ContenidoProductos(),
     );
   }
 }
 
 class _ContenidoProductos extends StatelessWidget {
-  final List<String> categoriasDisponibles;
-  final List<Map<String, dynamic>> unidadesDisponibles;
-  final bool catalogoCargado;
-
-  const _ContenidoProductos({
-    required this.categoriasDisponibles,
-    required this.unidadesDisponibles,
-    required this.catalogoCargado,
-  });
+  const _ContenidoProductos();
 
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ProductosProvider>();
+    final catalogoProvider = context.watch<CatalogoNegocioProvider>();
     final productos = provider.productosFiltrados;
 
     return Scaffold(
@@ -153,6 +130,15 @@ class _ContenidoProductos extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
               child: Column(
                 children: [
+                  if (catalogoProvider.errorMessage != null) ...[
+                    _MensajeError(
+                      mensaje: catalogoProvider.errorMessage!,
+                      onCerrar: catalogoProvider.reintentar,
+                      tooltip: 'Reintentar carga del catálogo',
+                      icono: Icons.refresh,
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   if (provider.errorMessage != null) ...[
                     _MensajeError(
                       mensaje: provider.errorMessage!,
@@ -185,12 +171,12 @@ class _ContenidoProductos extends StatelessWidget {
                               return ProductoCard(
                                 key: ValueKey(producto.id),
                                 producto: producto,
-                                onEditar: catalogoCargado
+                                onEditar: catalogoProvider.disponible
                                     ? () => _abrirFormulario(
-                                          context,
-                                          provider,
-                                          producto: producto,
-                                        )
+                                        context,
+                                        provider,
+                                        producto: producto,
+                                      )
                                     : () {},
                                 onEliminar: () => _confirmarEliminacion(
                                   context,
@@ -214,10 +200,12 @@ class _ContenidoProductos extends StatelessWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        tooltip: catalogoCargado
+        tooltip: catalogoProvider.disponible
             ? 'Agregar producto'
+            : catalogoProvider.errorMessage != null
+            ? 'No se pudo cargar el catálogo'
             : 'Cargando configuración del catálogo',
-        onPressed: catalogoCargado
+        onPressed: catalogoProvider.disponible
             ? () => _abrirFormulario(context, provider)
             : null,
         icon: const Icon(Icons.add),
@@ -238,8 +226,14 @@ class _ContenidoProductos extends StatelessWidget {
         value: provider,
         child: FormularioProducto(
           producto: producto,
-          categoriasDisponibles: categoriasDisponibles,
-          unidadesDisponibles: unidadesDisponibles,
+          categoriasDisponibles: context
+              .read<CatalogoNegocioProvider>()
+              .catalogo!
+              .categorias,
+          unidadesDisponibles: context
+              .read<CatalogoNegocioProvider>()
+              .catalogo!
+              .unidadesMedida,
           onCancelar: () => Navigator.of(dialogContext).pop(),
         ),
       ),
@@ -303,8 +297,15 @@ class _BotonVerMas extends StatelessWidget {
 class _MensajeError extends StatelessWidget {
   final String mensaje;
   final VoidCallback onCerrar;
+  final String tooltip;
+  final IconData icono;
 
-  const _MensajeError({required this.mensaje, required this.onCerrar});
+  const _MensajeError({
+    required this.mensaje,
+    required this.onCerrar,
+    this.tooltip = 'Cerrar mensaje',
+    this.icono = Icons.close,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -321,9 +322,9 @@ class _MensajeError extends StatelessWidget {
             child: Text(mensaje, style: TextStyle(color: AppColors.texto)),
           ),
           IconButton(
-            tooltip: 'Cerrar mensaje',
+            tooltip: tooltip,
             onPressed: onCerrar,
-            icon: const Icon(Icons.close, size: 18),
+            icon: Icon(icono, size: 18),
           ),
         ],
       ),

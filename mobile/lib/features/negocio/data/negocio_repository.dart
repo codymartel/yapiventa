@@ -1,17 +1,19 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../domain/models/tipo_unidad.dart';
+import '../domain/models/catalogo_negocio.dart';
 import '../domain/models/zona_delivery.dart';
 import '../domain/models/horario_dia.dart';
 import '../domain/models/metodo_pago_tipo.dart';
 import '../domain/models/config_pago_metodo.dart';
+import '../domain/repositories/repositorio_catalogo_negocio.dart';
 
 // ═════════════════════════════════════════════════════════════════════════
 // NegocioRepository
 // ═════════════════════════════════════════════════════════════════════════
 //
 // QUÉ HACE ESTE ARCHIVO:
-// Es el único lugar que escribe la configuración del negocio en
-// Firestore. Equivale a la parte de tu `ejecutarGuardado` en Kotlin que
-// arma el mapa y llama a `.update(...)` — SOLO esa parte.
+// Centraliza la lectura del catálogo y la escritura de la configuración del
+// negocio en Firestore. La presentación nunca interpreta esos mapas.
 //
 // QUÉ NO HACE (a propósito, separado de este archivo):
 // - NO valida nada (RUC, teléfono, links, montos) — eso vive en
@@ -23,19 +25,84 @@ import '../domain/models/config_pago_metodo.dart';
 //   utilidades.
 //
 // CON QUÉ SE CONECTA:
-// - Lo usa: configuracion_negocio_provider.dart, cuando el usuario
-//   confirma "Finalizar" y ya pasó todas las validaciones.
+// - Lo usan la configuración al guardar y ObtenerCatalogoNegocio al leer.
 // - Escribe en: users/{uid} — el MISMO documento que ya crea
 //   user_repository.dart al registrarse. Este repository no crea el
 //   documento, lo ACTUALIZA (update, no set) con los datos del negocio
 //   — igual que hacía tu Kotlin.
 // ═════════════════════════════════════════════════════════════════════════
 
-class NegocioRepository {
+class NegocioRepository implements RepositorioCatalogoNegocio {
   final FirebaseFirestore _firestore;
 
   NegocioRepository({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+    : _firestore = firestore ?? FirebaseFirestore.instance;
+
+  @override
+  Future<CatalogoNegocio> obtenerCatalogoNegocio(String uid) async {
+    final documento = await _firestore.collection('users').doc(uid).get();
+    final datos = documento.data() ?? const <String, dynamic>{};
+    return CatalogoNegocio(
+      rubro: datos['rubro'] as String? ?? '',
+      categorias: _leerCategorias(datos['categorias']),
+      unidadesMedida: _leerUnidades(datos['unidadesMedida']),
+      configuracionInicial: datos,
+    );
+  }
+
+  List<String> _leerCategorias(Object? valor) {
+    if (valor is! List) return const [];
+
+    final categorias = <String>[];
+    final nombres = <String>{};
+    for (final elemento in valor) {
+      if (elemento is! String) continue;
+      final nombre = elemento.trim();
+      if (nombre.isNotEmpty && nombres.add(nombre)) categorias.add(nombre);
+    }
+    return categorias;
+  }
+
+  List<UnidadInfo> _leerUnidades(Object? valor) {
+    if (valor is! List) return const [];
+
+    final unidades = <UnidadInfo>[];
+    final nombres = <String>{};
+    for (final elemento in valor) {
+      if (elemento is! Map) continue;
+      final datos = Map<String, dynamic>.from(elemento);
+      final nombre = (datos['nombre'] as String?)?.trim() ?? '';
+      final tipo = switch (datos['tipo']) {
+        'entera' => TipoUnidad.entera,
+        'fraccionaria' => TipoUnidad.fraccionaria,
+        _ => null,
+      };
+      if (nombre.isEmpty || tipo == null || !nombres.add(nombre)) continue;
+
+      final fracciones = <String>[];
+      final valores = <String>{};
+      final fraccionesGuardadas = datos['fraccionesPermitidas'];
+      if (fraccionesGuardadas is List) {
+        for (final elemento in fraccionesGuardadas) {
+          if (elemento is! String) continue;
+          final fraccion = elemento.trim();
+          if (fraccion.isNotEmpty && valores.add(fraccion)) {
+            fracciones.add(fraccion);
+          }
+        }
+      }
+
+      unidades.add(
+        UnidadInfo(
+          nombre: nombre,
+          tipo: tipo,
+          fraccionesPermitidas: fracciones,
+          esOpcional: datos['esOpcional'] as bool? ?? false,
+        ),
+      );
+    }
+    return unidades;
+  }
 
   /// Guarda toda la configuración del negocio en users/{uid}.
   ///
@@ -56,26 +123,25 @@ class NegocioRepository {
     required String instagram,
     required String youtube,
     required List<String> categorias,
-    required List<UnidadInfoResumen> unidadesMedida,
+    required List<UnidadInfo> unidadesMedida,
     required bool tieneDelivery,
     required List<ZonaDelivery> zonasDelivery,
     required List<HorarioDia> horarios,
     required List<ConfigPagoMetodo> metodosPagoConfig,
   }) async {
     final zonasMap = zonasDelivery
-        .map((z) => {
-              'zona': z.zona,
-              'costo': double.tryParse(z.costo) ?? 0.0,
-            })
+        .map((z) => {'zona': z.zona, 'costo': double.tryParse(z.costo) ?? 0.0})
         .toList();
 
     final horariosMap = horarios
-        .map((h) => {
-              'dia': h.dia,
-              'apertura': h.apertura,
-              'cierre': h.cierre,
-              'activo': h.activo,
-            })
+        .map(
+          (h) => {
+            'dia': h.dia,
+            'apertura': h.apertura,
+            'cierre': h.cierre,
+            'activo': h.activo,
+          },
+        )
         .toList();
 
     final metodosActivos = metodosPagoConfig
@@ -96,7 +162,8 @@ class NegocioRepository {
         metodoMap['descuentoActivo'] = config.descuentoActivo;
         metodoMap['montoMinimo'] = double.tryParse(config.montoMinimo) ?? 0.0;
         if (config.descuentoActivo) {
-          metodoMap['tipoDescuento'] = config.tipoDescuento == TipoDescuento.porcentaje
+          metodoMap['tipoDescuento'] =
+              config.tipoDescuento == TipoDescuento.porcentaje
               ? 'porcentaje'
               : 'monto_fijo';
           metodoMap['valorDescuento'] =
@@ -107,12 +174,14 @@ class NegocioRepository {
     }
 
     final unidadesMap = unidadesMedida
-        .map((u) => {
-              'nombre': u.nombre,
-              'tipo': u.tipo,
-              'fraccionesPermitidas': u.fraccionesPermitidas,
-              'esOpcional': u.esOpcional,
-            })
+        .map(
+          (u) => {
+            'nombre': u.nombre,
+            'tipo': u.tipo == TipoUnidad.entera ? 'entera' : 'fraccionaria',
+            'fraccionesPermitidas': u.fraccionesPermitidas,
+            'esOpcional': u.esOpcional,
+          },
+        )
         .toList();
 
     final updateMap = <String, dynamic>{
@@ -141,22 +210,4 @@ class NegocioRepository {
 
     await _firestore.collection('users').doc(uid).update(updateMap);
   }
-}
-
-/// Pequeño resumen de UnidadInfo solo con lo que se necesita guardar
-/// (nombre, tipo como texto, fracciones, opcional) — evita que este
-/// repository dependa del enum TipoUnidad completo, solo de su
-/// representación como String para Firestore.
-class UnidadInfoResumen {
-  final String nombre;
-  final String tipo; // 'entera' o 'fraccionaria'
-  final List<String> fraccionesPermitidas;
-  final bool esOpcional;
-
-  const UnidadInfoResumen({
-    required this.nombre,
-    required this.tipo,
-    required this.fraccionesPermitidas,
-    required this.esOpcional,
-  });
 }
