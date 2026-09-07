@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'mappers/producto_firestore_mapper.dart';
 import '../domain/models/pagina_productos.dart';
 import '../domain/models/producto.dart';
 import '../domain/repositories/repositorio_productos.dart';
@@ -50,7 +51,10 @@ class ProductosRepository implements RepositorioProductos {
 
     final productos = documentosPagina
         .map((documento) {
-          return Producto.fromMap(documento.id, documento.data());
+          return ProductoFirestoreMapper.desdeFirestore(
+            documento.id,
+            documento.data(),
+          );
         })
         .whereType<Producto>()
         .toList();
@@ -71,14 +75,16 @@ class ProductosRepository implements RepositorioProductos {
     } else {
       // Una edicion conserva fechaCreacion para no mover un producto antiguo
       // al inicio de la consulta ordenada por productos nuevos primero.
-      await _coleccionProductos(uid).doc(producto.id).update(producto.toMap());
+      await _coleccionProductos(uid)
+          .doc(producto.id)
+          .update(ProductoFirestoreMapper.paraFirestore(producto));
       return producto.id;
     }
   }
 
   @override
   Future<Producto> crearProducto(String uid, Producto producto) async {
-    final datos = producto.toMap()
+    final datos = ProductoFirestoreMapper.paraFirestore(producto)
       ..['fechaCreacion'] = FieldValue.serverTimestamp();
     final documento = await _coleccionProductos(uid).add(datos);
     return producto.copyWith(id: documento.id);

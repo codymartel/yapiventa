@@ -14,8 +14,6 @@
 //     sin ID.
 // ═════════════════════════════════════════════════════════════════════════
 
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class Producto {
   final String id;
   final String negocioId;
@@ -86,49 +84,5 @@ class Producto {
           fraccionesSeleccionadas ?? this.fraccionesSeleccionadas,
       fechaVencimiento: fechaVencimiento ?? this.fechaVencimiento,
     );
-  }
-
-  static Producto? fromMap(String id, Map<String, dynamic>? data) {
-    final nombre = data?['nombre'] as String?;
-    final negocioId = data?['negocioId'] as String?;
-    if (data == null || nombre == null || negocioId == null) return null;
-
-    return Producto(
-      id: id,
-      negocioId: negocioId,
-      nombre: nombre,
-      precio: (data['precio'] as num?)?.toDouble() ?? 0.0,
-      stock: (data['stock'] as num?)?.toInt() ?? 0,
-      esStockInfinito: data['esStockInfinito'] as bool? ?? false,
-      descripcion: data['descripcion'] as String? ?? '',
-      categoria: data['categoria'] as String? ?? '',
-      disponible: data['disponible'] as bool? ?? true,
-      tieneDelivery: data['tieneDelivery'] as bool? ?? false,
-      urlImagen: data['urlImagen'] as String? ?? '',
-      cloudinaryPublicId: data['cloudinaryPublicId'] as String?,
-      unidadMedidaNombre: data['unidadMedidaNombre'] as String? ?? '',
-      fraccionesSeleccionadas:
-          (data['fraccionesSeleccionadas'] as List?)?.cast<String>() ?? [],
-      fechaVencimiento: (data['fechaVencimiento'] as Timestamp?)?.toDate(),
-    );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'negocioId': negocioId,
-      'nombre': nombre,
-      'precio': precio,
-      'stock': stock,
-      'esStockInfinito': esStockInfinito,
-      'descripcion': descripcion,
-      'categoria': categoria,
-      'disponible': disponible,
-      'tieneDelivery': tieneDelivery,
-      'urlImagen': urlImagen,
-      'cloudinaryPublicId': cloudinaryPublicId,
-      'unidadMedidaNombre': unidadMedidaNombre,
-      'fraccionesSeleccionadas': fraccionesSeleccionadas,
-      'fechaVencimiento': fechaVencimiento,
-    };
   }
 }

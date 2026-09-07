@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mobile/features/productos/data/mappers/producto_firestore_mapper.dart';
 import 'package:mobile/features/productos/data/productos_repository.dart';
 import 'package:mobile/features/productos/domain/models/producto.dart';
 
@@ -48,11 +49,11 @@ void main() {
           .doc('usuario-1')
           .collection('productos');
       await coleccion.doc('antiguo').set({
-        ...producto(nombre: 'Antiguo').toMap(),
+        ...ProductoFirestoreMapper.paraFirestore(producto(nombre: 'Antiguo')),
         'fechaCreacion': Timestamp.fromDate(DateTime(2026, 1, 1)),
       });
       await coleccion.doc('reciente').set({
-        ...producto(nombre: 'Reciente').toMap(),
+        ...ProductoFirestoreMapper.paraFirestore(producto(nombre: 'Reciente')),
         'fechaCreacion': Timestamp.fromDate(DateTime(2026, 2, 1)),
       });
       await coleccion.doc('invalido').set({
@@ -77,7 +78,9 @@ void main() {
         .collection('productos');
     for (var i = 1; i <= 25; i++) {
       await coleccion.doc('producto-$i').set({
-        ...producto(nombre: 'Producto $i').toMap(),
+        ...ProductoFirestoreMapper.paraFirestore(
+          producto(nombre: 'Producto $i'),
+        ),
         'fechaCreacion': Timestamp.fromDate(DateTime(2026, 1, i)),
       });
     }
@@ -120,7 +123,7 @@ void main() {
         .collection('productos')
         .doc('producto-1')
         .set({
-          ...producto(id: 'producto-1').toMap(),
+          ...ProductoFirestoreMapper.paraFirestore(producto(id: 'producto-1')),
           'fechaCreacion': Timestamp.now(),
         });
 

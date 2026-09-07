@@ -10,6 +10,7 @@ import 'package:mobile/features/productos/application/use_cases/crear_producto.d
 import 'package:mobile/features/productos/application/use_cases/editar_producto.dart';
 import 'package:mobile/features/productos/application/use_cases/eliminar_producto.dart';
 import 'package:mobile/features/productos/application/use_cases/obtener_pagina_productos.dart';
+import 'package:mobile/features/productos/data/mappers/producto_firestore_mapper.dart';
 import 'package:mobile/features/productos/data/productos_repository.dart';
 import 'package:mobile/features/productos/domain/models/pagina_productos.dart';
 import 'package:mobile/features/productos/domain/models/producto.dart';
@@ -52,7 +53,9 @@ void main() {
         .collection('productos');
     for (var i = 1; i <= cantidad; i++) {
       await coleccion.doc('producto-$i').set({
-        ...producto(nombre: 'Producto $i').toMap(),
+        ...ProductoFirestoreMapper.paraFirestore(
+          producto(nombre: 'Producto $i'),
+        ),
         'fechaCreacion': Timestamp.fromDate(DateTime(2026, 1, i)),
       });
     }
