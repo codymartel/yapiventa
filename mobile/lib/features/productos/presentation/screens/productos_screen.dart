@@ -118,6 +118,11 @@ class _ContenidoProductos extends StatelessWidget {
         title: const Text('Productos'),
         actions: [
           IconButton(
+            tooltip: 'Editar configuración del negocio',
+            onPressed: () => Navigator.of(context).pushNamed('/elegir-rubro'),
+            icon: const Icon(Icons.store_outlined),
+          ),
+          IconButton(
             tooltip: 'Actualizar productos',
             onPressed:
                 provider.cargando ||
