@@ -7,6 +7,8 @@ import '../../application/use_cases/obtener_pagina_productos.dart';
 import '../../domain/models/pagina_productos.dart';
 import '../../domain/models/producto.dart';
 
+enum FiltroDisponibilidadProducto { todos, disponible, noDisponible }
+
 // ═════════════════════════════════════════════════════════════════════════
 // ProductosProvider
 // ═════════════════════════════════════════════════════════════════════════
@@ -71,6 +73,10 @@ class ProductosProvider extends ChangeNotifier {
   static const _tamanoPagina = 10;
   int _productosMostrados = _tamanoPagina;
   String _busqueda = '';
+  String? _categoriaSeleccionada;
+  FiltroDisponibilidadProducto _filtroDisponibilidad =
+      FiltroDisponibilidadProducto.todos;
+  List<Producto>? _productosFiltradosCache;
   String? _errorMessage;
   CursorProductos? _ultimoCursor;
   bool _disposed = false;
@@ -89,6 +95,11 @@ class ProductosProvider extends ChangeNotifier {
       _productosCambiandoDisponibilidad.contains(productoId);
   bool get hayMas => _hayMas || _productos.length > _productosMostrados;
   String get busqueda => _busqueda;
+  String? get categoriaSeleccionada => _categoriaSeleccionada;
+  FiltroDisponibilidadProducto get filtroDisponibilidad =>
+      _filtroDisponibilidad;
+  String get mensajeSinResultados =>
+      'No hay resultados entre los productos cargados.';
   String? get errorMessage => _errorMessage;
   int get totalProductos => _productos.length;
   int get limiteProductos => _limiteProductos;
@@ -97,25 +108,50 @@ class ProductosProvider extends ChangeNotifier {
   bool get minimoAlcanzado => totalProductos >= _minimoProductos;
   bool get limiteAlcanzado => totalProductos >= _limiteProductos;
 
-  // Equivale a tu `productosFiltrados` — busca en nombre, categoría y
-  // descripción, igual que en Kotlin.
   List<Producto> get productosFiltrados {
-    if (_busqueda.isBlank) {
-      return List.unmodifiable(_productos.take(_productosMostrados));
-    }
-    final q = _busqueda.toLowerCase();
-    return _productos
-        .where((p) {
-          return p.nombre.toLowerCase().contains(q) ||
-              p.categoria.toLowerCase().contains(q) ||
-              p.descripcion.toLowerCase().contains(q);
+    final cache = _productosFiltradosCache;
+    if (cache != null) return cache;
+
+    final busquedaNormalizada = _normalizar(_busqueda);
+    final categoriaNormalizada = _normalizar(_categoriaSeleccionada ?? '');
+    final resultado = _productos
+        .where((producto) {
+          final coincideNombre =
+              busquedaNormalizada.isEmpty ||
+              _normalizar(producto.nombre).contains(busquedaNormalizada);
+          final coincideCategoria =
+              categoriaNormalizada.isEmpty ||
+              _normalizar(producto.categoria) == categoriaNormalizada;
+          final coincideDisponibilidad = switch (_filtroDisponibilidad) {
+            FiltroDisponibilidadProducto.todos => true,
+            FiltroDisponibilidadProducto.disponible => producto.disponible,
+            FiltroDisponibilidadProducto.noDisponible => !producto.disponible,
+          };
+          return coincideNombre && coincideCategoria && coincideDisponibilidad;
         })
-        .take(_productosMostrados)
-        .toList();
+        .take(_productosMostrados);
+
+    return _productosFiltradosCache = List.unmodifiable(resultado);
   }
 
   void actualizarBusqueda(String texto) {
     _busqueda = texto;
+    _invalidarProductosFiltrados();
+    _notificar();
+  }
+
+  void actualizarCategoriaSeleccionada(String? categoria) {
+    final categoriaLimpia = categoria?.trim();
+    _categoriaSeleccionada = categoriaLimpia == null || categoriaLimpia.isEmpty
+        ? null
+        : categoriaLimpia;
+    _invalidarProductosFiltrados();
+    _notificar();
+  }
+
+  void actualizarFiltroDisponibilidad(FiltroDisponibilidadProducto filtro) {
+    _filtroDisponibilidad = filtro;
+    _invalidarProductosFiltrados();
     _notificar();
   }
 
@@ -137,6 +173,7 @@ class ProductosProvider extends ChangeNotifier {
       _ultimoCursor = pagina.ultimoCursor;
       _hayMas = pagina.hayMas;
       _productosMostrados = _tamanoPagina;
+      _invalidarProductosFiltrados();
     } catch (e) {
       _errorMessage = 'No se pudieron cargar tus productos.';
     } finally {
@@ -158,6 +195,7 @@ class ProductosProvider extends ChangeNotifier {
     final productosOcultos = _productos.length - _productosMostrados;
     if (productosOcultos >= _tamanoPagina || !_hayMas) {
       _productosMostrados = nuevoLimite;
+      _invalidarProductosFiltrados();
       _notificar();
       return;
     }
@@ -179,6 +217,7 @@ class ProductosProvider extends ChangeNotifier {
       _ultimoCursor = pagina.ultimoCursor;
       _hayMas = pagina.hayMas;
       _productosMostrados = nuevoLimite;
+      _invalidarProductosFiltrados();
     } catch (e) {
       _errorMessage = 'No se pudieron cargar mas productos.';
     } finally {
@@ -222,6 +261,7 @@ class ProductosProvider extends ChangeNotifier {
       } else {
         _productos[indiceExistente] = productoGuardado;
       }
+      _invalidarProductosFiltrados();
       return true;
     } catch (e) {
       _errorMessage = _mensajeErrorGuardado(e);
@@ -261,6 +301,7 @@ class ProductosProvider extends ChangeNotifier {
       );
       if (indiceExistente != -1) {
         _productos[indiceExistente] = productoGuardado;
+        _invalidarProductosFiltrados();
       }
       return true;
     } catch (e) {
@@ -283,6 +324,7 @@ class ProductosProvider extends ChangeNotifier {
     try {
       await _eliminarProducto(uid: uid, productoId: productoId);
       _productos.removeWhere((producto) => producto.id == productoId);
+      _invalidarProductosFiltrados();
       _notificar();
       return true;
     } catch (_) {
@@ -310,6 +352,7 @@ class ProductosProvider extends ChangeNotifier {
         _productos[indice] = _productos[indice].copyWith(
           disponible: disponible,
         );
+        _invalidarProductosFiltrados();
       }
       return true;
     } catch (_) {
@@ -330,6 +373,10 @@ class ProductosProvider extends ChangeNotifier {
     if (!_disposed) notifyListeners();
   }
 
+  void _invalidarProductosFiltrados() {
+    _productosFiltradosCache = null;
+  }
+
   @override
   void dispose() {
     _disposed = true;
@@ -337,6 +384,6 @@ class ProductosProvider extends ChangeNotifier {
   }
 }
 
-extension on String {
-  bool get isBlank => trim().isEmpty;
+String _normalizar(String valor) {
+  return valor.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
 }

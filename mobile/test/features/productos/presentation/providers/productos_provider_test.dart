@@ -23,8 +23,19 @@ void main() {
   late _RepositorioProductosCreacionFake repositorioCreacion;
   late _SubidorDeImagenesFake subidorDeImagenes;
 
-  Producto producto({String id = '', String nombre = 'Cafe'}) =>
-      Producto(id: id, negocioId: 'usuario-1', nombre: nombre, precio: 12.5);
+  Producto producto({
+    String id = '',
+    String nombre = 'Cafe',
+    String categoria = '',
+    bool disponible = true,
+  }) => Producto(
+    id: id,
+    negocioId: 'usuario-1',
+    nombre: nombre,
+    precio: 12.5,
+    categoria: categoria,
+    disponible: disponible,
+  );
 
   setUp(() {
     firestore = FakeFirebaseFirestore();
@@ -126,6 +137,100 @@ void main() {
     expect(provider.productosFiltrados, hasLength(10));
     expect(provider.hayMas, isFalse);
     expect(provider.cargandoMas, isFalse);
+  });
+
+  test('filtra en memoria por nombre, categoría y disponibilidad', () async {
+    final repository = _RepositorioProductosCreacionFake();
+    repository.pagina = PaginaProductos(
+      productos: [
+        producto(
+          id: 'producto-1',
+          nombre: 'Café   molido',
+          categoria: 'Bebidas calientes',
+        ),
+        producto(
+          id: 'producto-2',
+          nombre: 'Café instantáneo',
+          categoria: 'Bebidas calientes',
+          disponible: false,
+        ),
+        producto(
+          id: 'producto-3',
+          nombre: 'Pan integral',
+          categoria: 'Panadería',
+        ),
+      ],
+      ultimoCursor: const _CursorProductosPrueba('pagina-1'),
+      hayMas: false,
+    );
+    final providerFiltrado = crearProviderPaginado(repository);
+    addTearDown(providerFiltrado.dispose);
+    await providerFiltrado.cargarProductos();
+
+    final productosIniciales = providerFiltrado.productosFiltrados;
+    expect(
+      identical(productosIniciales, providerFiltrado.productosFiltrados),
+      isTrue,
+    );
+    expect(
+      providerFiltrado.filtroDisponibilidad,
+      FiltroDisponibilidadProducto.todos,
+    );
+
+    providerFiltrado.actualizarCategoriaSeleccionada('  bebidas   CALIENTES ');
+    providerFiltrado.actualizarFiltroDisponibilidad(
+      FiltroDisponibilidadProducto.disponible,
+    );
+    expect(providerFiltrado.productosFiltrados.single.id, 'producto-1');
+
+    providerFiltrado.actualizarBusqueda('  CAFÉ   instantáneo  ');
+    providerFiltrado.actualizarFiltroDisponibilidad(
+      FiltroDisponibilidadProducto.noDisponible,
+    );
+
+    expect(providerFiltrado.productosFiltrados.single.id, 'producto-2');
+    expect(repository.llamadasPagina, 1);
+
+    providerFiltrado.actualizarBusqueda('sin coincidencias');
+    expect(providerFiltrado.productosFiltrados, isEmpty);
+    expect(
+      providerFiltrado.mensajeSinResultados,
+      'No hay resultados entre los productos cargados.',
+    );
+    expect(repository.llamadasPagina, 1);
+  });
+
+  test('Ver más invalida la caché filtrada con la nueva página', () async {
+    final repository = _RepositorioProductosCreacionFake();
+    const primerCursor = _CursorProductosPrueba('pagina-1');
+    repository.paginas.addAll([
+      PaginaProductos(
+        productos: [producto(id: 'producto-1', nombre: 'Café clásico')],
+        ultimoCursor: primerCursor,
+        hayMas: true,
+      ),
+      PaginaProductos(
+        productos: [producto(id: 'producto-2', nombre: 'Café premium')],
+        ultimoCursor: const _CursorProductosPrueba('pagina-2'),
+        hayMas: false,
+      ),
+    ]);
+    final providerFiltrado = crearProviderPaginado(repository);
+    addTearDown(providerFiltrado.dispose);
+    await providerFiltrado.cargarProductos();
+    providerFiltrado.actualizarBusqueda(' café ');
+
+    final primeraPaginaFiltrada = providerFiltrado.productosFiltrados;
+    expect(primeraPaginaFiltrada, hasLength(1));
+    expect(
+      identical(primeraPaginaFiltrada, providerFiltrado.productosFiltrados),
+      isTrue,
+    );
+
+    await providerFiltrado.cargarMasProductos();
+
+    expect(providerFiltrado.productosFiltrados, hasLength(2));
+    expect(repository.llamadasPagina, 2);
   });
 
   test('bloquea cargas iniciales concurrentes y usa cursor nulo', () async {
@@ -497,6 +602,7 @@ class _RepositorioProductosCreacionFake implements RepositorioProductos {
     ultimoCursor: null,
     hayMas: false,
   );
+  final List<PaginaProductos> paginas = [];
   Completer<PaginaProductos>? paginaPendiente;
 
   @override
@@ -508,7 +614,10 @@ class _RepositorioProductosCreacionFake implements RepositorioProductos {
     llamadasPagina++;
     cursores.add(despuesDe);
     limites.add(limite);
-    return paginaPendiente?.future ?? Future.value(pagina);
+    final pendiente = paginaPendiente;
+    if (pendiente != null) return pendiente.future;
+    if (paginas.isNotEmpty) return Future.value(paginas.removeAt(0));
+    return Future.value(pagina);
   }
 
   @override
