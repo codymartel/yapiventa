@@ -220,7 +220,7 @@ class ContenidoProductos extends StatelessWidget {
   ) {
     final escalaTexto = MediaQuery.textScalerOf(context).scale(1);
     final alturaTarjeta =
-        348 + ((escalaTexto - 1).clamp(0, 2).toDouble() * 100);
+        356 + ((escalaTexto - 1).clamp(0, 2).toDouble() * 100);
     final agregarHabilitado =
         catalogoProvider.disponible &&
         !provider.cargando &&
@@ -228,11 +228,12 @@ class ContenidoProductos extends StatelessWidget {
         !provider.cargandoMas &&
         !provider.creandoProducto &&
         !provider.editandoProducto;
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1440),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+    return SingleChildScrollView(
+      key: const Key('productos-page-scroll'),
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1680),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -250,51 +251,43 @@ class ContenidoProductos extends StatelessWidget {
                     ),
                     const SizedBox(height: 18),
                     ..._mensajes(provider, catalogoProvider),
-                    Expanded(
-                      child: provider.cargando && productos.isEmpty
-                          ? const Center(child: CircularProgressIndicator())
-                          : productos.isEmpty && !provider.hayMas
-                          ? const _CatalogoVacio()
-                          : LayoutBuilder(
-                              builder: (context, constraints) {
-                                final columnas = constraints.maxWidth >= 850
-                                    ? 4
-                                    : 3;
-                                return CustomScrollView(
-                                  key: const Key('productos-grid'),
-                                  slivers: [
-                                    SliverGrid(
-                                      gridDelegate:
-                                          SliverGridDelegateWithFixedCrossAxisCount(
-                                            crossAxisCount: columnas,
-                                            mainAxisExtent: alturaTarjeta,
-                                            crossAxisSpacing: 14,
-                                            mainAxisSpacing: 14,
-                                          ),
-                                      delegate: SliverChildBuilderDelegate(
-                                        (context, index) =>
-                                            _construirProductoCard(
-                                              context,
-                                              provider,
-                                              catalogoProvider,
-                                              productos[index],
-                                              esCuadricula: true,
-                                            ),
-                                        childCount: productos.length,
-                                      ),
-                                    ),
-                                    if (provider.hayMas)
-                                      SliverToBoxAdapter(
-                                        child: _BotonVerMas(provider: provider),
-                                      ),
-                                    const SliverToBoxAdapter(
-                                      child: SizedBox(height: 24),
-                                    ),
-                                  ],
-                                );
-                              },
-                            ),
-                    ),
+                    if (provider.cargando && productos.isEmpty)
+                      const SizedBox(
+                        height: 320,
+                        child: Center(child: CircularProgressIndicator()),
+                      )
+                    else if (productos.isEmpty && !provider.hayMas)
+                      const SizedBox(height: 320, child: _CatalogoVacio())
+                    else ...[
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final columnas = constraints.maxWidth >= 1000 ? 4 : 3;
+                          return GridView.builder(
+                            key: const Key('productos-grid'),
+                            shrinkWrap: true,
+                            primary: false,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: productos.length,
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: columnas,
+                                  mainAxisExtent: alturaTarjeta,
+                                  crossAxisSpacing: 14,
+                                  mainAxisSpacing: 14,
+                                ),
+                            itemBuilder: (context, index) =>
+                                _construirProductoCard(
+                                  context,
+                                  provider,
+                                  catalogoProvider,
+                                  productos[index],
+                                  esCuadricula: true,
+                                ),
+                          );
+                        },
+                      ),
+                      if (provider.hayMas) _BotonVerMas(provider: provider),
+                    ],
                   ],
                 ),
               ),

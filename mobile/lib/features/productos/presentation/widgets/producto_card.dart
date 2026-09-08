@@ -65,7 +65,7 @@ class ProductoCard extends StatelessWidget {
                 child: producto.urlImagen.isNotEmpty
                     ? Image.network(
                         producto.urlImagen,
-                        fit: BoxFit.cover,
+                        fit: BoxFit.contain,
                         semanticLabel: 'Imagen de ${producto.nombre}',
                         errorBuilder: (_, _, _) =>
                             Icon(Icons.image_outlined, color: AppColors.border),
@@ -176,17 +176,23 @@ class ProductoCard extends StatelessWidget {
         children: [
           SizedBox(
             width: double.infinity,
-            height: 128,
+            height: 148,
             child: ColoredBox(
-              color: AppColors.fondo,
-              child: producto.urlImagen.isNotEmpty
-                  ? Image.network(
-                      producto.urlImagen,
-                      fit: BoxFit.cover,
-                      semanticLabel: 'Imagen de ${producto.nombre}',
-                      errorBuilder: (_, _, _) => _imagenVacia(),
-                    )
-                  : _imagenVacia(),
+              color: AppColors.superficie,
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: producto.urlImagen.isNotEmpty
+                      ? Image.network(
+                          producto.urlImagen,
+                          fit: BoxFit.contain,
+                          semanticLabel: 'Imagen de ${producto.nombre}',
+                          errorBuilder: (_, _, _) => _imagenVacia(),
+                        )
+                      : _imagenVacia(),
+                ),
+              ),
             ),
           ),
           Expanded(
@@ -244,7 +250,16 @@ class ProductoCard extends StatelessWidget {
 
   Widget _imagenVacia() {
     return Center(
-      child: Icon(Icons.image_outlined, color: AppColors.dim, size: 38),
+      child: Container(
+        width: 56,
+        height: 56,
+        decoration: BoxDecoration(
+          color: AppColors.card,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: Icon(Icons.image_outlined, color: _textoSecundario, size: 28),
+      ),
     );
   }
 

@@ -102,6 +102,12 @@ void main() {
     expect(find.byKey(const Key('fases-negocio-panel')), findsOneWidget);
     expect(find.byKey(const Key('productos-grid')), findsOneWidget);
     expect(find.byKey(const Key('ayuda-productos-panel')), findsOneWidget);
+    expect(find.byKey(const Key('productos-page-scroll')), findsOneWidget);
+    expect(find.byType(CustomScrollView), findsNothing);
+    expect(
+      tester.widget<GridView>(find.byKey(const Key('productos-grid'))).physics,
+      isA<NeverScrollableScrollPhysics>(),
+    );
     expect(find.text('1. Rubro'), findsOneWidget);
     expect(find.text('2. Configuración del negocio'), findsOneWidget);
     expect(find.text('3. Agregado de productos'), findsOneWidget);
@@ -110,7 +116,9 @@ void main() {
       isTrue,
     );
     expect(
-      (tester.widget<SliverGrid>(find.byType(SliverGrid)).gridDelegate
+      (tester
+                  .widget<GridView>(find.byKey(const Key('productos-grid')))
+                  .gridDelegate
               as SliverGridDelegateWithFixedCrossAxisCount)
           .crossAxisCount,
       3,
@@ -119,7 +127,20 @@ void main() {
     tester.view.physicalSize = const Size(1440, 900);
     await tester.pump();
     expect(
-      (tester.widget<SliverGrid>(find.byType(SliverGrid)).gridDelegate
+      (tester
+                  .widget<GridView>(find.byKey(const Key('productos-grid')))
+                  .gridDelegate
+              as SliverGridDelegateWithFixedCrossAxisCount)
+          .crossAxisCount,
+      3,
+    );
+
+    tester.view.physicalSize = const Size(1600, 900);
+    await tester.pump();
+    expect(
+      (tester
+                  .widget<GridView>(find.byKey(const Key('productos-grid')))
+                  .gridDelegate
               as SliverGridDelegateWithFixedCrossAxisCount)
           .crossAxisCount,
       4,
