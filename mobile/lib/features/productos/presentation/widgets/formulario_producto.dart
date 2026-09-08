@@ -1,6 +1,5 @@
-import 'dart:typed_data';
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -118,21 +117,28 @@ class _FormularioProductoState extends State<FormularioProducto> {
 
   bool get _esFraccionaria => _unidadActual?.tipo == TipoUnidad.fraccionaria;
 
-  bool get _precioValido => (double.tryParse(_precioCtrl.text) ?? 0) > 0;
+  double? get _precioIngresado =>
+      double.tryParse(_precioCtrl.text.replaceAll(',', '.'));
+  int? get _stockIngresado => int.tryParse(_stockCtrl.text);
+
+  bool get _precioValido {
+    final precio = _precioIngresado;
+    return precio != null && precio > 0;
+  }
+
   bool get _stockValido {
-    final stock = int.tryParse(_stockCtrl.text);
+    final stock = _stockIngresado;
     return _esStockInfinito || (stock != null && stock >= 0);
   }
 
   bool get _fraccionValida => !_esFraccionaria || _fraccion.isNotBlank;
-  bool get _camposOk =>
+  bool get _camposBaseOk =>
       _nombreCtrl.text.isNotBlank &&
-      _precioValido &&
-      _stockValido &&
       _categoria.isNotBlank &&
       _unidad.isNotBlank &&
-      _fraccionValida &&
-      !_guardando;
+      _fraccionValida;
+  bool get _camposOk =>
+      _camposBaseOk && _precioValido && _stockValido && !_guardando;
 
   Future<void> _elegirFoto() async {
     try {
@@ -157,15 +163,23 @@ class _FormularioProductoState extends State<FormularioProducto> {
   }
 
   Future<void> _guardar() async {
-    if (!_camposOk || _guardando) return;
+    final precio = _precioIngresado;
+    final stock = _stockIngresado;
+    if (_guardando ||
+        !_camposBaseOk ||
+        precio == null ||
+        precio <= 0 ||
+        (!_esStockInfinito && (stock == null || stock < 0))) {
+      return;
+    }
 
     setState(() => _guardando = true);
     final nuevo = Producto(
       id: widget.producto?.id ?? '',
       negocioId: widget.producto?.negocioId ?? '',
       nombre: _nombreCtrl.text.trim(),
-      precio: double.tryParse(_precioCtrl.text) ?? 0,
-      stock: _esStockInfinito ? 9999 : (int.tryParse(_stockCtrl.text) ?? 0),
+      precio: precio,
+      stock: _esStockInfinito ? 9999 : stock!,
       esStockInfinito: _esStockInfinito,
       descripcion: _descripcionCtrl.text.trim(),
       categoria: _categoria,
@@ -280,6 +294,7 @@ class _FormularioProductoState extends State<FormularioProducto> {
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
                     ),
+                    inputFormatters: const [_PrecioInputFormatter()],
                     style: TextStyle(color: AppColors.texto),
                     decoration: const InputDecoration(labelText: 'Precio S/ *'),
                   ),
@@ -299,6 +314,7 @@ class _FormularioProductoState extends State<FormularioProducto> {
                       controller: _stockCtrl,
                       onChanged: (_) => setState(() {}),
                       keyboardType: TextInputType.number,
+                      inputFormatters: const [_StockInputFormatter()],
                       style: TextStyle(color: AppColors.texto),
                       decoration: const InputDecoration(
                         labelText: 'Cantidad en stock *',
@@ -413,4 +429,35 @@ extension on String {
 
 extension on List<String> {
   String? get firstOrNull => isEmpty ? null : first;
+}
+
+class _PrecioInputFormatter extends TextInputFormatter {
+  const _PrecioInputFormatter();
+
+  static final _formato = RegExp(r'^\d+(?:[.,]\d{0,2})?$');
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    if (newValue.text.isEmpty || _formato.hasMatch(newValue.text)) {
+      return newValue;
+    }
+    return oldValue;
+  }
+}
+
+class _StockInputFormatter extends TextInputFormatter {
+  const _StockInputFormatter();
+
+  static final _formato = RegExp(r'^\d*$');
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    return _formato.hasMatch(newValue.text) ? newValue : oldValue;
+  }
 }
