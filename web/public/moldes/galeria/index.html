@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Catálogo — YapiVenta</title>
+  <meta name="description" content="Catálogo web del negocio">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body x-data="catalogo" x-init="cargar()">
+
+  <div x-show="cargando" class="loader" x-cloak>
+    <div class="loader-hilo" aria-hidden="true"></div>
+    <p>Preparando la colección…</p>
+  </div>
+
+  <div x-show="error" class="error-box" x-cloak
+       x-text="'No pudimos cargar la colección. ' + error"></div>
+
+  <!-- Header con carrito -->
+  <header class="header">
+    <div class="wrap header-inner">
+      <div class="marca" x-text="negocio.nombre || 'Mi tienda'"></div>
+      <button class="carrito-btn" @click="carritoAbierto = true" aria-label="Abrir carrito">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="9" cy="21" r="1.4"/><circle cx="19" cy="21" r="1.4"/>
+          <path d="M2.5 3h2l2.2 12.5a1.5 1.5 0 0 0 1.5 1.2h9.8a1.5 1.5 0 0 0 1.5-1.2L21 8H6"/>
+        </svg>
+        <span class="carrito-contador" x-show="totalItems" x-cloak x-text="totalItems"></span>
+      </button>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- Hero con fotos destacadas: entrada fade + slide, sin loop -->
+    <section class="hero">
+      <div class="hero-fotos-bg" x-show="destacadas.length" x-cloak>
+        <template x-for="(f, i) in destacadas.slice(0, 3)" :key="f.id">
+          <img :src="f.urlImagen" :alt="f.nombre"
+               x-show="heroIndex === i"
+               x-transition:enter.opacity.duration.400ms
+               x-transition:enter-start.opacity-0.-translate-y-5
+               x-transition:enter-end.opacity-100.translate-y-0
+               x-transition:leave.opacity.duration.300ms>
+        </template>
+      </div>
+      <div class="hero-overlay"></div>
+      <div class="hero-texto">
+        <p class="hero-eyebrow" x-show="negocio.rubro" x-text="negocio.rubro"></p>
+        <h1 x-text="negocio.nombre || 'Mi tienda'"></h1>
+        <p class="hero-dir" x-show="negocio.direccion" x-text="negocio.direccion"></p>
+        <a class="hero-cta" href="#coleccion">Ver la colección</a>
+      </div>
+    </section>
+
+    <!-- Categorías -->
+    <section class="cats" x-show="categorias.length" x-cloak>
+      <div class="pills">
+        <button class="pill" :class="{ 'pill--activa': categoriaActiva === '' }"
+                @click="categoriaActiva = ''">Todas</button>
+        <template x-for="cat in categorias" :key="cat">
+          <button class="pill" :class="{ 'pill--activa': categoriaActiva === cat }"
+                  @click="categoriaActiva = categoriaActiva === cat ? '' : cat"
+                  x-text="cat"></button>
+        </template>
+      </div>
+    </section>
+
+    <!-- Lookbook: columnas de distinto alto -->
+    <section id="coleccion" x-show="!cargando && !error" class="lookbook">
+      <template x-for="p in productosFiltrados" :key="p.id">
+        <article class="pieza">
+          <div class="pieza-img">
+            <img x-show="p.urlImagen" :src="p.urlImagen" :alt="p.nombre" loading="lazy"
+                 @error="p.urlImagen = ''">
+            <div x-show="!p.urlImagen" class="pieza-ph" x-text="p.nombre.charAt(0)"></div>
+            <span class="pieza-cat" x-show="p.categoria" x-text="p.categoria"></span>
+          </div>
+          <div class="pieza-body">
+            <h2 x-text="p.nombre"></h2>
+            <div class="pieza-foot">
+              <span class="precio" x-text="fmt(p.precio)"></span>
+              <button class="agregar"
+                      @click="agregar(p)"
+                      :disabled="!p.esStockInfinito && p.stock === 0"
+                      x-bind:aria-label="'Agregar ' + p.nombre + ' al carrito'">+</button>
+            </div>
+          </div>
+        </article>
+      </template>
+    </section>
+
+    <section x-show="!cargando && !error && productosFiltrados.length === 0" class="vacio">
+      <p>Por ahora no hay prendas en esta sección.</p>
+    </section>
+  </main>
+
+  <footer class="footer wrap">
+    <p x-show="negocio.nombre" x-text="negocio.nombre" x-cloak></p>
+  </footer>
+
+  <!-- Panel del carrito -->
+  <div class="carrito" x-cloak x-show="carritoAbierto"
+       @keydown.escape.window="carritoAbierto = false"
+       x-transition:enter.opacity.duration.200ms x-transition:leave.opacity.duration.150ms>
+    <div class="carrito-backdrop" @click="carritoAbierto = false"></div>
+    <aside class="carrito-panel"
+           x-transition:enter.slide.right.duration.250ms
+           x-transition:leave.slide.right.duration.150ms
+           @click.outside="carritoAbierto = false">
+      <div class="carrito-head">
+        <h3>Tu carrito</h3>
+        <button class="cerrar" @click="carritoAbierto = false" aria-label="Cerrar">&times;</button>
+      </div>
+
+      <div class="carrito-items" x-show="items.length" x-cloak>
+        <template x-for="(item, i) in items" :key="item.id">
+          <div class="carrito-item">
+            <div class="carrito-item-img">
+              <img x-show="item.urlImagen" :src="item.urlImagen" :alt="item.nombre">
+              <span x-show="!item.urlImagen" x-text="item.nombre.charAt(0)"></span>
+            </div>
+            <div class="carrito-item-info">
+              <p class="carrito-item-nombre" x-text="item.nombre"></p>
+              <p class="carrito-item-precio" x-text="fmt(item.precio)"></p>
+            </div>
+            <div class="carrito-item-cant">
+              <button @click="restar(item)" :disabled="item.cant <= 1">−</button>
+              <span x-text="item.cant"></span>
+              <button @click="sumar(item)">+</button>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <div class="carrito-vacio" x-show="!items.length">
+        <p>Tu carrito está vacío.</p>
+      </div>
+
+      <div class="carrito-foot" x-show="items.length" x-cloak>
+        <div class="carrito-total">
+          <span>Total</span><span x-text="fmt(total)"></span>
+        </div>
+        <a class="btn-wa-carrito" :href="waPedido" target="_blank" rel="noopener">
+          Pedir por WhatsApp
+        </a>
+      </div>
+    </aside>
+  </div>
+
+  <!-- WhatsApp flotante -->
+  <a class="btn-wa-float" :href="waGeneral" target="_blank" rel="noopener"
+     x-show="!carritoAbierto && !cargando" x-cloak>
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
+      <path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 2a8 8 0 1 1-4.1 14.9l-.3-.2-3 .8.8-2.9-.2-.3A8 8 0 0 1 12 4Zm-3.2 4.1c-.2 0-.5 0-.7.3-.2.3-.9.9-.9 2.1s.9 2.4 1 2.6c.1.2 1.8 2.9 4.5 4 .6.3 1.1.4 1.5.5.6.2 1.2.2 1.6.1.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.1-1.2-.1-.1-.3-.2-.6-.4-.3-.1-1.5-.8-1.8-.8-.2-.1-.4-.1-.6.1l-.8.9c-.2.2-.3.2-.6.1-.3-.2-1.2-.5-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6l.4-.5c.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5l-.8-2c-.2-.5-.4-.4-.6-.4Z"/>
+    </svg>
+    <span>WhatsApp</span>
+  </a>
+
+  <!-- Scripts: orden importante — Alpine al final -->
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="../shared/firebase-config.js"></script>
+  <script src="../shared/cargar-negocio.js"></script>
+  <script src="script.js" defer></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.min.js"></script>
+</body>
+</html>
