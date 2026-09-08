@@ -114,23 +114,6 @@ class ContenidoProductos extends StatelessWidget {
         title: const Text('Productos'),
         actions: [
           IconButton(
-            tooltip: 'Elegir plantilla de la tienda',
-            onPressed: catalogo == null
-                ? null
-                : () => Navigator.of(context).pushNamed(
-                    '/elegir-plantilla',
-                    arguments: {
-                      'rubro': catalogo.rubro.isEmpty
-                          ? 'Otros'
-                          : catalogo.rubro,
-                      'plantillaActual':
-                          catalogo.configuracionInicial['plantilla'] as String? ??
-                              '',
-                    },
-                  ),
-            icon: const Icon(Icons.palette_outlined),
-          ),
-          IconButton(
             tooltip: 'Editar configuración del negocio',
             onPressed: catalogo == null
                 ? null
