@@ -18,7 +18,8 @@ import 'package:flutter/material.dart';
 // CÓMO SE USA:
 // Navigator.push(context, MaterialPageRoute(
 //   builder: (_) => SeleccionPlantillaScreen(
-//     rubro: rubro, // opcional, para mostrar un subtítulo contextual
+//     rubro: rubro,          // opcional, para mostrar un subtítulo contextual
+//     plantillaActual: 'neon', // opcional, preselecciona la plantilla guardada
 //     onPlantillaSeleccionada: (plantilla) { /* "neon", "cristal", ... */ },
 //   ),
 // ));
@@ -32,11 +33,16 @@ class SeleccionPlantillaScreen extends StatefulWidget {
   /// Rubro del negocio (Bodega, Restaurante, Ropa, Farmacia, Ferretería…).
   /// Solo se usa para el subtítulo; no condiciona la selección.
   final String rubro;
+
+  /// Plantilla ya guardada del negocio ('' si aún no eligió ninguna).
+  /// Sirve para preseleccionar la tarjeta al reabrir la pantalla.
+  final String plantillaActual;
   final void Function(String plantilla) onPlantillaSeleccionada;
 
   const SeleccionPlantillaScreen({
     super.key,
     this.rubro = '',
+    this.plantillaActual = '',
     required this.onPlantillaSeleccionada,
   });
 
@@ -46,7 +52,13 @@ class SeleccionPlantillaScreen extends StatefulWidget {
 }
 
 class _SeleccionPlantillaScreenState extends State<SeleccionPlantillaScreen> {
-  String? _plantillaSeleccionada;
+  late String _plantillaSeleccionada;
+
+  @override
+  void initState() {
+    super.initState();
+    _plantillaSeleccionada = widget.plantillaActual;
+  }
 
   // Paleta oficial YapaVenta — la misma de SeleccionNegocioScreen.
   static const Color fondo = Color(0xFF070C18);
@@ -183,10 +195,10 @@ class _SeleccionPlantillaScreenState extends State<SeleccionPlantillaScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
-                          onPressed: _plantillaSeleccionada == null
+                          onPressed: _plantillaSeleccionada.isEmpty
                               ? null
                               : () => widget.onPlantillaSeleccionada(
-                                  _plantillaSeleccionada!,
+                                  _plantillaSeleccionada,
                                 ),
                           icon: const Icon(Icons.arrow_forward),
                           label: const Text('Confirmar plantilla'),

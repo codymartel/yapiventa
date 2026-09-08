@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'firebase_options.dart';
@@ -6,6 +7,7 @@ import 'core/theme/app_colors.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
 import 'features/productos/presentation/screens/productos_screen.dart';
+import 'features/negocio/data/negocio_repository.dart';
 import 'features/negocio/presentation/providers/configuracion_negocio_provider.dart';
 import 'features/negocio/presentation/screens/seleccion_negocio_screen.dart';
 import 'features/negocio/presentation/screens/seleccion_plantilla_screen.dart';
@@ -29,14 +31,15 @@ class MyApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         theme: ThemeData.dark(),
         // ── RUTAS NOMBRADAS ─────────────────────────────────────────
-        // '/' y '/registro' no reciben datos.
-        // '/elegir-rubro' es a donde AuthProvider manda cuando
-        // setupComplete == false (usuario nuevo).
-        // '/configurar-negocio' recibe el rubro elegido como argumento
-        // — ver cómo se navega hacia ella en seleccion_negocio_screen.dart.
+        // FLUJO DEL USUARIO NUEVO:
+        //   verificación (login/verificar-correo)
+        //   → '/elegir-rubro'   (selección de rubro)
+        //   → '/configurar-negocio' (wizard de 4 pasos)
+        //   → '/productos'           (gestión de productos)
+        //   → '/elegir-plantilla'    (se elige DESPUÉS de los productos,
+        //                            desde el botón del AppBar de Productos)
+        // '/configurar-negocio' recibe el rubro elegido como argumento.
         // '/home' queda como placeholder temporal.
-        // '/productos' es el listado de productos del negocio y recibe al
-        // usuario al terminar la configuración inicial.
         initialRoute: '/',
         routes: {
           '/': (context) => const LoginScreen(),
@@ -44,29 +47,43 @@ class MyApp extends StatelessWidget {
             onTipoSeleccionado: (rubro) {
               // Conserva Rubro en el historial mientras se configura el
               // negocio, para que el usuario pueda cambiar su eleccion.
-              Navigator.of(context).pushNamed('/elegir-plantilla', arguments: rubro);
+              Navigator.of(context).pushNamed('/configurar-negocio', arguments: rubro);
             },
           ),
           '/elegir-plantilla': (context) {
             final argumentos = ModalRoute.of(context)?.settings.arguments;
-            final rubro = argumentos is String ? argumentos : '';
+            final mapa = argumentos is Map<String, dynamic>
+                ? argumentos
+                : const <String, dynamic>{};
+            final rubro = argumentos is String
+                ? argumentos
+                : (mapa['rubro'] as String? ?? '');
+            final plantillaActual = mapa['plantillaActual'] as String? ?? '';
             return SeleccionPlantillaScreen(
               rubro: rubro,
-              onPlantillaSeleccionada: (plantilla) {
-                Navigator.of(context).pushNamed('/configurar-negocio', arguments: {
-                  'rubro': rubro,
-                  'plantilla': plantilla,
-                });
+              plantillaActual: plantillaActual,
+              onPlantillaSeleccionada: (plantilla) async {
+                final uid = fb.FirebaseAuth.instance.currentUser?.uid;
+                if (uid != null) {
+                  try {
+                    await NegocioRepository().guardarPlantilla(uid, plantilla);
+                  } catch (_) {
+                    // Si falla la red, no bloqueamos la navegación; el
+                    // guardado es idempotente y se reintenta en la próxima
+                    // visita.
+                  }
+                }
+                if (context.mounted) Navigator.of(context).pop();
               },
             );
           },
           '/home': (context) => const _HomePlaceholder(),
           '/productos': (context) => const ProductosScreen(),
         },
-        // '/configurar-negocio' necesita argumentos (rubro y plantilla
-        // opcional), así que se arma aparte con onGenerateRoute en vez de
-        // en el mapa `routes` de arriba (el mapa no permite leer
-        // `arguments` fácilmente antes de construir la pantalla).
+        // '/configurar-negocio' necesita el argumento `rubro`, así que
+        // se arma aparte con onGenerateRoute en vez de en el mapa
+        // `routes` de arriba (el mapa no permite leer `arguments`
+        // fácilmente antes de construir la pantalla).
         onGenerateRoute: (settings) {
           if (settings.name == '/configurar-negocio') {
             final argumentos = settings.arguments;
@@ -76,14 +93,10 @@ class MyApp extends StatelessWidget {
             final rubro = argumentos is Map<String, dynamic>
                 ? argumentos['rubro'] as String
                 : argumentos as String;
-            final plantilla = argumentos is Map<String, dynamic>
-                ? argumentos['plantilla'] as String?
-                : null;
             return MaterialPageRoute(
               builder: (context) => ChangeNotifierProvider(
                 create: (_) => ConfiguracionNegocioProvider(
                   rubro: rubro,
-                  plantilla: plantilla,
                   configuracionInicial: configuracionInicial,
                 ),
                 child: ConfiguracionNegocioScreen(

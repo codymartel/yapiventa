@@ -114,6 +114,23 @@ class ContenidoProductos extends StatelessWidget {
         title: const Text('Productos'),
         actions: [
           IconButton(
+            tooltip: 'Elegir plantilla de la tienda',
+            onPressed: catalogo == null
+                ? null
+                : () => Navigator.of(context).pushNamed(
+                    '/elegir-plantilla',
+                    arguments: {
+                      'rubro': catalogo.rubro.isEmpty
+                          ? 'Otros'
+                          : catalogo.rubro,
+                      'plantillaActual':
+                          catalogo.configuracionInicial['plantilla'] as String? ??
+                              '',
+                    },
+                  ),
+            icon: const Icon(Icons.palette_outlined),
+          ),
+          IconButton(
             tooltip: 'Editar configuración del negocio',
             onPressed: catalogo == null
                 ? null
@@ -191,8 +208,17 @@ class ContenidoProductos extends StatelessWidget {
                     : ListView.builder(
                         // La siguiente pagina se solicita solo con "Ver más".
                         padding: const EdgeInsets.only(bottom: 88),
-                        itemCount: productos.length + (provider.hayMas ? 1 : 0),
+                        itemCount:
+                            productos.length +
+                            (provider.hayMas ? 1 : 0) +
+                            (provider.totalProductos > 0 ? 1 : 0),
                         itemBuilder: (context, index) {
+                          if (index ==
+                              productos.length + (provider.hayMas ? 1 : 0)) {
+                            return _BotonElegirPlantilla(
+                              catalogoProvider: catalogoProvider,
+                            );
+                          }
                           if (index == productos.length) {
                             return _BotonVerMas(provider: provider);
                           }
@@ -287,6 +313,12 @@ class ContenidoProductos extends StatelessWidget {
                         },
                       ),
                       if (provider.hayMas) _BotonVerMas(provider: provider),
+                      if (provider.totalProductos > 0) ...[
+                        const SizedBox(height: 12),
+                        _BotonElegirPlantilla(
+                          catalogoProvider: catalogoProvider,
+                        ),
+                      ],
                     ],
                   ],
                 ),
@@ -421,6 +453,42 @@ class _BotonVerMas extends StatelessWidget {
                 )
               : const Icon(Icons.expand_more),
           label: Text(cargando ? 'Cargando...' : 'Ver más'),
+        ),
+      ),
+    );
+  }
+}
+
+class _BotonElegirPlantilla extends StatelessWidget {
+  final CatalogoNegocioProvider catalogoProvider;
+
+  const _BotonElegirPlantilla({required this.catalogoProvider});
+
+  @override
+  Widget build(BuildContext context) {
+    final catalogo = catalogoProvider.catalogo;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Center(
+        child: FilledButton.icon(
+          onPressed: catalogo == null
+              ? null
+              : () => Navigator.of(context).pushNamed(
+                  '/elegir-plantilla',
+                  arguments: {
+                    'rubro': catalogo.rubro.isEmpty ? 'Otros' : catalogo.rubro,
+                    'plantillaActual':
+                        catalogo.configuracionInicial['plantilla'] as String? ??
+                            '',
+                  },
+                ),
+          style: FilledButton.styleFrom(
+            backgroundColor: AppColors.blue,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          ),
+          icon: const Icon(Icons.arrow_forward),
+          label: const Text('Siguiente paso: elegir plantilla'),
         ),
       ),
     );

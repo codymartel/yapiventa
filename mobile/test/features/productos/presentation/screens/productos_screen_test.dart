@@ -41,6 +41,7 @@ void main() {
     );
 
     when(() => productosProvider.productosFiltrados).thenReturn([producto]);
+    when(() => productosProvider.totalProductos).thenReturn(1);
     when(() => productosProvider.cargando).thenReturn(false);
     when(() => productosProvider.refrescando).thenReturn(false);
     when(() => productosProvider.cargandoMas).thenReturn(false);

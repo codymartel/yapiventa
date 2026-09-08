@@ -39,7 +39,6 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
 
 ConfiguracionNegocioProvider({
     required this.rubro,
-    String? plantilla,
     Map<String, dynamic>? configuracionInicial,
     NegocioRepository? repository,
   }) : _repository = repository ?? NegocioRepository() {
@@ -47,14 +46,12 @@ ConfiguracionNegocioProvider({
     // según el rubro elegido en la pantalla anterior.
     _categorias = List.of(Categorias.obtener(rubro));
     _unidadesMedida = List.of(UnidadesMedida.obtener(rubro));
-    _plantilla = plantilla ?? '';
     if (configuracionInicial != null) {
       _restaurarConfiguracion(configuracionInicial);
     }
   }
 
   void _restaurarConfiguracion(Map<String, dynamic> datos) {
-    _plantilla = datos['plantilla'] as String? ?? _plantilla;
     _nombreNegocio = datos['nombreNegocio'] as String? ?? '';
     _ruc = datos['ruc'] as String? ?? '';
     _linkFacebook = datos['facebook'] as String? ?? '';
@@ -172,12 +169,6 @@ ConfiguracionNegocioProvider({
   }
 
   // ── PASO 1: Datos del negocio ───────────────────────────────────────
-  // Plantilla web elegida en SeleccionPlantillaScreen (id de la carpeta
-  // en web/public/moldes/{id}/). Se conserva aunque el usuario entre al
-  // wizard desde un negocio ya configurado.
-  String _plantilla = '';
-  String get plantilla => _plantilla;
-
   String _nombreNegocio = '';
   String get nombreNegocio => _nombreNegocio;
   set nombreNegocio(String v) {
@@ -492,7 +483,6 @@ ConfiguracionNegocioProvider({
       await _repository.guardarConfiguracionNegocio(
         uid: uid,
         rubro: rubro,
-        plantilla: _plantilla,
         nombreNegocio: _nombreNegocio,
         slug: slugFinal,
         telefonoCompleto: '${_paisTelefono.prefijo}$_telefono',

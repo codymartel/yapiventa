@@ -128,7 +128,6 @@ class NegocioRepository implements RepositorioCatalogoNegocio {
     required List<ZonaDelivery> zonasDelivery,
     required List<HorarioDia> horarios,
     required List<ConfigPagoMetodo> metodosPagoConfig,
-    String plantilla = '', // id del molde web: neon | cristal | sabroso | galeria
   }) async {
     final zonasMap = zonasDelivery
         .map((z) => {'zona': z.zona, 'costo': double.tryParse(z.costo) ?? 0.0})
@@ -204,15 +203,22 @@ class NegocioRepository implements RepositorioCatalogoNegocio {
       'setupComplete': true,
     };
 
-    if (plantilla.isNotEmpty) {
-      updateMap['plantilla'] = plantilla;
-    }
-
     if (metodosActivos.isNotEmpty) {
       updateMap['metodosPago'] = metodosActivos;
       if (configPagosMap.isNotEmpty) updateMap['configPagos'] = configPagosMap;
     }
 
     await _firestore.collection('users').doc(uid).update(updateMap);
+  }
+
+  /// Guarda la plantilla web elegida (id de la carpeta del molde en
+  /// web/public/moldes/{id}/) sin reescribir el resto del negocio.
+  /// Se llama DESPUÉS de que el negocio ya está configurado (desde la
+  /// pantalla de productos), por eso solo hace un `update` del campo.
+  Future<void> guardarPlantilla(String uid, String plantilla) async {
+    await _firestore
+        .collection('users')
+        .doc(uid)
+        .update({'plantilla': plantilla});
   }
 }
