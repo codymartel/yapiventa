@@ -8,6 +8,7 @@ import 'features/auth/presentation/screens/login_screen.dart';
 import 'features/productos/presentation/screens/productos_screen.dart';
 import 'features/negocio/presentation/providers/configuracion_negocio_provider.dart';
 import 'features/negocio/presentation/screens/seleccion_negocio_screen.dart';
+import 'features/negocio/presentation/screens/seleccion_plantilla_screen.dart';
 import 'features/negocio/presentation/screens/configuracion_negocio_screen.dart';
 
 void main() async {
@@ -43,18 +44,29 @@ class MyApp extends StatelessWidget {
             onTipoSeleccionado: (rubro) {
               // Conserva Rubro en el historial mientras se configura el
               // negocio, para que el usuario pueda cambiar su eleccion.
-              Navigator.of(
-                context,
-              ).pushNamed('/configurar-negocio', arguments: rubro);
+              Navigator.of(context).pushNamed('/elegir-plantilla', arguments: rubro);
             },
           ),
+          '/elegir-plantilla': (context) {
+            final argumentos = ModalRoute.of(context)?.settings.arguments;
+            final rubro = argumentos is String ? argumentos : '';
+            return SeleccionPlantillaScreen(
+              rubro: rubro,
+              onPlantillaSeleccionada: (plantilla) {
+                Navigator.of(context).pushNamed('/configurar-negocio', arguments: {
+                  'rubro': rubro,
+                  'plantilla': plantilla,
+                });
+              },
+            );
+          },
           '/home': (context) => const _HomePlaceholder(),
           '/productos': (context) => const ProductosScreen(),
         },
-        // '/configurar-negocio' necesita el argumento `rubro`, así que
-        // se arma aparte con onGenerateRoute en vez de en el mapa
-        // `routes` de arriba (el mapa no permite leer `arguments`
-        // fácilmente antes de construir la pantalla).
+        // '/configurar-negocio' necesita argumentos (rubro y plantilla
+        // opcional), así que se arma aparte con onGenerateRoute en vez de
+        // en el mapa `routes` de arriba (el mapa no permite leer
+        // `arguments` fácilmente antes de construir la pantalla).
         onGenerateRoute: (settings) {
           if (settings.name == '/configurar-negocio') {
             final argumentos = settings.arguments;
@@ -64,10 +76,14 @@ class MyApp extends StatelessWidget {
             final rubro = argumentos is Map<String, dynamic>
                 ? argumentos['rubro'] as String
                 : argumentos as String;
+            final plantilla = argumentos is Map<String, dynamic>
+                ? argumentos['plantilla'] as String?
+                : null;
             return MaterialPageRoute(
               builder: (context) => ChangeNotifierProvider(
                 create: (_) => ConfiguracionNegocioProvider(
                   rubro: rubro,
+                  plantilla: plantilla,
                   configuracionInicial: configuracionInicial,
                 ),
                 child: ConfiguracionNegocioScreen(

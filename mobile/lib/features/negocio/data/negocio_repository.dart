@@ -128,6 +128,7 @@ class NegocioRepository implements RepositorioCatalogoNegocio {
     required List<ZonaDelivery> zonasDelivery,
     required List<HorarioDia> horarios,
     required List<ConfigPagoMetodo> metodosPagoConfig,
+    String plantilla = '', // id del molde web: neon | cristal | sabroso | galeria
   }) async {
     final zonasMap = zonasDelivery
         .map((z) => {'zona': z.zona, 'costo': double.tryParse(z.costo) ?? 0.0})
@@ -202,6 +203,10 @@ class NegocioRepository implements RepositorioCatalogoNegocio {
       'horarios': horariosMap,
       'setupComplete': true,
     };
+
+    if (plantilla.isNotEmpty) {
+      updateMap['plantilla'] = plantilla;
+    }
 
     if (metodosActivos.isNotEmpty) {
       updateMap['metodosPago'] = metodosActivos;
