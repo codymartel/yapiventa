@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
@@ -6,6 +7,8 @@ import 'firebase_options.dart';
 import 'core/theme/app_colors.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
+import 'features/dashboard/presentation/providers/dashboard_provider.dart';
+import 'features/dashboard/presentation/screens/dashboard_web_screen.dart';
 import 'features/productos/presentation/screens/productos_screen.dart';
 import 'features/negocio/data/negocio_repository.dart';
 import 'features/negocio/presentation/providers/configuracion_negocio_provider.dart';
@@ -47,7 +50,9 @@ class MyApp extends StatelessWidget {
             onTipoSeleccionado: (rubro) {
               // Conserva Rubro en el historial mientras se configura el
               // negocio, para que el usuario pueda cambiar su eleccion.
-              Navigator.of(context).pushNamed('/configurar-negocio', arguments: rubro);
+              Navigator.of(
+                context,
+              ).pushNamed('/configurar-negocio', arguments: rubro);
             },
           ),
           '/elegir-plantilla': (context) {
@@ -77,7 +82,12 @@ class MyApp extends StatelessWidget {
               },
             );
           },
-          '/home': (context) => const _HomePlaceholder(),
+          '/home': (context) => kIsWeb
+              ? ChangeNotifierProvider(
+                  create: (_) => DashboardProvider(),
+                  child: const DashboardWebScreen(),
+                )
+              : const _HomePlaceholder(),
           '/productos': (context) => const ProductosScreen(),
         },
         // '/configurar-negocio' necesita el argumento `rubro`, así que
