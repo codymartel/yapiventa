@@ -205,6 +205,83 @@ class _SeleccionPlantillaScreenState extends State<SeleccionPlantillaScreen> {
                         ),
                       ),
 
+                      const SizedBox(height: 16),
+
+                      // ── Botones: Ver tienda web + Ir al inicio ──
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: [
+                          // Ver tienda web
+                          SizedBox(
+                            width: anchoDisponible < 500
+                                ? double.infinity
+                                : (anchoMaximoContenido - 48 - 12) / 2,
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'La vista web estará disponible próximamente',
+                                    ),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(
+                                Icons.open_in_new,
+                                size: 18,
+                              ),
+                              label: const Text('Ver tienda web'),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: azulAcento,
+                                side: const BorderSide(
+                                  color: azulAcento,
+                                  width: 1.5,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          // Ir al inicio
+                          SizedBox(
+                            width: anchoDisponible < 500
+                                ? double.infinity
+                                : (anchoMaximoContenido - 48 - 12) / 2,
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.pushReplacementNamed(
+                                  context,
+                                  '/home',
+                                );
+                              },
+                              icon: const Icon(
+                                Icons.home_outlined,
+                                size: 18,
+                              ),
+                              label: const Text('Ir al inicio'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: azulAcento,
+                                foregroundColor: blancoPuro,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 8),
+
                       Padding(
                         padding: const EdgeInsets.only(bottom: 32, top: 16),
                         child: Container(
