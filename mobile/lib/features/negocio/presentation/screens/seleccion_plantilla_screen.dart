@@ -1,4 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../../domain/models/plantilla_web.dart';
+import '../providers/seleccion_plantilla_provider.dart';
+
+typedef AbrirUrlTienda =
+    Future<bool> Function(Uri url, {String? webOnlyWindowName});
 
 // ═════════════════════════════════════════════════════════════════════════
 // SeleccionPlantillaScreen
@@ -19,7 +27,6 @@ import 'package:flutter/material.dart';
 // Navigator.push(context, MaterialPageRoute(
 //   builder: (_) => SeleccionPlantillaScreen(
 //     rubro: rubro,          // opcional, para mostrar un subtítulo contextual
-//     plantillaActual: 'neon', // opcional, preselecciona la plantilla guardada
 //     onPlantillaSeleccionada: (plantilla) { /* "neon", "cristal", ... */ },
 //   ),
 // ));
@@ -34,16 +41,14 @@ class SeleccionPlantillaScreen extends StatefulWidget {
   /// Solo se usa para el subtítulo; no condiciona la selección.
   final String rubro;
 
-  /// Plantilla ya guardada del negocio ('' si aún no eligió ninguna).
-  /// Sirve para preseleccionar la tarjeta al reabrir la pantalla.
-  final String plantillaActual;
   final void Function(String plantilla) onPlantillaSeleccionada;
+  final AbrirUrlTienda? abrirUrl;
 
   const SeleccionPlantillaScreen({
     super.key,
     this.rubro = '',
-    this.plantillaActual = '',
     required this.onPlantillaSeleccionada,
+    this.abrirUrl,
   });
 
   @override
@@ -52,12 +57,57 @@ class SeleccionPlantillaScreen extends StatefulWidget {
 }
 
 class _SeleccionPlantillaScreenState extends State<SeleccionPlantillaScreen> {
-  late String _plantillaSeleccionada;
+  Future<void> _finalizar() async {
+    final provider = context.read<SeleccionPlantillaProvider>();
+    final guardado = await provider.guardar();
+    if (!mounted) return;
+    if (!guardado) {
+      _mostrarMensaje(
+        provider.errorMessage ??
+            'No se pudo guardar la plantilla web. Intenta de nuevo.',
+      );
+      return;
+    }
 
-  @override
-  void initState() {
-    super.initState();
-    _plantillaSeleccionada = widget.plantillaActual;
+    widget.onPlantillaSeleccionada(
+      provider.seleccionTemporal!.valorPersistencia,
+    );
+  }
+
+  Future<void> _verTiendaWeb() async {
+    final provider = context.read<SeleccionPlantillaProvider>();
+    if (!provider.cargado ||
+        provider.plantillaGuardada == null ||
+        provider.slug.isEmpty) {
+      _mostrarMensaje('La vista web estará disponible próximamente');
+      return;
+    }
+
+    final url = Uri.https('yapiventa-tienda.web.app', '/${provider.slug}');
+    try {
+      final abrirUrl = widget.abrirUrl ?? launchUrl;
+      final abierto = await abrirUrl(url, webOnlyWindowName: '_blank');
+      if (!abierto && mounted) {
+        _mostrarMensaje('El navegador no pudo abrir la tienda web.');
+      }
+    } catch (error, stackTrace) {
+      debugPrint(
+        'Error al abrir la tienda publica (${url.host}): '
+        '${error.runtimeType}: $error',
+      );
+      debugPrintStack(stackTrace: stackTrace);
+      if (mounted) {
+        _mostrarMensaje(
+          'Ocurrió un error al abrir la tienda web. Intenta de nuevo.',
+        );
+      }
+    }
+  }
+
+  void _mostrarMensaje(String mensaje) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(mensaje)));
   }
 
   // Paleta oficial YapaVenta — la misma de SeleccionNegocioScreen.
@@ -70,28 +120,28 @@ class _SeleccionPlantillaScreenState extends State<SeleccionPlantillaScreen> {
 
   static const List<Plantilla> _plantillas = [
     Plantilla(
-      id: 'neon',
+      id: PlantillaWeb.neon,
       nombre: 'Neon',
       rubroSugerido: 'Tech / Electrónica',
       descripcion:
           'Fondo oscuro con acentos verde-cian. Ideal para productos tecnológicos.',
     ),
     Plantilla(
-      id: 'cristal',
+      id: PlantillaWeb.cristal,
       nombre: 'Cristal',
       rubroSugerido: 'Farmacia / Ferretería',
       descripcion:
           'Fondo claro, mucho espacio en blanco y sombras suaves. Sensación limpia y confiable.',
     ),
     Plantilla(
-      id: 'sabroso',
+      id: PlantillaWeb.sabroso,
       nombre: 'Sabroso',
       rubroSugerido: 'Restaurante',
       descripcion:
           'Fondo crema cálido con naranja quemado. La comida es la protagonista.',
     ),
     Plantilla(
-      id: 'galeria',
+      id: PlantillaWeb.galeria,
       nombre: 'Galería',
       rubroSugerido: 'Ropa / Moda',
       descripcion:
@@ -101,6 +151,9 @@ class _SeleccionPlantillaScreenState extends State<SeleccionPlantillaScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final seleccionProvider = context.watch<SeleccionPlantillaProvider>();
+    final plantillaSeleccionada = seleccionProvider.seleccionTemporal;
+
     return Scaffold(
       backgroundColor: fondo,
       body: SafeArea(
@@ -158,10 +211,7 @@ class _SeleccionPlantillaScreenState extends State<SeleccionPlantillaScreen> {
                         widget.rubro.isEmpty
                             ? 'Se aplicará automáticamente a tu catálogo.'
                             : 'Se verá con tus productos de ${widget.rubro}.',
-                        style: TextStyle(
-                          color: grisTenue,
-                          fontSize: 14,
-                        ),
+                        style: TextStyle(color: grisTenue, fontSize: 14),
                       ),
 
                       const SizedBox(height: 40),
@@ -181,12 +231,10 @@ class _SeleccionPlantillaScreenState extends State<SeleccionPlantillaScreen> {
                             return _PlantillaCard(
                               plantilla: plantilla,
                               seleccionada:
-                                  _plantillaSeleccionada == plantilla.id,
-                              onTap: () {
-                                setState(
-                                  () => _plantillaSeleccionada = plantilla.id,
-                                );
-                              },
+                                  plantillaSeleccionada == plantilla.id,
+                              onTap: () => context
+                                  .read<SeleccionPlantillaProvider>()
+                                  .seleccionar(plantilla.id),
                             );
                           },
                         ),
@@ -195,19 +243,31 @@ class _SeleccionPlantillaScreenState extends State<SeleccionPlantillaScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
-                          onPressed: _plantillaSeleccionada.isEmpty
+                          onPressed:
+                              !seleccionProvider.cargado ||
+                                  plantillaSeleccionada == null ||
+                                  seleccionProvider.guardando
                               ? null
-                              : () => widget.onPlantillaSeleccionada(
-                                  _plantillaSeleccionada,
-                                ),
-                          icon: const Icon(Icons.arrow_forward),
-                          label: const Text('Confirmar plantilla'),
+                              : _finalizar,
+                          icon: seleccionProvider.guardando
+                              ? const SizedBox.square(
+                                  dimension: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.arrow_forward),
+                          label: Text(
+                            seleccionProvider.guardando
+                                ? 'Guardando...'
+                                : 'Finalizar',
+                          ),
                         ),
                       ),
 
                       const SizedBox(height: 16),
 
-                      // ── Botones: Ver tienda web + Ir al inicio ──
+                      // ── Botones: Ver tienda web + Ir al dashboard ──
                       Wrap(
                         spacing: 12,
                         runSpacing: 12,
@@ -218,19 +278,8 @@ class _SeleccionPlantillaScreenState extends State<SeleccionPlantillaScreen> {
                                 ? double.infinity
                                 : (anchoMaximoContenido - 48 - 12) / 2,
                             child: OutlinedButton.icon(
-                              onPressed: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      'La vista web estará disponible próximamente',
-                                    ),
-                                  ),
-                                );
-                              },
-                              icon: const Icon(
-                                Icons.open_in_new,
-                                size: 18,
-                              ),
+                              onPressed: _verTiendaWeb,
+                              icon: const Icon(Icons.open_in_new, size: 18),
                               label: const Text('Ver tienda web'),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: azulAcento,
@@ -248,7 +297,7 @@ class _SeleccionPlantillaScreenState extends State<SeleccionPlantillaScreen> {
                             ),
                           ),
 
-                          // Ir al inicio
+                          // Ir al dashboard
                           SizedBox(
                             width: anchoDisponible < 500
                                 ? double.infinity
@@ -260,11 +309,8 @@ class _SeleccionPlantillaScreenState extends State<SeleccionPlantillaScreen> {
                                   '/home',
                                 );
                               },
-                              icon: const Icon(
-                                Icons.home_outlined,
-                                size: 18,
-                              ),
-                              label: const Text('Ir al inicio'),
+                              icon: const Icon(Icons.home_outlined, size: 18),
+                              label: const Text('Ir al dashboard'),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: azulAcento,
                                 foregroundColor: blancoPuro,
@@ -328,7 +374,7 @@ class _SeleccionPlantillaScreenState extends State<SeleccionPlantillaScreen> {
 // Modelo simple de plantilla. El `id` coincide 1:1 con la carpeta del
 // molde en web/public/moldes/{id}/.
 class Plantilla {
-  final String id;
+  final PlantillaWeb id;
   final String nombre;
   final String rubroSugerido;
   final String descripcion;
@@ -371,18 +417,19 @@ class _PlantillaCardState extends State<_PlantillaCard> {
   static const Color grisTenue = Color(0xFF8FA8C0);
 
   // Paleta de la miniatura — degradado que representa cada molde web.
-  static const Map<String, List<Color>> _paletas = {
-    'neon': [Color(0xFF00FF88), Color(0xFF0A0A0F)],
-    'cristal': [Color(0xFF8ED1B8), Color(0xFFF6F7F9)],
-    'sabroso': [Color(0xFFE65100), Color(0xFFFAF6F0)],
-    'galeria': [Color(0xFF6C45A8), Color(0xFFF4F1FB)],
+  static const Map<PlantillaWeb, List<Color>> _paletas = {
+    PlantillaWeb.neon: [Color(0xFF00FF88), Color(0xFF0A0A0F)],
+    PlantillaWeb.cristal: [Color(0xFF8ED1B8), Color(0xFFF6F7F9)],
+    PlantillaWeb.sabroso: [Color(0xFFE65100), Color(0xFFFAF6F0)],
+    PlantillaWeb.galeria: [Color(0xFF6C45A8), Color(0xFFF4F1FB)],
   };
 
   bool _hover = false;
 
   @override
   Widget build(BuildContext context) {
-    final paleta = _paletas[widget.plantilla.id] ??
+    final paleta =
+        _paletas[widget.plantilla.id] ??
         const [Color(0xFF1E88E5), Color(0xFF0A1B2E)];
 
     return MouseRegion(
@@ -400,9 +447,7 @@ class _PlantillaCardState extends State<_PlantillaCard> {
               color: const Color(0xFF111D33),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: _hover || widget.seleccionada
-                    ? azulAcento
-                    : marinoCard,
+                color: _hover || widget.seleccionada ? azulAcento : marinoCard,
                 width: widget.seleccionada ? 2 : 1,
               ),
               boxShadow: _hover

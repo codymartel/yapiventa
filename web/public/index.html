@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Tienda YapiVenta</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      color: #edf5ff;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(30, 136, 229, 0.2), transparent 34%),
+        #070c18;
+    }
+
+    main {
+      width: min(100%, 520px);
+      padding: 40px;
+      border: 1px solid #1a3050;
+      border-radius: 20px;
+      background: #0a1b2e;
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
+    }
+
+    .marca {
+      margin: 0 0 12px;
+      color: #64b5f6;
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(28px, 7vw, 42px);
+      line-height: 1.08;
+    }
+
+    p {
+      margin: 18px 0 0;
+      color: #a9bed2;
+      font-size: 16px;
+      line-height: 1.6;
+    }
+
+    .indicador {
+      width: 34px;
+      height: 34px;
+      margin-top: 28px;
+      border: 3px solid rgba(100, 181, 246, 0.25);
+      border-top-color: #64b5f6;
+      border-radius: 50%;
+      animation: girar 0.8s linear infinite;
+    }
+
+    .error h1 { font-size: clamp(25px, 6vw, 36px); }
+    .error .indicador { display: none; }
+
+    @keyframes girar { to { transform: rotate(360deg); } }
+
+    @media (max-width: 560px) {
+      main { padding: 30px 24px; }
+    }
+  </style>
+</head>
+<body>
+  <main id="estado" aria-live="polite" aria-busy="true">
+    <p class="marca">YapiVenta</p>
+    <h1>Preparando tu tienda</h1>
+    <p id="mensaje">Estamos buscando el negocio y su plantilla.</p>
+    <div class="indicador" aria-hidden="true"></div>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="/moldes/shared/firebase-config.js"></script>
+  <script src="/moldes/shared/cargar-negocio.js"></script>
+  <script src="/resolver-tienda.js"></script>
+</body>
+</html>

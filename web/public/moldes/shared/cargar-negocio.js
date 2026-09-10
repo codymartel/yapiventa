@@ -2,7 +2,7 @@
 // CargarNegocio — cargador único de datos para los moldes web.
 //
 // QUÉ HACE:
-//   - Resuelve el negocio por su `slug` (desde ?slug=... en la URL).
+//   - Resuelve el negocio por su `slug` (recibido o desde ?slug=... en la URL).
 //   - Lee `users/{uid}` y la subcolección `users/{uid}/productos`.
 //   - Normaliza la data al mismo esquema que usa la app móvil.
 //   - Cachea la promesa: las N páginas de un molde comparten UN solo fetch.
@@ -23,6 +23,8 @@ window.CargarNegocio = (function () {
     minimumFractionDigits: 2,
   });
 
+  let promesaNegocioCache = null;
+  let slugNegocioCache = '';
   let promesaCache = null;
 
   function leerSlugDesdeURL() {
@@ -61,10 +63,9 @@ window.CargarNegocio = (function () {
     return categorias;
   }
 
-  async function cargar() {
+  async function cargarNegocio(slugSolicitado) {
     const db = firebase.firestore();
-
-    const slug = leerSlugDesdeURL();
+    const slug = String(slugSolicitado || leerSlugDesdeURL()).trim();
     if (!slug) {
       throw new Error('Falta el slug del negocio. Abre esta página como ?slug=mi-negocio');
     }
@@ -81,21 +82,41 @@ window.CargarNegocio = (function () {
 
     const documento = resultado.docs[0];
     const datos = documento.data() || {};
+    const plantillaOficial =
+      typeof datos.plantillaWeb === 'string' ? datos.plantillaWeb.trim() : '';
+    const plantillaLegada =
+      typeof datos.plantilla === 'string' ? datos.plantilla.trim() : '';
 
-    const negocio = {
+    return {
       id: documento.id,
       nombre: String(datos.nombreNegocio || datos.nombre || '').trim(),
       rubro: String(datos.rubro || '').trim(),
       telefono: String(datos.telefono || '').trim(),
       direccion: String(datos.direccion || '').trim(),
+      plantilla: plantillaOficial || plantillaLegada,
+      webActiva: datos.webActiva !== false,
       categorias: Array.isArray(datos.categorias)
         ? datos.categorias.filter((c) => String(c || '').trim() !== '')
         : [],
     };
+  }
+
+  function obtenerNegocio(slugSolicitado) {
+    const slug = String(slugSolicitado || leerSlugDesdeURL()).trim();
+    if (!promesaNegocioCache || slugNegocioCache !== slug) {
+      slugNegocioCache = slug;
+      promesaNegocioCache = cargarNegocio(slug);
+    }
+    return promesaNegocioCache;
+  }
+
+  async function cargar() {
+    const db = firebase.firestore();
+    const negocio = await obtenerNegocio();
 
     const snapProductos = await db
       .collection('users')
-      .doc(documento.id)
+      .doc(negocio.id)
       .collection('productos')
       .get();
 
@@ -112,6 +133,8 @@ window.CargarNegocio = (function () {
   }
 
   return {
+    obtenerNegocio: obtenerNegocio,
+
     obtener: function () {
       if (!promesaCache) promesaCache = cargar();
       return promesaCache;

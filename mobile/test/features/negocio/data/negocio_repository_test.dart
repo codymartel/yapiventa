@@ -5,6 +5,7 @@ import 'package:mobile/features/negocio/data/negocio_repository.dart';
 import 'package:mobile/features/negocio/domain/models/config_pago_metodo.dart';
 import 'package:mobile/features/negocio/domain/models/horario_dia.dart';
 import 'package:mobile/features/negocio/domain/models/metodo_pago_tipo.dart';
+import 'package:mobile/features/negocio/domain/models/plantilla_web.dart';
 import 'package:mobile/features/negocio/domain/models/zona_delivery.dart';
 
 void main() {
@@ -80,6 +81,7 @@ void main() {
     () async {
       await firestore.collection('users').doc('usuario-1').set({
         'email': 'ana@example.com',
+        'plantillaWeb': 'neon',
       });
 
       await repository.guardarConfiguracionNegocio(
@@ -134,6 +136,7 @@ void main() {
       expect(datos['email'], 'ana@example.com');
       expect(datos['rubro'], 'Bodega');
       expect(datos['nombreNegocio'], 'Bodega Ana');
+      expect(datos['plantillaWeb'], 'neon');
       expect(datos['setupComplete'], isTrue);
       expect(datos['deliveryZonas'], [
         {'zona': 'Centro', 'costo': 7.5},
@@ -158,4 +161,102 @@ void main() {
       });
     },
   );
+
+  test('guardarPlantillaWeb actualiza solo el molde web', () async {
+    await firestore.collection('users').doc('usuario-1').set({
+      'slug': 'bodega-ana',
+      'plantilla': 'neon',
+    });
+
+    await repository.guardarPlantillaWeb('usuario-1', PlantillaWeb.cristal);
+
+    final datos = (await firestore.collection('users').doc('usuario-1').get())
+        .data()!;
+    expect(datos, {
+      'slug': 'bodega-ana',
+      'plantilla': 'neon',
+      'plantillaWeb': 'cristal',
+    });
+  });
+
+  test(
+    'obtiene slug y prioriza plantillaWeb en una lectura conjunta',
+    () async {
+      await firestore.collection('users').doc('usuario-1').set({
+        'slug': ' bodega-ana ',
+        'plantilla': 'neon',
+        'plantillaWeb': 'galeria',
+      });
+
+      final info = await repository.obtenerSeleccionPlantilla('usuario-1');
+
+      expect(info.slug, 'bodega-ana');
+      expect(info.plantillaGuardada, PlantillaWeb.galeria);
+      expect(info.provieneDeCampoOficial, isTrue);
+    },
+  );
+
+  test(
+    'usa plantilla legada solo si plantillaWeb falta o esta vacia',
+    () async {
+      await firestore.collection('users').doc('sin-oficial').set({
+        'slug': 'tienda-uno',
+        'plantilla': 'neon',
+      });
+      await firestore.collection('users').doc('oficial-vacia').set({
+        'slug': 'tienda-dos',
+        'plantilla': 'sabroso',
+        'plantillaWeb': '  ',
+      });
+
+      final sinOficial = await repository.obtenerSeleccionPlantilla(
+        'sin-oficial',
+      );
+      final oficialVacia = await repository.obtenerSeleccionPlantilla(
+        'oficial-vacia',
+      );
+
+      expect(sinOficial.plantillaGuardada, PlantillaWeb.neon);
+      expect(sinOficial.provieneDeCampoOficial, isFalse);
+      expect(oficialVacia.plantillaGuardada, PlantillaWeb.sabroso);
+      expect(oficialVacia.provieneDeCampoOficial, isFalse);
+    },
+  );
+
+  test('no convierte limpio ni ignora un campo oficial no vacio', () async {
+    await firestore.collection('users').doc('legado-limpio').set({
+      'slug': 'tienda-uno',
+      'plantilla': 'limpio',
+    });
+    await firestore.collection('users').doc('oficial-invalido').set({
+      'slug': 'tienda-dos',
+      'plantilla': 'neon',
+      'plantillaWeb': 'limpio',
+    });
+
+    final legado = await repository.obtenerSeleccionPlantilla('legado-limpio');
+    final oficial = await repository.obtenerSeleccionPlantilla(
+      'oficial-invalido',
+    );
+
+    expect(legado.plantillaGuardada, isNull);
+    expect(legado.provieneDeCampoOficial, isFalse);
+    expect(oficial.plantillaGuardada, isNull);
+    expect(oficial.provieneDeCampoOficial, isTrue);
+  });
+
+  test('usa el campo legado si plantillaWeb no es texto', () async {
+    await firestore.collection('users').doc('oficial-mal-tipado').set({
+      'slug': 'tienda-uno',
+      'plantilla': 'neon',
+      'plantillaWeb': 7,
+    });
+
+    final info = await repository.obtenerSeleccionPlantilla(
+      'oficial-mal-tipado',
+    );
+
+    expect(info.plantillaGuardada, PlantillaWeb.neon);
+    expect(info.provieneDeCampoOficial, isFalse);
+  });
 }

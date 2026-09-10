@@ -460,9 +460,6 @@ class _BotonElegirPlantilla extends StatelessWidget {
                   '/elegir-plantilla',
                   arguments: {
                     'rubro': catalogo.rubro.isEmpty ? 'Otros' : catalogo.rubro,
-                    'plantillaActual':
-                        catalogo.configuracionInicial['plantilla'] as String? ??
-                            '',
                   },
                 ),
           style: FilledButton.styleFrom(

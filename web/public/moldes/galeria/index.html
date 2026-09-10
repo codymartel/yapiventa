@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
-<body x-data="catalogo" x-init="cargar()">
+<body x-data="catalogo">
 
   <div x-show="cargando" class="loader" x-cloak>
     <div class="loader-hilo" aria-hidden="true"></div>
@@ -75,7 +75,7 @@
         <article class="pieza">
           <div class="pieza-img">
             <img x-show="p.urlImagen" :src="p.urlImagen" :alt="p.nombre" loading="lazy"
-                 @error="p.urlImagen = ''">
+                 @error="ocultarImagen(p)">
             <div x-show="!p.urlImagen" class="pieza-ph" x-text="p.nombre.charAt(0)"></div>
             <span class="pieza-cat" x-show="p.categoria" x-text="p.categoria"></span>
           </div>
@@ -166,6 +166,6 @@
   <script src="../shared/firebase-config.js"></script>
   <script src="../shared/cargar-negocio.js"></script>
   <script src="script.js" defer></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/csp@3.17.2/dist/cdn.min.js"></script>
 </body>
 </html>

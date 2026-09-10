@@ -13,6 +13,10 @@ document.addEventListener('alpine:init', () => {
     categoriaActiva: '',
     activo: null,
 
+    init() {
+      this.cargar();
+    },
+
     async cargar() {
       try {
         this.cargando = true;
@@ -40,6 +44,9 @@ document.addEventListener('alpine:init', () => {
     cerrar() {
       this.activo = null;
       document.body.style.overflow = '';
+    },
+    ocultarImagen(producto) {
+      producto.urlImagen = '';
     },
 
     fmt(v) { return CargarNegocio.formatearPrecio(v); },

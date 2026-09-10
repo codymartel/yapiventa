@@ -3,12 +3,14 @@ import '../../../../core/theme/app_colors.dart';
 
 class DashboardTopBar extends StatelessWidget {
   final String nombreNegocio;
+  final VoidCallback onElegirPlantilla;
   final VoidCallback onVerTienda;
   final VoidCallback? onAbrirMenu;
 
   const DashboardTopBar({
     super.key,
     required this.nombreNegocio,
+    required this.onElegirPlantilla,
     required this.onVerTienda,
     this.onAbrirMenu,
   });
@@ -57,6 +59,13 @@ class DashboardTopBar extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 16),
+          IconButton(
+            onPressed: onElegirPlantilla,
+            tooltip: 'Elegir plantilla',
+            color: AppColors.blueLt,
+            icon: const Icon(Icons.palette_outlined),
+          ),
+          const SizedBox(width: 8),
           OutlinedButton.icon(
             onPressed: onVerTienda,
             style: OutlinedButton.styleFrom(

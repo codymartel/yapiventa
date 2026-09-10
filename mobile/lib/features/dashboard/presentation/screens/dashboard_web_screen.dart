@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../negocio/presentation/providers/seleccion_plantilla_provider.dart';
 import '../providers/dashboard_provider.dart';
 import '../state/dashboard_ui_state.dart';
 import '../widgets/dashboard_attention_panel.dart';
@@ -11,8 +13,13 @@ import '../widgets/dashboard_sidebar.dart';
 import '../widgets/dashboard_summary_cards.dart';
 import '../widgets/dashboard_top_bar.dart';
 
+typedef AbrirUrlDashboard =
+    Future<bool> Function(Uri url, {String? webOnlyWindowName});
+
 class DashboardWebScreen extends StatelessWidget {
-  const DashboardWebScreen({super.key});
+  final AbrirUrlDashboard? abrirUrl;
+
+  const DashboardWebScreen({super.key, this.abrirUrl});
 
   static const _desktopBreakpoint = 1050.0;
 
@@ -53,10 +60,8 @@ class DashboardWebScreen extends StatelessWidget {
                     Builder(
                       builder: (topBarContext) => DashboardTopBar(
                         nombreNegocio: state.nombreNegocio,
-                        onVerTienda: () => _mostrarProximamente(
-                          context,
-                          'La tienda web se conectará cuando tengamos el slug real.',
-                        ),
+                        onElegirPlantilla: () => _elegirPlantilla(context),
+                        onVerTienda: () => _verTiendaWeb(context),
                         onAbrirMenu: esDesktop
                             ? null
                             : () => Scaffold.of(topBarContext).openDrawer(),
@@ -125,6 +130,58 @@ class DashboardWebScreen extends StatelessWidget {
       case DashboardDestination.ayuda:
         _mostrarProximamente(context, 'Ayuda estará disponible próximamente.');
         return;
+    }
+  }
+
+  Future<void> _elegirPlantilla(BuildContext context) async {
+    final resultado = await Navigator.of(
+      context,
+    ).pushNamed('/elegir-plantilla');
+    if (!context.mounted || resultado == null) return;
+    await context.read<SeleccionPlantillaProvider>().recargar();
+  }
+
+  Future<void> _verTiendaWeb(BuildContext context) async {
+    final seleccion = context.read<SeleccionPlantillaProvider>();
+    if (!seleccion.cargado) {
+      _mostrarProximamente(
+        context,
+        seleccion.cargando
+            ? 'Estamos cargando los datos de tu tienda.'
+            : 'No se pudieron cargar los datos de tu tienda.',
+      );
+      return;
+    }
+    if (seleccion.slug.isEmpty || seleccion.plantillaGuardada == null) {
+      _mostrarProximamente(
+        context,
+        'Selecciona una plantilla para publicar tu tienda web.',
+      );
+      return;
+    }
+
+    final url = Uri.https('yapiventa-tienda.web.app', '/${seleccion.slug}');
+    try {
+      final lanzarUrl = abrirUrl ?? launchUrl;
+      final abierto = await lanzarUrl(url, webOnlyWindowName: '_blank');
+      if (!abierto && context.mounted) {
+        _mostrarProximamente(
+          context,
+          'El navegador no pudo abrir la tienda web.',
+        );
+      }
+    } catch (error, stackTrace) {
+      debugPrint(
+        'Error al abrir la tienda publica (${url.host}): '
+        '${error.runtimeType}: $error',
+      );
+      debugPrintStack(stackTrace: stackTrace);
+      if (context.mounted) {
+        _mostrarProximamente(
+          context,
+          'Ocurrió un error al abrir la tienda web. Intenta de nuevo.',
+        );
+      }
     }
   }
 

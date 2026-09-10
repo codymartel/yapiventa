@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "yapiventa"
+  },
+  "targets": {
+    "yapiventa": {
+      "hosting": {
+        "tienda": [
+          "yapiventa-tienda"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

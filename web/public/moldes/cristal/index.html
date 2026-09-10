@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
-<body x-data="catalogo" x-init="cargar()">
+<body x-data="catalogo">
 
   <div x-show="cargando" class="loader" x-cloak>
     <div class="loader-bar" aria-hidden="true"></div>
@@ -55,25 +55,25 @@
 
     <!-- Grid -->
     <section x-show="!cargando && !error" class="grid">
-      <article class="card" x-show="filtrados.length"
-               x-for="p in filtrados" :key="p.id"
-               @click="abrir(p)">
-        <div class="card-img">
-          <img x-show="p.urlImagen" :src="p.urlImagen" :alt="p.nombre" loading="lazy"
-               @error="p.urlImagen = ''">
-          <div x-show="!p.urlImagen" class="card-ph" x-text="p.nombre.charAt(0)"></div>
-          <span class="categoria" x-show="p.categoria" x-text="p.categoria"></span>
-        </div>
-
-        <div class="card-body">
-          <h2 x-text="p.nombre"></h2>
-          <p class="card-desc" x-show="p.descripcion" x-text="p.descripcion"></p>
-          <div class="card-foot">
-            <span class="precio" x-text="fmt(p.precio)"></span>
-            <span class="unidad" x-show="p.unidadMedidaNombre" x-text="p.unidadMedidaNombre"></span>
+      <template x-for="p in filtrados" :key="p.id">
+        <article class="card" x-show="filtrados.length" @click="abrir(p)">
+          <div class="card-img">
+            <img x-show="p.urlImagen" :src="p.urlImagen" :alt="p.nombre" loading="lazy"
+                 @error="ocultarImagen(p)">
+            <div x-show="!p.urlImagen" class="card-ph" x-text="p.nombre.charAt(0)"></div>
+            <span class="categoria" x-show="p.categoria" x-text="p.categoria"></span>
           </div>
-        </div>
-      </article>
+
+          <div class="card-body">
+            <h2 x-text="p.nombre"></h2>
+            <p class="card-desc" x-show="p.descripcion" x-text="p.descripcion"></p>
+            <div class="card-foot">
+              <span class="precio" x-text="fmt(p.precio)"></span>
+              <span class="unidad" x-show="p.unidadMedidaNombre" x-text="p.unidadMedidaNombre"></span>
+            </div>
+          </div>
+        </article>
+      </template>
     </section>
 
     <section x-show="!cargando && !error && filtrados.length === 0" class="vacio">
@@ -95,32 +95,34 @@
        @keydown.escape.window="cerrar()"
        x-transition:enter.opacity.duration.200ms x-transition:leave.opacity.duration.150ms>
     <div class="modal-backdrop" @click="cerrar()"></div>
-    <div class="modal-panel" @click.outside="cerrar()"
-         x-transition:enter.slide.down.scale.origin.top.duration.250ms
-         x-transition:leave.scale.origin.top.duration.150ms>
-      <button class="modal-close" @click="cerrar()" aria-label="Cerrar">&times;</button>
+    <template x-if="activo">
+      <div class="modal-panel" @click.outside="cerrar()"
+           x-transition:enter.slide.down.scale.origin.top.duration.250ms
+           x-transition:leave.scale.origin.top.duration.150ms>
+        <button class="modal-close" @click="cerrar()" aria-label="Cerrar">&times;</button>
 
-      <div class="modal-img">
-        <img x-show="activo.urlImagen" :src="activo.urlImagen" :alt="activo.nombre">
-        <div x-show="!activo.urlImagen" class="modal-ph" x-text="activo.nombre.charAt(0)"></div>
-      </div>
-
-      <div class="modal-body">
-        <span class="categoria" x-show="activo.categoria" x-text="activo.categoria"></span>
-        <h3 x-text="activo.nombre"></h3>
-        <p class="modal-desc" x-show="activo.descripcion" x-text="activo.descripcion"></p>
-
-        <div class="modal-foot">
-          <span class="precio precio--grande" x-text="fmt(activo.precio)"></span>
-          <span class="disponible" x-show="stockDisponible(activo)"
-                x-text="'Disponible: ' + activo.stock"></span>
+        <div class="modal-img">
+          <img x-show="activo.urlImagen" :src="activo.urlImagen" :alt="activo.nombre">
+          <div x-show="!activo.urlImagen" class="modal-ph" x-text="activo.nombre.charAt(0)"></div>
         </div>
 
-        <a class="btn-wa" :href="waProducto" target="_blank" rel="noopener">
-          Consultar por WhatsApp
-        </a>
+        <div class="modal-body">
+          <span class="categoria" x-show="activo.categoria" x-text="activo.categoria"></span>
+          <h3 x-text="activo.nombre"></h3>
+          <p class="modal-desc" x-show="activo.descripcion" x-text="activo.descripcion"></p>
+
+          <div class="modal-foot">
+            <span class="precio precio--grande" x-text="fmt(activo.precio)"></span>
+            <span class="disponible" x-show="stockDisponible(activo)"
+                  x-text="'Disponible: ' + activo.stock"></span>
+          </div>
+
+          <a class="btn-wa" :href="waProducto" target="_blank" rel="noopener">
+            Consultar por WhatsApp
+          </a>
+        </div>
       </div>
-    </div>
+    </template>
   </div>
 
   <!-- WhatsApp flotante -->
@@ -138,6 +140,6 @@
   <script src="../shared/firebase-config.js"></script>
   <script src="../shared/cargar-negocio.js"></script>
   <script src="script.js" defer></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.9/dist/cdn.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/csp@3.17.2/dist/cdn.min.js"></script>
 </body>
 </html>

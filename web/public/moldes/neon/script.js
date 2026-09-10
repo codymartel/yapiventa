@@ -14,7 +14,9 @@ document.addEventListener('alpine:init', () => {
     busqueda: '',
     activo: null,
 
-    init() {},
+    init() {
+      this.cargar();
+    },
 
     async cargar() {
       try {
@@ -50,6 +52,9 @@ document.addEventListener('alpine:init', () => {
       this.activo = null;
       document.body.style.overflow = '';
     },
+    ocultarImagen(producto) {
+      producto.urlImagen = '';
+    },
 
     fmt(v) { return CargarNegocio.formatearPrecio(v); },
     iniciales(nombre) {
@@ -63,6 +68,10 @@ document.addEventListener('alpine:init', () => {
       return String((this.negocio && this.negocio.telefono) || '')
         .replace(/[^\d]/g, '')
         .replace(/^00/, '');
+    },
+    get waUbicacion() {
+      const mensaje = encodeURIComponent('Hola, quiero saber tu ubicación');
+      return 'https://wa.me/' + this.waSinProducto + '?text=' + mensaje;
     },
   }));
 });

@@ -20,6 +20,7 @@ document.addEventListener('alpine:init', () => {
 
     init() {
       this.restaurarCarrito();
+      this.cargar();
     },
 
     async cargar() {
@@ -77,6 +78,9 @@ document.addEventListener('alpine:init', () => {
       try {
         localStorage.setItem(this._claveCarrito, JSON.stringify(this.items));
       } catch (e) { /* almacenamiento no disponible */ }
+    },
+    ocultarImagen(producto) {
+      producto.urlImagen = '';
     },
     agregar(p) {
       if (!p.esStockInfinito && p.stock === 0) return;

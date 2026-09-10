@@ -5,7 +5,10 @@ import '../domain/models/zona_delivery.dart';
 import '../domain/models/horario_dia.dart';
 import '../domain/models/metodo_pago_tipo.dart';
 import '../domain/models/config_pago_metodo.dart';
+import '../domain/models/plantilla_web.dart';
+import '../domain/models/seleccion_plantilla_info.dart';
 import '../domain/repositories/repositorio_catalogo_negocio.dart';
+import '../domain/repositories/repositorio_seleccion_plantilla.dart';
 
 // ═════════════════════════════════════════════════════════════════════════
 // NegocioRepository
@@ -32,7 +35,8 @@ import '../domain/repositories/repositorio_catalogo_negocio.dart';
 //   — igual que hacía tu Kotlin.
 // ═════════════════════════════════════════════════════════════════════════
 
-class NegocioRepository implements RepositorioCatalogoNegocio {
+class NegocioRepository
+    implements RepositorioCatalogoNegocio, RepositorioSeleccionPlantilla {
   final FirebaseFirestore _firestore;
 
   NegocioRepository({FirebaseFirestore? firestore})
@@ -47,6 +51,25 @@ class NegocioRepository implements RepositorioCatalogoNegocio {
       categorias: _leerCategorias(datos['categorias']),
       unidadesMedida: _leerUnidades(datos['unidadesMedida']),
       configuracionInicial: datos,
+    );
+  }
+
+  @override
+  Future<SeleccionPlantillaInfo> obtenerSeleccionPlantilla(String uid) async {
+    final documento = await _firestore.collection('users').doc(uid).get();
+    final datos = documento.data() ?? const <String, dynamic>{};
+    final valorOficial = datos['plantillaWeb'];
+    final campoOficialAusenteOVacio =
+        valorOficial is! String || valorOficial.trim().isEmpty;
+    final provieneDeCampoOficial = !campoOficialAusenteOVacio;
+    final valorGuardado = provieneDeCampoOficial
+        ? valorOficial
+        : datos['plantilla'];
+
+    return SeleccionPlantillaInfo(
+      slug: (datos['slug'] as String?)?.trim() ?? '',
+      plantillaGuardada: PlantillaWeb.desdePersistencia(valorGuardado),
+      provieneDeCampoOficial: provieneDeCampoOficial,
     );
   }
 
@@ -211,14 +234,11 @@ class NegocioRepository implements RepositorioCatalogoNegocio {
     await _firestore.collection('users').doc(uid).update(updateMap);
   }
 
-  /// Guarda la plantilla web elegida (id de la carpeta del molde en
-  /// web/public/moldes/{id}/) sin reescribir el resto del negocio.
-  /// Se llama DESPUÉS de que el negocio ya está configurado (desde la
-  /// pantalla de productos), por eso solo hace un `update` del campo.
-  Future<void> guardarPlantilla(String uid, String plantilla) async {
-    await _firestore
-        .collection('users')
-        .doc(uid)
-        .update({'plantilla': plantilla});
+  /// Guarda solo el id corto del molde web seleccionado.
+  @override
+  Future<void> guardarPlantillaWeb(String uid, PlantillaWeb plantilla) async {
+    await _firestore.collection('users').doc(uid).update({
+      'plantillaWeb': plantilla.valorPersistencia,
+    });
   }
 }

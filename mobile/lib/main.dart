@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'firebase_options.dart';
@@ -10,8 +9,9 @@ import 'features/auth/presentation/screens/login_screen.dart';
 import 'features/dashboard/presentation/providers/dashboard_provider.dart';
 import 'features/dashboard/presentation/screens/dashboard_web_screen.dart';
 import 'features/productos/presentation/screens/productos_screen.dart';
-import 'features/negocio/data/negocio_repository.dart';
+import 'features/negocio/seleccion_plantilla_dependencies.dart';
 import 'features/negocio/presentation/providers/configuracion_negocio_provider.dart';
+import 'features/negocio/presentation/providers/seleccion_plantilla_provider.dart';
 import 'features/negocio/presentation/screens/seleccion_negocio_screen.dart';
 import 'features/negocio/presentation/screens/seleccion_plantilla_screen.dart';
 import 'features/negocio/presentation/screens/configuracion_negocio_screen.dart';
@@ -63,31 +63,32 @@ class MyApp extends StatelessWidget {
             final rubro = argumentos is String
                 ? argumentos
                 : (mapa['rubro'] as String? ?? '');
-            final plantillaActual = mapa['plantillaActual'] as String? ?? '';
-            return SeleccionPlantillaScreen(
-              rubro: rubro,
-              plantillaActual: plantillaActual,
-              onPlantillaSeleccionada: (plantilla) async {
-                final uid = fb.FirebaseAuth.instance.currentUser?.uid;
-                if (uid != null) {
-                  try {
-                    await NegocioRepository().guardarPlantilla(uid, plantilla);
-                  } catch (_) {
-                    // Si falla la red, no bloqueamos la navegación; el
-                    // guardado es idempotente y se reintenta en la próxima
-                    // visita.
-                  }
-                }
-                if (context.mounted) Navigator.of(context).pop();
-              },
+            final uid = context.read<AuthProvider>().usuarioActual?.uid ?? '';
+            return ChangeNotifierProvider(
+              create: (_) => _crearSeleccionPlantillaProvider(uid),
+              child: SeleccionPlantillaScreen(
+                rubro: rubro,
+                onPlantillaSeleccionada: (plantilla) {
+                  if (context.mounted) Navigator.of(context).pop(plantilla);
+                },
+              ),
             );
           },
-          '/home': (context) => kIsWeb
-              ? ChangeNotifierProvider(
-                  create: (_) => DashboardProvider(),
-                  child: const DashboardWebScreen(),
-                )
-              : const _HomePlaceholder(),
+          '/home': (context) {
+            if (!kIsWeb) return const _HomePlaceholder();
+
+            final uid = context.read<AuthProvider>().usuarioActual?.uid ?? '';
+            return MultiProvider(
+              providers: [
+                ChangeNotifierProvider(create: (_) => DashboardProvider()),
+                // Precarga una vez slug y plantilla antes de cualquier clic.
+                ChangeNotifierProvider(
+                  create: (_) => _crearSeleccionPlantillaProvider(uid),
+                ),
+              ],
+              child: const DashboardWebScreen(),
+            );
+          },
           '/productos': (context) => const ProductosScreen(),
         },
         // '/configurar-negocio' necesita el argumento `rubro`, así que
@@ -126,6 +127,15 @@ class MyApp extends StatelessWidget {
       ),
     );
   }
+}
+
+SeleccionPlantillaProvider _crearSeleccionPlantillaProvider(String uid) {
+  final dependencies = SeleccionPlantillaDependencies.production();
+  return SeleccionPlantillaProvider(
+    uid: uid,
+    obtenerSeleccionPlantilla: dependencies.obtenerSeleccionPlantilla,
+    guardarPlantillaWeb: dependencies.guardarPlantillaWeb,
+  )..cargar();
 }
 
 /// Placeholder temporal de Home — se reemplaza cuando migres

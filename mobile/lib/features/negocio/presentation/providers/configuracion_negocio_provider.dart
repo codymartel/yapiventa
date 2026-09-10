@@ -37,7 +37,7 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
   final NegocioRepository _repository;
   final String rubro;
 
-ConfiguracionNegocioProvider({
+  ConfiguracionNegocioProvider({
     required this.rubro,
     Map<String, dynamic>? configuracionInicial,
     NegocioRepository? repository,
@@ -128,8 +128,8 @@ ConfiguracionNegocioProvider({
             const [],
       );
 
-    final metodosActivos = (datos['metodosPago'] as List?)?.cast<String>() ??
-        const [];
+    final metodosActivos =
+        (datos['metodosPago'] as List?)?.cast<String>() ?? const [];
     final configuracionesPago =
         (datos['configPagos'] as Map?)?.cast<String, dynamic>() ?? const {};
     _metodosPagoConfig = MetodoPagoTipo.todos.map((tipo) {
