@@ -41,21 +41,6 @@ class _LoginFormScreenState extends State<LoginFormScreen> {
       _emailController.text.trim(),
       _passwordController.text,
     );
-    if (!mounted) return;
-
-    if (authProvider.status == AuthStatus.success) {
-      // Antes había un TODO vacío aquí — el login validaba bien pero
-      // nunca navegaba a ningún lado. Ahora consulta si el negocio ya
-      // está configurado y decide la ruta correcta.
-      final yaConfigurado = await authProvider.negocioYaConfigurado();
-      if (!mounted) return;
-      Navigator.of(context).pushNamedAndRemoveUntil(
-        yaConfigurado ? '/home' : '/elegir-rubro',
-        (route) => false,
-      );
-    } else if (authProvider.status == AuthStatus.emailNotVerified) {
-      Navigator.of(context).pushReplacementNamed('/verificar-correo');
-    }
   }
 
   @override
@@ -69,9 +54,9 @@ class _LoginFormScreenState extends State<LoginFormScreen> {
     if (authProvider.errorMessage != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(authProvider.errorMessage!)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(authProvider.errorMessage!)));
         authProvider.limpiarError();
       });
     }
@@ -107,7 +92,10 @@ class _LoginFormScreenState extends State<LoginFormScreen> {
 
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 28,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.superficie,
                       borderRadius: BorderRadius.circular(20),
@@ -151,7 +139,10 @@ class _LoginFormScreenState extends State<LoginFormScreen> {
                           style: TextStyle(color: AppColors.texto),
                           decoration: InputDecoration(
                             hintText: 'tucorreo@ejemplo.com',
-                            hintStyle: TextStyle(color: AppColors.dim, fontSize: 14),
+                            hintStyle: TextStyle(
+                              color: AppColors.dim,
+                              fontSize: 14,
+                            ),
                             filled: true,
                             fillColor: AppColors.card,
                             contentPadding: const EdgeInsets.symmetric(
@@ -164,7 +155,10 @@ class _LoginFormScreenState extends State<LoginFormScreen> {
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: AppColors.blueLt, width: 1.2),
+                              borderSide: BorderSide(
+                                color: AppColors.blueLt,
+                                width: 1.2,
+                              ),
                             ),
                           ),
                         ),
@@ -173,7 +167,10 @@ class _LoginFormScreenState extends State<LoginFormScreen> {
                             padding: const EdgeInsets.only(top: 6, left: 2),
                             child: Text(
                               'Ingresa un correo válido',
-                              style: TextStyle(color: AppColors.error, fontSize: 12),
+                              style: TextStyle(
+                                color: AppColors.error,
+                                fontSize: 12,
+                              ),
                             ),
                           ),
 
@@ -197,7 +194,10 @@ class _LoginFormScreenState extends State<LoginFormScreen> {
                           style: TextStyle(color: AppColors.texto),
                           decoration: InputDecoration(
                             hintText: '••••••••',
-                            hintStyle: TextStyle(color: AppColors.dim, fontSize: 14),
+                            hintStyle: TextStyle(
+                              color: AppColors.dim,
+                              fontSize: 14,
+                            ),
                             filled: true,
                             fillColor: AppColors.card,
                             contentPadding: const EdgeInsets.symmetric(
@@ -210,7 +210,10 @@ class _LoginFormScreenState extends State<LoginFormScreen> {
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: AppColors.blueLt, width: 1.2),
+                              borderSide: BorderSide(
+                                color: AppColors.blueLt,
+                                width: 1.2,
+                              ),
                             ),
                             suffixIcon: IconButton(
                               icon: Icon(
@@ -226,12 +229,16 @@ class _LoginFormScreenState extends State<LoginFormScreen> {
                             ),
                           ),
                         ),
-                        if (_passwordController.text.isNotEmpty && !_esPasswordValida)
+                        if (_passwordController.text.isNotEmpty &&
+                            !_esPasswordValida)
                           Padding(
                             padding: const EdgeInsets.only(top: 6, left: 2),
                             child: Text(
                               'Mínimo 6 caracteres',
-                              style: TextStyle(color: AppColors.error, fontSize: 12),
+                              style: TextStyle(
+                                color: AppColors.error,
+                                fontSize: 12,
+                              ),
                             ),
                           ),
 
@@ -243,7 +250,8 @@ class _LoginFormScreenState extends State<LoginFormScreen> {
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.navy,
-                              disabledBackgroundColor: AppColors.navy.withValues(alpha: 0.4),
+                              disabledBackgroundColor: AppColors.navy
+                                  .withValues(alpha: 0.4),
                               elevation: 0,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -278,7 +286,10 @@ class _LoginFormScreenState extends State<LoginFormScreen> {
                               : () => Navigator.pop(context),
                           child: Text(
                             '¿No tienes cuenta? Regístrate',
-                            style: TextStyle(color: AppColors.blueLt, fontSize: 13),
+                            style: TextStyle(
+                              color: AppColors.blueLt,
+                              fontSize: 13,
+                            ),
                           ),
                         ),
                       ],

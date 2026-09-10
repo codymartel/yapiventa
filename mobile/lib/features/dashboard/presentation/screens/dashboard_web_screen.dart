@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../negocio/presentation/providers/seleccion_plantilla_provider.dart';
+import '../../../negocio/domain/models/progreso_configuracion.dart';
 import '../providers/dashboard_provider.dart';
 import '../state/dashboard_ui_state.dart';
 import '../widgets/dashboard_attention_panel.dart';
@@ -10,6 +10,7 @@ import '../widgets/dashboard_quick_actions.dart';
 import '../widgets/dashboard_recent_orders.dart';
 import '../widgets/dashboard_sales_chart.dart';
 import '../widgets/dashboard_sidebar.dart';
+import '../widgets/dashboard_setup_panel.dart';
 import '../widgets/dashboard_summary_cards.dart';
 import '../widgets/dashboard_top_bar.dart';
 
@@ -18,8 +19,19 @@ typedef AbrirUrlDashboard =
 
 class DashboardWebScreen extends StatelessWidget {
   final AbrirUrlDashboard? abrirUrl;
+  final ProgresoConfiguracion progreso;
+  final String email;
+  final ValueChanged<EtapaConfiguracion> onAbrirEtapa;
+  final VoidCallback onCerrarSesion;
 
-  const DashboardWebScreen({super.key, this.abrirUrl});
+  const DashboardWebScreen({
+    super.key,
+    this.abrirUrl,
+    required this.progreso,
+    required this.email,
+    required this.onAbrirEtapa,
+    required this.onCerrarSesion,
+  });
 
   static const _desktopBreakpoint = 1050.0;
 
@@ -44,6 +56,7 @@ class DashboardWebScreen extends StatelessWidget {
                       Navigator.of(context).pop();
                       _seleccionarDestino(context, destino);
                     },
+                    estaHabilitado: _destinoHabilitado,
                   ),
                 ),
           body: Row(
@@ -53,25 +66,31 @@ class DashboardWebScreen extends StatelessWidget {
                   destinoActivo: DashboardDestination.inicio,
                   onSeleccionar: (destino) =>
                       _seleccionarDestino(context, destino),
+                  estaHabilitado: _destinoHabilitado,
                 ),
               Expanded(
                 child: Column(
                   children: [
                     Builder(
                       builder: (topBarContext) => DashboardTopBar(
-                        nombreNegocio: state.nombreNegocio,
+                        nombreNegocio: _nombreNegocio(state),
                         onElegirPlantilla: () => _elegirPlantilla(context),
                         onVerTienda: () => _verTiendaWeb(context),
                         onAbrirMenu: esDesktop
                             ? null
                             : () => Scaffold.of(topBarContext).openDrawer(),
+                        email: email,
+                        onCerrarSesion: onCerrarSesion,
                       ),
                     ),
                     Expanded(
                       child: _DashboardContent(
                         state: state,
-                        onAgregarProducto: () =>
-                            Navigator.of(context).pushNamed('/productos'),
+                        progreso: progreso,
+                        onAbrirEtapa: onAbrirEtapa,
+                        onAgregarProducto: () => progreso.negocioCompleto
+                            ? onAbrirEtapa(EtapaConfiguracion.productos)
+                            : _mostrarBloqueado(context),
                         onActualizarStock: () => _mostrarProximamente(
                           context,
                           'El módulo de stock estará disponible próximamente.',
@@ -97,11 +116,15 @@ class DashboardWebScreen extends StatelessWidget {
   }
 
   void _seleccionarDestino(BuildContext context, DashboardDestination destino) {
+    if (!_destinoHabilitado(destino)) {
+      _mostrarBloqueado(context);
+      return;
+    }
     switch (destino) {
       case DashboardDestination.inicio:
         return;
       case DashboardDestination.productos:
-        Navigator.of(context).pushNamed('/productos');
+        onAbrirEtapa(EtapaConfiguracion.productos);
         return;
       case DashboardDestination.pedidos:
         _mostrarProximamente(
@@ -119,10 +142,7 @@ class DashboardWebScreen extends StatelessWidget {
         );
         return;
       case DashboardDestination.configuracion:
-        _mostrarProximamente(
-          context,
-          'Configuración estará disponible al conectar los datos del negocio.',
-        );
+        onAbrirEtapa(EtapaConfiguracion.negocio);
         return;
       case DashboardDestination.plan:
         _mostrarProximamente(context, 'Plan estará disponible próximamente.');
@@ -134,25 +154,19 @@ class DashboardWebScreen extends StatelessWidget {
   }
 
   Future<void> _elegirPlantilla(BuildContext context) async {
-    final resultado = await Navigator.of(
-      context,
-    ).pushNamed('/elegir-plantilla');
-    if (!context.mounted || resultado == null) return;
-    await context.read<SeleccionPlantillaProvider>().recargar();
+    if (!progreso.productosCompletos) {
+      _mostrarBloqueado(context);
+      return;
+    }
+    onAbrirEtapa(EtapaConfiguracion.plantilla);
   }
 
   Future<void> _verTiendaWeb(BuildContext context) async {
-    final seleccion = context.read<SeleccionPlantillaProvider>();
-    if (!seleccion.cargado) {
-      _mostrarProximamente(
-        context,
-        seleccion.cargando
-            ? 'Estamos cargando los datos de tu tienda.'
-            : 'No se pudieron cargar los datos de tu tienda.',
-      );
+    if (!progreso.completo) {
+      _mostrarBloqueado(context);
       return;
     }
-    if (seleccion.slug.isEmpty || seleccion.plantillaGuardada == null) {
+    if (progreso.slug.isEmpty || progreso.plantilla == null) {
       _mostrarProximamente(
         context,
         'Selecciona una plantilla para publicar tu tienda web.',
@@ -160,7 +174,7 @@ class DashboardWebScreen extends StatelessWidget {
       return;
     }
 
-    final url = Uri.https('yapiventa-tienda.web.app', '/${seleccion.slug}');
+    final url = Uri.https('yapiventa-tienda.web.app', '/${progreso.slug}');
     try {
       final lanzarUrl = abrirUrl ?? launchUrl;
       final abierto = await lanzarUrl(url, webOnlyWindowName: '_blank');
@@ -190,10 +204,33 @@ class DashboardWebScreen extends StatelessWidget {
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(mensaje)));
   }
+
+  bool _destinoHabilitado(DashboardDestination destino) => switch (destino) {
+    DashboardDestination.inicio => true,
+    DashboardDestination.productos => progreso.negocioCompleto,
+    DashboardDestination.configuracion => progreso.rubroCompleto,
+    _ => progreso.completo,
+  };
+
+  String _nombreNegocio(DashboardUiState state) {
+    final nombre = progreso.catalogo.configuracionInicial['nombreNegocio'];
+    return nombre is String && nombre.trim().isNotEmpty
+        ? nombre.trim()
+        : state.nombreNegocio;
+  }
+
+  void _mostrarBloqueado(BuildContext context) {
+    _mostrarProximamente(
+      context,
+      'Completa primero las etapas pendientes de configuración.',
+    );
+  }
 }
 
 class _DashboardContent extends StatelessWidget {
   final DashboardUiState state;
+  final ProgresoConfiguracion progreso;
+  final ValueChanged<EtapaConfiguracion> onAbrirEtapa;
   final VoidCallback onAgregarProducto;
   final VoidCallback onActualizarStock;
   final VoidCallback onVerPedidos;
@@ -201,6 +238,8 @@ class _DashboardContent extends StatelessWidget {
 
   const _DashboardContent({
     required this.state,
+    required this.progreso,
+    required this.onAbrirEtapa,
     required this.onAgregarProducto,
     required this.onActualizarStock,
     required this.onVerPedidos,
@@ -217,6 +256,11 @@ class _DashboardContent extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              DashboardSetupPanel(
+                progreso: progreso,
+                onAbrirEtapa: onAbrirEtapa,
+              ),
+              if (!progreso.completo) const SizedBox(height: 18),
               _DashboardHeading(
                 periodo: state.periodo,
                 datosDemo: state.datosDemo,

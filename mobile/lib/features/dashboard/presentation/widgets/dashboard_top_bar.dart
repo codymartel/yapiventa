@@ -6,6 +6,8 @@ class DashboardTopBar extends StatelessWidget {
   final VoidCallback onElegirPlantilla;
   final VoidCallback onVerTienda;
   final VoidCallback? onAbrirMenu;
+  final String email;
+  final VoidCallback onCerrarSesion;
 
   const DashboardTopBar({
     super.key,
@@ -13,10 +15,13 @@ class DashboardTopBar extends StatelessWidget {
     required this.onElegirPlantilla,
     required this.onVerTienda,
     this.onAbrirMenu,
+    required this.email,
+    required this.onCerrarSesion,
   });
 
   @override
   Widget build(BuildContext context) {
+    final compacto = MediaQuery.sizeOf(context).width < 700;
     return Container(
       constraints: const BoxConstraints(minHeight: 76),
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -66,19 +71,53 @@ class DashboardTopBar extends StatelessWidget {
             icon: const Icon(Icons.palette_outlined),
           ),
           const SizedBox(width: 8),
-          OutlinedButton.icon(
-            onPressed: onVerTienda,
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.texto,
-              side: BorderSide(color: AppColors.blueLt.withValues(alpha: 0.55)),
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+          PopupMenuButton<String>(
+            tooltip: 'Cuenta',
+            icon: const Icon(Icons.account_circle_outlined),
+            onSelected: (value) {
+              if (value == 'logout') onCerrarSesion();
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem<String>(
+                enabled: false,
+                child: Text(email.isEmpty ? 'Mi cuenta' : email),
               ),
-            ),
-            icon: const Icon(Icons.open_in_new_rounded, size: 18),
-            label: const Text('Ver tienda web'),
+              const PopupMenuItem<String>(
+                value: 'logout',
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.logout),
+                  title: Text('Cerrar sesión'),
+                ),
+              ),
+            ],
           ),
+          const SizedBox(width: 8),
+          if (compacto)
+            IconButton(
+              onPressed: onVerTienda,
+              tooltip: 'Ver tienda web',
+              icon: const Icon(Icons.open_in_new_rounded),
+            )
+          else
+            OutlinedButton.icon(
+              onPressed: onVerTienda,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.texto,
+                side: BorderSide(
+                  color: AppColors.blueLt.withValues(alpha: 0.55),
+                ),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 15,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              icon: const Icon(Icons.open_in_new_rounded, size: 18),
+              label: const Text('Ver tienda web'),
+            ),
         ],
       ),
     );

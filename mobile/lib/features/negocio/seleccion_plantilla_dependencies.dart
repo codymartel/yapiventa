@@ -13,6 +13,12 @@ class SeleccionPlantillaDependencies {
 
   factory SeleccionPlantillaDependencies.production() {
     final repositorio = NegocioRepository();
+    return SeleccionPlantillaDependencies.fromRepository(repositorio);
+  }
+
+  factory SeleccionPlantillaDependencies.fromRepository(
+    NegocioRepository repositorio,
+  ) {
     return SeleccionPlantillaDependencies(
       obtenerSeleccionPlantilla: ObtenerSeleccionPlantilla(repositorio),
       guardarPlantillaWeb: GuardarPlantillaWeb(repositorio),

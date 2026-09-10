@@ -36,9 +36,16 @@ import 'package:flutter/material.dart';
 // ═════════════════════════════════════════════════════════════════════════
 
 class SeleccionNegocioScreen extends StatefulWidget {
-  final void Function(String rubro) onTipoSeleccionado;
+  final String rubroInicial;
+  final Future<bool> Function(String rubro) onTipoSeleccionado;
+  final VoidCallback onVolverDashboard;
 
-  const SeleccionNegocioScreen({super.key, required this.onTipoSeleccionado});
+  const SeleccionNegocioScreen({
+    super.key,
+    this.rubroInicial = '',
+    required this.onTipoSeleccionado,
+    required this.onVolverDashboard,
+  });
 
   @override
   State<SeleccionNegocioScreen> createState() => _SeleccionNegocioScreenState();
@@ -46,6 +53,57 @@ class SeleccionNegocioScreen extends StatefulWidget {
 
 class _SeleccionNegocioScreenState extends State<SeleccionNegocioScreen> {
   String? _rubroSeleccionado;
+  bool _guardando = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_rubros.any((rubro) => rubro.nombre == widget.rubroInicial)) {
+      _rubroSeleccionado = widget.rubroInicial;
+    }
+  }
+
+  Future<void> _confirmar() async {
+    final rubro = _rubroSeleccionado;
+    if (rubro == null || _guardando) return;
+    if (widget.rubroInicial.isNotEmpty && widget.rubroInicial != rubro) {
+      final continuar = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Cambiar rubro'),
+          content: const Text(
+            'Deberás revisar la configuración del negocio. Tus productos '
+            'no se borrarán y sólo se pedirá corregir los que resulten incompatibles.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Cambiar y revisar'),
+            ),
+          ],
+        ),
+      );
+      if (continuar != true || !mounted) return;
+    }
+
+    setState(() {
+      _guardando = true;
+      _error = null;
+    });
+    final guardado = await widget.onTipoSeleccionado(rubro);
+    if (!mounted) return;
+    if (!guardado) {
+      setState(() {
+        _guardando = false;
+        _error = 'No se pudo guardar el rubro. Intenta de nuevo.';
+      });
+    }
+  }
 
   // Paleta de colores oficial YapaVenta — idéntica a la versión Kotlin,
   // no se tocó ningún valor hexadecimal.
@@ -86,7 +144,9 @@ class _SeleccionNegocioScreenState extends State<SeleccionNegocioScreen> {
             // ─────────────────────────────────────────────────────────
             final anchoDisponible = constraints.maxWidth;
             final int columnas;
-            if (anchoDisponible < 600) {
+            if (anchoDisponible < 420) {
+              columnas = 1;
+            } else if (anchoDisponible < 600) {
               columnas = 2;
             } else if (anchoDisponible < 1000) {
               columnas = 3;
@@ -110,7 +170,13 @@ class _SeleccionNegocioScreenState extends State<SeleccionNegocioScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const SizedBox(height: 60),
+                      const SizedBox(height: 12),
+                      IconButton(
+                        tooltip: 'Volver al dashboard',
+                        onPressed: _guardando ? null : widget.onVolverDashboard,
+                        icon: const Icon(Icons.arrow_back),
+                      ),
+                      const SizedBox(height: 12),
 
                       // ── Título pequeño superior ("Tu Rubro") ──
                       Text(
@@ -160,7 +226,7 @@ class _SeleccionNegocioScreenState extends State<SeleccionNegocioScreen> {
                                 // card en relación a su ancho. 130dp de alto
                                 // fijo en Compose; acá lo aproximamos con un
                                 // ratio que se ve bien en 2-4 columnas.
-                                childAspectRatio: 1.3,
+                                childAspectRatio: columnas == 1 ? 2 : 1.3,
                               ),
                           itemBuilder: (context, index) {
                             final rubro = _rubros[index];
@@ -188,15 +254,30 @@ class _SeleccionNegocioScreenState extends State<SeleccionNegocioScreen> {
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
-                          onPressed: _rubroSeleccionado == null
+                          onPressed: _rubroSeleccionado == null || _guardando
                               ? null
-                              : () => widget.onTipoSeleccionado(
-                                  _rubroSeleccionado!,
-                                ),
-                          icon: const Icon(Icons.arrow_forward),
-                          label: const Text('Confirmar rubro'),
+                              : _confirmar,
+                          icon: _guardando
+                              ? const SizedBox.square(
+                                  dimension: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.arrow_forward),
+                          label: Text(
+                            _guardando ? 'Guardando...' : 'Confirmar rubro',
+                          ),
                         ),
                       ),
+                      if (_error != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8),
+                          child: Text(
+                            _error!,
+                            style: const TextStyle(color: Colors.redAccent),
+                          ),
+                        ),
 
                       // ── Footer/badge "Configuración de inventario inteligente" ──
                       Padding(
@@ -321,7 +402,7 @@ class _RubroCardState extends State<_RubroCard> {
               boxShadow: _hover
                   ? [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.3),
+                        color: Colors.black.withValues(alpha: 0.3),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -341,7 +422,9 @@ class _RubroCardState extends State<_RubroCard> {
                       width: 52,
                       height: 52,
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(_hover ? 0.1 : 0.05),
+                        color: Colors.white.withValues(
+                          alpha: _hover ? 0.1 : 0.05,
+                        ),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       alignment: Alignment.center,

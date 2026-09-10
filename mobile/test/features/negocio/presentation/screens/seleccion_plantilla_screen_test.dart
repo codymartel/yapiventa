@@ -46,7 +46,7 @@ void main() {
           ),
           home: SeleccionPlantillaScreen(
             rubro: 'Bodega',
-            onPlantillaSeleccionada: (_) {},
+            onPlantillaSeleccionada: (_) async {},
             abrirUrl: abridor.call,
           ),
         ),

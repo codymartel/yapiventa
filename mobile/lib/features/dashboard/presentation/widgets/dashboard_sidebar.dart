@@ -15,11 +15,13 @@ enum DashboardDestination {
 class DashboardSidebar extends StatelessWidget {
   final DashboardDestination destinoActivo;
   final ValueChanged<DashboardDestination> onSeleccionar;
+  final bool Function(DashboardDestination destino) estaHabilitado;
 
   const DashboardSidebar({
     super.key,
     required this.destinoActivo,
     required this.onSeleccionar,
+    required this.estaHabilitado,
   });
 
   @override
@@ -96,6 +98,7 @@ class DashboardSidebar extends StatelessWidget {
     required String texto,
   }) {
     final activo = destino == destinoActivo;
+    final habilitado = estaHabilitado(destino);
     return Semantics(
       button: true,
       selected: activo,
@@ -128,7 +131,13 @@ class DashboardSidebar extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (activo)
+                  if (!habilitado)
+                    const Icon(
+                      Icons.lock_outline,
+                      size: 16,
+                      color: AppColors.muted,
+                    )
+                  else if (activo)
                     Container(
                       width: 5,
                       height: 5,

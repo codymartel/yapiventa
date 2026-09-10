@@ -6,11 +6,11 @@
 // desde initState; los rebuilds solo leen el estado ya cargado.
 // ═════════════════════════════════════════════════════════════════════════
 
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../negocio/catalogo_negocio_dependencies.dart';
+import '../../../negocio/domain/models/catalogo_negocio.dart';
 import '../../../negocio/presentation/providers/catalogo_negocio_provider.dart';
 import '../../domain/models/producto.dart';
 import '../../productos_dependencies.dart';
@@ -20,7 +20,16 @@ import '../widgets/formulario_producto.dart';
 import '../widgets/producto_card.dart';
 
 class ProductosScreen extends StatefulWidget {
-  const ProductosScreen({super.key});
+  final String uid;
+  final CatalogoNegocio catalogoInicial;
+  final VoidCallback? onProgressChanged;
+
+  const ProductosScreen({
+    super.key,
+    required this.uid,
+    required this.catalogoInicial,
+    this.onProgressChanged,
+  });
 
   @override
   State<ProductosScreen> createState() => _ProductosScreenState();
@@ -33,13 +42,13 @@ class _ProductosScreenState extends State<ProductosScreen> {
   @override
   void initState() {
     super.initState();
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
+    final uid = widget.uid;
 
     final catalogoDependencies = CatalogoNegocioDependencies.production();
     _catalogoProvider = CatalogoNegocioProvider(
       uid: uid,
       obtenerCatalogoNegocio: catalogoDependencies.obtenerCatalogoNegocio,
+      catalogoInicial: widget.catalogoInicial,
     )..cargar();
 
     final dependencies = ProductosDependencies.production();
@@ -81,15 +90,20 @@ class _ProductosScreenState extends State<ProductosScreen> {
         ChangeNotifierProvider.value(value: provider),
         ChangeNotifierProvider.value(value: catalogoProvider),
       ],
-      child: const ContenidoProductos(),
+      child: ContenidoProductos(onProgressChanged: widget.onProgressChanged),
     );
   }
 }
 
 class ContenidoProductos extends StatelessWidget {
   final bool mostrarGuiaConfiguracion;
+  final VoidCallback? onProgressChanged;
 
-  const ContenidoProductos({super.key, this.mostrarGuiaConfiguracion = true});
+  const ContenidoProductos({
+    super.key,
+    this.mostrarGuiaConfiguracion = true,
+    this.onProgressChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -394,6 +408,7 @@ class ContenidoProductos extends StatelessWidget {
               .catalogo!
               .unidadesMedida,
           onCancelar: () => Navigator.of(dialogContext).pop(),
+          onGuardado: onProgressChanged,
         ),
       ),
     );
@@ -410,7 +425,8 @@ class ContenidoProductos extends StatelessWidget {
     );
 
     if (confirmar == true) {
-      await provider.eliminarProducto(productoId);
+      final eliminado = await provider.eliminarProducto(productoId);
+      if (eliminado) onProgressChanged?.call();
     }
   }
 }

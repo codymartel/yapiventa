@@ -23,6 +23,7 @@ class FormularioProducto extends StatefulWidget {
   final List<String> categoriasDisponibles;
   final List<UnidadInfo> unidadesDisponibles;
   final VoidCallback onCancelar;
+  final VoidCallback? onGuardado;
 
   const FormularioProducto({
     super.key,
@@ -30,6 +31,7 @@ class FormularioProducto extends StatefulWidget {
     required this.categoriasDisponibles,
     required this.unidadesDisponibles,
     required this.onCancelar,
+    this.onGuardado,
   });
 
   @override
@@ -218,6 +220,7 @@ class _FormularioProductoState extends State<FormularioProducto> {
           ),
         ),
       );
+      widget.onGuardado?.call();
       widget.onCancelar();
     } else {
       messenger.showSnackBar(

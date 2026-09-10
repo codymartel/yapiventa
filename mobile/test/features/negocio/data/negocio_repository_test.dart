@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/domain/models/tipo_unidad.dart';
@@ -6,6 +7,7 @@ import 'package:mobile/features/negocio/domain/models/config_pago_metodo.dart';
 import 'package:mobile/features/negocio/domain/models/horario_dia.dart';
 import 'package:mobile/features/negocio/domain/models/metodo_pago_tipo.dart';
 import 'package:mobile/features/negocio/domain/models/plantilla_web.dart';
+import 'package:mobile/features/negocio/domain/models/progreso_configuracion.dart';
 import 'package:mobile/features/negocio/domain/models/zona_delivery.dart';
 
 void main() {
@@ -13,7 +15,7 @@ void main() {
   late NegocioRepository repository;
 
   setUp(() {
-    firestore = FakeFirebaseFirestore();
+    firestore = _MergeAwareFakeFirebaseFirestore();
     repository = NegocioRepository(firestore: firestore);
   });
 
@@ -82,6 +84,8 @@ void main() {
       await firestore.collection('users').doc('usuario-1').set({
         'email': 'ana@example.com',
         'plantillaWeb': 'neon',
+        'setupComplete': false,
+        'webActiva': false,
       });
 
       await repository.guardarConfiguracionNegocio(
@@ -137,7 +141,8 @@ void main() {
       expect(datos['rubro'], 'Bodega');
       expect(datos['nombreNegocio'], 'Bodega Ana');
       expect(datos['plantillaWeb'], 'neon');
-      expect(datos['setupComplete'], isTrue);
+      expect(datos['setupComplete'], isFalse);
+      expect(datos['webActiva'], isFalse);
       expect(datos['deliveryZonas'], [
         {'zona': 'Centro', 'costo': 7.5},
       ]);
@@ -162,21 +167,193 @@ void main() {
     },
   );
 
-  test('guardarPlantillaWeb actualiza solo el molde web', () async {
-    await firestore.collection('users').doc('usuario-1').set({
-      'slug': 'bodega-ana',
-      'plantilla': 'neon',
-    });
+  test('guardarPlantillaWeb completa onboarding sin tocar webActiva', () async {
+    await _guardarCuentaConNegocioValido(
+      firestore,
+      'usuario-1',
+      adicionales: {
+        'slug': 'bodega-ana',
+        'plantilla': 'neon',
+        'webActiva': false,
+      },
+    );
+    await _guardarProductoValido(firestore, 'usuario-1');
 
     await repository.guardarPlantillaWeb('usuario-1', PlantillaWeb.cristal);
 
     final datos = (await firestore.collection('users').doc('usuario-1').get())
         .data()!;
-    expect(datos, {
-      'slug': 'bodega-ana',
-      'plantilla': 'neon',
-      'plantillaWeb': 'cristal',
+    expect(datos['slug'], 'bodega-ana');
+    expect(datos['plantilla'], 'neon');
+    expect(datos['plantillaWeb'], 'cristal');
+    expect(datos['onboardingProductsConfirmed'], isTrue);
+    expect(datos['setupComplete'], isTrue);
+    expect(datos['onboardingTemplateCompletedAt'], isNotNull);
+    expect(datos['onboardingCompletedAt'], isNotNull);
+    expect(datos['webActiva'], isFalse);
+  });
+
+  group('obtenerProgresoConfiguracion', () {
+    test('empieza en rubro para una cuenta sin datos', () async {
+      final progreso = await repository.obtenerProgresoConfiguracion(
+        'usuario-nuevo',
+      );
+
+      expect(progreso.rubroCompleto, isFalse);
+      expect(progreso.negocioCompleto, isFalse);
+      expect(progreso.productosCompletos, isFalse);
+      expect(progreso.plantillaCompleta, isFalse);
+      expect(progreso.completo, isFalse);
+      expect(progreso.siguiente, EtapaConfiguracion.rubro);
     });
+
+    test('avanza a negocio al encontrar un rubro válido', () async {
+      await firestore.collection('users').doc('usuario-1').set({
+        'rubro': 'Bodega',
+      });
+
+      final progreso = await repository.obtenerProgresoConfiguracion(
+        'usuario-1',
+      );
+
+      expect(progreso.rubroCompleto, isTrue);
+      expect(progreso.negocioCompleto, isFalse);
+      expect(progreso.siguiente, EtapaConfiguracion.negocio);
+    });
+
+    test(
+      'avanza a productos con una configuración de negocio válida',
+      () async {
+        await _guardarCuentaConNegocioValido(firestore, 'usuario-1');
+
+        final progreso = await repository.obtenerProgresoConfiguracion(
+          'usuario-1',
+        );
+
+        expect(progreso.negocioCompleto, isTrue);
+        expect(progreso.productosCompletos, isFalse);
+        expect(progreso.siguiente, EtapaConfiguracion.productos);
+      },
+    );
+
+    test('avanza a plantilla al encontrar un producto válido', () async {
+      await _guardarCuentaConNegocioValido(firestore, 'usuario-1');
+      await _guardarProductoValido(firestore, 'usuario-1');
+
+      final progreso = await repository.obtenerProgresoConfiguracion(
+        'usuario-1',
+      );
+
+      expect(progreso.productosCompletos, isTrue);
+      expect(progreso.plantillaCompleta, isFalse);
+      expect(progreso.siguiente, EtapaConfiguracion.plantilla);
+    });
+
+    test('busca un producto válido más allá del primer documento', () async {
+      await _guardarCuentaConNegocioValido(firestore, 'usuario-1');
+      await firestore
+          .collection('users')
+          .doc('usuario-1')
+          .collection('productos')
+          .doc('a-invalido')
+          .set({'nombre': 'Sin datos completos'});
+      await _guardarProductoValido(firestore, 'usuario-1');
+
+      final progreso = await repository.obtenerProgresoConfiguracion(
+        'usuario-1',
+      );
+
+      expect(progreso.productosCompletos, isTrue);
+      expect(progreso.siguiente, EtapaConfiguracion.plantilla);
+    });
+
+    test('queda completa cuando producto y plantilla son válidos', () async {
+      await _guardarCuentaConNegocioValido(
+        firestore,
+        'usuario-1',
+        adicionales: {'plantillaWeb': 'galeria'},
+      );
+      await _guardarProductoValido(firestore, 'usuario-1');
+
+      final progreso = await repository.obtenerProgresoConfiguracion(
+        'usuario-1',
+      );
+
+      expect(progreso.plantilla, PlantillaWeb.galeria);
+      expect(progreso.completo, isTrue);
+      expect(progreso.siguiente, EtapaConfiguracion.completa);
+    });
+
+    test('reconoce una cuenta legada completa', () async {
+      await _guardarCuentaConNegocioValido(
+        firestore,
+        'usuario-legado',
+        adicionales: {'plantilla': 'neon', 'setupComplete': true},
+      );
+      await _guardarProductoValido(firestore, 'usuario-legado');
+
+      final progreso = await repository.obtenerProgresoConfiguracion(
+        'usuario-legado',
+      );
+
+      expect(progreso.plantilla, PlantillaWeb.neon);
+      expect(progreso.plantillaProvieneDeCampoOficial, isFalse);
+      expect(progreso.completo, isTrue);
+      expect(progreso.setupCompletePersistido, isTrue);
+      expect(progreso.productosConfirmadosPersistidos, isFalse);
+      expect(progreso.siguiente, EtapaConfiguracion.completa);
+    });
+
+    test('no confía en un setupComplete antiguo y prematuro', () async {
+      await firestore.collection('users').doc('usuario-1').set({
+        'setupComplete': true,
+      });
+
+      final progreso = await repository.obtenerProgresoConfiguracion(
+        'usuario-1',
+      );
+
+      expect(progreso.setupCompletePersistido, isTrue);
+      expect(progreso.completo, isFalse);
+      expect(progreso.siguiente, EtapaConfiguracion.rubro);
+    });
+
+    test('un producto confirmado no reinicia el flujo tras borrarlo', () async {
+      await _guardarCuentaConNegocioValido(firestore, 'usuario-1');
+      await _guardarProductoValido(firestore, 'usuario-1');
+      await repository.guardarPlantillaWeb('usuario-1', PlantillaWeb.cristal);
+      await firestore
+          .collection('users')
+          .doc('usuario-1')
+          .collection('productos')
+          .doc('producto-1')
+          .delete();
+
+      final progreso = await repository.obtenerProgresoConfiguracion(
+        'usuario-1',
+      );
+
+      expect(progreso.productosConfirmadosPersistidos, isTrue);
+      expect(progreso.productosCompletos, isTrue);
+      expect(progreso.completo, isTrue);
+      expect(progreso.siguiente, EtapaConfiguracion.completa);
+    });
+  });
+
+  test('guardarRubro conserva webActiva', () async {
+    await firestore.collection('users').doc('usuario-1').set({
+      'email': 'ana@example.com',
+      'webActiva': true,
+    });
+
+    await repository.guardarRubro('usuario-1', '  Bodega  ');
+
+    final datos = (await firestore.collection('users').doc('usuario-1').get())
+        .data()!;
+    expect(datos['rubro'], 'Bodega');
+    expect(datos['email'], 'ana@example.com');
+    expect(datos['webActiva'], isTrue);
+    expect(datos['onboardingRubroCompletedAt'], isNotNull);
   });
 
   test(
@@ -259,4 +436,108 @@ void main() {
     expect(info.plantillaGuardada, PlantillaWeb.neon);
     expect(info.provieneDeCampoOficial, isFalse);
   });
+}
+
+Future<void> _guardarCuentaConNegocioValido(
+  FakeFirebaseFirestore firestore,
+  String uid, {
+  Map<String, dynamic> adicionales = const {},
+}) {
+  return firestore.collection('users').doc(uid).set({
+    'rubro': 'Bodega',
+    'slug': 'bodega-ana',
+    'nombreNegocio': 'Bodega Ana',
+    'telefono': '+51999999999',
+    'direccion': 'Av. Lima 123',
+    'categorias': ['Bebidas'],
+    'unidadesMedida': [
+      {
+        'nombre': 'Unidad',
+        'tipo': 'entera',
+        'fraccionesPermitidas': <String>[],
+        'esOpcional': false,
+      },
+    ],
+    'delivery': false,
+    ...adicionales,
+  });
+}
+
+Future<void> _guardarProductoValido(
+  FakeFirebaseFirestore firestore,
+  String uid,
+) {
+  return firestore
+      .collection('users')
+      .doc(uid)
+      .collection('productos')
+      .doc('producto-1')
+      .set({
+        'negocioId': uid,
+        'nombre': 'Gaseosa',
+        'precio': 4.5,
+        'stock': 10,
+        'categoria': 'Bebidas',
+        'unidadMedidaNombre': 'Unidad',
+        'fechaCreacion': Timestamp.now(),
+      });
+}
+
+// fake_cloud_firestore 3.1.0 ignora SetOptions en transacciones. Este ajuste
+// conserva el fake como almacenamiento, pero ejecuta los writes con sus
+// opciones reales para poder verificar la semántica merge de guardarRubro.
+class _MergeAwareFakeFirebaseFirestore extends FakeFirebaseFirestore {
+  @override
+  Future<T> runTransaction<T>(
+    TransactionHandler<T> transactionHandler, {
+    Duration timeout = const Duration(seconds: 30),
+    int maxAttempts = 5,
+  }) async {
+    final transaction = _MergeAwareTransaction();
+    final result = await transactionHandler(transaction);
+    await transaction.commit();
+    return result;
+  }
+}
+
+class _MergeAwareTransaction implements Transaction {
+  final List<Future<void> Function()> _writes = [];
+
+  Future<void> commit() async {
+    for (final write in _writes) {
+      await write();
+    }
+  }
+
+  @override
+  Future<DocumentSnapshot<T>> get<T extends Object?>(
+    DocumentReference<T> documentReference,
+  ) {
+    return documentReference.get();
+  }
+
+  @override
+  Transaction set<T>(
+    DocumentReference<T> documentReference,
+    T data, [
+    SetOptions? options,
+  ]) {
+    _writes.add(() => documentReference.set(data, options));
+    return this;
+  }
+
+  @override
+  Transaction update(
+    DocumentReference<Object?> documentReference,
+    Map<String, dynamic> data,
+  ) {
+    _writes.add(() => documentReference.update(data));
+    return this;
+  }
+
+  @override
+  Transaction delete(DocumentReference<Object?> documentReference) {
+    _writes.add(documentReference.delete);
+    return this;
+  }
 }

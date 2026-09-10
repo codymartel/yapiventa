@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../providers/acceso_provider.dart';
 import '../providers/auth_provider.dart';
 
 // ═════════════════════════════════════════════════════════════════════════
@@ -17,8 +18,20 @@ import '../providers/auth_provider.dart';
 // antes, no verificó al toque, y ahora vuelve a confirmar).
 // ═════════════════════════════════════════════════════════════════════════
 
-class VerificacionEmailScreen extends StatelessWidget {
+class VerificacionEmailScreen extends StatefulWidget {
   const VerificacionEmailScreen({super.key});
+
+  @override
+  State<VerificacionEmailScreen> createState() =>
+      _VerificacionEmailScreenState();
+}
+
+class _VerificacionEmailScreenState extends State<VerificacionEmailScreen> {
+  Future<void> _revisar(AuthProvider authProvider) async {
+    await authProvider.revisarSiYaVerificoEmail();
+    if (!mounted || authProvider.status != AuthStatus.success) return;
+    await context.read<AccesoProvider>().recargar();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,24 +39,11 @@ class VerificacionEmailScreen extends StatelessWidget {
 
     if (authProvider.errorMessage != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(authProvider.errorMessage!)),
-        );
+        if (!mounted) return;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(authProvider.errorMessage!)));
         authProvider.limpiarError();
-      });
-    }
-
-    // FIX: antes navegaba a un _HomePlaceholder fijo definido en este
-    // mismo archivo, ignorando si el negocio estaba configurado o no.
-    // Ahora consulta negocioYaConfigurado() y usa las rutas nombradas.
-    if (authProvider.status == AuthStatus.success) {
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
-        final yaConfigurado = await authProvider.negocioYaConfigurado();
-        if (!context.mounted) return;
-        Navigator.of(context).pushNamedAndRemoveUntil(
-          yaConfigurado ? '/home' : '/elegir-rubro',
-          (route) => false,
-        );
       });
     }
 
@@ -68,8 +68,11 @@ class VerificacionEmailScreen extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.mark_email_unread_outlined,
-                    color: AppColors.blueLt, size: 64),
+                Icon(
+                  Icons.mark_email_unread_outlined,
+                  color: AppColors.blueLt,
+                  size: 64,
+                ),
                 const SizedBox(height: 20),
                 Text(
                   'Revisa tu bandeja de entrada',
@@ -101,7 +104,7 @@ class VerificacionEmailScreen extends StatelessWidget {
                     ),
                     onPressed: authProvider.isLoading
                         ? null
-                        : () => authProvider.revisarSiYaVerificoEmail(),
+                        : () => _revisar(authProvider),
                     child: authProvider.isLoading
                         ? const SizedBox(
                             width: 22,

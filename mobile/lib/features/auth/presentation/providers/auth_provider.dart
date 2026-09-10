@@ -10,11 +10,9 @@ class AuthProvider extends ChangeNotifier {
   final AuthRepository _repository;
   final UserRepository _userRepository;
 
-  AuthProvider({
-    AuthRepository? repository,
-    UserRepository? userRepository,
-  })  : _repository = repository ?? AuthRepository(),
-        _userRepository = userRepository ?? UserRepository();
+  AuthProvider({AuthRepository? repository, UserRepository? userRepository})
+    : _repository = repository ?? AuthRepository(),
+      _userRepository = userRepository ?? UserRepository();
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -22,6 +20,7 @@ class AuthProvider extends ChangeNotifier {
 
   int _bloqueoBoton = 0;
   Timer? _relojTimer;
+  bool _disposed = false;
 
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
@@ -30,7 +29,7 @@ class AuthProvider extends ChangeNotifier {
   User? get usuarioActual => _repository.usuarioActual;
 
   Future<void> iniciarSesion(String email, String password) async {
-    _setLoading(true);
+    if (!_iniciarOperacion()) return;
     try {
       await _repository.iniciarSesion(email: email, password: password);
 
@@ -50,7 +49,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> registrarse(String email, String password) async {
-    _setLoading(true);
+    if (!_iniciarOperacion()) return;
     try {
       await _repository.registrarse(email: email, password: password);
       _status = AuthStatus.emailNotVerified;
@@ -65,23 +64,13 @@ class AuthProvider extends ChangeNotifier {
 
   Future<void> revisarSiYaVerificoEmail() async {
     final user = _repository.usuarioActual;
-    if (user == null) return;
+    if (user == null || !_iniciarOperacion()) return;
 
-    _setLoading(true);
     try {
       final verificado = await _repository.emailEstaVerificado();
 
       if (verificado) {
-        await _userRepository.crearPerfilEnFirestore(
-          uid: user.uid,
-          email: user.email ?? '',
-          webActivaInicial: true,
-        );
-        await _userRepository.guardarPlanFree(
-          uid: user.uid,
-          limiteProductos: 20,
-          minimoProductos: 1,
-        );
+        await _aprovisionarPerfil(user);
         _status = AuthStatus.success;
       } else {
         _errorMessage =
@@ -98,13 +87,15 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> reenviarEmailDeVerificacion() async {
-    _setLoading(true);
+    if (!_iniciarOperacion()) return;
     try {
       await _repository.enviarVerificacionEmail();
       _errorMessage = '¡Correo reenviado! Revisa tu bandeja.';
+      _status = AuthStatus.emailNotVerified;
       iniciarRelojBloqueo();
     } catch (e) {
       _errorMessage = 'Error al reenviar el correo.';
+      _status = AuthStatus.emailNotVerified;
     } finally {
       _setLoading(false);
     }
@@ -115,13 +106,19 @@ class AuthProvider extends ChangeNotifier {
     String accessToken, {
     required bool esModoRegistro,
   }) async {
-    _setLoading(true);
+    if (!_iniciarOperacion()) return;
     try {
       final user = await _repository.autenticarConGoogle(idToken, accessToken);
       if (user == null) {
         _errorMessage = 'No se pudo autenticar con Google.';
         _status = AuthStatus.error;
-        _setLoading(false);
+        return;
+      }
+
+      final verificado = await _repository.emailEstaVerificado();
+      if (!verificado) {
+        _status = AuthStatus.emailNotVerified;
+        iniciarRelojBloqueo();
         return;
       }
 
@@ -138,16 +135,7 @@ class AuthProvider extends ChangeNotifier {
         }
       } else {
         if (esModoRegistro) {
-          await _userRepository.crearPerfilEnFirestore(
-            uid: user.uid,
-            email: user.email ?? '',
-            webActivaInicial: true,
-          );
-          await _userRepository.guardarPlanFree(
-            uid: user.uid,
-            limiteProductos: 20,
-            minimoProductos: 1,
-          );
+          await _aprovisionarPerfil(user);
           _status = AuthStatus.success;
         } else {
           await _repository.cerrarSesion();
@@ -155,8 +143,10 @@ class AuthProvider extends ChangeNotifier {
           _status = AuthStatus.error;
         }
       }
-    } on FirebaseAuthException catch (e) {
-      _errorMessage = _mensajeDeError(e);
+    } catch (e) {
+      _errorMessage = e is FirebaseAuthException
+          ? _mensajeDeError(e)
+          : 'No se pudo completar el acceso con Google.';
       _status = AuthStatus.error;
     } finally {
       _setLoading(false);
@@ -178,41 +168,93 @@ class AuthProvider extends ChangeNotifier {
   }
 
   void iniciarRelojBloqueo({int segundos = 10}) {
+    if (_disposed) return;
     _relojTimer?.cancel();
     _bloqueoBoton = segundos;
-    notifyListeners();
+    _notificar();
 
     _relojTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_disposed) {
+        timer.cancel();
+        return;
+      }
       if (_bloqueoBoton <= 0) {
         timer.cancel();
         return;
       }
       _bloqueoBoton -= 1;
-      notifyListeners();
+      _notificar();
     });
   }
 
   Future<void> cancelarRegistro() async {
-    await _repository.cancelarRegistroSiNoVerificado();
-    _relojTimer?.cancel();
-    _bloqueoBoton = 0;
-    _errorMessage = null;
-    _status = AuthStatus.idle;
-    notifyListeners();
+    if (!_iniciarOperacion()) return;
+    try {
+      await _repository.cancelarRegistroSiNoVerificado();
+      _relojTimer?.cancel();
+      _bloqueoBoton = 0;
+      _errorMessage = null;
+      _status = AuthStatus.idle;
+    } catch (_) {
+      _errorMessage = 'No se pudo cancelar el registro. Intenta de nuevo.';
+      _status = AuthStatus.error;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<void> cerrarSesion() async {
+    if (!_iniciarOperacion()) return;
+    try {
+      await _repository.cerrarSesion();
+      _relojTimer?.cancel();
+      _bloqueoBoton = 0;
+      _errorMessage = null;
+      _status = AuthStatus.idle;
+    } catch (_) {
+      _errorMessage = 'No se pudo cerrar la sesión. Intenta de nuevo.';
+      _status = AuthStatus.error;
+    } finally {
+      _setLoading(false);
+    }
   }
 
   void limpiarError() {
     _errorMessage = null;
-    notifyListeners();
+    _notificar();
   }
 
   void _setLoading(bool value) {
     _isLoading = value;
-    notifyListeners();
+    _notificar();
+  }
+
+  bool _iniciarOperacion() {
+    if (_isLoading) return false;
+    _isLoading = true;
+    _errorMessage = null;
+    _status = AuthStatus.loading;
+    _notificar();
+    return true;
+  }
+
+  Future<void> _aprovisionarPerfil(User user) {
+    return _userRepository.asegurarPerfilYPlan(
+      uid: user.uid,
+      email: user.email ?? '',
+      webActivaInicial: true,
+      limiteProductos: 20,
+      minimoProductos: 1,
+    );
+  }
+
+  void _notificar() {
+    if (!_disposed) notifyListeners();
   }
 
   @override
   void dispose() {
+    _disposed = true;
     _relojTimer?.cancel();
     super.dispose();
   }

@@ -41,7 +41,7 @@ class SeleccionPlantillaScreen extends StatefulWidget {
   /// Solo se usa para el subtítulo; no condiciona la selección.
   final String rubro;
 
-  final void Function(String plantilla) onPlantillaSeleccionada;
+  final Future<void> Function(String plantilla) onPlantillaSeleccionada;
   final AbrirUrlTienda? abrirUrl;
 
   const SeleccionPlantillaScreen({
@@ -57,11 +57,16 @@ class SeleccionPlantillaScreen extends StatefulWidget {
 }
 
 class _SeleccionPlantillaScreenState extends State<SeleccionPlantillaScreen> {
+  bool _finalizando = false;
+
   Future<void> _finalizar() async {
+    if (_finalizando) return;
+    setState(() => _finalizando = true);
     final provider = context.read<SeleccionPlantillaProvider>();
     final guardado = await provider.guardar();
     if (!mounted) return;
     if (!guardado) {
+      setState(() => _finalizando = false);
       _mostrarMensaje(
         provider.errorMessage ??
             'No se pudo guardar la plantilla web. Intenta de nuevo.',
@@ -69,9 +74,10 @@ class _SeleccionPlantillaScreenState extends State<SeleccionPlantillaScreen> {
       return;
     }
 
-    widget.onPlantillaSeleccionada(
+    await widget.onPlantillaSeleccionada(
       provider.seleccionTemporal!.valorPersistencia,
     );
+    if (mounted) setState(() => _finalizando = false);
   }
 
   Future<void> _verTiendaWeb() async {
@@ -153,218 +159,226 @@ class _SeleccionPlantillaScreenState extends State<SeleccionPlantillaScreen> {
   Widget build(BuildContext context) {
     final seleccionProvider = context.watch<SeleccionPlantillaProvider>();
     final plantillaSeleccionada = seleccionProvider.seleccionTemporal;
+    final guardando = seleccionProvider.guardando || _finalizando;
 
-    return Scaffold(
-      backgroundColor: fondo,
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final anchoDisponible = constraints.maxWidth;
-            final int columnas;
-            if (anchoDisponible < 600) {
-              columnas = 2;
-            } else if (anchoDisponible < 1000) {
-              columnas = 2;
-            } else {
-              columnas = 4;
-            }
+    return PopScope(
+      canPop: !guardando,
+      child: Scaffold(
+        backgroundColor: fondo,
+        body: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final anchoDisponible = constraints.maxWidth;
+              final int columnas;
+              if (anchoDisponible < 600) {
+                columnas = 1;
+              } else if (anchoDisponible < 1000) {
+                columnas = 2;
+              } else {
+                columnas = 4;
+              }
 
-            final anchoMaximoContenido = anchoDisponible > 1000
-                ? 980.0
-                : anchoDisponible;
+              final anchoMaximoContenido = anchoDisponible > 1000
+                  ? 980.0
+                  : anchoDisponible;
 
-            return Center(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: anchoMaximoContenido),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 60),
+              return Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: anchoMaximoContenido),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 60),
 
-                      Text(
-                        'PLANTILLA',
-                        style: TextStyle(
-                          color: azulAcento,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13,
-                          letterSpacing: 2,
-                        ),
-                      ),
-
-                      const SizedBox(height: 4),
-
-                      Text(
-                        'Elige el estilo\nde tu tienda',
-                        style: TextStyle(
-                          color: blancoPuro,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 32,
-                          height: 1.2,
-                        ),
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      Text(
-                        widget.rubro.isEmpty
-                            ? 'Se aplicará automáticamente a tu catálogo.'
-                            : 'Se verá con tus productos de ${widget.rubro}.',
-                        style: TextStyle(color: grisTenue, fontSize: 14),
-                      ),
-
-                      const SizedBox(height: 40),
-
-                      Expanded(
-                        child: GridView.builder(
-                          itemCount: _plantillas.length,
-                          gridDelegate:
-                              SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: columnas,
-                                crossAxisSpacing: 16,
-                                mainAxisSpacing: 16,
-                                childAspectRatio: 1.15,
-                              ),
-                          itemBuilder: (context, index) {
-                            final plantilla = _plantillas[index];
-                            return _PlantillaCard(
-                              plantilla: plantilla,
-                              seleccionada:
-                                  plantillaSeleccionada == plantilla.id,
-                              onTap: () => context
-                                  .read<SeleccionPlantillaProvider>()
-                                  .seleccionar(plantilla.id),
-                            );
-                          },
-                        ),
-                      ),
-
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed:
-                              !seleccionProvider.cargado ||
-                                  plantillaSeleccionada == null ||
-                                  seleccionProvider.guardando
-                              ? null
-                              : _finalizar,
-                          icon: seleccionProvider.guardando
-                              ? const SizedBox.square(
-                                  dimension: 18,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Icon(Icons.arrow_forward),
-                          label: Text(
-                            seleccionProvider.guardando
-                                ? 'Guardando...'
-                                : 'Finalizar',
+                        Text(
+                          'PLANTILLA',
+                          style: TextStyle(
+                            color: azulAcento,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            letterSpacing: 2,
                           ),
                         ),
-                      ),
 
-                      const SizedBox(height: 16),
+                        const SizedBox(height: 4),
 
-                      // ── Botones: Ver tienda web + Ir al dashboard ──
-                      Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        children: [
-                          // Ver tienda web
-                          SizedBox(
-                            width: anchoDisponible < 500
-                                ? double.infinity
-                                : (anchoMaximoContenido - 48 - 12) / 2,
-                            child: OutlinedButton.icon(
-                              onPressed: _verTiendaWeb,
-                              icon: const Icon(Icons.open_in_new, size: 18),
-                              label: const Text('Ver tienda web'),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: azulAcento,
-                                side: const BorderSide(
-                                  color: azulAcento,
-                                  width: 1.5,
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 16,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                            ),
+                        Text(
+                          'Elige el estilo\nde tu tienda',
+                          style: TextStyle(
+                            color: blancoPuro,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 32,
+                            height: 1.2,
                           ),
+                        ),
 
-                          // Ir al dashboard
-                          SizedBox(
-                            width: anchoDisponible < 500
-                                ? double.infinity
-                                : (anchoMaximoContenido - 48 - 12) / 2,
-                            child: ElevatedButton.icon(
-                              onPressed: () {
-                                Navigator.pushReplacementNamed(
-                                  context,
-                                  '/home',
-                                );
-                              },
-                              icon: const Icon(Icons.home_outlined, size: 18),
-                              label: const Text('Ir al dashboard'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: azulAcento,
-                                foregroundColor: blancoPuro,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 16,
+                        const SizedBox(height: 12),
+
+                        Text(
+                          widget.rubro.isEmpty
+                              ? 'Se aplicará automáticamente a tu catálogo.'
+                              : 'Se verá con tus productos de ${widget.rubro}.',
+                          style: TextStyle(color: grisTenue, fontSize: 14),
+                        ),
+
+                        const SizedBox(height: 40),
+
+                        Expanded(
+                          child: GridView.builder(
+                            itemCount: _plantillas.length,
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: columnas,
+                                  crossAxisSpacing: 16,
+                                  mainAxisSpacing: 16,
+                                  childAspectRatio: columnas == 1 ? 1.4 : 1.15,
                                 ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                            ),
+                            itemBuilder: (context, index) {
+                              final plantilla = _plantillas[index];
+                              return _PlantillaCard(
+                                plantilla: plantilla,
+                                seleccionada:
+                                    plantillaSeleccionada == plantilla.id,
+                                onTap: () => context
+                                    .read<SeleccionPlantillaProvider>()
+                                    .seleccionar(plantilla.id),
+                              );
+                            },
                           ),
-                        ],
-                      ),
+                        ),
 
-                      const SizedBox(height: 8),
-
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 32, top: 16),
-                        child: Container(
+                        SizedBox(
                           width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          decoration: BoxDecoration(
-                            color: marinoCard,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: marinoBorde, width: 1),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.auto_awesome,
-                                color: azulAcento,
-                                size: 14,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                'Puedes cambiar tu plantilla cuando quieras',
-                                style: TextStyle(
-                                  color: grisTenue,
-                                  fontWeight: FontWeight.w500,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
+                          child: ElevatedButton.icon(
+                            onPressed:
+                                !seleccionProvider.cargado ||
+                                    plantillaSeleccionada == null ||
+                                    guardando
+                                ? null
+                                : _finalizar,
+                            icon: guardando
+                                ? const SizedBox.square(
+                                    dimension: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(Icons.arrow_forward),
+                            label: Text(
+                              guardando ? 'Guardando...' : 'Finalizar',
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+
+                        const SizedBox(height: 16),
+
+                        // ── Botones: Ver tienda web + Ir al dashboard ──
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
+                          children: [
+                            // Ver tienda web
+                            SizedBox(
+                              width: anchoDisponible < 500
+                                  ? double.infinity
+                                  : (anchoMaximoContenido - 48 - 12) / 2,
+                              child: OutlinedButton.icon(
+                                onPressed: _verTiendaWeb,
+                                icon: const Icon(Icons.open_in_new, size: 18),
+                                label: const Text('Ver tienda web'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: azulAcento,
+                                  side: const BorderSide(
+                                    color: azulAcento,
+                                    width: 1.5,
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                              ),
+                            ),
+
+                            // Ir al dashboard
+                            SizedBox(
+                              width: anchoDisponible < 500
+                                  ? double.infinity
+                                  : (anchoMaximoContenido - 48 - 12) / 2,
+                              child: ElevatedButton.icon(
+                                onPressed:
+                                    seleccionProvider.cambiosPendientes ||
+                                        seleccionProvider.plantillaGuardada ==
+                                            null ||
+                                        guardando
+                                    ? null
+                                    : () {
+                                        Navigator.pushReplacementNamed(
+                                          context,
+                                          '/home',
+                                        );
+                                      },
+                                icon: const Icon(Icons.home_outlined, size: 18),
+                                label: const Text('Ir al dashboard'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: azulAcento,
+                                  foregroundColor: blancoPuro,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 8),
+
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 32, top: 16),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              color: marinoCard,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: marinoBorde, width: 1),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.auto_awesome,
+                                  color: azulAcento,
+                                  size: 14,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Puedes cambiar tu plantilla cuando quieras',
+                                  style: TextStyle(
+                                    color: grisTenue,
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
       ),
     );

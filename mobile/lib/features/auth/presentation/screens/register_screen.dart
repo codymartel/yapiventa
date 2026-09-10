@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../data/google_sign_in_service.dart';
 import '../providers/auth_provider.dart';
-import 'verificacion_email_screen.dart';
 
 /// Migración de tu @Composable RegisterScreen.
 ///
@@ -93,49 +92,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (authProvider.errorMessage != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(authProvider.errorMessage!)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(authProvider.errorMessage!)));
         authProvider.limpiarError();
       });
     }
 
-    // Flujo de email: éxito de registro pasa por emailNotVerified.
-    if (authProvider.status == AuthStatus.emailNotVerified) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const VerificacionEmailScreen()),
-        );
-      });
-    }
+    return _construirPantalla(authProvider);
+  }
 
-    // NUEVO — flujo de Google: éxito va DIRECTO a success (nunca pasa
-    // por emailNotVerified, como explicamos antes). Por ahora navega al
-    // mismo placeholder de Home que usa VerificacionEmailScreen — se
-    // reemplaza cuando migres home_screen.dart de verdad.
-    if (authProvider.status == AuthStatus.success) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(
-            builder: (_) => Scaffold(
-              backgroundColor: AppColors.fondo,
-              body: Center(
-                child: Text(
-                  '¡Bienvenido! (Home pendiente de migrar)',
-                  style: TextStyle(color: AppColors.texto, fontSize: 18),
-                ),
-              ),
-            ),
-          ),
-          (route) => false,
-        );
-      });
-    }
-
+  Widget _construirPantalla(AuthProvider authProvider) {
     final registroHabilitado =
-        _esEmailValido && _esPasswordValida && _aceptoTerminos && !authProvider.isLoading;
+        _esEmailValido &&
+        _esPasswordValida &&
+        _aceptoTerminos &&
+        !authProvider.isLoading;
 
     return Scaffold(
       backgroundColor: AppColors.fondo,
@@ -173,7 +145,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 28,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.superficie,
                       borderRadius: BorderRadius.circular(20),
@@ -193,8 +168,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         SizedBox(
                           height: 50,
                           child: ElevatedButton(
-                            onPressed:
-                                authProvider.isLoading ? null : _registrarseConGoogle,
+                            onPressed: authProvider.isLoading
+                                ? null
+                                : _registrarseConGoogle,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.white,
                               elevation: 0,
@@ -230,7 +206,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         Text(
                           '🔒 Recomendado · más seguro y rápido',
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: AppColors.blueLt, fontSize: 11),
+                          style: TextStyle(
+                            color: AppColors.blueLt,
+                            fontSize: 11,
+                          ),
                         ),
 
                         const SizedBox(height: 18),
@@ -238,10 +217,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           children: [
                             Expanded(child: Divider(color: AppColors.border)),
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                              ),
                               child: Text(
                                 'o con correo',
-                                style: TextStyle(color: AppColors.dim, fontSize: 11),
+                                style: TextStyle(
+                                  color: AppColors.dim,
+                                  fontSize: 11,
+                                ),
                               ),
                             ),
                             Expanded(child: Divider(color: AppColors.border)),
@@ -266,7 +250,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           style: TextStyle(color: AppColors.texto),
                           decoration: InputDecoration(
                             hintText: 'tucorreo@ejemplo.com',
-                            hintStyle: TextStyle(color: AppColors.dim, fontSize: 14),
+                            hintStyle: TextStyle(
+                              color: AppColors.dim,
+                              fontSize: 14,
+                            ),
                             filled: true,
                             fillColor: AppColors.card,
                             contentPadding: const EdgeInsets.symmetric(
@@ -279,7 +266,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: AppColors.blueLt, width: 1.2),
+                              borderSide: BorderSide(
+                                color: AppColors.blueLt,
+                                width: 1.2,
+                              ),
                             ),
                           ),
                         ),
@@ -288,7 +278,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             padding: const EdgeInsets.only(top: 6, left: 2),
                             child: Text(
                               'Ingresa un correo válido',
-                              style: TextStyle(color: AppColors.error, fontSize: 12),
+                              style: TextStyle(
+                                color: AppColors.error,
+                                fontSize: 12,
+                              ),
                             ),
                           ),
 
@@ -312,7 +305,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           style: TextStyle(color: AppColors.texto),
                           decoration: InputDecoration(
                             hintText: 'Mínimo 6 caracteres',
-                            hintStyle: TextStyle(color: AppColors.dim, fontSize: 14),
+                            hintStyle: TextStyle(
+                              color: AppColors.dim,
+                              fontSize: 14,
+                            ),
                             filled: true,
                             fillColor: AppColors.card,
                             contentPadding: const EdgeInsets.symmetric(
@@ -325,7 +321,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(color: AppColors.blueLt, width: 1.2),
+                              borderSide: BorderSide(
+                                color: AppColors.blueLt,
+                                width: 1.2,
+                              ),
                             ),
                             suffixIcon: IconButton(
                               icon: Icon(
@@ -341,12 +340,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                           ),
                         ),
-                        if (_passwordController.text.isNotEmpty && !_esPasswordValida)
+                        if (_passwordController.text.isNotEmpty &&
+                            !_esPasswordValida)
                           Padding(
                             padding: const EdgeInsets.only(top: 6, left: 2),
                             child: Text(
                               'Mínimo 6 caracteres',
-                              style: TextStyle(color: AppColors.error, fontSize: 12),
+                              style: TextStyle(
+                                color: AppColors.error,
+                                fontSize: 12,
+                              ),
                             ),
                           ),
 
@@ -354,7 +357,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                         // ── Estado términos ────────────────────────
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
                           decoration: BoxDecoration(
                             color: AppColors.card,
                             borderRadius: BorderRadius.circular(10),
@@ -365,7 +371,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 _aceptoTerminos
                                     ? Icons.check_circle
                                     : Icons.radio_button_unchecked,
-                                color: _aceptoTerminos ? Colors.green : AppColors.muted,
+                                color: _aceptoTerminos
+                                    ? Colors.green
+                                    : AppColors.muted,
                                 size: 18,
                               ),
                               const SizedBox(width: 8),
@@ -375,7 +383,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                       ? 'Términos aceptados'
                                       : 'Términos pendientes',
                                   style: TextStyle(
-                                    color: _aceptoTerminos ? Colors.green : AppColors.muted,
+                                    color: _aceptoTerminos
+                                        ? Colors.green
+                                        : AppColors.muted,
                                     fontSize: 13,
                                   ),
                                 ),
@@ -385,11 +395,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 style: TextButton.styleFrom(
                                   padding: EdgeInsets.zero,
                                   minimumSize: const Size(0, 0),
-                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
                                 ),
                                 child: Text(
                                   'Ver',
-                                  style: TextStyle(color: AppColors.blueLt, fontSize: 12),
+                                  style: TextStyle(
+                                    color: AppColors.blueLt,
+                                    fontSize: 12,
+                                  ),
                                 ),
                               ),
                             ],
@@ -404,7 +418,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           child: ElevatedButton(
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.navy,
-                              disabledBackgroundColor: AppColors.navy.withValues(alpha: 0.4),
+                              disabledBackgroundColor: AppColors.navy
+                                  .withValues(alpha: 0.4),
                               elevation: 0,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -412,9 +427,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             ),
                             onPressed: registroHabilitado
                                 ? () => authProvider.registrarse(
-                                      _emailController.text.trim(),
-                                      _passwordController.text,
-                                    )
+                                    _emailController.text.trim(),
+                                    _passwordController.text,
+                                  )
                                 : null,
                             child: authProvider.isLoading
                                 ? const SizedBox(
@@ -442,7 +457,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               : () => Navigator.pop(context),
                           child: Text(
                             '¿Ya tienes cuenta? Inicia sesión',
-                            style: TextStyle(color: AppColors.blueLt, fontSize: 13),
+                            style: TextStyle(
+                              color: AppColors.blueLt,
+                              fontSize: 13,
+                            ),
                           ),
                         ),
                       ],
@@ -483,7 +501,8 @@ class _TerminosDialogState extends State<_TerminosDialog> {
   void _checkScroll() {
     if (!mounted || !_scrollController.hasClients) return;
     final sinScroll = _scrollController.position.maxScrollExtent == 0;
-    final llego = sinScroll ||
+    final llego =
+        sinScroll ||
         _scrollController.position.pixels >=
             _scrollController.position.maxScrollExtent - 40;
     if (llego != _llegoAlFinal) setState(() => _llegoAlFinal = llego);
@@ -520,11 +539,16 @@ class _TerminosDialogState extends State<_TerminosDialog> {
               if (!_llegoAlFinal)
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
                     color: AppColors.error.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.error.withValues(alpha: 0.35)),
+                    border: Border.all(
+                      color: AppColors.error.withValues(alpha: 0.35),
+                    ),
                   ),
                   child: Text(
                     '📜 Desplázate hasta el final para poder aceptar',
@@ -541,7 +565,11 @@ class _TerminosDialogState extends State<_TerminosDialog> {
                     padding: const EdgeInsets.only(right: 12),
                     child: Text(
                       _terminosTexto,
-                      style: TextStyle(color: AppColors.muted, fontSize: 13, height: 1.5),
+                      style: TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 13,
+                        height: 1.5,
+                      ),
                     ),
                   ),
                 ),
@@ -556,7 +584,9 @@ class _TerminosDialogState extends State<_TerminosDialog> {
               Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
-                  _llegoAlFinal ? '✓ Has leído todos los términos' : 'Sigue leyendo para poder aceptar…',
+                  _llegoAlFinal
+                      ? '✓ Has leído todos los términos'
+                      : 'Sigue leyendo para poder aceptar…',
                   style: TextStyle(
                     color: _llegoAlFinal ? Colors.green : AppColors.muted,
                     fontSize: 11,
@@ -578,7 +608,9 @@ class _TerminosDialogState extends State<_TerminosDialog> {
             backgroundColor: AppColors.error,
             disabledBackgroundColor: AppColors.border,
           ),
-          child: Text(_llegoAlFinal ? 'ENTENDIDO Y ACEPTO' : '↓ Sigue leyendo…'),
+          child: Text(
+            _llegoAlFinal ? 'ENTENDIDO Y ACEPTO' : '↓ Sigue leyendo…',
+          ),
         ),
       ],
     );

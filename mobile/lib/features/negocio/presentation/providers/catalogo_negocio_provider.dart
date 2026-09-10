@@ -10,7 +10,9 @@ class CatalogoNegocioProvider extends ChangeNotifier {
   CatalogoNegocioProvider({
     required this.uid,
     required ObtenerCatalogoNegocio obtenerCatalogoNegocio,
-  }) : _obtenerCatalogoNegocio = obtenerCatalogoNegocio;
+    CatalogoNegocio? catalogoInicial,
+  }) : _obtenerCatalogoNegocio = obtenerCatalogoNegocio,
+       _catalogo = catalogoInicial;
 
   CatalogoNegocio? _catalogo;
   Future<void>? _cargaEnCurso;

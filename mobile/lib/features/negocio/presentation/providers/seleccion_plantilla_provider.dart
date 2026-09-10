@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../application/use_cases/guardar_plantilla_web.dart';
 import '../../application/use_cases/obtener_seleccion_plantilla.dart';
 import '../../domain/models/plantilla_web.dart';
+import '../../domain/models/seleccion_plantilla_info.dart';
 
 class SeleccionPlantillaProvider extends ChangeNotifier {
   final String uid;
@@ -13,7 +14,16 @@ class SeleccionPlantillaProvider extends ChangeNotifier {
     required this.uid,
     required this.obtenerSeleccionPlantilla,
     required this.guardarPlantillaWeb,
-  });
+    SeleccionPlantillaInfo? seleccionInicial,
+  }) {
+    if (seleccionInicial != null) {
+      _slug = seleccionInicial.slug;
+      _plantillaGuardada = seleccionInicial.plantillaGuardada;
+      _seleccionTemporal = seleccionInicial.plantillaGuardada;
+      _provieneDeCampoOficial = seleccionInicial.provieneDeCampoOficial;
+      _cargado = true;
+    }
+  }
 
   String _slug = '';
   PlantillaWeb? _plantillaGuardada;

@@ -39,7 +39,7 @@ class AuthRepository {
   // Poder pasarle una distinta sirve para tests (no es necesario usarlo
   // ahora, solo lo dejamos preparado).
   AuthRepository({FirebaseAuth? firebaseAuth})
-      : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance;
+    : _firebaseAuth = firebaseAuth ?? FirebaseAuth.instance;
 
   // ─────────────────────────────────────────────────────────────────────
   // LOGIN
@@ -71,15 +71,15 @@ class AuthRepository {
   // REGISTRO
   // ─────────────────────────────────────────────────────────────────────
   // Equivale a tu `registrarUsuario` en Kotlin, incluyendo el mismo
-  // manejo de "el correo ya existe" que tenías:
+  // manejo de "el correo ya existe" que teníasdenciales.
+  //   3. Si ese login funciona Y el correo TODAVÍA no está verificado,
+  //      se trata como una cuenta a medio regist:
   //
   //   1. Intenta crear la cuenta con auth.createUserWithEmailAndPassword
   //   2. Si Firebase dice que el correo YA existe (FirebaseAuthException
   //      con código 'email-already-in-use' — esto es lo mismo que en tu
   //      Kotlin capturabas como FirebaseAuthUserCollisionException),
-  //      intenta hacer login con esas mismas credenciales.
-  //   3. Si ese login funciona Y el correo TODAVÍA no está verificado,
-  //      se trata como una cuenta a medio registrar: se le reenvía el
+  //      intenta hacer login con esas mismas crerar: se le reenvía el
   //      correo de verificación y se devuelve el user (igual que tu
   //      bloque `enviarYVerificar(email)` dentro del if de colisión).
   //   4. Si el correo YA estaba verificado (o la contraseña no coincidía),
@@ -112,6 +112,7 @@ class AuthRepository {
           await user.sendEmailVerification();
           return user;
         }
+        await _firebaseAuth.signOut();
         rethrow;
       }
       rethrow;
@@ -154,7 +155,10 @@ class AuthRepository {
   // perfil.
   Future<bool> emailEstaVerificado() async {
     await _firebaseAuth.currentUser?.reload();
-    return _firebaseAuth.currentUser?.emailVerified ?? false;
+    final usuario = _firebaseAuth.currentUser;
+    final verificado = usuario?.emailVerified ?? false;
+    if (verificado) await usuario?.getIdToken(true);
+    return verificado;
   }
 
   // ─────────────────────────────────────────────────────────────────────

@@ -36,6 +36,9 @@ import '../../../../domain/models/tipo_unidad.dart';
 class ConfiguracionNegocioProvider extends ChangeNotifier {
   final NegocioRepository _repository;
   final String rubro;
+  late final Set<String> _categoriasIniciales;
+  late final Set<String> _unidadesIniciales;
+  bool _disposed = false;
 
   ConfiguracionNegocioProvider({
     required this.rubro,
@@ -49,6 +52,8 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
     if (configuracionInicial != null) {
       _restaurarConfiguracion(configuracionInicial);
     }
+    _categoriasIniciales = _categorias.toSet();
+    _unidadesIniciales = _unidadesMedida.map((u) => u.nombre).toSet();
   }
 
   void _restaurarConfiguracion(Map<String, dynamic> datos) {
@@ -381,6 +386,7 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
   bool get faltaDireccion => _direccion.trim().length < 5;
   bool get faltaReferencia => _referencia.trim().length < 5;
   bool get faltaCategoria => _categorias.isEmpty;
+  bool get faltaUnidad => _unidadesMedida.isEmpty;
   bool get faltaZonas => _tieneDelivery && _zonasDelivery.isEmpty;
 
   bool get puedeAvanzarPaso0 =>
@@ -389,7 +395,7 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
       !faltaDireccion &&
       !faltaReferencia &&
       !linksMalos;
-  bool get puedeAvanzarPaso1 => !faltaCategoria;
+  bool get puedeAvanzarPaso1 => !faltaCategoria && !faltaUnidad;
   bool get puedeAvanzarPaso2 => !faltaZonas;
   bool get puedeAvanzarPaso3 =>
       true; // pagos son opcionales, igual que en Kotlin
@@ -427,6 +433,13 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
   /// Equivale a tu `ejecutarGuardado`, sin la parte de validación de RUC
   /// peruano (ya no aplica) ni el "+51" fijo — usa el país seleccionado.
   Future<bool> guardar(String uid) async {
+    if (_guardando) return false;
+    if (uid.trim().isEmpty || !camposCompletos) {
+      _errorValidacion =
+          'Completa los datos obligatorios antes de guardar la configuración.';
+      notifyListeners();
+      return false;
+    }
     if (linksMalos) {
       _errorValidacion = 'Los links de redes deben empezar con https://';
       notifyListeners();
@@ -480,6 +493,25 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      final categoriasEliminadas = _categoriasIniciales
+          .difference(_categorias.toSet())
+          .toList();
+      final unidadesEliminadas = _unidadesIniciales
+          .difference(_unidadesMedida.map((u) => u.nombre).toSet())
+          .toList();
+      final hayProductosAfectados =
+          (categoriasEliminadas.isNotEmpty || unidadesEliminadas.isNotEmpty) &&
+          await _repository.existenProductosDependientes(
+            uid: uid,
+            categorias: categoriasEliminadas,
+            unidades: unidadesEliminadas,
+          );
+      if (hayProductosAfectados) {
+        _errorValidacion =
+            'Hay productos que usan categorías o unidades eliminadas. '
+            'Revísalos primero; no se borró ningún dato.';
+        return false;
+      }
       await _repository.guardarConfiguracionNegocio(
         uid: uid,
         rubro: rubro,
@@ -499,15 +531,20 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
         horarios: _horarios,
         metodosPagoConfig: _metodosPagoConfig,
       );
-      _guardando = false;
-      notifyListeners();
       return true;
     } catch (e) {
-      _guardando = false;
       _errorValidacion = 'Error de conexión con Firebase.';
-      notifyListeners();
       return false;
+    } finally {
+      _guardando = false;
+      if (!_disposed) notifyListeners();
     }
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
   }
 
   // Equivale a tu `fun generarSlug` — sin cambios de lógica, adaptado a

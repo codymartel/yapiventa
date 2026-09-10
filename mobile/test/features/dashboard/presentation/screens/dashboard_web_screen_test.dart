@@ -2,12 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/features/dashboard/presentation/providers/dashboard_provider.dart';
 import 'package:mobile/features/dashboard/presentation/screens/dashboard_web_screen.dart';
-import 'package:mobile/features/negocio/application/use_cases/guardar_plantilla_web.dart';
-import 'package:mobile/features/negocio/application/use_cases/obtener_seleccion_plantilla.dart';
+import 'package:mobile/features/negocio/domain/models/catalogo_negocio.dart';
 import 'package:mobile/features/negocio/domain/models/plantilla_web.dart';
-import 'package:mobile/features/negocio/domain/models/seleccion_plantilla_info.dart';
-import 'package:mobile/features/negocio/domain/repositories/repositorio_seleccion_plantilla.dart';
-import 'package:mobile/features/negocio/presentation/providers/seleccion_plantilla_provider.dart';
+import 'package:mobile/features/negocio/domain/models/progreso_configuracion.dart';
 import 'package:provider/provider.dart';
 
 void main() {
@@ -15,30 +12,21 @@ void main() {
     WidgetTester tester, {
     bool resultado = true,
     Object? error,
+    ProgresoConfiguracion? progreso,
   }) async {
     tester.view.physicalSize = const Size(1400, 1000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    final repositorio = _RepositorioSeleccionFake();
-    final seleccionProvider = SeleccionPlantillaProvider(
-      uid: 'usuario-1',
-      obtenerSeleccionPlantilla: ObtenerSeleccionPlantilla(repositorio),
-      guardarPlantillaWeb: GuardarPlantillaWeb(repositorio),
-    );
-    await seleccionProvider.cargar();
     final dashboardProvider = DashboardProvider();
     final abridor = _AbridorFake(resultado: resultado, error: error);
-    addTearDown(seleccionProvider.dispose);
+    final etapasAbiertas = <EtapaConfiguracion>[];
     addTearDown(dashboardProvider.dispose);
 
     await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider.value(value: dashboardProvider),
-          ChangeNotifierProvider.value(value: seleccionProvider),
-        ],
+      ChangeNotifierProvider.value(
+        value: dashboardProvider,
         child: MaterialApp(
           builder: (context, child) => MediaQuery(
             data: MediaQuery.of(
@@ -46,7 +34,20 @@ void main() {
             ).copyWith(textScaler: const TextScaler.linear(0.8)),
             child: child!,
           ),
-          home: DashboardWebScreen(abrirUrl: abridor.call),
+          home: Builder(
+            builder: (context) => DashboardWebScreen(
+              abrirUrl: abridor.call,
+              progreso: progreso ?? _progresoCompleto(),
+              email: 'ana@example.com',
+              onAbrirEtapa: (etapa) {
+                etapasAbiertas.add(etapa);
+                if (etapa == EtapaConfiguracion.plantilla) {
+                  Navigator.of(context).pushNamed('/elegir-plantilla');
+                }
+              },
+              onCerrarSesion: () {},
+            ),
+          ),
           routes: {
             '/elegir-plantilla': (_) => const Scaffold(
               body: Center(child: Text('Seleccion de plantilla')),
@@ -56,19 +57,19 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    return _EscenarioDashboard(repositorio: repositorio, abridor: abridor);
+    return _EscenarioDashboard(
+      abridor: abridor,
+      etapasAbiertas: etapasAbiertas,
+    );
   }
 
   testWidgets(
-    'usa la precarga y abre el dominio publico sin releer al pulsar',
+    'usa el progreso compartido y abre el dominio publico sin releer',
     (tester) async {
       final escenario = await mostrarDashboard(tester);
-      expect(escenario.repositorio.lecturas, 1);
-
       await tester.tap(find.text('Ver tienda web'));
       await tester.pumpAndSettle();
 
-      expect(escenario.repositorio.lecturas, 1);
       expect(escenario.abridor.llamadas, 1);
       expect(
         escenario.abridor.ultimaUrl,
@@ -111,16 +112,50 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Seleccion de plantilla'), findsOneWidget);
-    expect(escenario.repositorio.lecturas, 1);
     expect(escenario.abridor.llamadas, 0);
+  });
+
+  testWidgets('muestra etapas y continúa por la primera pendiente', (
+    tester,
+  ) async {
+    final escenario = await mostrarDashboard(
+      tester,
+      progreso: _progresoPendiente(),
+    );
+
+    expect(find.byKey(const Key('dashboard-setup-panel')), findsOneWidget);
+    expect(find.text('Continuar configuración'), findsOneWidget);
+    expect(find.text('Requiere un rubro guardado.'), findsOneWidget);
+
+    await tester.tap(find.text('Continuar configuración'));
+    await tester.pump();
+
+    expect(escenario.etapasAbiertas, [EtapaConfiguracion.rubro]);
+  });
+
+  testWidgets('bloquea módulos ajenos mientras el onboarding está pendiente', (
+    tester,
+  ) async {
+    await mostrarDashboard(tester, progreso: _progresoPendiente());
+
+    await tester.tap(find.text('Pedidos').first);
+    await tester.pump();
+
+    expect(
+      find.text('Completa primero las etapas pendientes de configuración.'),
+      findsOneWidget,
+    );
   });
 }
 
 class _EscenarioDashboard {
-  final _RepositorioSeleccionFake repositorio;
   final _AbridorFake abridor;
+  final List<EtapaConfiguracion> etapasAbiertas;
 
-  const _EscenarioDashboard({required this.repositorio, required this.abridor});
+  const _EscenarioDashboard({
+    required this.abridor,
+    required this.etapasAbiertas,
+  });
 }
 
 class _AbridorFake {
@@ -141,19 +176,34 @@ class _AbridorFake {
   }
 }
 
-class _RepositorioSeleccionFake implements RepositorioSeleccionPlantilla {
-  int lecturas = 0;
+ProgresoConfiguracion _progresoCompleto() => ProgresoConfiguracion(
+  catalogo: CatalogoNegocio(
+    rubro: 'Bodega',
+    categorias: const ['Bebidas'],
+    unidadesMedida: const [],
+  ),
+  slug: 'mi-tienda',
+  plantilla: PlantillaWeb.cristal,
+  plantillaProvieneDeCampoOficial: true,
+  rubroCompleto: true,
+  negocioCompleto: true,
+  productosCompletos: true,
+  setupCompletePersistido: true,
+  productosConfirmadosPersistidos: true,
+);
 
-  @override
-  Future<SeleccionPlantillaInfo> obtenerSeleccionPlantilla(String uid) async {
-    lecturas++;
-    return const SeleccionPlantillaInfo(
-      slug: 'mi-tienda',
-      plantillaGuardada: PlantillaWeb.cristal,
-      provieneDeCampoOficial: true,
-    );
-  }
-
-  @override
-  Future<void> guardarPlantillaWeb(String uid, PlantillaWeb plantilla) async {}
-}
+ProgresoConfiguracion _progresoPendiente() => ProgresoConfiguracion(
+  catalogo: CatalogoNegocio(
+    rubro: '',
+    categorias: const [],
+    unidadesMedida: const [],
+  ),
+  slug: '',
+  plantilla: null,
+  plantillaProvieneDeCampoOficial: false,
+  rubroCompleto: false,
+  negocioCompleto: false,
+  productosCompletos: false,
+  setupCompletePersistido: false,
+  productosConfirmadosPersistidos: false,
+);

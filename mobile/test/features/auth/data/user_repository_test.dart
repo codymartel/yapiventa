@@ -57,6 +57,71 @@ void main() {
     expect(plan.data()?['fechaFin'], isA<Timestamp>());
   });
 
+  test('reintentar la creación del perfil no reinicia el onboarding', () async {
+    await firestore.collection('users').doc('usuario-1').set({
+      'email': 'anterior@example.com',
+      'setupComplete': true,
+      'webActiva': false,
+      'rubro': 'Bodega',
+    });
+
+    await repository.crearPerfilEnFirestore(
+      uid: 'usuario-1',
+      email: 'ana@example.com',
+      webActivaInicial: true,
+    );
+
+    final datos = (await firestore.collection('users').doc('usuario-1').get())
+        .data()!;
+    expect(datos['email'], 'ana@example.com');
+    expect(datos['setupComplete'], isTrue);
+    expect(datos['webActiva'], isFalse);
+    expect(datos['rubro'], 'Bodega');
+  });
+
+  test('repara perfil y plan de forma idempotente', () async {
+    await firestore.collection('users').doc('usuario-1').set({
+      'email': 'anterior@example.com',
+      'rubro': 'Bodega',
+    });
+
+    await repository.asegurarPerfilYPlan(
+      uid: 'usuario-1',
+      email: 'ana@example.com',
+      webActivaInicial: true,
+      limiteProductos: 20,
+      minimoProductos: 1,
+    );
+    final planInicial = await firestore
+        .collection('users')
+        .doc('usuario-1')
+        .collection('plan')
+        .doc('actual')
+        .get();
+    await repository.asegurarPerfilYPlan(
+      uid: 'usuario-1',
+      email: 'ana@example.com',
+      webActivaInicial: false,
+      limiteProductos: 999,
+      minimoProductos: 99,
+    );
+
+    final perfil = (await firestore.collection('users').doc('usuario-1').get())
+        .data()!;
+    final planFinal = await firestore
+        .collection('users')
+        .doc('usuario-1')
+        .collection('plan')
+        .doc('actual')
+        .get();
+    expect(perfil['email'], 'ana@example.com');
+    expect(perfil['rubro'], 'Bodega');
+    expect(perfil['setupComplete'], isFalse);
+    expect(perfil['webActiva'], isTrue);
+    expect(planFinal.data(), planInicial.data());
+    expect(planFinal.data()?['limiteProductos'], 20);
+  });
+
   test('consulta existencia y estado de configuracion del perfil', () async {
     await firestore.collection('users').doc('configurado').set({
       'setupComplete': true,
