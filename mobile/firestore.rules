@@ -14,6 +14,17 @@ service cloud.firestore {
         get(/databases/$(database)/documents/negocios/$(negocioId)).data.propietarioUid == request.auth.uid;
     }
 
+    function esDuenoNegocioDespues(negocioId) {
+      return isSignedIn() && negocioId is string &&
+        getAfter(/databases/$(database)/documents/negocios/$(negocioId)).data.propietarioUid == request.auth.uid;
+    }
+
+    function esNegocioNuevoDelUsuarioDespues(negocioId) {
+      return negocioId is string &&
+        !exists(/databases/$(database)/documents/negocios/$(negocioId)) &&
+        esDuenoNegocioDespues(negocioId);
+    }
+
     // Valida que la data de un doc público corresponda a un negocio que
     // el usuario autenticado efectivamente posee. Los docs de
     // negocios_publicos no llevan propietarioUid, así que se resuelve
@@ -22,13 +33,96 @@ service cloud.firestore {
       return datos.negocioId is string && esDuenoNegocio(datos.negocioId);
     }
 
+    function esDuenoNegocioPublicoDespues(datos) {
+      return datos.negocioId is string &&
+        esDuenoNegocioDespues(datos.negocioId);
+    }
+
+    function camposPerfilPermitidos(datos) {
+      return datos.keys().hasOnly([
+        'email',
+        'terminosAceptados',
+        'createdAt',
+        'negocioId'
+      ]);
+    }
+
+    function createdAtValidoEnCreacion(datos) {
+      return !datos.keys().hasAny(['createdAt']) || datos.createdAt is timestamp;
+    }
+
+    function negocioIdValidoEnActualizacion() {
+      let teniaNegocioId = resource.data.keys().hasAny(['negocioId']);
+      let tieneNegocioId = request.resource.data.keys().hasAny(['negocioId']);
+      return teniaNegocioId
+        ? tieneNegocioId &&
+          request.resource.data.negocioId == resource.data.negocioId
+        : !tieneNegocioId ||
+          esNegocioNuevoDelUsuarioDespues(request.resource.data.negocioId);
+    }
+
+    function cambioWebPrivadoSincronizado(negocioId, datosAntes, datosDespues) {
+      let publicoAntes = get(
+        /databases/$(database)/documents/negocios_publicos/$(datosDespues.slug)
+      );
+      let publicoDespues = getAfter(
+        /databases/$(database)/documents/negocios_publicos/$(datosDespues.slug)
+      );
+      return datosDespues.slug is string &&
+        datosDespues.slug == datosAntes.slug &&
+        datosDespues.slug.matches('^[a-z0-9]+(-[a-z0-9]+)*$') &&
+        publicoAntes.data.negocioId == negocioId &&
+        publicoAntes.data.webActiva is bool &&
+        publicoAntes.data.webActiva == datosAntes.webActiva &&
+        publicoDespues.data.negocioId == negocioId &&
+        publicoDespues.data.webActiva is bool &&
+        publicoDespues.data.webActiva == datosDespues.webActiva;
+    }
+
+    function proyeccionWebActivaValida(slug, datos) {
+      let negocio = getAfter(
+        /databases/$(database)/documents/negocios/$(datos.negocioId)
+      );
+      return datos.webActiva is bool &&
+        negocio.data.slug == slug &&
+        negocio.data.webActiva is bool &&
+        datos.webActiva == negocio.data.webActiva;
+    }
+
+    function cambioWebPublicoSincronizado(datosAntes, datosDespues) {
+      let negocioAntes = get(
+        /databases/$(database)/documents/negocios/$(datosAntes.negocioId)
+      );
+      let negocioDespues = getAfter(
+        /databases/$(database)/documents/negocios/$(datosDespues.negocioId)
+      );
+      return !datosDespues.diff(datosAntes).affectedKeys().hasAny(['webActiva']) ||
+        (negocioAntes.data.webActiva is bool &&
+          negocioAntes.data.webActiva == datosAntes.webActiva &&
+          negocioDespues.data.webActiva is bool &&
+          negocioDespues.data.webActiva == datosDespues.webActiva);
+    }
+
     // ─────────────────────────────────────────────────────────────────────
     // users/{userId}
-    //   Solo el propio usuario autenticado lee o escribe su documento.
-    //   Sin permisos públicos.
+    //   Solo conserva identidad, términos y el vínculo inmutable al negocio.
+    //   Los campos legacy existentes pueden permanecer, pero no cambiar.
     // ─────────────────────────────────────────────────────────────────────
     match /users/{userId} {
-      allow read, write: if isSignedIn() && request.auth.uid == userId;
+      allow read: if isSignedIn() && request.auth.uid == userId;
+      allow create: if isSignedIn() && request.auth.uid == userId &&
+        camposPerfilPermitidos(request.resource.data) &&
+        createdAtValidoEnCreacion(request.resource.data) &&
+        (!request.resource.data.keys().hasAny(['negocioId']) ||
+          esNegocioNuevoDelUsuarioDespues(request.resource.data.negocioId));
+      allow update: if isSignedIn() && request.auth.uid == userId &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'email',
+          'terminosAceptados',
+          'negocioId'
+        ]) &&
+        negocioIdValidoEnActualizacion();
+      allow delete: if false;
 
       // users/{userId}/plan/{planId} — privado al propietario.
       match /plan/{planId} {
@@ -42,11 +136,23 @@ service cloud.firestore {
     //   Lectura/edición/eliminación: solo el propietario.
     // ─────────────────────────────────────────────────────────────────────
     match /negocios/{negocioId} {
-      allow read: if resource.data.propietarioUid == request.auth.uid;
+      allow read: if isSignedIn() &&
+        resource.data.propietarioUid == request.auth.uid;
       allow create: if isSignedIn() &&
-        request.resource.data.propietarioUid == request.auth.uid;
-      allow update: if resource.data.propietarioUid == request.auth.uid;
-      allow delete: if resource.data.propietarioUid == request.auth.uid;
+        request.resource.data.propietarioUid == request.auth.uid &&
+        request.resource.data.webActiva is bool;
+      allow update: if isSignedIn() &&
+        resource.data.propietarioUid == request.auth.uid &&
+        request.resource.data.propietarioUid == resource.data.propietarioUid &&
+        request.resource.data.webActiva is bool &&
+        (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['webActiva']) ||
+          cambioWebPrivadoSincronizado(
+            negocioId,
+            resource.data,
+            request.resource.data
+          ));
+      allow delete: if isSignedIn() &&
+        resource.data.propietarioUid == request.auth.uid;
 
       // Subcolecciones privadas del negocio.
       match /pedidos/{document=**} {
@@ -92,11 +198,14 @@ service cloud.firestore {
         esDuenoNegocioPublico(resource.data);
 
       allow create: if isSignedIn() &&
-        esDuenoNegocioPublico(request.resource.data);
+        esDuenoNegocioPublicoDespues(request.resource.data) &&
+        proyeccionWebActivaValida(slug, request.resource.data);
 
       allow update: if isSignedIn() &&
         esDuenoNegocioPublico(resource.data) &&
-        request.resource.data.negocioId == resource.data.negocioId;
+        request.resource.data.negocioId == resource.data.negocioId &&
+        proyeccionWebActivaValida(slug, request.resource.data) &&
+        cambioWebPublicoSincronizado(resource.data, request.resource.data);
 
       allow delete: if isSignedIn() &&
         esDuenoNegocioPublico(resource.data);

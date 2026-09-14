@@ -927,6 +927,251 @@ void main() {
         expect(publico['slug'], 'bodega-ana');
       },
     );
+
+    group('actualizarWebActiva', () {
+      test('sincroniza true en el negocio privado y público', () async {
+        final negocioId = await _prepararNegocio(
+          firestore,
+          'usuario-1',
+          datos: {
+            'slug': 'bodega-ana',
+            'webActiva': false,
+            'nombreNegocio': 'Bodega Ana',
+          },
+        );
+        await firestore.collection('negocios_publicos').doc('bodega-ana').set({
+          'negocioId': negocioId,
+          'webActiva': false,
+          'nombreNegocio': 'Bodega Ana',
+        });
+
+        await repository.actualizarWebActiva('usuario-1', true);
+
+        final privado =
+            (await firestore.collection('negocios').doc(negocioId).get())
+                .data()!;
+        final publico =
+            (await firestore
+                    .collection('negocios_publicos')
+                    .doc('bodega-ana')
+                    .get())
+                .data()!;
+        expect(privado['webActiva'], isTrue);
+        expect(publico['webActiva'], isTrue);
+        expect(privado['nombreNegocio'], 'Bodega Ana');
+        expect(publico['nombreNegocio'], 'Bodega Ana');
+      });
+
+      test('sincroniza false en el negocio privado y público', () async {
+        final negocioId = await _prepararNegocio(
+          firestore,
+          'usuario-1',
+          datos: {
+            'slug': 'bodega-ana',
+            'webActiva': true,
+            'nombreNegocio': 'Bodega Ana',
+          },
+        );
+        await firestore.collection('negocios_publicos').doc('bodega-ana').set({
+          'negocioId': negocioId,
+          'webActiva': true,
+          'nombreNegocio': 'Bodega Ana',
+        });
+
+        await repository.actualizarWebActiva('usuario-1', false);
+
+        final privado =
+            (await firestore.collection('negocios').doc(negocioId).get())
+                .data()!;
+        final publico =
+            (await firestore
+                    .collection('negocios_publicos')
+                    .doc('bodega-ana')
+                    .get())
+                .data()!;
+        expect(privado['webActiva'], isFalse);
+        expect(publico['webActiva'], isFalse);
+        expect(privado['nombreNegocio'], 'Bodega Ana');
+        expect(publico['nombreNegocio'], 'Bodega Ana');
+      });
+
+      test('sin negocioId lanza StateError y no escribe', () async {
+        await firestore.collection('users').doc('usuario-1').set({
+          'email': 'ana@example.com',
+        });
+
+        await expectLater(
+          repository.actualizarWebActiva('usuario-1', true),
+          throwsStateError,
+        );
+
+        expect(
+          (await firestore.collection('users').doc('usuario-1').get()).data(),
+          {'email': 'ana@example.com'},
+        );
+        expect((await firestore.collection('negocios').get()).docs, isEmpty);
+        expect(
+          (await firestore.collection('negocios_publicos').get()).docs,
+          isEmpty,
+        );
+      });
+
+      test('sin slug lanza StateError y no escribe', () async {
+        final negocioId = await _prepararNegocio(
+          firestore,
+          'usuario-1',
+          datos: {'webActiva': false, 'nombreNegocio': 'Bodega Ana'},
+        );
+        final datosAntes =
+            (await firestore.collection('negocios').doc(negocioId).get())
+                .data()!;
+
+        await expectLater(
+          repository.actualizarWebActiva('usuario-1', true),
+          throwsStateError,
+        );
+
+        expect(
+          (await firestore.collection('negocios').doc(negocioId).get()).data(),
+          datosAntes,
+        );
+        expect(
+          (await firestore.collection('negocios_publicos').get()).docs,
+          isEmpty,
+        );
+      });
+
+      test('con slug inválido lanza StateError y no escribe', () async {
+        final negocioId = await _prepararNegocio(
+          firestore,
+          'usuario-1',
+          datos: {
+            'slug': 'Bodega Ana',
+            'webActiva': false,
+            'nombreNegocio': 'Bodega Ana',
+          },
+        );
+        await firestore.collection('negocios_publicos').doc('Bodega Ana').set({
+          'negocioId': negocioId,
+          'webActiva': false,
+        });
+        final privadoAntes =
+            (await firestore.collection('negocios').doc(negocioId).get())
+                .data()!;
+        final publicoAntes =
+            (await firestore
+                    .collection('negocios_publicos')
+                    .doc('Bodega Ana')
+                    .get())
+                .data()!;
+
+        await expectLater(
+          repository.actualizarWebActiva('usuario-1', true),
+          throwsStateError,
+        );
+
+        expect(
+          (await firestore.collection('negocios').doc(negocioId).get()).data(),
+          privadoAntes,
+        );
+        expect(
+          (await firestore
+                  .collection('negocios_publicos')
+                  .doc('Bodega Ana')
+                  .get())
+              .data(),
+          publicoAntes,
+        );
+      });
+
+      test(
+        'sin documento público lanza StateError y no cambia el privado',
+        () async {
+          final negocioId = await _prepararNegocio(
+            firestore,
+            'usuario-1',
+            datos: {
+              'slug': 'bodega-ana',
+              'webActiva': false,
+              'nombreNegocio': 'Bodega Ana',
+            },
+          );
+          final privadoAntes =
+              (await firestore.collection('negocios').doc(negocioId).get())
+                  .data()!;
+
+          await expectLater(
+            repository.actualizarWebActiva('usuario-1', true),
+            throwsStateError,
+          );
+
+          expect(
+            (await firestore.collection('negocios').doc(negocioId).get())
+                .data(),
+            privadoAntes,
+          );
+          expect(
+            (await firestore
+                    .collection('negocios_publicos')
+                    .doc('bodega-ana')
+                    .get())
+                .exists,
+            isFalse,
+          );
+        },
+      );
+
+      test(
+        'si el público apunta a otro negocio lanza StateError sin escribir',
+        () async {
+          final negocioId = await _prepararNegocio(
+            firestore,
+            'usuario-1',
+            datos: {
+              'slug': 'bodega-ana',
+              'webActiva': false,
+              'nombreNegocio': 'Bodega Ana',
+            },
+          );
+          await firestore
+              .collection('negocios_publicos')
+              .doc('bodega-ana')
+              .set({
+                'negocioId': 'otro-negocio',
+                'webActiva': false,
+                'nombreNegocio': 'Otro negocio',
+              });
+          final privadoAntes =
+              (await firestore.collection('negocios').doc(negocioId).get())
+                  .data()!;
+          final publicoAntes =
+              (await firestore
+                      .collection('negocios_publicos')
+                      .doc('bodega-ana')
+                      .get())
+                  .data()!;
+
+          await expectLater(
+            repository.actualizarWebActiva('usuario-1', true),
+            throwsStateError,
+          );
+
+          expect(
+            (await firestore.collection('negocios').doc(negocioId).get())
+                .data(),
+            privadoAntes,
+          );
+          expect(
+            (await firestore
+                    .collection('negocios_publicos')
+                    .doc('bodega-ana')
+                    .get())
+                .data(),
+            publicoAntes,
+          );
+        },
+      );
+    });
   });
 }
 
@@ -949,7 +1194,10 @@ Future<String> _prepararNegocio(
 }) async {
   await _guardarPerfilConNegocioId(firestore, uid);
   final negocioId = _negocioIdDe(uid);
-  await firestore.collection('negocios').doc(negocioId).set(datos);
+  await firestore.collection('negocios').doc(negocioId).set({
+    'propietarioUid': uid,
+    ...datos,
+  });
   return negocioId;
 }
 

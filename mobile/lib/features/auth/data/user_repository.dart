@@ -27,9 +27,6 @@ class UserRepository {
     if (!datosExistentes!.containsKey('terminosAceptados')) {
       actualizacion['terminosAceptados'] = true;
     }
-    if (!datosExistentes.containsKey('createdAt')) {
-      actualizacion['createdAt'] = Timestamp.now();
-    }
     await referencia.set(actualizacion, SetOptions(merge: true));
   }
 
@@ -59,9 +56,6 @@ class UserRepository {
         final actualizacion = <String, dynamic>{'email': email};
         if (!datosPerfil.containsKey('terminosAceptados')) {
           actualizacion['terminosAceptados'] = true;
-        }
-        if (!datosPerfil.containsKey('createdAt')) {
-          actualizacion['createdAt'] = FieldValue.serverTimestamp();
         }
         transaction.update(perfilRef, actualizacion);
       }

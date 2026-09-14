@@ -538,6 +538,37 @@ class NegocioRepository
     );
   }
 
+  Future<void> actualizarWebActiva(String uid, bool activa) async {
+    final negocioId = await _obtenerNegocioIdOpcional(uid);
+    if (negocioId == null) {
+      throw StateError('El usuario no tiene un negocio vinculado.');
+    }
+
+    final negocioRef = _firestore.collection('negocios').doc(negocioId);
+    await _firestore.runTransaction((transaction) async {
+      final negocio = await transaction.get(negocioRef);
+      final datos = negocio.data();
+      if (datos == null) {
+        throw StateError('No se encontró el negocio vinculado.');
+      }
+
+      final slug = _leerSlug(datos);
+      if (!RegExp(r'^[a-z0-9]+(?:-[a-z0-9]+)*$').hasMatch(slug)) {
+        throw StateError('El negocio no tiene un slug válido.');
+      }
+
+      final publicoRef = _firestore.collection('negocios_publicos').doc(slug);
+      final publico = await transaction.get(publicoRef);
+      final datosPublicos = publico.data();
+      if (datosPublicos == null || datosPublicos['negocioId'] != negocioId) {
+        throw StateError('No se encontró la proyección pública del negocio.');
+      }
+
+      transaction.update(negocioRef, {'webActiva': activa});
+      transaction.update(publicoRef, {'webActiva': activa});
+    });
+  }
+
   /// Lee el slug del documento del negocio, limpio, o '' si no hay.
   String _leerSlug(Map<String, dynamic>? datos) {
     final valor = datos?['slug'];

@@ -56,12 +56,13 @@ void main() {
     expect(plan.data()?['fechaFin'], isA<Timestamp>());
   });
 
-  test('reintentar la creación del perfil no reinicia el onboarding', () async {
+  test('reintentar la creación conserva solo los campos del perfil', () async {
+    final creado = Timestamp.now();
     await firestore.collection('users').doc('usuario-1').set({
       'email': 'anterior@example.com',
-      'setupComplete': true,
-      'webActiva': false,
-      'rubro': 'Bodega',
+      'terminosAceptados': true,
+      'createdAt': creado,
+      'negocioId': 'negocio-1',
     });
 
     await repository.crearPerfilEnFirestore(
@@ -72,9 +73,14 @@ void main() {
     final datos = (await firestore.collection('users').doc('usuario-1').get())
         .data()!;
     expect(datos['email'], 'ana@example.com');
-    expect(datos['setupComplete'], isTrue);
-    expect(datos['webActiva'], isFalse);
-    expect(datos['rubro'], 'Bodega');
+    expect(datos['createdAt'], creado);
+    expect(datos['negocioId'], 'negocio-1');
+    expect(datos.keys.toSet(), {
+      'email',
+      'terminosAceptados',
+      'createdAt',
+      'negocioId',
+    });
   });
 
   test('registro crea users/{uid} y plan, pero ningún negocio', () async {
@@ -109,7 +115,7 @@ void main() {
   test('repara perfil y plan de forma idempotente sin crear negocio', () async {
     await firestore.collection('users').doc('usuario-1').set({
       'email': 'anterior@example.com',
-      'rubro': 'Bodega',
+      'createdAt': Timestamp.now(),
     });
 
     await repository.asegurarPerfilYPlan(
@@ -140,10 +146,8 @@ void main() {
         .doc('actual')
         .get();
     expect(perfil['email'], 'ana@example.com');
-    expect(perfil['rubro'], 'Bodega');
-    expect(perfil['setupComplete'], isNull);
-    expect(perfil['webActiva'], isNull);
     expect(perfil['negocioId'], isNull);
+    expect(perfil.keys.toSet(), {'email', 'terminosAceptados', 'createdAt'});
     expect(planFinal.data(), planInicial.data());
     expect(planFinal.data()?['limiteProductos'], 20);
     expect((await firestore.collection('negocios').get()).docs, isEmpty);
