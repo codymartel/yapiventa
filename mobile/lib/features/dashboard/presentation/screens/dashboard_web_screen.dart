@@ -261,10 +261,7 @@ class _DashboardContent extends StatelessWidget {
                 onAbrirEtapa: onAbrirEtapa,
               ),
               if (!progreso.completo) const SizedBox(height: 18),
-              _DashboardHeading(
-                periodo: state.periodo,
-                datosDemo: state.datosDemo,
-              ),
+              _DashboardHeading(periodo: state.periodo),
               const SizedBox(height: 24),
               DashboardSummaryCards(state: state),
               const SizedBox(height: 18),
@@ -326,9 +323,8 @@ class _DashboardContent extends StatelessWidget {
 
 class _DashboardHeading extends StatelessWidget {
   final DashboardPeriod periodo;
-  final bool datosDemo;
 
-  const _DashboardHeading({required this.periodo, required this.datosDemo});
+  const _DashboardHeading({required this.periodo});
 
   @override
   Widget build(BuildContext context) {
@@ -340,29 +336,6 @@ class _DashboardHeading extends StatelessWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (datosDemo) ...[
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.blue.withValues(alpha: 0.17),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.border),
-                ),
-                child: const Text(
-                  'DATOS DE DEMOSTRACIÓN',
-                  style: TextStyle(
-                    color: AppColors.blueLt,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.7,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 10),
-            ],
             const Text(
               'Resumen de tu negocio',
               style: TextStyle(

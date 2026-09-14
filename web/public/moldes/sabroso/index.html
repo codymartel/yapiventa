@@ -31,27 +31,6 @@
   </header>
 
   <main class="wrap">
-    <!-- Presentación -->
-    <section class="intro">
-      <p x-show="negocio.direccion" x-text="negocio.direccion"></p>
-      <p class="intro-luz" x-show="categorias.length" x-cloak>
-        Elige un plato y pídelo en un toque.
-      </p>
-    </section>
-
-    <!-- Categorías (pills con scroll) -->
-    <section class="menu-cats" x-show="categorias.length" x-cloak>
-      <div class="pills">
-        <button class="pill" :class="{ 'pill--activa': categoriaActiva === '' }"
-                @click="categoriaActiva = ''">Todo el menú</button>
-        <template x-for="cat in categorias" :key="cat">
-          <button class="pill" :class="{ 'pill--activa': categoriaActiva === cat }"
-                  @click="categoriaActiva = categoriaActiva === cat ? '' : cat"
-                  x-text="cat"></button>
-        </template>
-      </div>
-    </section>
-
     <!-- Grid de platos — fotos protagonistas -->
     <section x-show="!cargando && !error" class="grid">
       <template x-for="p in filtrados" :key="p.id">

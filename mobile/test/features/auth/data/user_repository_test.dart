@@ -12,7 +12,7 @@ void main() {
     repository = UserRepository(firestore: firestore);
   });
 
-  test('crea un perfil inicial con los valores esperados', () async {
+  test('crea un perfil inicial con la estructura nueva', () async {
     await repository.crearPerfilEnFirestore(
       uid: 'usuario-1',
       email: 'ana@example.com',
@@ -23,10 +23,24 @@ void main() {
 
     expect(perfil.exists, isTrue);
     expect(perfil.data(), containsPair('email', 'ana@example.com'));
-    expect(perfil.data(), containsPair('setupComplete', false));
     expect(perfil.data(), containsPair('terminosAceptados', true));
-    expect(perfil.data(), containsPair('webActiva', true));
     expect(perfil.data()?['createdAt'], isA<Timestamp>());
+    final negocioId = perfil.data()?['negocioId'];
+    expect(negocioId, isA<String>());
+    expect(perfil.data()!.keys.toSet().difference({
+      'email',
+      'terminosAceptados',
+      'createdAt',
+      'negocioId',
+    }), isEmpty);
+
+    final negocio = await firestore
+        .collection('negocios')
+        .doc(negocioId as String)
+        .get();
+    expect(negocio.exists, isTrue);
+    expect(negocio.data(), containsPair('setupComplete', false));
+    expect(negocio.data(), containsPair('webActiva', true));
   });
 
   test('guarda el plan free sin eliminar campos existentes', () async {
@@ -92,6 +106,12 @@ void main() {
       limiteProductos: 20,
       minimoProductos: 1,
     );
+    final perfilInicial =
+        (await firestore.collection('users').doc('usuario-1').get()).data()!;
+    final negocioInicial = await firestore
+        .collection('negocios')
+        .doc(perfilInicial['negocioId'] as String)
+        .get();
     final planInicial = await firestore
         .collection('users')
         .doc('usuario-1')
@@ -108,6 +128,10 @@ void main() {
 
     final perfil = (await firestore.collection('users').doc('usuario-1').get())
         .data()!;
+    final negocioFinal = await firestore
+        .collection('negocios')
+        .doc(perfil['negocioId'] as String)
+        .get();
     final planFinal = await firestore
         .collection('users')
         .doc('usuario-1')
@@ -116,10 +140,45 @@ void main() {
         .get();
     expect(perfil['email'], 'ana@example.com');
     expect(perfil['rubro'], 'Bodega');
-    expect(perfil['setupComplete'], isFalse);
-    expect(perfil['webActiva'], isTrue);
+    expect(perfil['setupComplete'], isNull);
+    expect(perfil['webActiva'], isNull);
+    expect(perfil['negocioId'], perfilInicial['negocioId']);
+    expect(negocioInicial.exists, isTrue);
+    expect(negocioFinal.data(), negocioInicial.data());
     expect(planFinal.data(), planInicial.data());
     expect(planFinal.data()?['limiteProductos'], 20);
+  });
+
+  test('crea users/{uid} minimo y negocios/{negocioId} al registrarse', () async {
+    await repository.asegurarPerfilYPlan(
+      uid: 'usuario-nuevo',
+      email: 'nuevo@example.com',
+      webActivaInicial: true,
+      limiteProductos: 20,
+      minimoProductos: 1,
+    );
+
+    final perfil = (await firestore.collection('users').doc('usuario-nuevo').get())
+        .data()!;
+    expect(perfil, containsPair('email', 'nuevo@example.com'));
+    expect(perfil, containsPair('terminosAceptados', true));
+    expect(perfil, containsPair('negocioId', isA<String>()));
+    expect(perfil['createdAt'], isA<Timestamp>());
+    expect(perfil.keys.toSet().difference({
+      'email',
+      'terminosAceptados',
+      'createdAt',
+      'negocioId',
+    }), isEmpty);
+
+    final negocio = (await firestore
+            .collection('negocios')
+            .doc(perfil['negocioId'] as String)
+            .get())
+        .data()!;
+    expect(negocio, containsPair('propietarioUid', 'usuario-nuevo'));
+    expect(negocio, containsPair('setupComplete', false));
+    expect(negocio, containsPair('webActiva', true));
   });
 
   test('consulta existencia y estado de configuracion del perfil', () async {

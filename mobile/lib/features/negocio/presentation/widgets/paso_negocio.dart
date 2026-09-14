@@ -79,33 +79,357 @@ class _PasoNegocioState extends State<PasoNegocio> {
   @override
   Widget build(BuildContext context) {
     final p = context.watch<ConfiguracionNegocioProvider>();
+    final esDesktop = MediaQuery.sizeOf(context).width >= 600;
+
+    final contenido = esDesktop
+        ? _buildDesktop(context, p)
+        : _buildMovil(context, p);
+
+    if (esDesktop) {
+      return Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720),
+          child: ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+            children: contenido,
+          ),
+        ),
+      );
+    }
 
     return ListView(
       padding: const EdgeInsets.all(20),
+      children: contenido,
+    );
+  }
+
+  // ── Desktop / Laptop ──────────────────────────────────────────────────
+  List<Widget> _buildDesktop(
+    BuildContext context,
+    ConfiguracionNegocioProvider p,
+  ) {
+    return [
+      Text(
+        'Datos del negocio',
+        style: TextStyle(
+          color: AppColors.texto,
+          fontWeight: FontWeight.w600,
+          fontSize: 20,
+        ),
+      ),
+      const SizedBox(height: 4),
+      Text(
+        'Cuéntanos cómo se llama y cómo pueden contactarte',
+        style: TextStyle(color: AppColors.muted, fontSize: 13),
+      ),
+      const SizedBox(height: 24),
+
+      // ── Tarjeta obligatoria ──
+      Card(
+        color: AppColors.card,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: AppColors.border),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _seccionLabel('Información principal'),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _nombreController,
+                      onChanged: (v) => p.nombreNegocio = v,
+                      style: TextStyle(color: AppColors.texto),
+                      decoration: _decoracion(
+                        'Nombre del negocio *',
+                        'Ej: Carnes Don José',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(child: _campoTelefono(p)),
+                ],
+              ),
+              if (p.faltaNombre && p.nombreNegocio.isNotEmpty)
+                _error('Mínimo 3 caracteres'),
+              if (p.telefono.isNotEmpty && p.faltaTelefono)
+                _error(
+                  'Faltan ${p.paisTelefono.digitosEsperados - p.telefono.length} dígito(s)',
+                ),
+
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _direccionController,
+                      onChanged: (v) => p.direccion = v,
+                      style: TextStyle(color: AppColors.texto),
+                      decoration: _decoracion(
+                        'Dirección *',
+                        'Ej: Av. Perú 123',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextField(
+                      controller: _referenciaController,
+                      onChanged: (v) => p.referencia = v,
+                      style: TextStyle(color: AppColors.texto),
+                      decoration: _decoracion(
+                        'Referencia *',
+                        'Ej: Frente a la plaza',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+
+      const SizedBox(height: 28),
+
+      // ── Sección opcional ──
+      Text(
+        'Opcional',
+        style: TextStyle(
+          color: AppColors.muted,
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      const SizedBox(height: 4),
+      Text(
+        'Redes sociales y datos fiscales',
+        style: TextStyle(color: AppColors.dim, fontSize: 12),
+      ),
+      const SizedBox(height: 16),
+      Card(
+        color: AppColors.card,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: AppColors.border),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _rucController,
+                      onChanged: (v) => p.ruc = v,
+                      style: TextStyle(color: AppColors.texto),
+                      decoration: _decoracion(
+                        'RUC / documento tributario',
+                        'Opcional',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  const Expanded(child: SizedBox.shrink()),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _facebookController,
+                      onChanged: (v) => p.linkFacebook = v,
+                      style: TextStyle(color: AppColors.texto),
+                      decoration: _decoracion(
+                        'Facebook',
+                        'https://facebook.com/...',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextField(
+                      controller: _tiktokController,
+                      onChanged: (v) => p.linkTiktok = v,
+                      style: TextStyle(color: AppColors.texto),
+                      decoration: _decoracion(
+                        'TikTok',
+                        'https://tiktok.com/...',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _instagramController,
+                      onChanged: (v) => p.linkInstagram = v,
+                      style: TextStyle(color: AppColors.texto),
+                      decoration: _decoracion(
+                        'Instagram',
+                        'https://instagram.com/...',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextField(
+                      controller: _youtubeController,
+                      onChanged: (v) => p.linkYoutube = v,
+                      style: TextStyle(color: AppColors.texto),
+                      decoration: _decoracion(
+                        'YouTube',
+                        'https://youtube.com/...',
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (p.linksMalos) ...[
+                const SizedBox(height: 8),
+                _error('Los links deben empezar con https://'),
+              ],
+            ],
+          ),
+        ),
+      ),
+      const SizedBox(height: 24),
+    ];
+  }
+
+  // ── Móvil ─────────────────────────────────────────────────────────────
+  List<Widget> _buildMovil(
+    BuildContext context,
+    ConfiguracionNegocioProvider p,
+  ) {
+    return [
+      Text(
+        'Datos del negocio',
+        style: TextStyle(
+          color: AppColors.texto,
+          fontWeight: FontWeight.w600,
+          fontSize: 18,
+        ),
+      ),
+      const SizedBox(height: 4),
+      Text(
+        'Cuéntanos cómo se llama y cómo pueden contactarte',
+        style: TextStyle(color: AppColors.muted, fontSize: 12),
+      ),
+      const SizedBox(height: 20),
+
+      TextField(
+        controller: _nombreController,
+        onChanged: (v) => p.nombreNegocio = v,
+        style: TextStyle(color: AppColors.texto),
+        decoration: _decoracion(
+          'Nombre del negocio *',
+          'Ej: Carnes Don José',
+        ),
+      ),
+      if (p.faltaNombre && p.nombreNegocio.isNotEmpty)
+        _error('Mínimo 3 caracteres'),
+
+      const SizedBox(height: 16),
+      _campoTelefono(p),
+      if (p.telefono.isNotEmpty && p.faltaTelefono)
+        _error(
+          'Faltan ${p.paisTelefono.digitosEsperados - p.telefono.length} dígito(s)',
+        ),
+
+      const SizedBox(height: 16),
+      TextField(
+        controller: _direccionController,
+        onChanged: (v) => p.direccion = v,
+        style: TextStyle(color: AppColors.texto),
+        decoration: _decoracion('Dirección *', 'Ej: Av. Perú 123'),
+      ),
+
+      const SizedBox(height: 16),
+      TextField(
+        controller: _referenciaController,
+        onChanged: (v) => p.referencia = v,
+        style: TextStyle(color: AppColors.texto),
+        decoration: _decoracion(
+          'Referencia *',
+          'Ej: Frente a la plaza, al lado de farmacia',
+        ),
+      ),
+
+      const SizedBox(height: 28),
+      Text(
+        'Opcional',
+        style: TextStyle(
+          color: AppColors.muted,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+      const SizedBox(height: 4),
+      Text(
+        'Redes sociales y datos fiscales',
+        style: TextStyle(color: AppColors.dim, fontSize: 11),
+      ),
+      const SizedBox(height: 12),
+      TextField(
+        controller: _rucController,
+        onChanged: (v) => p.ruc = v,
+        style: TextStyle(color: AppColors.texto),
+        decoration: _decoracion('RUC / documento tributario', 'Opcional'),
+      ),
+      const SizedBox(height: 12),
+      TextField(
+        controller: _facebookController,
+        onChanged: (v) => p.linkFacebook = v,
+        style: TextStyle(color: AppColors.texto),
+        decoration: _decoracion('Facebook', 'https://facebook.com/...'),
+      ),
+      const SizedBox(height: 12),
+      TextField(
+        controller: _tiktokController,
+        onChanged: (v) => p.linkTiktok = v,
+        style: TextStyle(color: AppColors.texto),
+        decoration: _decoracion('TikTok', 'https://tiktok.com/...'),
+      ),
+      const SizedBox(height: 12),
+      TextField(
+        controller: _instagramController,
+        onChanged: (v) => p.linkInstagram = v,
+        style: TextStyle(color: AppColors.texto),
+        decoration: _decoracion('Instagram', 'https://instagram.com/...'),
+      ),
+      const SizedBox(height: 12),
+      TextField(
+        controller: _youtubeController,
+        onChanged: (v) => p.linkYoutube = v,
+        style: TextStyle(color: AppColors.texto),
+        decoration: _decoracion('YouTube', 'https://youtube.com/...'),
+      ),
+      if (p.linksMalos) ...[
+        const SizedBox(height: 8),
+        _error('Los links deben empezar con https://'),
+      ],
+      const SizedBox(height: 24),
+    ];
+  }
+
+  // ── Helpers compartidos ───────────────────────────────────────────────
+  Widget _campoTelefono(ConfiguracionNegocioProvider p) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Datos del negocio',
-          style: TextStyle(
-            color: AppColors.texto,
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-          ),
-        ),
-        const SizedBox(height: 12),
-
-        TextField(
-          controller: _nombreController,
-          onChanged: (v) => p.nombreNegocio = v,
-          style: TextStyle(color: AppColors.texto),
-          decoration: _decoracion(
-            'Nombre del negocio *',
-            'Ej: Carnes Don José',
-          ),
-        ),
-        if (p.faltaNombre && p.nombreNegocio.isNotEmpty)
-          _error('Mínimo 3 caracteres'),
-
-        const SizedBox(height: 16),
         Text(
           'WhatsApp *',
           style: TextStyle(color: AppColors.muted, fontSize: 12),
@@ -113,7 +437,6 @@ class _PasoNegocioState extends State<PasoNegocio> {
         const SizedBox(height: 6),
         Row(
           children: [
-            // NUEVO — selector de país en vez del "+51" fijo del Kotlin.
             DropdownButton<PaisTelefono>(
               value: p.paisTelefono,
               dropdownColor: AppColors.card,
@@ -155,69 +478,18 @@ class _PasoNegocioState extends State<PasoNegocio> {
             ),
           ],
         ),
-        if (p.telefono.isNotEmpty && p.faltaTelefono)
-          _error(
-            'Faltan ${p.paisTelefono.digitosEsperados - p.telefono.length} dígito(s)',
-          ),
-
-        const SizedBox(height: 16),
-        TextField(
-          controller: _direccionController,
-          onChanged: (v) => p.direccion = v,
-          style: TextStyle(color: AppColors.texto),
-          decoration: _decoracion('Dirección *', 'Ej: Av. Perú 123'),
-        ),
-
-        const SizedBox(height: 16),
-        TextField(
-          controller: _referenciaController,
-          onChanged: (v) => p.referencia = v,
-          style: TextStyle(color: AppColors.texto),
-          decoration: _decoracion(
-            'Referencia *',
-            'Ej: Frente a la plaza, al lado de farmacia',
-          ),
-        ),
-
-        const SizedBox(height: 24),
-        Text('Opcional', style: TextStyle(color: AppColors.dim, fontSize: 11)),
-        const SizedBox(height: 8),
-        TextField(
-          controller: _rucController,
-          onChanged: (v) => p.ruc = v,
-          style: TextStyle(color: AppColors.texto),
-          decoration: _decoracion('RUC / documento tributario', 'Opcional'),
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _facebookController,
-          onChanged: (v) => p.linkFacebook = v,
-          style: TextStyle(color: AppColors.texto),
-          decoration: _decoracion('Facebook', 'https://facebook.com/...'),
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _tiktokController,
-          onChanged: (v) => p.linkTiktok = v,
-          style: TextStyle(color: AppColors.texto),
-          decoration: _decoracion('TikTok', 'https://tiktok.com/...'),
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _instagramController,
-          onChanged: (v) => p.linkInstagram = v,
-          style: TextStyle(color: AppColors.texto),
-          decoration: _decoracion('Instagram', 'https://instagram.com/...'),
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _youtubeController,
-          onChanged: (v) => p.linkYoutube = v,
-          style: TextStyle(color: AppColors.texto),
-          decoration: _decoracion('YouTube', 'https://youtube.com/...'),
-        ),
-        if (p.linksMalos) _error('Los links deben empezar con https://'),
       ],
+    );
+  }
+
+  Widget _seccionLabel(String texto) {
+    return Text(
+      texto,
+      style: TextStyle(
+        color: AppColors.muted,
+        fontSize: 12,
+        fontWeight: FontWeight.w500,
+      ),
     );
   }
 
@@ -225,9 +497,22 @@ class _PasoNegocioState extends State<PasoNegocio> {
     labelText: label,
     hintText: hint,
     hintStyle: TextStyle(color: AppColors.dim),
+    labelStyle: TextStyle(color: AppColors.muted),
     filled: true,
-    fillColor: AppColors.card,
-    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+    fillColor: AppColors.superficie,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: AppColors.border),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide(color: AppColors.border),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: const BorderSide(color: AppColors.blueLt, width: 1.5),
+    ),
   );
 
   Widget _error(String msg) => Padding(

@@ -13,20 +13,54 @@ class UserRepository {
   }) async {
     final referencia = _firestore.collection('users').doc(uid);
     final existente = await referencia.get();
-    if (existente.exists) {
+    final datosExistentes = existente.data();
+
+    // Estructura nueva:
+    //   users/{uid}   → SOLO email, terminosAceptados, createdAt, negocioId.
+    //   negocios/{id} → setupComplete, webActiva, createdAt y (a futuro)
+    //                   los campos del negocio y del onboarding.
+    //
+    // El negocioId es independiente del UID (auto id de Firestore) y se
+    // conserva si el perfil ya lo tiene asignado. Si el documento de
+    // negocios ya existe, no se sobrescribe.
+    final negocioIdActual = datosExistentes?['negocioId'];
+    final negocioId =
+        negocioIdActual is String && negocioIdActual.trim().isNotEmpty
+        ? negocioIdActual
+        : _firestore.collection('negocios').doc().id;
+
+    final negocioRef = _firestore.collection('negocios').doc(negocioId);
+    final negocio = await negocioRef.get();
+    if (!negocio.exists) {
+      await negocioRef.set({
+        'propietarioUid': uid,
+        'createdAt': Timestamp.now(),
+        'setupComplete': false,
+        'webActiva': webActivaInicial,
+      });
+    }
+
+    if (!existente.exists) {
       await referencia.set({
         'email': email,
+        'createdAt': Timestamp.now(),
         'terminosAceptados': true,
-      }, SetOptions(merge: true));
+        'negocioId': negocioId,
+      });
       return;
     }
-    await referencia.set({
-      'email': email,
-      'createdAt': Timestamp.now(),
-      'setupComplete': false,
-      'terminosAceptados': true,
-      'webActiva': webActivaInicial,
-    });
+
+    final actualizacion = <String, dynamic>{'email': email};
+    if (!datosExistentes!.containsKey('terminosAceptados')) {
+      actualizacion['terminosAceptados'] = true;
+    }
+    if (!datosExistentes.containsKey('createdAt')) {
+      actualizacion['createdAt'] = Timestamp.now();
+    }
+    if (negocioIdActual is! String || negocioIdActual.trim().isEmpty) {
+      actualizacion['negocioId'] = negocioId;
+    }
+    await referencia.set(actualizacion, SetOptions(merge: true));
   }
 
   Future<void> asegurarPerfilYPlan({
@@ -37,35 +71,60 @@ class UserRepository {
     required int minimoProductos,
   }) async {
     final perfilRef = _firestore.collection('users').doc(uid);
-    final planRef = perfilRef.collection('plan').doc('actual');
     await _firestore.runTransaction((transaction) async {
       final perfil = await transaction.get(perfilRef);
-      final plan = await transaction.get(planRef);
       final datosPerfil = perfil.data();
+
+      // Estructura nueva:
+      //   users/{uid}      → SOLO email, terminosAceptados, createdAt, negocioId.
+      //   negocios/{id}    → propietarioUid, setupComplete, webActiva y (a futuro)
+      //                      los campos del negocio y del onboarding.
+      //   negocios/{id}/suscripcion/actual → plan (migración posterior).
+      //
+      // negocioId se genera de forma independiente del UID (auto id de
+      // Firestore) y se conserva si el perfil ya lo tiene asignado. Los datos
+      // existentes de un perfil previo no se borran ni se sobrescriben.
+      final negocioIdActual = datosPerfil?['negocioId'];
+      final negocioId = negocioIdActual is String && negocioIdActual.trim().isNotEmpty
+          ? negocioIdActual
+          : _firestore.collection('negocios').doc().id;
+      final negocioRef = _firestore.collection('negocios').doc(negocioId);
+      final planRef = perfilRef.collection('plan').doc('actual');
+
+      // Todas las lecturas antes de las escrituras (requisito de Firestore).
+      final negocio = await transaction.get(negocioRef);
+      final plan = await transaction.get(planRef);
+
       if (datosPerfil == null) {
         transaction.set(perfilRef, {
           'email': email,
-          'createdAt': FieldValue.serverTimestamp(),
-          'setupComplete': false,
           'terminosAceptados': true,
-          'webActiva': webActivaInicial,
+          'createdAt': FieldValue.serverTimestamp(),
+          'negocioId': negocioId,
         });
       } else {
         final actualizacion = <String, dynamic>{'email': email};
-        if (!datosPerfil.containsKey('createdAt')) {
-          actualizacion['createdAt'] = FieldValue.serverTimestamp();
-        }
-        if (!datosPerfil.containsKey('setupComplete')) {
-          actualizacion['setupComplete'] = false;
-        }
         if (!datosPerfil.containsKey('terminosAceptados')) {
           actualizacion['terminosAceptados'] = true;
         }
-        if (!datosPerfil.containsKey('webActiva')) {
-          actualizacion['webActiva'] = webActivaInicial;
+        if (!datosPerfil.containsKey('createdAt')) {
+          actualizacion['createdAt'] = FieldValue.serverTimestamp();
+        }
+        if (negocioIdActual is! String || negocioIdActual.trim().isEmpty) {
+          actualizacion['negocioId'] = negocioId;
         }
         transaction.update(perfilRef, actualizacion);
       }
+
+      if (!negocio.exists) {
+        transaction.set(negocioRef, {
+          'propietarioUid': uid,
+          'setupComplete': false,
+          'webActiva': webActivaInicial,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+
       if (!plan.exists) {
         final hoy = DateTime.now();
         transaction.set(planRef, {

@@ -82,7 +82,6 @@ class DashboardFeaturedProduct {
 
 class DashboardUiState {
   final DashboardPeriod periodo;
-  final bool datosDemo;
   final String nombreNegocio;
   final double ventasOnline;
   final double ventasFisicas;
@@ -97,7 +96,6 @@ class DashboardUiState {
 
   DashboardUiState({
     required this.periodo,
-    required this.datosDemo,
     required this.nombreNegocio,
     required this.ventasOnline,
     required this.ventasFisicas,

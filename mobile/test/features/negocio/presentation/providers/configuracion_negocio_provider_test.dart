@@ -67,6 +67,10 @@ void main() {
 
   test('bloquea un segundo guardado concurrente', () async {
     final firestore = FakeFirebaseFirestore();
+    await firestore.collection('users').doc('usuario-1').set({
+      'email': 'ana@example.com',
+      'negocioId': 'negocio-1',
+    });
     final provider = ConfiguracionNegocioProvider(
       rubro: 'Bodega',
       repository: NegocioRepository(firestore: firestore),
@@ -81,8 +85,8 @@ void main() {
 
     expect(await segundo, isFalse);
     expect(await primero, isTrue);
-    final datos = (await firestore.collection('users').doc('usuario-1').get())
-        .data()!;
+    final datos =
+        (await firestore.collection('negocios').doc('negocio-1').get()).data()!;
     expect(datos['setupComplete'], isNull);
     expect(datos['onboardingBusinessRubro'], 'Bodega');
   });

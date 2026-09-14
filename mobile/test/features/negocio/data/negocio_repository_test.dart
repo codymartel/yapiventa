@@ -19,25 +19,30 @@ void main() {
     repository = NegocioRepository(firestore: firestore);
   });
 
-  test('obtiene categorías y unidades tipadas en una lectura', () async {
-    await firestore.collection('users').doc('usuario-1').set({
-      'rubro': 'Bodega',
-      'categorias': ['Bebidas', ' Snacks ', 'Bebidas', 7],
-      'unidadesMedida': [
-        {
-          'nombre': 'Unidad',
-          'tipo': 'entera',
-          'fraccionesPermitidas': ['1', '2'],
-          'esOpcional': false,
-        },
-        {
-          'nombre': 'kg',
-          'tipo': 'fraccionaria',
-          'fraccionesPermitidas': ['0.5', '1'],
-          'esOpcional': true,
-        },
-      ],
-    });
+  test('obtiene categorías y unidades tipadas desde negocios/{negocioId}',
+      () async {
+    await _prepararNegocio(
+      firestore,
+      'usuario-1',
+      datos: {
+        'rubro': 'Bodega',
+        'categorias': ['Bebidas', ' Snacks ', 'Bebidas', 7],
+        'unidadesMedida': [
+          {
+            'nombre': 'Unidad',
+            'tipo': 'entera',
+            'fraccionesPermitidas': ['1', '2'],
+            'esOpcional': false,
+          },
+          {
+            'nombre': 'kg',
+            'tipo': 'fraccionaria',
+            'fraccionesPermitidas': ['0.5', '1'],
+            'esOpcional': true,
+          },
+        ],
+      },
+    );
 
     final catalogo = await repository.obtenerCatalogoNegocio('usuario-1');
 
@@ -53,7 +58,7 @@ void main() {
   test(
     'devuelve un catálogo vacío cuando el documento no tiene datos',
     () async {
-      await firestore.collection('users').doc('usuario-1').set({});
+      await _prepararNegocio(firestore, 'usuario-1', datos: {});
 
       final catalogo = await repository.obtenerCatalogoNegocio('usuario-1');
 
@@ -63,14 +68,18 @@ void main() {
   );
 
   test('tolera datos incompletos sin crear unidades inválidas', () async {
-    await firestore.collection('users').doc('usuario-1').set({
-      'categorias': 'Bebidas',
-      'unidadesMedida': [
-        {'nombre': 'Unidad'},
-        {'tipo': 'entera'},
-        'kg',
-      ],
-    });
+    await _prepararNegocio(
+      firestore,
+      'usuario-1',
+      datos: {
+        'categorias': 'Bebidas',
+        'unidadesMedida': [
+          {'nombre': 'Unidad'},
+          {'tipo': 'entera'},
+          'kg',
+        ],
+      },
+    );
 
     final catalogo = await repository.obtenerCatalogoNegocio('usuario-1');
 
@@ -79,14 +88,19 @@ void main() {
   });
 
   test(
-    'actualiza la configuracion y serializa delivery, horarios y pagos',
+    'actualiza la configuracion en negocios y serializa delivery, horarios '
+    'y pagos sin tocar users/{uid}',
     () async {
-      await firestore.collection('users').doc('usuario-1').set({
-        'email': 'ana@example.com',
-        'plantillaWeb': 'neon',
-        'setupComplete': false,
-        'webActiva': false,
-      });
+      final negocioId = await _prepararNegocio(
+        firestore,
+        'usuario-1',
+        datos: {
+          'email': 'ana@example.com',
+          'plantillaWeb': 'neon',
+          'setupComplete': false,
+          'webActiva': false,
+        },
+      );
 
       await repository.guardarConfiguracionNegocio(
         uid: 'usuario-1',
@@ -134,12 +148,12 @@ void main() {
         ],
       );
 
-      final datos = (await firestore.collection('users').doc('usuario-1').get())
-          .data()!;
-
-      expect(datos['email'], 'ana@example.com');
+      final datos =
+          (await firestore.collection('negocios').doc(negocioId).get())
+              .data()!;
       expect(datos['rubro'], 'Bodega');
       expect(datos['nombreNegocio'], 'Bodega Ana');
+      expect(datos['ruc'], '12345678901');
       expect(datos['plantillaWeb'], 'neon');
       expect(datos['setupComplete'], isFalse);
       expect(datos['webActiva'], isFalse);
@@ -164,11 +178,15 @@ void main() {
           'valorDescuento': 10.0,
         },
       });
+
+      final perfil = (await firestore.collection('users').doc('usuario-1').get())
+          .data()!;
+      expect(perfil.keys.toSet(), {'email', 'negocioId'});
     },
   );
 
   test('guardarPlantillaWeb completa onboarding sin tocar webActiva', () async {
-    await _guardarCuentaConNegocioValido(
+    final negocioId = await _guardarCuentaConNegocioValido(
       firestore,
       'usuario-1',
       adicionales: {
@@ -181,8 +199,8 @@ void main() {
 
     await repository.guardarPlantillaWeb('usuario-1', PlantillaWeb.cristal);
 
-    final datos = (await firestore.collection('users').doc('usuario-1').get())
-        .data()!;
+    final datos =
+        (await firestore.collection('negocios').doc(negocioId).get()).data()!;
     expect(datos['slug'], 'bodega-ana');
     expect(datos['plantilla'], 'neon');
     expect(datos['plantillaWeb'], 'cristal');
@@ -191,10 +209,16 @@ void main() {
     expect(datos['onboardingTemplateCompletedAt'], isNotNull);
     expect(datos['onboardingCompletedAt'], isNotNull);
     expect(datos['webActiva'], isFalse);
+
+    final perfil = (await firestore.collection('users').doc('usuario-1').get())
+        .data()!;
+    expect(perfil.keys.toSet(), {'email', 'negocioId'});
   });
 
   group('obtenerProgresoConfiguracion', () {
     test('empieza en rubro para una cuenta sin datos', () async {
+      await _guardarPerfilConNegocioId(firestore, 'usuario-nuevo');
+
       final progreso = await repository.obtenerProgresoConfiguracion(
         'usuario-nuevo',
       );
@@ -208,7 +232,7 @@ void main() {
     });
 
     test('avanza a negocio al encontrar un rubro válido', () async {
-      await firestore.collection('users').doc('usuario-1').set({
+      await _prepararNegocio(firestore, 'usuario-1', datos: {
         'rubro': 'Bodega',
       });
 
@@ -305,7 +329,7 @@ void main() {
     });
 
     test('no confía en un setupComplete antiguo y prematuro', () async {
-      await firestore.collection('users').doc('usuario-1').set({
+      await _prepararNegocio(firestore, 'usuario-1', datos: {
         'setupComplete': true,
       });
 
@@ -340,30 +364,40 @@ void main() {
     });
   });
 
-  test('guardarRubro conserva webActiva', () async {
-    await firestore.collection('users').doc('usuario-1').set({
-      'email': 'ana@example.com',
-      'webActiva': true,
-    });
+  test('guardarRubro conserva webActiva en negocios y no toca users', () async {
+    final negocioId = await _prepararNegocio(
+      firestore,
+      'usuario-1',
+      datos: {
+        'webActiva': true,
+      },
+    );
 
     await repository.guardarRubro('usuario-1', '  Bodega  ');
 
-    final datos = (await firestore.collection('users').doc('usuario-1').get())
-        .data()!;
+    final datos =
+        (await firestore.collection('negocios').doc(negocioId).get()).data()!;
     expect(datos['rubro'], 'Bodega');
-    expect(datos['email'], 'ana@example.com');
     expect(datos['webActiva'], isTrue);
     expect(datos['onboardingRubroCompletedAt'], isNotNull);
+
+    final perfil = (await firestore.collection('users').doc('usuario-1').get())
+        .data()!;
+    expect(perfil.keys.toSet(), {'email', 'negocioId'});
   });
 
   test(
     'obtiene slug y prioriza plantillaWeb en una lectura conjunta',
     () async {
-      await firestore.collection('users').doc('usuario-1').set({
-        'slug': ' bodega-ana ',
-        'plantilla': 'neon',
-        'plantillaWeb': 'galeria',
-      });
+      await _prepararNegocio(
+        firestore,
+        'usuario-1',
+        datos: {
+          'slug': ' bodega-ana ',
+          'plantilla': 'neon',
+          'plantillaWeb': 'galeria',
+        },
+      );
 
       final info = await repository.obtenerSeleccionPlantilla('usuario-1');
 
@@ -376,11 +410,11 @@ void main() {
   test(
     'usa plantilla legada solo si plantillaWeb falta o esta vacia',
     () async {
-      await firestore.collection('users').doc('sin-oficial').set({
+      await _prepararNegocio(firestore, 'sin-oficial', datos: {
         'slug': 'tienda-uno',
         'plantilla': 'neon',
       });
-      await firestore.collection('users').doc('oficial-vacia').set({
+      await _prepararNegocio(firestore, 'oficial-vacia', datos: {
         'slug': 'tienda-dos',
         'plantilla': 'sabroso',
         'plantillaWeb': '  ',
@@ -401,11 +435,11 @@ void main() {
   );
 
   test('no convierte limpio ni ignora un campo oficial no vacio', () async {
-    await firestore.collection('users').doc('legado-limpio').set({
+    await _prepararNegocio(firestore, 'legado-limpio', datos: {
       'slug': 'tienda-uno',
       'plantilla': 'limpio',
     });
-    await firestore.collection('users').doc('oficial-invalido').set({
+    await _prepararNegocio(firestore, 'oficial-invalido', datos: {
       'slug': 'tienda-dos',
       'plantilla': 'neon',
       'plantillaWeb': 'limpio',
@@ -423,7 +457,7 @@ void main() {
   });
 
   test('usa el campo legado si plantillaWeb no es texto', () async {
-    await firestore.collection('users').doc('oficial-mal-tipado').set({
+    await _prepararNegocio(firestore, 'oficial-mal-tipado', datos: {
       'slug': 'tienda-uno',
       'plantilla': 'neon',
       'plantillaWeb': 7,
@@ -436,31 +470,99 @@ void main() {
     expect(info.plantillaGuardada, PlantillaWeb.neon);
     expect(info.provieneDeCampoOficial, isFalse);
   });
+
+  test('rechaza operaciones sin negocioId y no escribe en rutas incorrectas',
+      () async {
+    await firestore.collection('users').doc('sin-negocio').set({
+      'email': 'x@example.com',
+    });
+
+    expect(
+      () => repository.guardarRubro('sin-negocio', 'Bodega'),
+      throwsStateError,
+    );
+    expect(
+      () => repository.obtenerProgresoConfiguracion('sin-negocio'),
+      throwsStateError,
+    );
+    expect(
+      () => repository.guardarConfiguracionNegocio(
+        uid: 'sin-negocio',
+        rubro: 'Bodega',
+        nombreNegocio: 'Bodega X',
+        slug: 'bodega-x',
+        telefonoCompleto: '+51999999999',
+        direccionCompleta: 'Av. Lima 123',
+        ruc: '',
+        facebook: '',
+        tiktok: '',
+        instagram: '',
+        youtube: '',
+        categorias: const [],
+        unidadesMedida: const [],
+        tieneDelivery: false,
+        zonasDelivery: const [],
+        horarios: const [],
+        metodosPagoConfig: const [],
+      ),
+      throwsStateError,
+    );
+
+    final negocios = await firestore.collection('negocios').get();
+    expect(negocios.docs, isEmpty);
+  });
 }
 
-Future<void> _guardarCuentaConNegocioValido(
+Future<void> _guardarPerfilConNegocioId(
+  FakeFirebaseFirestore firestore,
+  String uid,
+) {
+  return firestore.collection('users').doc(uid).set({
+    'email': '$uid@example.com',
+    'negocioId': _negocioIdDe(uid),
+  });
+}
+
+String _negocioIdDe(String uid) => 'negocio-$uid';
+
+Future<String> _prepararNegocio(
+  FakeFirebaseFirestore firestore,
+  String uid, {
+  Map<String, dynamic> datos = const {},
+}) async {
+  await _guardarPerfilConNegocioId(firestore, uid);
+  final negocioId = _negocioIdDe(uid);
+  await firestore.collection('negocios').doc(negocioId).set(datos);
+  return negocioId;
+}
+
+Future<String> _guardarCuentaConNegocioValido(
   FakeFirebaseFirestore firestore,
   String uid, {
   Map<String, dynamic> adicionales = const {},
 }) {
-  return firestore.collection('users').doc(uid).set({
-    'rubro': 'Bodega',
-    'slug': 'bodega-ana',
-    'nombreNegocio': 'Bodega Ana',
-    'telefono': '+51999999999',
-    'direccion': 'Av. Lima 123',
-    'categorias': ['Bebidas'],
-    'unidadesMedida': [
-      {
-        'nombre': 'Unidad',
-        'tipo': 'entera',
-        'fraccionesPermitidas': <String>[],
-        'esOpcional': false,
-      },
-    ],
-    'delivery': false,
-    ...adicionales,
-  });
+  return _prepararNegocio(
+    firestore,
+    uid,
+    datos: {
+      'rubro': 'Bodega',
+      'slug': 'bodega-ana',
+      'nombreNegocio': 'Bodega Ana',
+      'telefono': '+51999999999',
+      'direccion': 'Av. Lima 123',
+      'categorias': ['Bebidas'],
+      'unidadesMedida': [
+        {
+          'nombre': 'Unidad',
+          'tipo': 'entera',
+          'fraccionesPermitidas': <String>[],
+          'esOpcional': false,
+        },
+      ],
+      'delivery': false,
+      ...adicionales,
+    },
+  );
 }
 
 Future<void> _guardarProductoValido(

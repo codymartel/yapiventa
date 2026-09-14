@@ -31,10 +31,9 @@ import '../domain/repositories/repositorio_seleccion_plantilla.dart';
 //
 // CON QUÉ SE CONECTA:
 // - Lo usan la configuración al guardar y ObtenerCatalogoNegocio al leer.
-// - Escribe en: users/{uid} — el MISMO documento que ya crea
-//   user_repository.dart al registrarse. Este repository no crea el
-//   documento, lo ACTUALIZA (update, no set) con los datos del negocio
-//   — igual que hacía tu Kotlin.
+// - Lee SOLO negocioId en users/{uid} y opera sobre negocios/{negocioId}.
+//   Este repository no crea users/{uid} (lo hace user_repository.dart al
+//   registrarse) ni escribe datos de negocio en users/{uid}.
 // ═════════════════════════════════════════════════════════════════════════
 
 class NegocioRepository
@@ -47,9 +46,30 @@ class NegocioRepository
   NegocioRepository({FirebaseFirestore? firestore})
     : _firestore = firestore ?? FirebaseFirestore.instance;
 
+  /// Resuelve el id del negocio leyendo `users/{uid}.negocioId`.
+  ///
+  /// No escribe nada en users/{uid}: solo lo lee. Si el perfil no tiene
+  /// negocioId (por ejemplo un usuario antiguo sin aprovisionar), lanza un
+  /// error claro y la operación no se ejecuta sobre una ruta incorrecta.
+  Future<String> _obtenerNegocioId(String uid) async {
+    final perfil = await _firestore.collection('users').doc(uid).get();
+    final negocioId = perfil.data()?['negocioId'];
+    if (negocioId is! String || negocioId.trim().isEmpty) {
+      throw StateError(
+        'No se encontró un negocioId para el usuario "$uid". '
+        'Asegúrate de que el registro esté completo antes de operar el negocio.',
+      );
+    }
+    return negocioId.trim();
+  }
+
   @override
   Future<CatalogoNegocio> obtenerCatalogoNegocio(String uid) async {
-    final documento = await _firestore.collection('users').doc(uid).get();
+    final negocioId = await _obtenerNegocioId(uid);
+    final documento = await _firestore
+        .collection('negocios')
+        .doc(negocioId)
+        .get();
     final datos = documento.data() ?? const <String, dynamic>{};
     return CatalogoNegocio(
       rubro: datos['rubro'] as String? ?? '',
@@ -61,7 +81,11 @@ class NegocioRepository
 
   @override
   Future<SeleccionPlantillaInfo> obtenerSeleccionPlantilla(String uid) async {
-    final documento = await _firestore.collection('users').doc(uid).get();
+    final negocioId = await _obtenerNegocioId(uid);
+    final documento = await _firestore
+        .collection('negocios')
+        .doc(negocioId)
+        .get();
     final datos = documento.data() ?? const <String, dynamic>{};
     final valorOficial = datos['plantillaWeb'];
     final campoOficialAusenteOVacio =
@@ -80,9 +104,10 @@ class NegocioRepository
 
   @override
   Future<ProgresoConfiguracion> obtenerProgresoConfiguracion(String uid) async {
-    final referencia = _firestore.collection('users').doc(uid);
-    final documento = await referencia.get();
-    final datos = documento.data() ?? const <String, dynamic>{};
+    final negocioId = await _obtenerNegocioId(uid);
+    final negocioRef = _firestore.collection('negocios').doc(negocioId);
+    final negocioDocumento = await negocioRef.get();
+    final datos = negocioDocumento.data() ?? const <String, dynamic>{};
     final catalogo = CatalogoNegocio(
       rubro: datos['rubro'] is String ? datos['rubro'] as String : '',
       categorias: _leerCategorias(datos['categorias']),
@@ -97,7 +122,10 @@ class NegocioRepository
     final productosConfirmados = datos['onboardingProductsConfirmed'] == true;
     var tieneProductoValido = productosConfirmados;
     if (negocioCompleto && !productosConfirmados) {
-      final productos = await referencia
+      // Los productos siguen en users/{uid}/productos: no se migran en este paso.
+      final productos = await _firestore
+          .collection('users')
+          .doc(uid)
           .collection('productos')
           .orderBy('fechaCreacion', descending: true)
           .get();
@@ -133,7 +161,8 @@ class NegocioRepository
       throw ArgumentError.value(rubro, 'rubro', 'El rubro no es válido.');
     }
 
-    final referencia = _firestore.collection('users').doc(uid);
+    final negocioId = await _obtenerNegocioId(uid);
+    final referencia = _firestore.collection('negocios').doc(negocioId);
     await _firestore.runTransaction((transaction) async {
       final documento = await transaction.get(referencia);
       final datos = documento.data() ?? const <String, dynamic>{};
@@ -164,6 +193,7 @@ class NegocioRepository
     required bool setupComplete,
     required bool confirmarProductos,
   }) async {
+    final negocioId = await _obtenerNegocioId(uid);
     final actualizacion = <String, dynamic>{'setupComplete': setupComplete};
     if (confirmarProductos) {
       actualizacion.addAll({
@@ -172,8 +202,8 @@ class NegocioRepository
       });
     }
     await _firestore
-        .collection('users')
-        .doc(uid)
+        .collection('negocios')
+        .doc(negocioId)
         .set(actualizacion, SetOptions(merge: true));
   }
 
@@ -317,12 +347,12 @@ class NegocioRepository
     return unidades;
   }
 
-  /// Guarda toda la configuración del negocio en users/{uid}.
+  /// Guarda toda la configuración del negocio en negocios/{negocioId}.
   ///
   /// Recibe los datos ya validados y listos — este método solo arma el
-  /// mapa y hace el update, igual que la segunda mitad de tu
+  /// mapa y hace el set con merge, igual que la segunda mitad de tu
   /// `ejecutarGuardado` (desde donde arma zonasMap/horariosMap/etc.
-  /// hacia abajo).
+  /// hacia abajo). users/{uid} solo se lee para resolver negocioId.
   Future<void> guardarConfiguracionNegocio({
     required String uid,
     required String rubro,
@@ -420,9 +450,10 @@ class NegocioRepository
       'onboardingBusinessCompletedAt': FieldValue.serverTimestamp(),
     };
 
+    final negocioId = await _obtenerNegocioId(uid);
     await _firestore
-        .collection('users')
-        .doc(uid)
+        .collection('negocios')
+        .doc(negocioId)
         .set(updateMap, SetOptions(merge: true));
   }
 
@@ -435,7 +466,8 @@ class NegocioRepository
         'Completa el negocio y agrega al menos un producto válido antes de elegir la plantilla.',
       );
     }
-    await _firestore.collection('users').doc(uid).set({
+    final negocioId = await _obtenerNegocioId(uid);
+    await _firestore.collection('negocios').doc(negocioId).set({
       'plantillaWeb': plantilla.valorPersistencia,
       'onboardingTemplateCompletedAt': FieldValue.serverTimestamp(),
       'onboardingProductsConfirmed': true,
