@@ -31,9 +31,11 @@ import '../domain/repositories/repositorio_seleccion_plantilla.dart';
 //
 // CON QUÉ SE CONECTA:
 // - Lo usan la configuración al guardar y ObtenerCatalogoNegocio al leer.
-// - Lee SOLO negocioId en users/{uid} y opera sobre negocios/{negocioId}.
-//   Este repository no crea users/{uid} (lo hace user_repository.dart al
-//   registrarse) ni escribe datos de negocio en users/{uid}.
+// - Lee negocioId en users/{uid} y opera sobre negocios/{negocioId}.
+//   La única escritura al perfil es el vínculo negocioId, creado junto con
+//   el negocio al guardar el primer rubro.
+// - Al guardar la configuración o la plantilla, también proyecta los campos
+//   públicos del negocio en negocios_publicos/{slug} para la tienda web.
 // ═════════════════════════════════════════════════════════════════════════
 
 class NegocioRepository
@@ -51,16 +53,23 @@ class NegocioRepository
   /// No escribe nada en users/{uid}: solo lo lee. Si el perfil no tiene
   /// negocioId (por ejemplo un usuario antiguo sin aprovisionar), lanza un
   /// error claro y la operación no se ejecuta sobre una ruta incorrecta.
-  Future<String> _obtenerNegocioId(String uid) async {
+  Future<String?> _obtenerNegocioIdOpcional(String uid) async {
     final perfil = await _firestore.collection('users').doc(uid).get();
     final negocioId = perfil.data()?['negocioId'];
-    if (negocioId is! String || negocioId.trim().isEmpty) {
+    return negocioId is String && negocioId.trim().isNotEmpty
+        ? negocioId.trim()
+        : null;
+  }
+
+  Future<String> _obtenerNegocioId(String uid) async {
+    final negocioId = await _obtenerNegocioIdOpcional(uid);
+    if (negocioId == null) {
       throw StateError(
         'No se encontró un negocioId para el usuario "$uid". '
         'Asegúrate de que el registro esté completo antes de operar el negocio.',
       );
     }
-    return negocioId.trim();
+    return negocioId;
   }
 
   @override
@@ -104,7 +113,24 @@ class NegocioRepository
 
   @override
   Future<ProgresoConfiguracion> obtenerProgresoConfiguracion(String uid) async {
-    final negocioId = await _obtenerNegocioId(uid);
+    final negocioId = await _obtenerNegocioIdOpcional(uid);
+    if (negocioId == null) {
+      return ProgresoConfiguracion(
+        catalogo: CatalogoNegocio(
+          rubro: '',
+          categorias: const [],
+          unidadesMedida: const [],
+        ),
+        slug: '',
+        plantilla: null,
+        plantillaProvieneDeCampoOficial: false,
+        rubroCompleto: false,
+        negocioCompleto: false,
+        productosCompletos: false,
+        setupCompletePersistido: false,
+        productosConfirmadosPersistidos: false,
+      );
+    }
     final negocioRef = _firestore.collection('negocios').doc(negocioId);
     final negocioDocumento = await negocioRef.get();
     final datos = negocioDocumento.data() ?? const <String, dynamic>{};
@@ -122,10 +148,8 @@ class NegocioRepository
     final productosConfirmados = datos['onboardingProductsConfirmed'] == true;
     var tieneProductoValido = productosConfirmados;
     if (negocioCompleto && !productosConfirmados) {
-      // Los productos siguen en users/{uid}/productos: no se migran en este paso.
-      final productos = await _firestore
-          .collection('users')
-          .doc(uid)
+      // Los productos viven en negocios/{negocioId}/productos.
+      final productos = await negocioRef
           .collection('productos')
           .orderBy('fechaCreacion', descending: true)
           .get();
@@ -161,14 +185,43 @@ class NegocioRepository
       throw ArgumentError.value(rubro, 'rubro', 'El rubro no es válido.');
     }
 
-    final negocioId = await _obtenerNegocioId(uid);
-    final referencia = _firestore.collection('negocios').doc(negocioId);
+    final perfilRef = _firestore.collection('users').doc(uid);
     await _firestore.runTransaction((transaction) async {
+      final perfil = await transaction.get(perfilRef);
+      if (!perfil.exists) {
+        throw StateError('No se encontró el perfil del usuario "$uid".');
+      }
+
+      final negocioIdActual = perfil.data()?['negocioId'];
+      final tieneNegocio =
+          negocioIdActual is String && negocioIdActual.trim().isNotEmpty;
+      final referencia = tieneNegocio
+          ? _firestore.collection('negocios').doc(negocioIdActual.trim())
+          : _firestore.collection('negocios').doc();
+
+      if (!tieneNegocio) {
+        transaction.set(referencia, {
+          'propietarioUid': uid,
+          'rubro': rubroLimpio,
+          'onboardingBusinessRubro': rubroLimpio,
+          'onboardingRubroCompletedAt': FieldValue.serverTimestamp(),
+          'setupComplete': false,
+          'webActiva': false,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+        transaction.update(perfilRef, {'negocioId': referencia.id});
+        return;
+      }
+
       final documento = await transaction.get(referencia);
       final datos = documento.data() ?? const <String, dynamic>{};
       final rubroAnterior = datos['rubro'] is String
           ? (datos['rubro'] as String).trim()
           : '';
+      if (rubroAnterior == rubroLimpio &&
+          datos['onboardingRubroCompletedAt'] != null) {
+        return;
+      }
       final cambioConConfiguracion =
           rubroAnterior.isNotEmpty &&
           rubroAnterior != rubroLimpio &&
@@ -272,9 +325,10 @@ class NegocioRepository
     required List<String> categorias,
     required List<String> unidades,
   }) async {
+    final negocioId = await _obtenerNegocioId(uid);
     final productos = _firestore
-        .collection('users')
-        .doc(uid)
+        .collection('negocios')
+        .doc(negocioId)
         .collection('productos');
     for (final categoria in categorias) {
       final resultado = await productos
@@ -451,10 +505,14 @@ class NegocioRepository
     };
 
     final negocioId = await _obtenerNegocioId(uid);
-    await _firestore
-        .collection('negocios')
-        .doc(negocioId)
-        .set(updateMap, SetOptions(merge: true));
+    final referencia = _firestore.collection('negocios').doc(negocioId);
+    final anterior = await referencia.get();
+    final slugAnterior = _leerSlug(anterior.data());
+    await referencia.set(updateMap, SetOptions(merge: true));
+    await _persistirProyeccionPublica(
+      negocioId: negocioId,
+      slugAnterior: slugAnterior,
+    );
   }
 
   /// Guarda solo el id corto del molde web seleccionado.
@@ -474,5 +532,144 @@ class NegocioRepository
       'onboardingCompletedAt': FieldValue.serverTimestamp(),
       'setupComplete': true,
     }, SetOptions(merge: true));
+    await _persistirProyeccionPublica(
+      negocioId: negocioId,
+      slugAnterior: progreso.slug,
+    );
+  }
+
+  /// Lee el slug del documento del negocio, limpio, o '' si no hay.
+  String _leerSlug(Map<String, dynamic>? datos) {
+    final valor = datos?['slug'];
+    return valor is String ? valor.trim() : '';
+  }
+
+  /// Proyecta los campos públicos del negocio en negocios_publicos/{slug}.
+  ///
+  /// Se llama tras guardar la configuración o la plantilla web. El doc
+  /// público solo lleva datos que la tienda web necesita; nunca incluye
+  /// email, terminosAceptados, ruc, setupComplete, datos del onboarding,
+  /// plan ni propietarioUid. Si el slug cambió, elimina la ruta pública
+  /// anterior para no dejar activo un enlace viejo.
+  Future<void> _persistirProyeccionPublica({
+    required String negocioId,
+    required String slugAnterior,
+  }) async {
+    final referencia = _firestore.collection('negocios').doc(negocioId);
+    final documento = await referencia.get();
+    final datos = documento.data() ?? const <String, dynamic>{};
+    final slug = _leerSlug(datos);
+
+    if (slugAnterior.isNotEmpty && slugAnterior != slug) {
+      await _firestore
+          .collection('negocios_publicos')
+          .doc(slugAnterior)
+          .delete();
+    }
+    if (slug.isEmpty) return;
+
+    await _firestore
+        .collection('negocios_publicos')
+        .doc(slug)
+        .set(_construirProyeccionPublica(negocioId, datos));
+  }
+
+  Map<String, dynamic> _construirProyeccionPublica(
+    String negocioId,
+    Map<String, dynamic> datos,
+  ) {
+    final metodosPago = _leerMetodosPublicos(datos['metodosPago']);
+    return <String, dynamic>{
+      'negocioId': negocioId,
+      'nombreNegocio': _texto(datos['nombreNegocio']),
+      'slug': _leerSlug(datos),
+      'rubro': _texto(datos['rubro']),
+      'telefono': _texto(datos['telefono']),
+      'direccion': _texto(datos['direccion']),
+      'facebook': _texto(datos['facebook']),
+      'instagram': _texto(datos['instagram']),
+      'tiktok': _texto(datos['tiktok']),
+      'youtube': _texto(datos['youtube']),
+      'plantillaWeb': _texto(datos['plantillaWeb']),
+      'webActiva': datos['webActiva'] == true,
+      'categorias': _leerCategorias(datos['categorias']),
+      'delivery': datos['delivery'] == true,
+      'deliveryZonas': _leerZonasPublicas(datos['deliveryZonas']),
+      'horarios': _leerHorariosPublicos(datos['horarios']),
+      'metodosPago': metodosPago,
+      'configPagos': _leerConfigPagosPublicos(
+        datos['configPagos'],
+        metodosPago,
+      ),
+    };
+  }
+
+  String _texto(Object? valor) => valor is String ? valor.trim() : '';
+
+  List<String> _leerMetodosPublicos(Object? valor) {
+    if (valor is! List) return const [];
+
+    final metodos = <String>[];
+    final vistos = <String>{};
+    for (final elemento in valor) {
+      if (elemento is! String) continue;
+      final metodo = elemento.trim();
+      if (metodo.isNotEmpty && vistos.add(metodo)) metodos.add(metodo);
+    }
+    return metodos;
+  }
+
+  List<Map<String, dynamic>> _leerZonasPublicas(Object? valor) {
+    if (valor is! List) return const [];
+
+    final zonas = <Map<String, dynamic>>[];
+    for (final elemento in valor) {
+      if (elemento is! Map) continue;
+      final datosZona = Map<String, dynamic>.from(elemento);
+      final zona = _texto(datosZona['zona']);
+      if (zona.isEmpty) continue;
+      zonas.add({'zona': zona, 'costo': _numeroNoNegativo(datosZona['costo'])});
+    }
+    return zonas;
+  }
+
+  List<Map<String, dynamic>> _leerHorariosPublicos(Object? valor) {
+    if (valor is! List) return const [];
+
+    final horarios = <Map<String, dynamic>>[];
+    for (final elemento in valor) {
+      if (elemento is! Map) continue;
+      final datosHorario = Map<String, dynamic>.from(elemento);
+      final dia = _texto(datosHorario['dia']);
+      if (dia.isEmpty) continue;
+      horarios.add({
+        'dia': dia,
+        'apertura': _texto(datosHorario['apertura']),
+        'cierre': _texto(datosHorario['cierre']),
+        'activo': datosHorario['activo'] == true,
+      });
+    }
+    return horarios;
+  }
+
+  Map<String, dynamic> _leerConfigPagosPublicos(
+    Object? valor,
+    List<String> metodos,
+  ) {
+    if (valor is! Map) return const {};
+
+    final configs = Map<String, dynamic>.from(valor);
+    final publico = <String, dynamic>{};
+    for (final metodo in metodos) {
+      final config = configs[metodo];
+      if (config is! Map) continue;
+      publico[metodo] = Map<String, dynamic>.from(config);
+    }
+    return publico;
+  }
+
+  double _numeroNoNegativo(Object? valor) {
+    final numero = valor is num ? valor.toDouble() : double.tryParse('$valor');
+    return numero != null && numero.isFinite && numero >= 0 ? numero : 0;
   }
 }

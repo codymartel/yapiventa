@@ -9,43 +9,16 @@ class UserRepository {
   Future<void> crearPerfilEnFirestore({
     required String uid,
     required String email,
-    required bool webActivaInicial,
   }) async {
     final referencia = _firestore.collection('users').doc(uid);
     final existente = await referencia.get();
     final datosExistentes = existente.data();
-
-    // Estructura nueva:
-    //   users/{uid}   → SOLO email, terminosAceptados, createdAt, negocioId.
-    //   negocios/{id} → setupComplete, webActiva, createdAt y (a futuro)
-    //                   los campos del negocio y del onboarding.
-    //
-    // El negocioId es independiente del UID (auto id de Firestore) y se
-    // conserva si el perfil ya lo tiene asignado. Si el documento de
-    // negocios ya existe, no se sobrescribe.
-    final negocioIdActual = datosExistentes?['negocioId'];
-    final negocioId =
-        negocioIdActual is String && negocioIdActual.trim().isNotEmpty
-        ? negocioIdActual
-        : _firestore.collection('negocios').doc().id;
-
-    final negocioRef = _firestore.collection('negocios').doc(negocioId);
-    final negocio = await negocioRef.get();
-    if (!negocio.exists) {
-      await negocioRef.set({
-        'propietarioUid': uid,
-        'createdAt': Timestamp.now(),
-        'setupComplete': false,
-        'webActiva': webActivaInicial,
-      });
-    }
 
     if (!existente.exists) {
       await referencia.set({
         'email': email,
         'createdAt': Timestamp.now(),
         'terminosAceptados': true,
-        'negocioId': negocioId,
       });
       return;
     }
@@ -57,16 +30,12 @@ class UserRepository {
     if (!datosExistentes.containsKey('createdAt')) {
       actualizacion['createdAt'] = Timestamp.now();
     }
-    if (negocioIdActual is! String || negocioIdActual.trim().isEmpty) {
-      actualizacion['negocioId'] = negocioId;
-    }
     await referencia.set(actualizacion, SetOptions(merge: true));
   }
 
   Future<void> asegurarPerfilYPlan({
     required String uid,
     required String email,
-    required bool webActivaInicial,
     required int limiteProductos,
     required int minimoProductos,
   }) async {
@@ -75,24 +44,9 @@ class UserRepository {
       final perfil = await transaction.get(perfilRef);
       final datosPerfil = perfil.data();
 
-      // Estructura nueva:
-      //   users/{uid}      → SOLO email, terminosAceptados, createdAt, negocioId.
-      //   negocios/{id}    → propietarioUid, setupComplete, webActiva y (a futuro)
-      //                      los campos del negocio y del onboarding.
-      //   negocios/{id}/suscripcion/actual → plan (migración posterior).
-      //
-      // negocioId se genera de forma independiente del UID (auto id de
-      // Firestore) y se conserva si el perfil ya lo tiene asignado. Los datos
-      // existentes de un perfil previo no se borran ni se sobrescriben.
-      final negocioIdActual = datosPerfil?['negocioId'];
-      final negocioId = negocioIdActual is String && negocioIdActual.trim().isNotEmpty
-          ? negocioIdActual
-          : _firestore.collection('negocios').doc().id;
-      final negocioRef = _firestore.collection('negocios').doc(negocioId);
       final planRef = perfilRef.collection('plan').doc('actual');
 
       // Todas las lecturas antes de las escrituras (requisito de Firestore).
-      final negocio = await transaction.get(negocioRef);
       final plan = await transaction.get(planRef);
 
       if (datosPerfil == null) {
@@ -100,7 +54,6 @@ class UserRepository {
           'email': email,
           'terminosAceptados': true,
           'createdAt': FieldValue.serverTimestamp(),
-          'negocioId': negocioId,
         });
       } else {
         final actualizacion = <String, dynamic>{'email': email};
@@ -110,19 +63,7 @@ class UserRepository {
         if (!datosPerfil.containsKey('createdAt')) {
           actualizacion['createdAt'] = FieldValue.serverTimestamp();
         }
-        if (negocioIdActual is! String || negocioIdActual.trim().isEmpty) {
-          actualizacion['negocioId'] = negocioId;
-        }
         transaction.update(perfilRef, actualizacion);
-      }
-
-      if (!negocio.exists) {
-        transaction.set(negocioRef, {
-          'propietarioUid': uid,
-          'setupComplete': false,
-          'webActiva': webActivaInicial,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
       }
 
       if (!plan.exists) {
@@ -168,13 +109,27 @@ class UserRepository {
   }
 
   // ─────────────────────────────────────────────────────────────────────
-  // NUEVO — LEE si setupComplete es true. Usado por
+  // LEE si el negocio ya está configurado: resuelve `users/{uid}.negocioId`
+  // y lee `negocios/{negocioId}.setupComplete`. Usado por
   // AuthProvider.negocioYaConfigurado() para decidir a dónde navegar
   // después de un login/registro exitoso.
+  //
+  // Devuelve false (estado seguro) si el perfil no existe, si no tiene
+  // negocioId o si el documento del negocio aún no existe.
   // ─────────────────────────────────────────────────────────────────────
   Future<bool> setupCompleto(String uid) async {
-    final doc = await _firestore.collection('users').doc(uid).get();
-    if (!doc.exists) return false;
-    return doc.data()?['setupComplete'] as bool? ?? false;
+    final perfil = await _firestore.collection('users').doc(uid).get();
+    if (!perfil.exists) return false;
+
+    final negocioId = perfil.data()?['negocioId'];
+    if (negocioId is! String || negocioId.trim().isEmpty) return false;
+
+    final negocio = await _firestore
+        .collection('negocios')
+        .doc(negocioId.trim())
+        .get();
+    if (!negocio.exists) return false;
+
+    return negocio.data()?['setupComplete'] as bool? ?? false;
   }
 }

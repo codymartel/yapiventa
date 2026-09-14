@@ -155,7 +155,7 @@ class _RutaConAcceso extends StatelessWidget {
           onTipoSeleccionado: (rubro) async {
             final guardado = await acceso.guardarRubro(rubro);
             if (guardado && context.mounted) {
-              Navigator.of(context).pushNamed(RutasAcceso.negocio);
+              _irAlDashboard(context);
             }
             return guardado;
           },

@@ -34,7 +34,8 @@ class CrearProducto {
 
     final productoParaGuardar = producto.copyWith(
       id: '',
-      negocioId: uid,
+      // El negocioId se resuelve y estampa en ProductosRepository (lee
+      // users/{uid}.negocioId), no se deduce desde el uid del usuario.
       urlImagen: imagenSubida?.url ?? producto.urlImagen,
       cloudinaryPublicId:
           imagenSubida?.identificador ?? producto.cloudinaryPublicId,

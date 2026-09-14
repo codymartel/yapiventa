@@ -58,9 +58,13 @@ void main() {
   tearDown(() => provider.dispose());
 
   Future<void> crearProductos(int cantidad) async {
+    await firestore.collection('users').doc('usuario-1').set({
+      'email': 'usuario-1@example.com',
+      'negocioId': 'negocio-1',
+    });
     final coleccion = firestore
-        .collection('users')
-        .doc('usuario-1')
+        .collection('negocios')
+        .doc('negocio-1')
         .collection('productos');
     for (var i = 1; i <= cantidad; i++) {
       await coleccion.doc('producto-$i').set({

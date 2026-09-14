@@ -95,9 +95,13 @@ void main() {
     'desbloquea el guardado si un producto usa una categoría eliminada',
     () async {
       final firestore = FakeFirebaseFirestore();
+      await firestore.collection('users').doc('usuario-1').set({
+        'email': 'ana@example.com',
+        'negocioId': 'negocio-1',
+      });
       await firestore
-          .collection('users')
-          .doc('usuario-1')
+          .collection('negocios')
+          .doc('negocio-1')
           .collection('productos')
           .doc('producto-1')
           .set({'categoria': 'Bebidas'});

@@ -2,14 +2,16 @@
 // CargarNegocio — cargador único de datos para los moldes web.
 //
 // QUÉ HACE:
-//   - Resuelve el negocio por su `slug` (recibido o desde ?slug=... en la URL).
-//   - Lee `users/{uid}` y la subcolección `users/{uid}/productos`.
+//   - Resuelve el negocio por su `slug` (recibido o desde ?slug=... en la URL)
+//     leyendo directamente `negocios_publicos/{slug}`.
+//   - Lee los productos desde `negocios/{negocioId}/productos`.
 //   - Normaliza la data al mismo esquema que usa la app móvil.
 //   - Cachea la promesa: las N páginas de un molde comparten UN solo fetch.
 //
 // CÓMO SE USA (no duplicar este fetch en cada molde):
-//   await CargarNegocio.obtener();
+//   await CargarNegocio.obtener('bodega-ana');
 //   → { negocio, productos, categorias }
+//   El slug se toma del argumento recibido o de ?slug=... si no se pasa.
 //
 // Depende de firebase-app-compat + firebase-firestore-compat (CDN) y de
 // que firebase ya esté inicializado por firebase-config.js.
@@ -26,6 +28,7 @@ window.CargarNegocio = (function () {
   let promesaNegocioCache = null;
   let slugNegocioCache = '';
   let promesaCache = null;
+  let slugCache = '';
 
   function leerSlugDesdeURL() {
     const params = new URLSearchParams(window.location.search);
@@ -174,38 +177,34 @@ window.CargarNegocio = (function () {
       throw new Error('Falta el slug del negocio. Abre esta página como ?slug=mi-negocio');
     }
 
-    const resultado = await db
-      .collection('users')
-      .where('slug', '==', slug)
-      .limit(1)
-      .get();
-
-    if (resultado.empty) {
+    const documento = await db.collection('negocios_publicos').doc(slug).get();
+    if (!documento.exists) {
       throw new Error('No se encontró el negocio "' + slug + '".');
     }
 
-    const documento = resultado.docs[0];
     const datos = documento.data() || {};
-    const plantillaOficial =
-      typeof datos.plantillaWeb === 'string' ? datos.plantillaWeb.trim() : '';
-    const plantillaLegada =
-      typeof datos.plantilla === 'string' ? datos.plantilla.trim() : '';
+    const negocioId = texto(datos.negocioId);
+    if (!negocioId) {
+      throw new Error(
+        'El negocio "' + slug + '" no tiene un negocioId público configurado.'
+      );
+    }
+
     const categorias = listaTextos(datos.categorias);
     const metodosPago = normalizarMetodosPago(datos.metodosPago);
 
     return {
-      id: documento.id,
-      slug: slug,
-      nombre: texto(datos.nombreNegocio || datos.nombre),
+      id: negocioId,
+      slug: texto(datos.slug) || slug,
+      nombre: texto(datos.nombreNegocio),
       rubro: texto(datos.rubro),
       telefono: texto(datos.telefono),
       direccion: texto(datos.direccion),
-      ruc: texto(datos.ruc),
       facebook: texto(datos.facebook),
       instagram: texto(datos.instagram),
       tiktok: texto(datos.tiktok),
       youtube: texto(datos.youtube),
-      plantilla: plantillaOficial || plantillaLegada,
+      plantilla: texto(datos.plantillaWeb),
       webActiva: datos.webActiva === true,
       categorias: categorias,
       delivery: datos.delivery === true,
@@ -225,9 +224,9 @@ window.CargarNegocio = (function () {
     return promesaNegocioCache;
   }
 
-  async function cargar() {
+  async function cargar(slugSolicitado) {
     const db = firebase.firestore();
-    const negocio = await obtenerNegocio();
+    const negocio = await obtenerNegocio(slugSolicitado);
     const plantillaActual = leerPlantillaDesdeRuta();
     if (!negocio.webActiva) {
       throw new Error('Esta tienda no está disponible temporalmente.');
@@ -237,7 +236,7 @@ window.CargarNegocio = (function () {
     }
 
     const snapProductos = await db
-      .collection('users')
+      .collection('negocios')
       .doc(negocio.id)
       .collection('productos')
       .where('disponible', '==', true)
@@ -258,8 +257,12 @@ window.CargarNegocio = (function () {
   return {
     obtenerNegocio: obtenerNegocio,
 
-    obtener: function () {
-      if (!promesaCache) promesaCache = cargar();
+    obtener: function (slugSolicitado) {
+      const slug = String(slugSolicitado || leerSlugDesdeURL()).trim();
+      if (!promesaCache || slugCache !== slug) {
+        slugCache = slug;
+        promesaCache = cargar(slug);
+      }
       return promesaCache;
     },
 

@@ -31,6 +31,9 @@ class AccesoProvider extends ChangeNotifier {
   String? _email;
   String? _errorMessage;
   Future<void>? _cargaEnCurso;
+  Future<bool>? _guardadoRubroEnCurso;
+  String? _uidGuardadoRubro;
+  String? _rubroGuardadoEnCurso;
   int _revisionSesion = 0;
   bool _disposed = false;
   bool _cambioAuthPendiente = false;
@@ -129,13 +132,40 @@ class AccesoProvider extends ChangeNotifier {
     if (nuevaCarga != null) await nuevaCarga;
   }
 
-  Future<bool> guardarRubro(String rubro) async {
+  Future<bool> guardarRubro(String rubro) {
     final uid = _uid;
-    if (uid == null || _estado != EstadoAcceso.listo) return false;
+    final rubroLimpio = rubro.trim();
+    final guardadoActual = _guardadoRubroEnCurso;
+    if (guardadoActual != null) {
+      return _uidGuardadoRubro == uid && _rubroGuardadoEnCurso == rubroLimpio
+          ? guardadoActual
+          : Future.value(false);
+    }
+    if (uid == null || _estado != EstadoAcceso.listo) {
+      return Future.value(false);
+    }
+    _uidGuardadoRubro = uid;
+    _rubroGuardadoEnCurso = rubroLimpio;
+    late final Future<bool> operacion;
+    operacion = _guardarRubro(uid, rubroLimpio).whenComplete(() {
+      if (identical(_guardadoRubroEnCurso, operacion)) {
+        _guardadoRubroEnCurso = null;
+        _uidGuardadoRubro = null;
+        _rubroGuardadoEnCurso = null;
+      }
+    });
+    _guardadoRubroEnCurso = operacion;
+    return operacion;
+  }
+
+  Future<bool> _guardarRubro(String uid, String rubro) async {
     try {
+      _errorMessage = null;
+      _notificar();
       await _progresoRepository.guardarRubro(uid, rubro);
+      if (_uid != uid) return false;
       await recargar();
-      return _estado == EstadoAcceso.listo;
+      return _uid == uid && _estado == EstadoAcceso.listo;
     } catch (_) {
       _errorMessage = 'No se pudo guardar el rubro. Intenta de nuevo.';
       _notificar();
@@ -164,7 +194,6 @@ class AccesoProvider extends ChangeNotifier {
       await _userRepository.asegurarPerfilYPlan(
         uid: uid,
         email: usuario.email ?? '',
-        webActivaInicial: true,
         limiteProductos: 20,
         minimoProductos: 1,
       );

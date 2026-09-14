@@ -86,7 +86,6 @@ void main() {
         () => userRepository.asegurarPerfilYPlan(
           uid: 'usuario-1',
           email: 'ana@example.com',
-          webActivaInicial: true,
           limiteProductos: 20,
           minimoProductos: 1,
         ),
@@ -99,7 +98,6 @@ void main() {
         () => userRepository.asegurarPerfilYPlan(
           uid: 'usuario-1',
           email: 'ana@example.com',
-          webActivaInicial: true,
           limiteProductos: 20,
           minimoProductos: 1,
         ),
@@ -121,4 +119,86 @@ void main() {
     expect(provider.status, AuthStatus.emailNotVerified);
     verifyNever(() => userRepository.existePerfil(any()));
   });
+
+  test(
+    'negocioYaConfigurado delega en setupCompleto del repositorio',
+    () async {
+      final usuario = _UserMock();
+      when(() => usuario.uid).thenReturn('usuario-1');
+      when(() => authRepository.usuarioActual).thenReturn(usuario);
+      when(
+        () => userRepository.setupCompleto('usuario-1'),
+      ).thenAnswer((_) async => true);
+
+      expect(await provider.negocioYaConfigurado(), isTrue);
+      verify(() => userRepository.setupCompleto('usuario-1')).called(1);
+    },
+  );
+
+  test('negocioYaConfigurado es false sin sesión activa', () async {
+    when(() => authRepository.usuarioActual).thenReturn(null);
+
+    expect(await provider.negocioYaConfigurado(), isFalse);
+    verifyNever(() => userRepository.setupCompleto(any()));
+  });
+
+  test('registrarse crea solamente el perfil y el plan de la cuenta', () async {
+    final usuario = _UserMock();
+    when(() => usuario.uid).thenReturn('usuario-1');
+    when(() => usuario.email).thenReturn('nuevo@example.com');
+    when(
+      () => authRepository.registrarse(
+        email: 'nuevo@example.com',
+        password: 'secreto',
+      ),
+    ).thenAnswer((_) async => usuario);
+    when(
+      () => userRepository.asegurarPerfilYPlan(
+        uid: 'usuario-1',
+        email: 'nuevo@example.com',
+        limiteProductos: 20,
+        minimoProductos: 1,
+      ),
+    ).thenAnswer((_) async {});
+
+    await provider.registrarse('nuevo@example.com', 'secreto');
+
+    expect(provider.status, AuthStatus.emailNotVerified);
+    verify(
+      () => userRepository.asegurarPerfilYPlan(
+        uid: 'usuario-1',
+        email: 'nuevo@example.com',
+        limiteProductos: 20,
+        minimoProductos: 1,
+      ),
+    ).called(1);
+  });
+
+  test(
+    'registrarse falla en estado de error si no se puede aprovisionar',
+    () async {
+      final usuario = _UserMock();
+      when(() => usuario.uid).thenReturn('usuario-1');
+      when(() => usuario.email).thenReturn('nuevo@example.com');
+      when(
+        () => authRepository.registrarse(
+          email: 'nuevo@example.com',
+          password: 'secreto',
+        ),
+      ).thenAnswer((_) async => usuario);
+      when(
+        () => userRepository.asegurarPerfilYPlan(
+          uid: any(named: 'uid'),
+          email: any(named: 'email'),
+          limiteProductos: any(named: 'limiteProductos'),
+          minimoProductos: any(named: 'minimoProductos'),
+        ),
+      ).thenThrow(Exception('Firestore no disponible'));
+
+      await provider.registrarse('nuevo@example.com', 'secreto');
+
+      expect(provider.status, AuthStatus.error);
+      expect(provider.isLoading, isFalse);
+    },
+  );
 }

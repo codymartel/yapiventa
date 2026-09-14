@@ -16,8 +16,31 @@ class ProductosRepository implements RepositorioProductos {
   ProductosRepository([FirebaseFirestore? db])
     : _db = db ?? FirebaseFirestore.instance;
 
-  CollectionReference<Map<String, dynamic>> _coleccionProductos(String uid) =>
-      _db.collection('users').doc(uid).collection('productos');
+  /// Resuelve el id del negocio leyendo `users/{uid}.negocioId`.
+  ///
+  /// No escribe nada en users/{uid}: solo lo lee. Si el perfil no tiene
+  /// negocioId (por ejemplo un usuario antiguo sin aprovisionar), lanza un
+  /// error claro y la operación no se ejecuta sobre una ruta incorrecta.
+  Future<String> _obtenerNegocioId(String uid) async {
+    final perfil = await _db.collection('users').doc(uid).get();
+    final negocioId = perfil.data()?['negocioId'];
+    if (negocioId is! String || negocioId.trim().isEmpty) {
+      throw StateError(
+        'No se encontró un negocioId para el usuario "$uid". '
+        'Asegúrate de que el registro esté completo antes de operar los productos.',
+      );
+    }
+    return negocioId.trim();
+  }
+
+  /// Los productos viven bajo `negocios/{negocioId}/productos`; el id del
+  /// negocio se resuelve desde el perfil del usuario.
+  Future<CollectionReference<Map<String, dynamic>>> _coleccionProductos(
+    String uid,
+  ) async {
+    final negocioId = await _obtenerNegocioId(uid);
+    return _db.collection('negocios').doc(negocioId).collection('productos');
+  }
 
   // Equivale a pedir una pagina manual del catalogo: la primera consulta
   // trae los 10 productos mas recientes y las siguientes continuan desde
@@ -28,9 +51,11 @@ class ProductosRepository implements RepositorioProductos {
     CursorProductos? despuesDe,
     int limite = 10,
   }) async {
-    Query<Map<String, dynamic>> query = _coleccionProductos(
-      uid,
-    ).orderBy('fechaCreacion', descending: true);
+    final coleccion = await _coleccionProductos(uid);
+    Query<Map<String, dynamic>> query = coleccion.orderBy(
+      'fechaCreacion',
+      descending: true,
+    );
 
     if (despuesDe != null) {
       if (despuesDe is! _CursorProductosFirestore) {
@@ -73,26 +98,39 @@ class ProductosRepository implements RepositorioProductos {
     if (producto.id.isEmpty) {
       return (await crearProducto(uid, producto)).id;
     } else {
+      final negocioId = await _obtenerNegocioId(uid);
+      final datos = ProductoFirestoreMapper.paraFirestore(producto)
+        ..['negocioId'] = negocioId;
       // Una edicion conserva fechaCreacion para no mover un producto antiguo
       // al inicio de la consulta ordenada por productos nuevos primero.
-      await _coleccionProductos(uid)
+      await _db
+          .collection('negocios')
+          .doc(negocioId)
+          .collection('productos')
           .doc(producto.id)
-          .update(ProductoFirestoreMapper.paraFirestore(producto));
+          .update(datos);
       return producto.id;
     }
   }
 
   @override
   Future<Producto> crearProducto(String uid, Producto producto) async {
+    final negocioId = await _obtenerNegocioId(uid);
     final datos = ProductoFirestoreMapper.paraFirestore(producto)
+      ..['negocioId'] = negocioId
       ..['fechaCreacion'] = FieldValue.serverTimestamp();
-    final documento = await _coleccionProductos(uid).add(datos);
-    return producto.copyWith(id: documento.id);
+    final documento = await _db
+        .collection('negocios')
+        .doc(negocioId)
+        .collection('productos')
+        .add(datos);
+    return producto.copyWith(id: documento.id, negocioId: negocioId);
   }
 
   @override
   Future<void> eliminarProducto(String uid, String productoId) async {
-    await _coleccionProductos(uid).doc(productoId).delete();
+    final coleccion = await _coleccionProductos(uid);
+    await coleccion.doc(productoId).delete();
   }
 
   @override
@@ -101,8 +139,7 @@ class ProductosRepository implements RepositorioProductos {
     String productoId,
     bool disponible,
   ) async {
-    await _coleccionProductos(
-      uid,
-    ).doc(productoId).update({'disponible': disponible});
+    final coleccion = await _coleccionProductos(uid);
+    await coleccion.doc(productoId).update({'disponible': disponible});
   }
 }

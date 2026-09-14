@@ -50,7 +50,6 @@ void main() {
       () => userRepository.asegurarPerfilYPlan(
         uid: any(named: 'uid'),
         email: any(named: 'email'),
-        webActivaInicial: any(named: 'webActivaInicial'),
         limiteProductos: any(named: 'limiteProductos'),
         minimoProductos: any(named: 'minimoProductos'),
       ),
@@ -178,7 +177,6 @@ void main() {
       () => userRepository.asegurarPerfilYPlan(
         uid: 'usuario-1',
         email: 'ana@example.com',
-        webActivaInicial: true,
         limiteProductos: 20,
         minimoProductos: 1,
       ),
@@ -234,10 +232,7 @@ void main() {
       progresoRepository: progresoRepository,
     );
 
-    final login = authProviderReal.iniciarSesion(
-      'ana@example.com',
-      'secreto',
-    );
+    final login = authProviderReal.iniciarSesion('ana@example.com', 'secreto');
     cambiosDeAuth.add(usuario);
     await pumpEventQueue();
 
@@ -256,6 +251,56 @@ void main() {
     provider = null;
     authProviderReal.dispose();
   });
+
+  test(
+    'dos guardados concurrentes de Rubro comparten una sola operación',
+    () async {
+      final usuario = _usuario(uid: 'usuario-1', email: 'ana@example.com');
+      final guardado = Completer<void>();
+      final progresoTrasGuardar = Completer<ProgresoConfiguracion>();
+      var lecturasProgreso = 0;
+      var escriturasRubro = 0;
+      when(() => authRepository.usuarioActual).thenReturn(usuario);
+      when(
+        () => progresoRepository.obtenerProgresoConfiguracion('usuario-1'),
+      ).thenAnswer((_) async {
+        lecturasProgreso++;
+        if (lecturasProgreso == 1) return _progreso(slug: '');
+        return progresoTrasGuardar.future;
+      });
+      when(
+        () => progresoRepository.guardarRubro('usuario-1', 'Bodega'),
+      ).thenAnswer((_) {
+        escriturasRubro++;
+        return guardado.future;
+      });
+      provider = AccesoProvider(
+        authRepository: authRepository,
+        authProvider: authProvider,
+        userRepository: userRepository,
+        progresoRepository: progresoRepository,
+      );
+      cambiosDeAuth.add(usuario);
+      await pumpEventQueue();
+
+      final primero = provider!.guardarRubro('Bodega');
+      final segundo = provider!.guardarRubro('Bodega');
+      expect(escriturasRubro, 1);
+      guardado.complete();
+      await pumpEventQueue();
+      expect(provider!.estado, EstadoAcceso.cargandoProgreso);
+      final tercero = provider!.guardarRubro(' Bodega ');
+      expect(escriturasRubro, 1);
+      progresoTrasGuardar.complete(_progreso(slug: '', rubroCompleto: true));
+
+      expect(await primero, isTrue);
+      expect(await segundo, isTrue);
+      expect(await tercero, isTrue);
+      expect(provider!.estado, EstadoAcceso.listo);
+      expect(provider!.progreso!.rubroCompleto, isTrue);
+      expect(provider!.progreso!.siguiente, EtapaConfiguracion.negocio);
+    },
+  );
 }
 
 User _usuario({required String uid, required String email}) {
@@ -266,17 +311,20 @@ User _usuario({required String uid, required String email}) {
   return usuario;
 }
 
-ProgresoConfiguracion _progreso({required String slug}) {
+ProgresoConfiguracion _progreso({
+  required String slug,
+  bool rubroCompleto = false,
+}) {
   return ProgresoConfiguracion(
     catalogo: CatalogoNegocio(
-      rubro: '',
+      rubro: rubroCompleto ? 'Bodega' : '',
       categorias: const [],
       unidadesMedida: const [],
     ),
     slug: slug,
     plantilla: null,
     plantillaProvieneDeCampoOficial: false,
-    rubroCompleto: false,
+    rubroCompleto: rubroCompleto,
     negocioCompleto: false,
     productosCompletos: false,
     setupCompletePersistido: false,

@@ -37,7 +37,11 @@ void main() {
     expect(subidorDeImagenes.llamadas, 0);
     expect(repositorioProductos.llamadasGuardado, 1);
     expect(repositorioProductos.ultimoUid, 'usuario-1');
-    expect(guardado.negocioId, 'usuario-1');
+    expect(
+      guardado.negocioId,
+      'negocio-anterior',
+      reason: 'EditarProducto no sobreescribe el negocioId con el uid.',
+    );
     expect(guardado.nombre, 'Cafe editado');
     expect(guardado.urlImagen, 'https://imagenes.test/anterior.jpg');
     expect(guardado.cloudinaryPublicId, 'productos/anterior');

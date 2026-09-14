@@ -32,7 +32,13 @@ void main() {
 
     expect(subidorDeImagenes.llamadas, 0);
     expect(repositorioProductos.llamadas, 1);
-    expect(repositorioProductos.ultimoProducto?.negocioId, 'usuario-1');
+    expect(repositorioProductos.ultimoUid, 'usuario-1');
+    expect(repositorioProductos.ultimoProducto?.negocioId, '');
+    expect(
+      repositorioProductos.ultimoProducto?.id,
+      '',
+      reason: 'El id lo asigna el repositorio al crear el documento.',
+    );
     expect(guardado.id, 'producto-1');
   });
 

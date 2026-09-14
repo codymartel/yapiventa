@@ -11,7 +11,7 @@ import 'package:mobile/features/negocio/domain/models/progreso_configuracion.dar
 import 'package:mobile/features/negocio/domain/models/zona_delivery.dart';
 
 void main() {
-  late FakeFirebaseFirestore firestore;
+  late _MergeAwareFakeFirebaseFirestore firestore;
   late NegocioRepository repository;
 
   setUp(() {
@@ -19,41 +19,43 @@ void main() {
     repository = NegocioRepository(firestore: firestore);
   });
 
-  test('obtiene categorías y unidades tipadas desde negocios/{negocioId}',
-      () async {
-    await _prepararNegocio(
-      firestore,
-      'usuario-1',
-      datos: {
-        'rubro': 'Bodega',
-        'categorias': ['Bebidas', ' Snacks ', 'Bebidas', 7],
-        'unidadesMedida': [
-          {
-            'nombre': 'Unidad',
-            'tipo': 'entera',
-            'fraccionesPermitidas': ['1', '2'],
-            'esOpcional': false,
-          },
-          {
-            'nombre': 'kg',
-            'tipo': 'fraccionaria',
-            'fraccionesPermitidas': ['0.5', '1'],
-            'esOpcional': true,
-          },
-        ],
-      },
-    );
+  test(
+    'obtiene categorías y unidades tipadas desde negocios/{negocioId}',
+    () async {
+      await _prepararNegocio(
+        firestore,
+        'usuario-1',
+        datos: {
+          'rubro': 'Bodega',
+          'categorias': ['Bebidas', ' Snacks ', 'Bebidas', 7],
+          'unidadesMedida': [
+            {
+              'nombre': 'Unidad',
+              'tipo': 'entera',
+              'fraccionesPermitidas': ['1', '2'],
+              'esOpcional': false,
+            },
+            {
+              'nombre': 'kg',
+              'tipo': 'fraccionaria',
+              'fraccionesPermitidas': ['0.5', '1'],
+              'esOpcional': true,
+            },
+          ],
+        },
+      );
 
-    final catalogo = await repository.obtenerCatalogoNegocio('usuario-1');
+      final catalogo = await repository.obtenerCatalogoNegocio('usuario-1');
 
-    expect(catalogo.rubro, 'Bodega');
-    expect(catalogo.categorias, ['Bebidas', 'Snacks']);
-    expect(catalogo.unidadesMedida, hasLength(2));
-    expect(catalogo.unidadesMedida.first.nombre, 'Unidad');
-    expect(catalogo.unidadesMedida.first.tipo, TipoUnidad.entera);
-    expect(catalogo.unidadesMedida.last.fraccionesPermitidas, ['0.5', '1']);
-    expect(catalogo.unidadesMedida.last.esOpcional, isTrue);
-  });
+      expect(catalogo.rubro, 'Bodega');
+      expect(catalogo.categorias, ['Bebidas', 'Snacks']);
+      expect(catalogo.unidadesMedida, hasLength(2));
+      expect(catalogo.unidadesMedida.first.nombre, 'Unidad');
+      expect(catalogo.unidadesMedida.first.tipo, TipoUnidad.entera);
+      expect(catalogo.unidadesMedida.last.fraccionesPermitidas, ['0.5', '1']);
+      expect(catalogo.unidadesMedida.last.esOpcional, isTrue);
+    },
+  );
 
   test(
     'devuelve un catálogo vacío cuando el documento no tiene datos',
@@ -87,103 +89,94 @@ void main() {
     expect(catalogo.unidadesMedida, isEmpty);
   });
 
-  test(
-    'actualiza la configuracion en negocios y serializa delivery, horarios '
-    'y pagos sin tocar users/{uid}',
-    () async {
-      final negocioId = await _prepararNegocio(
-        firestore,
-        'usuario-1',
-        datos: {
-          'email': 'ana@example.com',
-          'plantillaWeb': 'neon',
-          'setupComplete': false,
-          'webActiva': false,
-        },
-      );
+  test('actualiza la configuracion en negocios y serializa delivery, horarios '
+      'y pagos sin tocar users/{uid}', () async {
+    final negocioId = await _prepararNegocio(
+      firestore,
+      'usuario-1',
+      datos: {
+        'email': 'ana@example.com',
+        'plantillaWeb': 'neon',
+        'setupComplete': false,
+        'webActiva': false,
+      },
+    );
 
-      await repository.guardarConfiguracionNegocio(
-        uid: 'usuario-1',
-        rubro: 'Bodega',
-        nombreNegocio: '  Bodega Ana  ',
-        slug: 'bodega-ana',
-        telefonoCompleto: '+51999999999',
-        direccionCompleta: 'Av. Lima 123',
-        ruc: '12345678901',
-        facebook: 'facebook.com/bodegaana',
-        tiktok: '',
-        instagram: 'instagram.com/bodegaana',
-        youtube: '',
-        categorias: ['Bebidas'],
-        unidadesMedida: const [
-          UnidadInfo(
-            nombre: 'Unidad',
-            tipo: TipoUnidad.entera,
-            fraccionesPermitidas: [],
-            esOpcional: false,
-          ),
-        ],
-        tieneDelivery: true,
-        zonasDelivery: const [ZonaDelivery(zona: 'Centro', costo: '7.50')],
-        horarios: const [
-          HorarioDia(
-            dia: 'Lunes',
-            apertura: '08:00',
-            cierre: '18:00',
-            activo: true,
-          ),
-        ],
-        metodosPagoConfig: const [
-          ConfigPagoMetodo(
-            metodoId: 'yape',
-            activo: true,
-            numeroPago: '999999999',
-            descuentoActivo: true,
-            tipoDescuento: TipoDescuento.porcentaje,
-            valorDescuento: '10',
-            montoMinimo: '20',
-          ),
-          ConfigPagoMetodo(metodoId: 'efectivo', activo: true),
-          ConfigPagoMetodo(metodoId: 'plin'),
-        ],
-      );
+    await repository.guardarConfiguracionNegocio(
+      uid: 'usuario-1',
+      rubro: 'Bodega',
+      nombreNegocio: '  Bodega Ana  ',
+      slug: 'bodega-ana',
+      telefonoCompleto: '+51999999999',
+      direccionCompleta: 'Av. Lima 123',
+      ruc: '12345678901',
+      facebook: 'facebook.com/bodegaana',
+      tiktok: '',
+      instagram: 'instagram.com/bodegaana',
+      youtube: '',
+      categorias: ['Bebidas'],
+      unidadesMedida: const [
+        UnidadInfo(
+          nombre: 'Unidad',
+          tipo: TipoUnidad.entera,
+          fraccionesPermitidas: [],
+          esOpcional: false,
+        ),
+      ],
+      tieneDelivery: true,
+      zonasDelivery: const [ZonaDelivery(zona: 'Centro', costo: '7.50')],
+      horarios: const [
+        HorarioDia(
+          dia: 'Lunes',
+          apertura: '08:00',
+          cierre: '18:00',
+          activo: true,
+        ),
+      ],
+      metodosPagoConfig: const [
+        ConfigPagoMetodo(
+          metodoId: 'yape',
+          activo: true,
+          numeroPago: '999999999',
+          descuentoActivo: true,
+          tipoDescuento: TipoDescuento.porcentaje,
+          valorDescuento: '10',
+          montoMinimo: '20',
+        ),
+        ConfigPagoMetodo(metodoId: 'efectivo', activo: true),
+        ConfigPagoMetodo(metodoId: 'plin'),
+      ],
+    );
 
-      final datos =
-          (await firestore.collection('negocios').doc(negocioId).get())
-              .data()!;
-      expect(datos['rubro'], 'Bodega');
-      expect(datos['nombreNegocio'], 'Bodega Ana');
-      expect(datos['ruc'], '12345678901');
-      expect(datos['plantillaWeb'], 'neon');
-      expect(datos['setupComplete'], isFalse);
-      expect(datos['webActiva'], isFalse);
-      expect(datos['deliveryZonas'], [
-        {'zona': 'Centro', 'costo': 7.5},
-      ]);
-      expect(datos['horarios'], [
-        {
-          'dia': 'Lunes',
-          'apertura': '08:00',
-          'cierre': '18:00',
-          'activo': true,
-        },
-      ]);
-      expect(datos['metodosPago'], ['yape', 'efectivo']);
-      expect(datos['configPagos'], {
-        'yape': {
-          'numero': '999999999',
-          'descuentoActivo': true,
-          'montoMinimo': 20.0,
-          'tipoDescuento': 'porcentaje',
-          'valorDescuento': 10.0,
-        },
-      });
+    final datos = (await firestore.collection('negocios').doc(negocioId).get())
+        .data()!;
+    expect(datos['rubro'], 'Bodega');
+    expect(datos['nombreNegocio'], 'Bodega Ana');
+    expect(datos['ruc'], '12345678901');
+    expect(datos['plantillaWeb'], 'neon');
+    expect(datos['setupComplete'], isFalse);
+    expect(datos['webActiva'], isFalse);
+    expect(datos['deliveryZonas'], [
+      {'zona': 'Centro', 'costo': 7.5},
+    ]);
+    expect(datos['horarios'], [
+      {'dia': 'Lunes', 'apertura': '08:00', 'cierre': '18:00', 'activo': true},
+    ]);
+    expect(datos['metodosPago'], ['yape', 'efectivo']);
+    expect(datos['configPagos'], {
+      'yape': {
+        'numero': '999999999',
+        'descuentoActivo': true,
+        'montoMinimo': 20.0,
+        'tipoDescuento': 'porcentaje',
+        'valorDescuento': 10.0,
+      },
+    });
 
-      final perfil = (await firestore.collection('users').doc('usuario-1').get())
-          .data()!;
-      expect(perfil.keys.toSet(), {'email', 'negocioId'});
-    },
-  );
+    final perfil = (await firestore.collection('users').doc('usuario-1').get())
+        .data()!;
+    expect(perfil.keys.toSet(), {'email', 'negocioId'});
+  });
 
   test('guardarPlantillaWeb completa onboarding sin tocar webActiva', () async {
     final negocioId = await _guardarCuentaConNegocioValido(
@@ -199,8 +192,8 @@ void main() {
 
     await repository.guardarPlantillaWeb('usuario-1', PlantillaWeb.cristal);
 
-    final datos =
-        (await firestore.collection('negocios').doc(negocioId).get()).data()!;
+    final datos = (await firestore.collection('negocios').doc(negocioId).get())
+        .data()!;
     expect(datos['slug'], 'bodega-ana');
     expect(datos['plantilla'], 'neon');
     expect(datos['plantillaWeb'], 'cristal');
@@ -217,7 +210,10 @@ void main() {
 
   group('obtenerProgresoConfiguracion', () {
     test('empieza en rubro para una cuenta sin datos', () async {
-      await _guardarPerfilConNegocioId(firestore, 'usuario-nuevo');
+      await firestore.collection('users').doc('usuario-nuevo').set({
+        'email': 'nuevo@example.com',
+      });
+      firestore.negociosCollectionAccesses = 0;
 
       final progreso = await repository.obtenerProgresoConfiguracion(
         'usuario-nuevo',
@@ -229,12 +225,15 @@ void main() {
       expect(progreso.plantillaCompleta, isFalse);
       expect(progreso.completo, isFalse);
       expect(progreso.siguiente, EtapaConfiguracion.rubro);
+      expect(firestore.negociosCollectionAccesses, 0);
     });
 
     test('avanza a negocio al encontrar un rubro válido', () async {
-      await _prepararNegocio(firestore, 'usuario-1', datos: {
-        'rubro': 'Bodega',
-      });
+      await _prepararNegocio(
+        firestore,
+        'usuario-1',
+        datos: {'rubro': 'Bodega'},
+      );
 
       final progreso = await repository.obtenerProgresoConfiguracion(
         'usuario-1',
@@ -276,8 +275,8 @@ void main() {
     test('busca un producto válido más allá del primer documento', () async {
       await _guardarCuentaConNegocioValido(firestore, 'usuario-1');
       await firestore
-          .collection('users')
-          .doc('usuario-1')
+          .collection('negocios')
+          .doc('negocio-usuario-1')
           .collection('productos')
           .doc('a-invalido')
           .set({'nombre': 'Sin datos completos'});
@@ -329,9 +328,11 @@ void main() {
     });
 
     test('no confía en un setupComplete antiguo y prematuro', () async {
-      await _prepararNegocio(firestore, 'usuario-1', datos: {
-        'setupComplete': true,
-      });
+      await _prepararNegocio(
+        firestore,
+        'usuario-1',
+        datos: {'setupComplete': true},
+      );
 
       final progreso = await repository.obtenerProgresoConfiguracion(
         'usuario-1',
@@ -347,8 +348,8 @@ void main() {
       await _guardarProductoValido(firestore, 'usuario-1');
       await repository.guardarPlantillaWeb('usuario-1', PlantillaWeb.cristal);
       await firestore
-          .collection('users')
-          .doc('usuario-1')
+          .collection('negocios')
+          .doc('negocio-usuario-1')
           .collection('productos')
           .doc('producto-1')
           .delete();
@@ -368,15 +369,13 @@ void main() {
     final negocioId = await _prepararNegocio(
       firestore,
       'usuario-1',
-      datos: {
-        'webActiva': true,
-      },
+      datos: {'webActiva': true},
     );
 
     await repository.guardarRubro('usuario-1', '  Bodega  ');
 
-    final datos =
-        (await firestore.collection('negocios').doc(negocioId).get()).data()!;
+    final datos = (await firestore.collection('negocios').doc(negocioId).get())
+        .data()!;
     expect(datos['rubro'], 'Bodega');
     expect(datos['webActiva'], isTrue);
     expect(datos['onboardingRubroCompletedAt'], isNotNull);
@@ -385,6 +384,126 @@ void main() {
         .data()!;
     expect(perfil.keys.toSet(), {'email', 'negocioId'});
   });
+
+  test('guardarRubro crea y vincula exactamente un negocio', () async {
+    await firestore.collection('users').doc('usuario-1').set({
+      'email': 'ana@example.com',
+      'terminosAceptados': true,
+      'createdAt': Timestamp.now(),
+    });
+
+    await repository.guardarRubro('usuario-1', ' Bodega ');
+
+    final perfil = (await firestore.collection('users').doc('usuario-1').get())
+        .data()!;
+    final negocios = await firestore.collection('negocios').get();
+    expect(negocios.docs, hasLength(1));
+    expect(perfil['negocioId'], negocios.docs.single.id);
+    expect(
+      negocios.docs.single.data(),
+      containsPair('propietarioUid', 'usuario-1'),
+    );
+    expect(negocios.docs.single.data(), containsPair('rubro', 'Bodega'));
+    expect(
+      negocios.docs.single.data(),
+      containsPair('onboardingBusinessRubro', 'Bodega'),
+    );
+    expect(negocios.docs.single.data(), containsPair('setupComplete', false));
+    expect(negocios.docs.single.data(), containsPair('webActiva', false));
+    expect(negocios.docs.single.data()['createdAt'], isA<Timestamp>());
+    expect(
+      negocios.docs.single.data()['onboardingRubroCompletedAt'],
+      isA<Timestamp>(),
+    );
+  });
+
+  test('dos intentos de guardarRubro reutilizan el mismo negocio', () async {
+    await firestore.collection('users').doc('usuario-1').set({
+      'email': 'ana@example.com',
+    });
+
+    await repository.guardarRubro('usuario-1', 'Bodega');
+    final negocioIdInicial =
+        (await firestore.collection('users').doc('usuario-1').get())
+            .data()!['negocioId'];
+    final completadoInicial =
+        (await firestore
+                .collection('negocios')
+                .doc(negocioIdInicial as String)
+                .get())
+            .data()!['onboardingRubroCompletedAt'];
+    await repository.guardarRubro('usuario-1', 'Bodega');
+
+    final perfil = (await firestore.collection('users').doc('usuario-1').get())
+        .data()!;
+    final negocios = await firestore.collection('negocios').get();
+    expect(negocios.docs, hasLength(1));
+    expect(perfil['negocioId'], negocioIdInicial);
+    expect(negocios.docs.single.id, negocioIdInicial);
+    expect(
+      negocios.docs.single.data()['onboardingRubroCompletedAt'],
+      completadoInicial,
+    );
+  });
+
+  test('una transacción fallida no deja un vínculo parcial', () async {
+    final firestoreConFalla = _AbortTransactionFakeFirebaseFirestore();
+    final repositoryConFalla = NegocioRepository(firestore: firestoreConFalla);
+    await firestoreConFalla.collection('users').doc('usuario-1').set({
+      'email': 'ana@example.com',
+    });
+
+    await expectLater(
+      repositoryConFalla.guardarRubro('usuario-1', 'Bodega'),
+      throwsA(isA<FirebaseException>()),
+    );
+
+    final perfil =
+        (await firestoreConFalla.collection('users').doc('usuario-1').get())
+            .data()!;
+    expect(perfil.containsKey('negocioId'), isFalse);
+    expect(
+      (await firestoreConFalla.collection('negocios').get()).docs,
+      isEmpty,
+    );
+  });
+
+  test(
+    'después de guardar Rubro el progreso desbloquea Configuración',
+    () async {
+      await firestore.collection('users').doc('usuario-1').set({
+        'email': 'ana@example.com',
+      });
+
+      await repository.guardarRubro('usuario-1', 'Bodega');
+      final progreso = await repository.obtenerProgresoConfiguracion(
+        'usuario-1',
+      );
+
+      expect(progreso.rubroCompleto, isTrue);
+      expect(progreso.negocioCompleto, isFalse);
+      expect(progreso.siguiente, EtapaConfiguracion.negocio);
+    },
+  );
+
+  test(
+    'un usuario con negocio existente continúa cargando su progreso',
+    () async {
+      await _prepararNegocio(
+        firestore,
+        'usuario-1',
+        datos: {'propietarioUid': 'usuario-1', 'rubro': 'Bodega'},
+      );
+
+      final progreso = await repository.obtenerProgresoConfiguracion(
+        'usuario-1',
+      );
+
+      expect(progreso.rubroCompleto, isTrue);
+      expect(progreso.siguiente, EtapaConfiguracion.negocio);
+      expect((await firestore.collection('negocios').get()).docs, hasLength(1));
+    },
+  );
 
   test(
     'obtiene slug y prioriza plantillaWeb en una lectura conjunta',
@@ -410,15 +529,20 @@ void main() {
   test(
     'usa plantilla legada solo si plantillaWeb falta o esta vacia',
     () async {
-      await _prepararNegocio(firestore, 'sin-oficial', datos: {
-        'slug': 'tienda-uno',
-        'plantilla': 'neon',
-      });
-      await _prepararNegocio(firestore, 'oficial-vacia', datos: {
-        'slug': 'tienda-dos',
-        'plantilla': 'sabroso',
-        'plantillaWeb': '  ',
-      });
+      await _prepararNegocio(
+        firestore,
+        'sin-oficial',
+        datos: {'slug': 'tienda-uno', 'plantilla': 'neon'},
+      );
+      await _prepararNegocio(
+        firestore,
+        'oficial-vacia',
+        datos: {
+          'slug': 'tienda-dos',
+          'plantilla': 'sabroso',
+          'plantillaWeb': '  ',
+        },
+      );
 
       final sinOficial = await repository.obtenerSeleccionPlantilla(
         'sin-oficial',
@@ -435,15 +559,20 @@ void main() {
   );
 
   test('no convierte limpio ni ignora un campo oficial no vacio', () async {
-    await _prepararNegocio(firestore, 'legado-limpio', datos: {
-      'slug': 'tienda-uno',
-      'plantilla': 'limpio',
-    });
-    await _prepararNegocio(firestore, 'oficial-invalido', datos: {
-      'slug': 'tienda-dos',
-      'plantilla': 'neon',
-      'plantillaWeb': 'limpio',
-    });
+    await _prepararNegocio(
+      firestore,
+      'legado-limpio',
+      datos: {'slug': 'tienda-uno', 'plantilla': 'limpio'},
+    );
+    await _prepararNegocio(
+      firestore,
+      'oficial-invalido',
+      datos: {
+        'slug': 'tienda-dos',
+        'plantilla': 'neon',
+        'plantillaWeb': 'limpio',
+      },
+    );
 
     final legado = await repository.obtenerSeleccionPlantilla('legado-limpio');
     final oficial = await repository.obtenerSeleccionPlantilla(
@@ -457,11 +586,11 @@ void main() {
   });
 
   test('usa el campo legado si plantillaWeb no es texto', () async {
-    await _prepararNegocio(firestore, 'oficial-mal-tipado', datos: {
-      'slug': 'tienda-uno',
-      'plantilla': 'neon',
-      'plantillaWeb': 7,
-    });
+    await _prepararNegocio(
+      firestore,
+      'oficial-mal-tipado',
+      datos: {'slug': 'tienda-uno', 'plantilla': 'neon', 'plantillaWeb': 7},
+    );
 
     final info = await repository.obtenerSeleccionPlantilla(
       'oficial-mal-tipado',
@@ -471,45 +600,333 @@ void main() {
     expect(info.provieneDeCampoOficial, isFalse);
   });
 
-  test('rechaza operaciones sin negocioId y no escribe en rutas incorrectas',
-      () async {
-    await firestore.collection('users').doc('sin-negocio').set({
-      'email': 'x@example.com',
+  test(
+    'rechaza operaciones posteriores sin negocioId y no escribe negocios',
+    () async {
+      await firestore.collection('users').doc('sin-negocio').set({
+        'email': 'x@example.com',
+      });
+
+      expect(
+        () => repository.guardarConfiguracionNegocio(
+          uid: 'sin-negocio',
+          rubro: 'Bodega',
+          nombreNegocio: 'Bodega X',
+          slug: 'bodega-x',
+          telefonoCompleto: '+51999999999',
+          direccionCompleta: 'Av. Lima 123',
+          ruc: '',
+          facebook: '',
+          tiktok: '',
+          instagram: '',
+          youtube: '',
+          categorias: const [],
+          unidadesMedida: const [],
+          tieneDelivery: false,
+          zonasDelivery: const [],
+          horarios: const [],
+          metodosPagoConfig: const [],
+        ),
+        throwsStateError,
+      );
+      expect(
+        () => repository.existenProductosDependientes(
+          uid: 'sin-negocio',
+          categorias: const ['Bebidas'],
+          unidades: const [],
+        ),
+        throwsStateError,
+      );
+
+      final negocios = await firestore.collection('negocios').get();
+      expect(negocios.docs, isEmpty);
+    },
+  );
+
+  test(
+    'existenProductosDependientes consulta negocios/{negocioId}/productos',
+    () async {
+      final negocioId = await _prepararNegocio(firestore, 'usuario-1');
+      await firestore
+          .collection('negocios')
+          .doc(negocioId)
+          .collection('productos')
+          .doc('producto-1')
+          .set({'categoria': 'Bebidas'});
+      await firestore
+          .collection('negocios')
+          .doc(negocioId)
+          .collection('productos')
+          .doc('producto-2')
+          .set({'unidadMedidaNombre': 'kg'});
+
+      final porCategoria = await repository.existenProductosDependientes(
+        uid: 'usuario-1',
+        categorias: const ['Bebidas'],
+        unidades: const [],
+      );
+      final porUnidad = await repository.existenProductosDependientes(
+        uid: 'usuario-1',
+        categorias: const [],
+        unidades: const ['kg'],
+      );
+      final sinCoincidencias = await repository.existenProductosDependientes(
+        uid: 'usuario-1',
+        categorias: const ['Snacks'],
+        unidades: const ['Unidad'],
+      );
+
+      expect(porCategoria, isTrue);
+      expect(porUnidad, isTrue);
+      expect(sinCoincidencias, isFalse);
+    },
+  );
+
+  group('negocios_publicos (proyección pública)', () {
+    const camposPublicos = {
+      'negocioId',
+      'nombreNegocio',
+      'slug',
+      'rubro',
+      'telefono',
+      'direccion',
+      'facebook',
+      'instagram',
+      'tiktok',
+      'youtube',
+      'plantillaWeb',
+      'webActiva',
+      'categorias',
+      'delivery',
+      'deliveryZonas',
+      'horarios',
+      'metodosPago',
+      'configPagos',
+    };
+
+    test('crea negocios_publicos/{slug} con solo los campos públicos al '
+        'guardar la configuración', () async {
+      final negocioId = await _prepararNegocio(
+        firestore,
+        'usuario-1',
+        datos: {
+          'email': 'ana@example.com',
+          'plantillaWeb': 'neon',
+          'webActiva': true,
+          'setupComplete': false,
+          'propietarioUid': 'usuario-1',
+        },
+      );
+
+      await _guardarConfiguracionBasica(repository);
+
+      final publico =
+          (await firestore
+                  .collection('negocios_publicos')
+                  .doc('bodega-ana')
+                  .get())
+              .data()!;
+      expect(publico.keys.toSet(), camposPublicos);
+      expect(publico, {
+        'negocioId': negocioId,
+        'nombreNegocio': 'Bodega Ana',
+        'slug': 'bodega-ana',
+        'rubro': 'Bodega',
+        'telefono': '+51999999999',
+        'direccion': 'Av. Lima 123',
+        'facebook': 'facebook.com/bodegaana',
+        'instagram': 'instagram.com/bodegaana',
+        'tiktok': '',
+        'youtube': '',
+        'plantillaWeb': 'neon',
+        'webActiva': true,
+        'categorias': ['Bebidas'],
+        'delivery': true,
+        'deliveryZonas': [
+          {'zona': 'Centro', 'costo': 7.5},
+        ],
+        'horarios': [
+          {
+            'dia': 'Lunes',
+            'apertura': '08:00',
+            'cierre': '18:00',
+            'activo': true,
+          },
+        ],
+        'metodosPago': ['yape', 'efectivo'],
+        'configPagos': {
+          'yape': {
+            'numero': '999999999',
+            'descuentoActivo': true,
+            'montoMinimo': 20.0,
+            'tipoDescuento': 'porcentaje',
+            'valorDescuento': 10.0,
+          },
+        },
+      });
+
+      final negocio =
+          (await firestore.collection('negocios').doc(negocioId).get()).data()!;
+      expect(negocio['ruc'], '12345678901');
+      expect(negocio['setupComplete'], isFalse);
+      expect(negocio['webActiva'], isTrue);
     });
 
-    expect(
-      () => repository.guardarRubro('sin-negocio', 'Bodega'),
-      throwsStateError,
-    );
-    expect(
-      () => repository.obtenerProgresoConfiguracion('sin-negocio'),
-      throwsStateError,
-    );
-    expect(
-      () => repository.guardarConfiguracionNegocio(
-        uid: 'sin-negocio',
-        rubro: 'Bodega',
-        nombreNegocio: 'Bodega X',
-        slug: 'bodega-x',
-        telefonoCompleto: '+51999999999',
-        direccionCompleta: 'Av. Lima 123',
-        ruc: '',
-        facebook: '',
-        tiktok: '',
-        instagram: '',
-        youtube: '',
-        categorias: const [],
-        unidadesMedida: const [],
-        tieneDelivery: false,
-        zonasDelivery: const [],
-        horarios: const [],
-        metodosPagoConfig: const [],
-      ),
-      throwsStateError,
-    );
+    test('se actualiza la proyección cuando cambia el nombre', () async {
+      await _prepararNegocio(firestore, 'usuario-1', datos: const {});
+      await _guardarConfiguracionBasica(repository);
 
-    final negocios = await firestore.collection('negocios').get();
-    expect(negocios.docs, isEmpty);
+      await _guardarConfiguracionBasica(
+        repository,
+        nombreNegocio: 'Bodega Ana S.A.',
+        slug: 'bodega-ana-s-a',
+      );
+
+      final publico =
+          (await firestore
+                  .collection('negocios_publicos')
+                  .doc('bodega-ana-s-a')
+                  .get())
+              .data()!;
+      expect(publico['nombreNegocio'], 'Bodega Ana S.A.');
+      expect(publico['slug'], 'bodega-ana-s-a');
+      expect(publico['negocioId'], 'negocio-usuario-1');
+
+      final perfil =
+          (await firestore.collection('users').doc('usuario-1').get()).data()!;
+      expect(perfil.keys.toSet(), {'email', 'negocioId'});
+    });
+
+    test('se actualiza la proyección al guardar la plantilla', () async {
+      final negocioId = await _guardarCuentaConNegocioValido(
+        firestore,
+        'usuario-1',
+        adicionales: {'webActiva': true},
+      );
+      await _guardarProductoValido(firestore, 'usuario-1');
+
+      await repository.guardarPlantillaWeb('usuario-1', PlantillaWeb.cristal);
+
+      final publico =
+          (await firestore
+                  .collection('negocios_publicos')
+                  .doc('bodega-ana')
+                  .get())
+              .data()!;
+      expect(publico['plantillaWeb'], 'cristal');
+      expect(publico['webActiva'], isTrue);
+      expect(publico['nombreNegocio'], 'Bodega Ana');
+      expect(publico['negocioId'], negocioId);
+
+      final negocio =
+          (await firestore.collection('negocios').doc(negocioId).get()).data()!;
+      expect(negocio['plantillaWeb'], 'cristal');
+      expect(negocio['slug'], 'bodega-ana');
+      expect(negocio['rubro'], 'Bodega');
+      expect(negocio['telefono'], '+51999999999');
+      expect(negocio['direccion'], 'Av. Lima 123');
+      expect(negocio['categorias'], ['Bebidas']);
+      expect(negocio['delivery'], isFalse);
+
+      final perfil =
+          (await firestore.collection('users').doc('usuario-1').get()).data()!;
+      expect(perfil.keys.toSet(), {'email', 'negocioId'});
+    });
+
+    test('refleja la webActiva vigente al reescribir la proyección', () async {
+      await _prepararNegocio(
+        firestore,
+        'usuario-1',
+        datos: {'webActiva': true},
+      );
+      await _guardarConfiguracionBasica(repository);
+
+      var publico =
+          (await firestore
+                  .collection('negocios_publicos')
+                  .doc('bodega-ana')
+                  .get())
+              .data()!;
+      expect(publico['webActiva'], isTrue);
+
+      // Simula que el negocio desactiva su tienda web (toggle futuro).
+      await firestore.collection('negocios').doc('negocio-usuario-1').set({
+        'webActiva': false,
+      }, SetOptions(merge: true));
+      await _guardarConfiguracionBasica(repository);
+
+      publico =
+          (await firestore
+                  .collection('negocios_publicos')
+                  .doc('bodega-ana')
+                  .get())
+              .data()!;
+      expect(publico['webActiva'], isFalse);
+    });
+
+    test('al cambiar el slug elimina la ruta pública anterior', () async {
+      await _prepararNegocio(firestore, 'usuario-1', datos: const {});
+      await _guardarConfiguracionBasica(repository, slug: 'bodega-ana');
+
+      await _guardarConfiguracionBasica(repository, slug: 'bodega-ana-v2');
+
+      final anterior = await firestore
+          .collection('negocios_publicos')
+          .doc('bodega-ana')
+          .get();
+      final actual = await firestore
+          .collection('negocios_publicos')
+          .doc('bodega-ana-v2')
+          .get();
+      final negocio =
+          (await firestore
+                  .collection('negocios')
+                  .doc('negocio-usuario-1')
+                  .get())
+              .data()!;
+
+      expect(anterior.exists, isFalse);
+      expect(actual.data()!['slug'], 'bodega-ana-v2');
+      expect(actual.data()!['negocioId'], 'negocio-usuario-1');
+      expect(negocio['slug'], 'bodega-ana-v2');
+
+      final publicos = await firestore.collection('negocios_publicos').get();
+      expect(publicos.docs, hasLength(1));
+    });
+
+    test(
+      'la plantilla no rompe la configuración del negocio ni la proyección',
+      () async {
+        final negocioId = await _guardarCuentaConNegocioValido(
+          firestore,
+          'usuario-1',
+          adicionales: {'plantillaWeb': 'neon'},
+        );
+        await _guardarProductoValido(firestore, 'usuario-1');
+        await _guardarConfiguracionBasica(repository);
+
+        await repository.guardarPlantillaWeb('usuario-1', PlantillaWeb.neon);
+
+        final negocio =
+            (await firestore.collection('negocios').doc(negocioId).get())
+                .data()!;
+        expect(negocio['rubro'], 'Bodega');
+        expect(negocio['nombreNegocio'], 'Bodega Ana');
+        expect(negocio['telefono'], '+51999999999');
+        expect(negocio['slug'], 'bodega-ana');
+        expect(negocio['setupComplete'], isTrue);
+
+        final publico =
+            (await firestore
+                    .collection('negocios_publicos')
+                    .doc('bodega-ana')
+                    .get())
+                .data()!;
+        expect(publico['plantillaWeb'], 'neon');
+        expect(publico['nombreNegocio'], 'Bodega Ana');
+        expect(publico['slug'], 'bodega-ana');
+      },
+    );
   });
 }
 
@@ -569,13 +986,14 @@ Future<void> _guardarProductoValido(
   FakeFirebaseFirestore firestore,
   String uid,
 ) {
+  final negocioId = _negocioIdDe(uid);
   return firestore
-      .collection('users')
-      .doc(uid)
+      .collection('negocios')
+      .doc(negocioId)
       .collection('productos')
       .doc('producto-1')
       .set({
-        'negocioId': uid,
+        'negocioId': negocioId,
         'nombre': 'Gaseosa',
         'precio': 4.5,
         'stock': 10,
@@ -585,10 +1003,70 @@ Future<void> _guardarProductoValido(
       });
 }
 
+Future<void> _guardarConfiguracionBasica(
+  NegocioRepository repository, {
+  String nombreNegocio = 'Bodega Ana',
+  String slug = 'bodega-ana',
+}) {
+  return repository.guardarConfiguracionNegocio(
+    uid: 'usuario-1',
+    rubro: 'Bodega',
+    nombreNegocio: nombreNegocio,
+    slug: slug,
+    telefonoCompleto: '+51999999999',
+    direccionCompleta: 'Av. Lima 123',
+    ruc: '12345678901',
+    facebook: 'facebook.com/bodegaana',
+    tiktok: '',
+    instagram: 'instagram.com/bodegaana',
+    youtube: '',
+    categorias: const ['Bebidas'],
+    unidadesMedida: const [
+      UnidadInfo(
+        nombre: 'Unidad',
+        tipo: TipoUnidad.entera,
+        fraccionesPermitidas: [],
+        esOpcional: false,
+      ),
+    ],
+    tieneDelivery: true,
+    zonasDelivery: const [ZonaDelivery(zona: 'Centro', costo: '7.50')],
+    horarios: const [
+      HorarioDia(
+        dia: 'Lunes',
+        apertura: '08:00',
+        cierre: '18:00',
+        activo: true,
+      ),
+    ],
+    metodosPagoConfig: const [
+      ConfigPagoMetodo(
+        metodoId: 'yape',
+        activo: true,
+        numeroPago: '999999999',
+        descuentoActivo: true,
+        tipoDescuento: TipoDescuento.porcentaje,
+        valorDescuento: '10',
+        montoMinimo: '20',
+      ),
+      ConfigPagoMetodo(metodoId: 'efectivo', activo: true),
+      ConfigPagoMetodo(metodoId: 'plin'),
+    ],
+  );
+}
+
 // fake_cloud_firestore 3.1.0 ignora SetOptions en transacciones. Este ajuste
 // conserva el fake como almacenamiento, pero ejecuta los writes con sus
 // opciones reales para poder verificar la semántica merge de guardarRubro.
 class _MergeAwareFakeFirebaseFirestore extends FakeFirebaseFirestore {
+  int negociosCollectionAccesses = 0;
+
+  @override
+  CollectionReference<Map<String, dynamic>> collection(String collectionPath) {
+    if (collectionPath == 'negocios') negociosCollectionAccesses++;
+    return super.collection(collectionPath);
+  }
+
   @override
   Future<T> runTransaction<T>(
     TransactionHandler<T> transactionHandler, {
@@ -599,6 +1077,22 @@ class _MergeAwareFakeFirebaseFirestore extends FakeFirebaseFirestore {
     final result = await transactionHandler(transaction);
     await transaction.commit();
     return result;
+  }
+}
+
+class _AbortTransactionFakeFirebaseFirestore
+    extends _MergeAwareFakeFirebaseFirestore {
+  @override
+  Future<T> runTransaction<T>(
+    TransactionHandler<T> transactionHandler, {
+    Duration timeout = const Duration(seconds: 30),
+    int maxAttempts = 5,
+  }) async {
+    await transactionHandler(_MergeAwareTransaction());
+    throw FirebaseException(
+      plugin: 'cloud_firestore',
+      message: 'Transacción abortada para la prueba.',
+    );
   }
 }
 

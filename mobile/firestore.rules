@@ -1,0 +1,112 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ─────────────────────────────────────────────────────────────────────
+    // Helpers compartidos
+    // ─────────────────────────────────────────────────────────────────────
+    function isSignedIn() {
+      return request.auth != null && request.auth.uid != null;
+    }
+
+    // El usuario autenticado es dueño del negocio indicado por su id.
+    function esDuenoNegocio(negocioId) {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/negocios/$(negocioId)).data.propietarioUid == request.auth.uid;
+    }
+
+    // Valida que la data de un doc público corresponda a un negocio que
+    // el usuario autenticado efectivamente posee. Los docs de
+    // negocios_publicos no llevan propietarioUid, así que se resuelve
+    // contra el negocio referenciado por data.negocioId.
+    function esDuenoNegocioPublico(datos) {
+      return datos.negocioId is string && esDuenoNegocio(datos.negocioId);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // users/{userId}
+    //   Solo el propio usuario autenticado lee o escribe su documento.
+    //   Sin permisos públicos.
+    // ─────────────────────────────────────────────────────────────────────
+    match /users/{userId} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+
+      // users/{userId}/plan/{planId} — privado al propietario.
+      match /plan/{planId} {
+        allow read, write: if isSignedIn() && request.auth.uid == userId;
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // negocios/{negocioId}
+    //   Creación: propietarioUid debe coincidir con el uid autenticado.
+    //   Lectura/edición/eliminación: solo el propietario.
+    // ─────────────────────────────────────────────────────────────────────
+    match /negocios/{negocioId} {
+      allow read: if resource.data.propietarioUid == request.auth.uid;
+      allow create: if isSignedIn() &&
+        request.resource.data.propietarioUid == request.auth.uid;
+      allow update: if resource.data.propietarioUid == request.auth.uid;
+      allow delete: if resource.data.propietarioUid == request.auth.uid;
+
+      // Subcolecciones privadas del negocio.
+      match /pedidos/{document=**} {
+        allow read, write: if false;
+      }
+      match /reclamaciones/{document=**} {
+        allow read, write: if false;
+      }
+      match /promociones/{document=**} {
+        allow read, write: if false;
+      }
+      match /suscripcion/{document=**} {
+        allow read, write: if false;
+      }
+      match /inventario_privado/{document=**} {
+        allow read, write: if false;
+      }
+
+      // negocios/{negocioId}/productos/{productoId}
+      //   Propietario: lee y administra todos sus productos.
+      //   Visitantes: solo lectura de productos con disponible == true
+      //   (la tienda pública consulta where('disponible', '==', true)).
+      //   El producto conserva siempre el negocioId correcto.
+      match /productos/{productoId} {
+        allow read: if esDuenoNegocio(negocioId) || resource.data.disponible == true;
+        allow create: if esDuenoNegocio(negocioId) &&
+          request.resource.data.negocioId == negocioId;
+        allow update: if esDuenoNegocio(negocioId) &&
+          request.resource.data.negocioId == negocioId;
+        allow delete: if esDuenoNegocio(negocioId);
+      }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // negocios_publicos/{slug}
+    //   Lectura pública SOLO si webActiva == true.
+    //   El propietario lee su documento aunque esté desactivado.
+    //   Solo el propietario crea, edita o elimina.
+    //   El negocioId no puede cambiar en una actualización.
+    // ─────────────────────────────────────────────────────────────────────
+    match /negocios_publicos/{slug} {
+      allow read: if resource.data.webActiva == true ||
+        esDuenoNegocioPublico(resource.data);
+
+      allow create: if isSignedIn() &&
+        esDuenoNegocioPublico(request.resource.data);
+
+      allow update: if isSignedIn() &&
+        esDuenoNegocioPublico(resource.data) &&
+        request.resource.data.negocioId == resource.data.negocioId;
+
+      allow delete: if isSignedIn() &&
+        esDuenoNegocioPublico(resource.data);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Ruta final: deniega explícitamente cualquier ruta no declarada.
+    // ─────────────────────────────────────────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

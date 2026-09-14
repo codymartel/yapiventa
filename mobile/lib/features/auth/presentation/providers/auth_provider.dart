@@ -51,11 +51,21 @@ class AuthProvider extends ChangeNotifier {
   Future<void> registrarse(String email, String password) async {
     if (!_iniciarOperacion()) return;
     try {
-      await _repository.registrarse(email: email, password: password);
+      final usuario = await _repository.registrarse(
+        email: email,
+        password: password,
+      );
+      // El negocio se crea recién cuando el usuario guarda su rubro.
+      if (usuario != null) {
+        await _aprovisionarPerfil(usuario);
+      }
       _status = AuthStatus.emailNotVerified;
       iniciarRelojBloqueo();
     } on FirebaseAuthException catch (e) {
       _errorMessage = _mensajeDeError(e);
+      _status = AuthStatus.error;
+    } catch (_) {
+      _errorMessage = 'No se pudo completar el registro. Intenta de nuevo.';
       _status = AuthStatus.error;
     } finally {
       _setLoading(false);
@@ -154,13 +164,12 @@ class AuthProvider extends ChangeNotifier {
   }
 
   // ─────────────────────────────────────────────────────────────────────
-  // NUEVO — SABER SI EL NEGOCIO YA ESTÁ CONFIGURADO
+  // SABER SI EL NEGOCIO YA ESTÁ CONFIGURADO
   // ─────────────────────────────────────────────────────────────────────
-  // Este es el método que faltaba y causaba el error de compilación.
-  // Consulta el campo `setupComplete` en users/{uid} (false al
-  // registrarse, true al terminar el wizard de configuración de
-  // negocio) para decidir a dónde navegar tras un login/registro
-  // exitoso: '/elegir-rubro' o '/home'.
+  // Resuelve el estado leyendo `users/{uid}.negocioId` y luego
+  // `negocios/{negocioId}.setupComplete` (false al registrarse, true al
+  // terminar el wizard de configuración del negocio) para decidir a dónde
+  // navegar tras un login/registro exitoso: '/elegir-rubro' o '/home'.
   Future<bool> negocioYaConfigurado() async {
     final user = _repository.usuarioActual;
     if (user == null) return false;
@@ -242,7 +251,6 @@ class AuthProvider extends ChangeNotifier {
     return _userRepository.asegurarPerfilYPlan(
       uid: user.uid,
       email: user.email ?? '',
-      webActivaInicial: true,
       limiteProductos: 20,
       minimoProductos: 1,
     );
