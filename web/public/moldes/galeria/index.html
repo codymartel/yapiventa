@@ -3,164 +3,310 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Catálogo — YapiVenta</title>
-  <meta name="description" content="Catálogo web del negocio">
+  <meta name="description" content="Catálogo público del negocio">
+  <title>Catálogo | YapiVenta</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body x-data="catalogo">
-
-  <div x-show="cargando" class="loader" x-cloak>
-    <div class="loader-hilo" aria-hidden="true"></div>
-    <p>Preparando la colección…</p>
+  <div x-show="cargando" class="loader" x-cloak role="status" aria-live="polite">
+    <div class="loader-marca" aria-hidden="true"><span></span><span></span><span></span></div>
+    <p>Preparando el catálogo...</p>
   </div>
 
-  <div x-show="error" class="error-box" x-cloak
-       x-text="'No pudimos cargar la colección. ' + error"></div>
+  <div x-show="error" class="error-box" x-cloak role="alert">
+    <strong>No pudimos cargar la tienda.</strong>
+    <span x-text="error"></span>
+  </div>
 
-  <!-- Header con carrito -->
-  <header class="header">
-    <div class="wrap header-inner">
-      <div class="marca" x-text="negocio.nombre || 'Mi tienda'"></div>
-      <button class="carrito-btn" @click="carritoAbierto = true" aria-label="Abrir carrito">
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <circle cx="9" cy="21" r="1.4"/><circle cx="19" cy="21" r="1.4"/>
-          <path d="M2.5 3h2l2.2 12.5a1.5 1.5 0 0 0 1.5 1.2h9.8a1.5 1.5 0 0 0 1.5-1.2L21 8H6"/>
-        </svg>
-        <span class="carrito-contador" x-show="totalItems" x-cloak x-text="totalItems"></span>
-      </button>
+  <header class="site-header" id="inicio">
+    <div class="shell header-row">
+      <a class="brand" href="#inicio" x-text="negocio.nombre" aria-label="Volver al inicio"></a>
+      <nav class="main-nav" aria-label="Navegación principal">
+        <a href="#inicio">Inicio</a>
+        <a href="#productos">Productos</a>
+        <a href="#informacion">Información</a>
+        <a href="#contacto">Contacto</a>
+        <a href="#reclamos">Reclamos</a>
+      </nav>
+      <div class="header-actions">
+        <label class="search-box">
+          <span class="sr-only">Buscar productos</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg>
+          <input type="search" placeholder="Buscar productos" x-model.debounce.200ms="busqueda" autocomplete="off">
+        </label>
+        <button type="button" class="cart-trigger" @click="abrirCarrito" aria-label="Abrir carrito">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h2l2.4 11.2a2 2 0 0 0 2 1.6h7.9a2 2 0 0 0 2-1.6L21 7H6"></path><circle cx="10" cy="20" r="1"></circle><circle cx="18" cy="20" r="1"></circle></svg>
+          <span>Carrito</span>
+          <span class="cart-count" x-text="totalItems" aria-live="polite"></span>
+        </button>
+      </div>
     </div>
   </header>
 
-  <main class="wrap">
-    <!-- Hero con fotos destacadas: entrada fade + slide, sin loop -->
-    <section class="hero">
-      <div class="hero-fotos-bg" x-show="destacadas.length" x-cloak>
-        <template x-for="(f, i) in destacadas.slice(0, 3)" :key="f.id">
-          <img :src="f.urlImagen" :alt="f.nombre"
-               x-show="heroIndex === i"
-               x-transition:enter.opacity.duration.400ms
-               x-transition:enter-start.opacity-0.-translate-y-5
-               x-transition:enter-end.opacity-100.translate-y-0
-               x-transition:leave.opacity.duration.300ms>
-        </template>
+  <main>
+    <section class="hero shell" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="eyebrow" x-show="negocio.rubro" x-cloak x-text="negocio.rubro"></p>
+        <h1 id="hero-title" x-text="negocio.nombre"></h1>
+        <a class="primary-cta" href="#productos">Ver productos</a>
       </div>
-      <div class="hero-overlay"></div>
-      <div class="hero-texto">
-        <p class="hero-eyebrow" x-show="negocio.rubro" x-text="negocio.rubro"></p>
-        <h1 x-text="negocio.nombre || 'Mi tienda'"></h1>
-        <p class="hero-dir" x-show="negocio.direccion" x-text="negocio.direccion"></p>
-        <a class="hero-cta" href="#coleccion">Ver la colección</a>
+      <div class="hero-art" aria-hidden="true">
+        <span class="shape shape-a"></span>
+        <span class="shape shape-b"></span>
+        <span class="shape shape-c"></span>
+        <span class="hero-word">GALERÍA</span>
       </div>
     </section>
 
-    <!-- Categorías -->
-    <section class="cats" x-show="categorias.length" x-cloak>
-      <div class="pills">
-        <button class="pill" :class="{ 'pill--activa': categoriaActiva === '' }"
-                @click="categoriaActiva = ''">Todas</button>
-        <template x-for="cat in categorias" :key="cat">
-          <button class="pill" :class="{ 'pill--activa': categoriaActiva === cat }"
-                  @click="categoriaActiva = categoriaActiva === cat ? '' : cat"
-                  x-text="cat"></button>
-        </template>
-      </div>
+    <section class="commercial shell" x-show="hayInformacionComercial" x-cloak aria-label="Información comercial">
+      <article class="commercial-card" x-show="negocio.delivery">
+        <span class="commercial-icon" aria-hidden="true">01</span>
+        <div><strong>Delivery disponible</strong><p x-show="zonasDelivery.length">Consulta las zonas disponibles al finalizar tu compra.</p></div>
+      </article>
+      <article class="commercial-card" x-show="negocio.direccion">
+        <span class="commercial-icon" aria-hidden="true">02</span>
+        <div><strong>Recojo o atención en el local</strong><p x-text="negocio.direccion"></p></div>
+      </article>
+      <article class="commercial-card" x-show="metodosPago.length">
+        <span class="commercial-icon" aria-hidden="true">03</span>
+        <div><strong>Métodos de pago</strong><p x-text="nombresMetodosPago"></p></div>
+      </article>
+      <article class="commercial-card" x-show="horariosActivos.length">
+        <span class="commercial-icon" aria-hidden="true">04</span>
+        <div><strong>Horarios de atención</strong><p x-text="resumenHorarios"></p></div>
+      </article>
     </section>
 
-    <!-- Lookbook: columnas de distinto alto -->
-    <section id="coleccion" x-show="!cargando && !error" class="lookbook">
-      <template x-for="p in productosFiltrados" :key="p.id">
-        <article class="pieza">
-          <div class="pieza-img">
-            <img x-show="p.urlImagen" :src="p.urlImagen" :alt="p.nombre" loading="lazy"
-                 @error="ocultarImagen(p)">
-            <div x-show="!p.urlImagen" class="pieza-ph" x-text="p.nombre.charAt(0)"></div>
-            <span class="pieza-cat" x-show="p.categoria" x-text="p.categoria"></span>
-          </div>
-          <div class="pieza-body">
-            <h2 x-text="p.nombre"></h2>
-            <div class="pieza-foot">
-              <span class="precio" x-text="fmt(p.precio)"></span>
-              <button class="agregar"
-                      @click="agregar(p)"
-                      :disabled="!p.esStockInfinito && p.stock === 0"
-                      x-bind:aria-label="'Agregar ' + p.nombre + ' al carrito'">+</button>
+    <section class="catalog-section shell" id="productos" aria-labelledby="catalog-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Catálogo</p>
+          <h2 id="catalog-title">Productos disponibles</h2>
+        </div>
+        <p class="result-count" x-text="textoResultados" aria-live="polite"></p>
+      </div>
+
+      <div class="mobile-search">
+        <label class="search-box">
+          <span class="sr-only">Buscar productos</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg>
+          <input type="search" placeholder="Buscar productos" x-model.debounce.200ms="busqueda" autocomplete="off">
+        </label>
+      </div>
+
+      <div class="category-list" aria-label="Categorías de productos">
+        <button type="button" class="category-button" :class="{ 'is-active': categoriaActiva === '' }" @click="seleccionarCategoria('')">Todos</button>
+        <template x-for="categoria in categorias" :key="categoria">
+          <button type="button" class="category-button" :class="{ 'is-active': categoriaActiva === categoria }" @click="seleccionarCategoria(categoria)" x-text="categoria"></button>
+        </template>
+      </div>
+
+      <div class="product-grid" x-show="productosFiltrados.length" x-cloak>
+        <template x-for="producto in productosFiltrados" :key="producto.id">
+          <article class="product-card">
+            <div class="product-media">
+              <img x-show="imagenProducto(producto)" :src="imagenProducto(producto)" :alt="producto.nombre" loading="lazy" @error="ocultarImagen(producto)">
+              <div class="product-placeholder" x-show="!imagenProducto(producto)" aria-hidden="true">
+                <svg viewBox="0 0 48 48"><path d="M10 10h28v28H10z"></path><circle cx="19" cy="19" r="3"></circle><path d="m12 34 9-9 6 6 4-4 5 5"></path></svg>
+              </div>
+              <span class="product-category" x-show="producto.categoria" x-text="producto.categoria"></span>
+              <span class="sold-out" x-show="estaAgotado(producto)">Agotado</span>
+              <span class="delivery-tag" x-show="permiteDeliveryProducto(producto)">Delivery</span>
             </div>
-          </div>
-        </article>
-      </template>
+            <div class="product-content">
+              <h3 x-text="producto.nombre"></h3>
+              <p class="product-description" x-show="producto.descripcion" x-text="producto.descripcion"></p>
+              <p class="product-price" x-text="fmt(producto.precio)"></p>
+              <div class="product-meta">
+                <span x-text="textoStock(producto)"></span>
+                <span x-show="textoUnidad(producto)" x-text="textoUnidad(producto)"></span>
+              </div>
+              <div class="product-buy">
+                <div class="quantity" aria-label="Seleccionar cantidad">
+                  <button type="button" @click="reducirCantidadProducto(producto)" :disabled="cantidadProducto(producto) <= 1" aria-label="Reducir cantidad">−</button>
+                  <span x-text="cantidadProducto(producto)"></span>
+                  <button type="button" @click="aumentarCantidadProducto(producto)" :disabled="!puedeAumentarProducto(producto)" aria-label="Aumentar cantidad">+</button>
+                </div>
+                <button type="button" class="add-button" @click="agregar(producto)" :disabled="estaAgotado(producto)">
+                  <span x-text="textoBotonProducto(producto)"></span>
+                </button>
+              </div>
+            </div>
+          </article>
+        </template>
+      </div>
+
+      <div class="empty-state" x-show="!cargando && !error && productosFiltrados.length === 0" x-cloak>
+        <svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="21" cy="21" r="12"></circle><path d="m30 30 8 8"></path></svg>
+        <h3>No encontramos productos</h3>
+        <p>Prueba con otra búsqueda o selecciona “Todos”.</p>
+        <button type="button" @click="limpiarFiltros">Ver todos</button>
+      </div>
     </section>
 
-    <section x-show="!cargando && !error && productosFiltrados.length === 0" class="vacio">
-      <p>Por ahora no hay prendas en esta sección.</p>
+    <section class="info-section" id="informacion" x-show="hayInformacionNegocio" x-cloak>
+      <div class="shell info-layout">
+        <div class="info-intro">
+          <p class="eyebrow">Información</p>
+          <h2 x-text="negocio.nombre"></h2>
+          <p x-show="negocio.rubro"><span>Rubro:</span> <strong x-text="negocio.rubro"></strong></p>
+        </div>
+        <div class="info-grid">
+          <article x-show="negocio.direccion"><span>Dirección</span><p x-text="negocio.direccion"></p></article>
+          <article x-show="negocio.ruc"><span>RUC</span><p x-text="negocio.ruc"></p></article>
+          <article x-show="negocio.telefono"><span>Teléfono</span><p x-text="negocio.telefono"></p></article>
+          <article x-show="horariosActivos.length">
+            <span>Horarios</span>
+            <ul class="plain-list">
+              <template x-for="horario in horariosActivos" :key="horario.dia">
+                <li><strong x-text="horario.dia"></strong><span x-text="textoHorario(horario)"></span></li>
+              </template>
+            </ul>
+          </article>
+          <article x-show="metodosPago.length">
+            <span>Métodos de pago</span>
+            <ul class="plain-list">
+              <template x-for="metodo in metodosPago" :key="metodo.id">
+                <li class="payment-line">
+                  <div><strong x-text="metodo.nombre"></strong><small x-show="metodo.numero" x-text="metodo.numero"></small></div>
+                  <small x-show="mensajeDescuento(metodo)" x-text="mensajeDescuento(metodo)"></small>
+                </li>
+              </template>
+            </ul>
+          </article>
+          <article x-show="redesSociales.length">
+            <span>Redes sociales</span>
+            <div class="social-links">
+              <template x-for="red in redesSociales" :key="red.nombre">
+                <a :href="red.url" target="_blank" rel="noopener noreferrer" x-text="red.nombre"></a>
+              </template>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="contact-section shell" id="contacto" x-show="hayContacto" x-cloak>
+      <div>
+        <p class="eyebrow">Contacto</p>
+        <h2>Comunícate con el negocio</h2>
+        <p x-show="negocio.telefono" x-text="negocio.telefono"></p>
+        <p x-show="negocio.direccion" x-text="negocio.direccion"></p>
+        <div class="social-links contact-socials" x-show="redesSociales.length">
+          <template x-for="red in redesSociales" :key="red.nombre">
+            <a :href="red.url" target="_blank" rel="noopener noreferrer" x-text="red.nombre"></a>
+          </template>
+        </div>
+      </div>
+      <a class="secondary-cta" :href="waGeneral" target="_blank" rel="noopener noreferrer" x-show="telefonoWhatsAppValido">Escribir por WhatsApp</a>
+    </section>
+
+    <section class="claims-section shell" id="reclamos" aria-labelledby="claims-title">
+      <div>
+        <p class="eyebrow">Atención al cliente</p>
+        <h2 id="claims-title">Libro de Reclamaciones</h2>
+        <p>El registro digital de reclamos aún no está habilitado. Para recibir atención, comunícate directamente con el negocio mediante sus canales publicados.</p>
+      </div>
+      <a href="#contacto" class="text-link" x-show="hayContacto">Ver canales de contacto</a>
     </section>
   </main>
 
-  <footer class="footer wrap">
-    <p x-show="negocio.nombre" x-text="negocio.nombre" x-cloak></p>
+  <footer class="site-footer">
+    <div class="shell footer-row">
+      <strong x-text="negocio.nombre"></strong>
+      <span>Catálogo publicado con YapiVenta</span>
+    </div>
   </footer>
 
-  <!-- Panel del carrito -->
-  <div class="carrito" x-cloak x-show="carritoAbierto"
-       @keydown.escape.window="carritoAbierto = false"
-       x-transition:enter.opacity.duration.200ms x-transition:leave.opacity.duration.150ms>
-    <div class="carrito-backdrop" @click="carritoAbierto = false"></div>
-    <aside class="carrito-panel"
-           x-transition:enter.slide.right.duration.250ms
-           x-transition:leave.slide.right.duration.150ms
-           @click.outside="carritoAbierto = false">
-      <div class="carrito-head">
-        <h3>Tu carrito</h3>
-        <button class="cerrar" @click="carritoAbierto = false" aria-label="Cerrar">&times;</button>
+  <div class="cart-layer" x-cloak x-show="carritoAbierto" @keydown.escape.window="cerrarCarrito">
+    <button type="button" class="cart-backdrop" @click="cerrarCarrito" aria-label="Cerrar carrito"></button>
+    <aside class="cart-panel" role="dialog" aria-modal="true" aria-labelledby="cart-title" @click.outside="cerrarCarrito"
+      x-transition:enter.opacity.duration.200ms x-transition:leave.opacity.duration.150ms>
+      <div class="cart-head">
+        <div><p>Compra</p><h2 id="cart-title">Tu carrito</h2></div>
+        <button type="button" class="icon-button" @click="cerrarCarrito" aria-label="Cerrar carrito">×</button>
       </div>
 
-      <div class="carrito-items" x-show="items.length" x-cloak>
-        <template x-for="(item, i) in items" :key="item.id">
-          <div class="carrito-item">
-            <div class="carrito-item-img">
-              <img x-show="item.urlImagen" :src="item.urlImagen" :alt="item.nombre">
-              <span x-show="!item.urlImagen" x-text="item.nombre.charAt(0)"></span>
-            </div>
-            <div class="carrito-item-info">
-              <p class="carrito-item-nombre" x-text="item.nombre"></p>
-              <p class="carrito-item-precio" x-text="fmt(item.precio)"></p>
-            </div>
-            <div class="carrito-item-cant">
-              <button @click="restar(item)" :disabled="item.cant <= 1">−</button>
-              <span x-text="item.cant"></span>
-              <button @click="sumar(item)">+</button>
-            </div>
-          </div>
-        </template>
+      <div class="cart-empty" x-show="!items.length">
+        <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M8 9h5l4 21h20l3-15H14"></path><circle cx="20" cy="38" r="2"></circle><circle cx="35" cy="38" r="2"></circle></svg>
+        <h3>Tu carrito está vacío</h3>
+        <p>Agrega productos del catálogo para preparar tu compra.</p>
+        <button type="button" @click="cerrarCarrito">Explorar productos</button>
       </div>
 
-      <div class="carrito-vacio" x-show="!items.length">
-        <p>Tu carrito está vacío.</p>
-      </div>
-
-      <div class="carrito-foot" x-show="items.length" x-cloak>
-        <div class="carrito-total">
-          <span>Total</span><span x-text="fmt(total)"></span>
+      <div class="cart-body" x-show="items.length" x-cloak>
+        <div class="cart-items">
+          <template x-for="item in items" :key="item.id">
+            <article class="cart-item">
+              <div class="cart-item-image">
+                <img x-show="imagenProducto(item)" :src="imagenProducto(item)" :alt="item.nombre" @error="ocultarImagen(item)">
+                <span x-show="!imagenProducto(item)" aria-hidden="true"></span>
+              </div>
+              <div class="cart-item-copy">
+                <h3 x-text="item.nombre"></h3>
+                <p x-text="fmt(item.precio)"></p>
+                <button type="button" @click="eliminarItem(item)">Eliminar</button>
+              </div>
+              <div class="quantity cart-quantity">
+                <button type="button" @click="restar(item)" aria-label="Reducir cantidad">−</button>
+                <span x-text="item.cant"></span>
+                <button type="button" @click="sumar(item)" :disabled="!puedeSumarItem(item)" aria-label="Aumentar cantidad">+</button>
+              </div>
+            </article>
+          </template>
         </div>
-        <a class="btn-wa-carrito" :href="waPedido" target="_blank" rel="noopener">
-          Pedir por WhatsApp
-        </a>
+
+        <section class="cart-option" x-show="hayOpcionesEntrega">
+          <h3>Forma de entrega</h3>
+          <div class="option-grid">
+            <label x-show="puedeRecojo"><input type="radio" name="entrega" value="recojo" x-model="tipoEntrega" @change="guardarCarrito"><span><strong>Recojo</strong><small x-text="negocio.direccion"></small></span></label>
+            <label x-show="puedeDelivery"><input type="radio" name="entrega" value="delivery" x-model="tipoEntrega" @change="guardarCarrito"><span><strong>Delivery</strong><small>Elige una zona</small></span></label>
+          </div>
+          <label class="select-field" x-show="tipoEntrega === 'delivery' && puedeDelivery">
+            <span>Zona de delivery</span>
+            <select x-model="zonaSeleccionada" @change="guardarCarrito">
+              <option value="">Selecciona una zona</option>
+              <template x-for="(zona, indice) in zonasDelivery" :key="claveZona(zona, indice)">
+                <option :value="valorZona(zona)" x-text="textoZona(zona)"></option>
+              </template>
+            </select>
+          </label>
+        </section>
+
+        <section class="cart-option" x-show="metodosPago.length">
+          <h3>Método de pago</h3>
+          <div class="payment-options">
+            <template x-for="metodo in metodosPago" :key="metodo.id">
+              <label>
+                <input type="radio" name="pago" :value="metodo.id" x-model="metodoPagoSeleccionado" @change="guardarCarrito">
+                <span><strong x-text="metodo.nombre"></strong><small x-show="metodo.numero" x-text="metodo.numero"></small><small x-show="mensajeDescuento(metodo)" x-text="mensajeDescuento(metodo)"></small></span>
+              </label>
+            </template>
+          </div>
+        </section>
+
+        <section class="cart-summary" aria-label="Resumen del carrito">
+          <div><span>Subtotal</span><strong x-text="fmt(subtotal)"></strong></div>
+          <div x-show="tipoEntrega === 'delivery'"><span>Delivery</span><strong x-text="fmt(costoDelivery)"></strong></div>
+          <div class="discount-row" x-show="descuento > 0"><span x-text="etiquetaDescuento"></span><strong x-text="'- ' + fmt(descuento)"></strong></div>
+          <div class="total-row"><span>Total</span><strong x-text="fmt(total)"></strong></div>
+        </section>
+
+        <p class="cart-warning" x-show="tipoEntrega === 'delivery' && puedeDelivery && !zonaSeleccionada">Selecciona una zona para calcular y enviar el pedido.</p>
+        <p class="cart-warning" x-show="!telefonoWhatsAppValido">El negocio no tiene un número válido para recibir el resumen por WhatsApp.</p>
+        <button type="button" class="whatsapp-button" @click="abrirWhatsApp" :disabled="!puedeEnviarWhatsApp">Preparar pedido por WhatsApp</button>
+        <p class="cart-note">El pedido se enviará como mensaje para que el negocio confirme disponibilidad y atención. No se registrará automáticamente.</p>
       </div>
     </aside>
   </div>
 
-  <!-- WhatsApp flotante -->
-  <a class="btn-wa-float" :href="waGeneral" target="_blank" rel="noopener"
-     x-show="!carritoAbierto && !cargando" x-cloak>
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
-      <path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 2a8 8 0 1 1-4.1 14.9l-.3-.2-3 .8.8-2.9-.2-.3A8 8 0 0 1 12 4Zm-3.2 4.1c-.2 0-.5 0-.7.3-.2.3-.9.9-.9 2.1s.9 2.4 1 2.6c.1.2 1.8 2.9 4.5 4 .6.3 1.1.4 1.5.5.6.2 1.2.2 1.6.1.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.1-1.2-.1-.1-.3-.2-.6-.4-.3-.1-1.5-.8-1.8-.8-.2-.1-.4-.1-.6.1l-.8.9c-.2.2-.3.2-.6.1-.3-.2-1.2-.5-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6l.4-.5c.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5l-.8-2c-.2-.5-.4-.4-.6-.4Z"/>
-    </svg>
-    <span>WhatsApp</span>
+  <a class="whatsapp-float" :href="waGeneral" target="_blank" rel="noopener noreferrer" x-show="telefonoWhatsAppValido && !carritoAbierto && !cargando" x-cloak aria-label="Contactar por WhatsApp">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 2a8 8 0 1 1-4.1 14.9l-.3-.2-3 .8.8-2.9-.2-.3A8 8 0 0 1 12 4Zm-3.2 4.1c-.2 0-.5 0-.7.3-.2.3-.9.9-.9 2.1s.9 2.4 1 2.6c.1.2 1.8 2.9 4.5 4 .6.3 1.1.4 1.5.5.6.2 1.2.2 1.6.1.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.1-1.2-.1-.1-.3-.2-.6-.4-.3-.1-1.5-.8-1.8-.8-.2-.1-.4-.1-.6.1l-.8.9c-.2.2-.3.2-.6.1-.3-.2-1.2-.5-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6l.4-.5c.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5l-.8-2c-.2-.5-.4-.4-.6-.4Z"></path></svg>
   </a>
 
-  <!-- Scripts: orden importante — Alpine al final -->
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
   <script src="../shared/firebase-config.js"></script>

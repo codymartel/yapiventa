@@ -32,21 +32,125 @@ window.CargarNegocio = (function () {
     return (params.get('slug') || params.get('negocio') || '').trim();
   }
 
+  function leerPlantillaDesdeRuta() {
+    const segmentos = window.location.pathname.split('/').filter(Boolean);
+    const indiceMoldes = segmentos.lastIndexOf('moldes');
+    return indiceMoldes >= 0 && segmentos.length > indiceMoldes + 1
+      ? segmentos[indiceMoldes + 1].trim()
+      : '';
+  }
+
+  function texto(valor) {
+    return String(valor || '').trim();
+  }
+
+  function numeroNoNegativo(valor) {
+    const numero = Number(valor);
+    return Number.isFinite(numero) && numero >= 0 ? numero : 0;
+  }
+
+  function urlHttpsSegura(valor) {
+    const contenido = texto(valor);
+    if (!contenido) return '';
+    try {
+      const url = new URL(contenido);
+      return url.protocol === 'https:' ? url.href : '';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function listaTextos(valor) {
+    if (!Array.isArray(valor)) return [];
+    const vistos = new Set();
+    return valor.reduce((resultado, elemento) => {
+      const contenido = texto(elemento);
+      if (contenido && !vistos.has(contenido)) {
+        vistos.add(contenido);
+        resultado.push(contenido);
+      }
+      return resultado;
+    }, []);
+  }
+
+  function normalizarZonas(valor) {
+    if (!Array.isArray(valor)) return [];
+    return valor.reduce((resultado, elemento) => {
+      if (!elemento || typeof elemento !== 'object' || Array.isArray(elemento)) {
+        return resultado;
+      }
+      const zona = texto(elemento.zona);
+      if (zona) resultado.push({ zona: zona, costo: numeroNoNegativo(elemento.costo) });
+      return resultado;
+    }, []);
+  }
+
+  function normalizarHorarios(valor) {
+    if (!Array.isArray(valor)) return [];
+    return valor.reduce((resultado, elemento) => {
+      if (!elemento || typeof elemento !== 'object' || Array.isArray(elemento)) {
+        return resultado;
+      }
+      const dia = texto(elemento.dia);
+      const apertura = texto(elemento.apertura);
+      const cierre = texto(elemento.cierre);
+      if (dia && elemento.activo === true) {
+        resultado.push({
+          dia: dia,
+          apertura: apertura,
+          cierre: cierre,
+          activo: true,
+        });
+      }
+      return resultado;
+    }, []);
+  }
+
+  function normalizarMetodosPago(valor) {
+    return listaTextos(valor)
+      .map((metodo) => metodo.toLowerCase())
+      .filter((metodo) => /^[a-z0-9_-]{1,40}$/.test(metodo));
+  }
+
+  function normalizarConfigPagos(valor, metodos) {
+    const origen = valor && typeof valor === 'object' && !Array.isArray(valor)
+      ? valor
+      : {};
+    const resultado = Object.create(null);
+    for (const metodo of metodos) {
+      const config = origen[metodo];
+      if (!config || typeof config !== 'object' || Array.isArray(config)) continue;
+      const tipoDescuento = config.tipoDescuento === 'porcentaje' ||
+        config.tipoDescuento === 'monto_fijo'
+        ? config.tipoDescuento
+        : '';
+      resultado[metodo] = {
+        numero: texto(config.numero),
+        descuentoActivo: config.descuentoActivo === true,
+        montoMinimo: numeroNoNegativo(config.montoMinimo),
+        tipoDescuento: tipoDescuento,
+        valorDescuento: numeroNoNegativo(config.valorDescuento),
+      };
+    }
+    return resultado;
+  }
+
   function normalizarProducto(id, datos) {
-    const nombre = String(datos.nombre || '').trim();
+    const nombre = texto(datos.nombre);
     if (!nombre) return null;
     return {
       id: id,
       nombre: nombre,
-      precio: Number(datos.precio) || 0,
-      stock: Number(datos.stock) || 0,
-      esStockInfinito: Boolean(datos.esStockInfinito),
-      descripcion: String(datos.descripcion || '').trim(),
-      categoria: String(datos.categoria || '').trim(),
-      disponible: datos.disponible === undefined ? true : Boolean(datos.disponible),
-      tieneDelivery: Boolean(datos.tieneDelivery),
-      urlImagen: String(datos.urlImagen || '').trim(),
-      unidadMedidaNombre: String(datos.unidadMedidaNombre || '').trim(),
+      precio: numeroNoNegativo(datos.precio),
+      stock: Math.floor(numeroNoNegativo(datos.stock)),
+      esStockInfinito: datos.esStockInfinito === true,
+      descripcion: texto(datos.descripcion),
+      categoria: texto(datos.categoria),
+      disponible: datos.disponible === undefined ? true : datos.disponible === true,
+      tieneDelivery: datos.tieneDelivery === true,
+      urlImagen: urlHttpsSegura(datos.urlImagen),
+      unidadMedidaNombre: texto(datos.unidadMedidaNombre),
+      fraccionesSeleccionadas: listaTextos(datos.fraccionesSeleccionadas),
     };
   }
 
@@ -86,18 +190,29 @@ window.CargarNegocio = (function () {
       typeof datos.plantillaWeb === 'string' ? datos.plantillaWeb.trim() : '';
     const plantillaLegada =
       typeof datos.plantilla === 'string' ? datos.plantilla.trim() : '';
+    const categorias = listaTextos(datos.categorias);
+    const metodosPago = normalizarMetodosPago(datos.metodosPago);
 
     return {
       id: documento.id,
-      nombre: String(datos.nombreNegocio || datos.nombre || '').trim(),
-      rubro: String(datos.rubro || '').trim(),
-      telefono: String(datos.telefono || '').trim(),
-      direccion: String(datos.direccion || '').trim(),
+      slug: slug,
+      nombre: texto(datos.nombreNegocio || datos.nombre),
+      rubro: texto(datos.rubro),
+      telefono: texto(datos.telefono),
+      direccion: texto(datos.direccion),
+      ruc: texto(datos.ruc),
+      facebook: texto(datos.facebook),
+      instagram: texto(datos.instagram),
+      tiktok: texto(datos.tiktok),
+      youtube: texto(datos.youtube),
       plantilla: plantillaOficial || plantillaLegada,
-      webActiva: datos.webActiva !== false,
-      categorias: Array.isArray(datos.categorias)
-        ? datos.categorias.filter((c) => String(c || '').trim() !== '')
-        : [],
+      webActiva: datos.webActiva === true,
+      categorias: categorias,
+      delivery: datos.delivery === true,
+      deliveryZonas: normalizarZonas(datos.deliveryZonas),
+      horarios: normalizarHorarios(datos.horarios),
+      metodosPago: metodosPago,
+      configPagos: normalizarConfigPagos(datos.configPagos, metodosPago),
     };
   }
 
@@ -113,11 +228,19 @@ window.CargarNegocio = (function () {
   async function cargar() {
     const db = firebase.firestore();
     const negocio = await obtenerNegocio();
+    const plantillaActual = leerPlantillaDesdeRuta();
+    if (!negocio.webActiva) {
+      throw new Error('Esta tienda no está disponible temporalmente.');
+    }
+    if (plantillaActual && negocio.plantilla !== plantillaActual) {
+      throw new Error('La plantilla solicitada no corresponde a este negocio.');
+    }
 
     const snapProductos = await db
       .collection('users')
       .doc(negocio.id)
       .collection('productos')
+      .where('disponible', '==', true)
       .get();
 
     const productos = snapProductos.docs
