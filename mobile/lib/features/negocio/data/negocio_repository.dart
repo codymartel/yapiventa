@@ -523,13 +523,21 @@ class NegocioRepository
   /// Guarda solo el id corto del molde web seleccionado.
   @override
   Future<void> guardarPlantillaWeb(String uid, PlantillaWeb plantilla) async {
-    final progreso = await obtenerProgresoConfiguracion(uid);
+    final negocioId = await _obtenerNegocioIdOpcional(uid);
+    if (negocioId == null) {
+      throw StateError(
+        'Completa el negocio y agrega al menos un producto válido antes de elegir la plantilla.',
+      );
+    }
+    final progreso = await obtenerProgresoConfiguracion(
+      uid,
+      negocioId: negocioId,
+    );
     if (!progreso.productosCompletos || progreso.slug.trim().isEmpty) {
       throw StateError(
         'Completa el negocio y agrega al menos un producto válido antes de elegir la plantilla.',
       );
     }
-    final negocioId = await _obtenerNegocioId(uid);
     await _firestore.collection('negocios').doc(negocioId).set({
       'plantillaWeb': plantilla.valorPersistencia,
       'onboardingTemplateCompletedAt': FieldValue.serverTimestamp(),

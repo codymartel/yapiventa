@@ -208,6 +208,16 @@ void main() {
     expect(perfil.keys.toSet(), {'email', 'negocioId'});
   });
 
+  test('guardarPlantillaWeb resuelve negocioId una sola vez', () async {
+    await _guardarCuentaConNegocioValido(firestore, 'usuario-1');
+    await _guardarProductoValido(firestore, 'usuario-1');
+    firestore.usersCollectionAccesses = 0;
+
+    await repository.guardarPlantillaWeb('usuario-1', PlantillaWeb.cristal);
+
+    expect(firestore.usersCollectionAccesses, 1);
+  });
+
   group('obtenerProgresoConfiguracion', () {
     test('empieza en rubro para una cuenta sin datos', () async {
       await firestore.collection('users').doc('usuario-nuevo').set({
