@@ -21,12 +21,14 @@ import '../widgets/producto_card.dart';
 
 class ProductosScreen extends StatefulWidget {
   final String uid;
+  final String? negocioId;
   final CatalogoNegocio catalogoInicial;
   final VoidCallback? onProgressChanged;
 
   const ProductosScreen({
     super.key,
     required this.uid,
+    required this.negocioId,
     required this.catalogoInicial,
     this.onProgressChanged,
   });
@@ -52,14 +54,18 @@ class _ProductosScreenState extends State<ProductosScreen> {
     )..cargar();
 
     final dependencies = ProductosDependencies.production();
-    _provider = ProductosProvider(
-      uid: uid,
-      cambiarDisponibilidadProducto: dependencies.cambiarDisponibilidadProducto,
-      crearProducto: dependencies.crearProducto,
-      editarProducto: dependencies.editarProducto,
-      eliminarProducto: dependencies.eliminarProducto,
-      obtenerPaginaProductos: dependencies.obtenerPaginaProductos,
-    )..cargarProductos();
+    final negocioId = widget.negocioId;
+    if (negocioId != null) {
+      _provider = ProductosProvider(
+        uid: uid,
+        negocioId: negocioId,
+        cambiarDisponibilidadProducto: dependencies.cambiarDisponibilidadProducto,
+        crearProducto: dependencies.crearProducto,
+        editarProducto: dependencies.editarProducto,
+        eliminarProducto: dependencies.eliminarProducto,
+        obtenerPaginaProductos: dependencies.obtenerPaginaProductos,
+      )..cargarProductos();
+    }
   }
 
   @override

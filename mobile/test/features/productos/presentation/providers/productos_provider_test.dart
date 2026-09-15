@@ -44,6 +44,7 @@ void main() {
     final repository = ProductosRepository(firestore);
     provider = ProductosProvider(
       uid: 'usuario-1',
+      negocioId: 'negocio-1',
       cambiarDisponibilidadProducto: CambiarDisponibilidadProducto(repository),
       crearProducto: CrearProducto(
         repositorioProductos: repositorioCreacion,
@@ -58,10 +59,6 @@ void main() {
   tearDown(() => provider.dispose());
 
   Future<void> crearProductos(int cantidad) async {
-    await firestore.collection('users').doc('usuario-1').set({
-      'email': 'usuario-1@example.com',
-      'negocioId': 'negocio-1',
-    });
     final coleccion = firestore
         .collection('negocios')
         .doc('negocio-1')
@@ -81,6 +78,7 @@ void main() {
   ) {
     return ProductosProvider(
       uid: 'usuario-1',
+      negocioId: 'negocio-1',
       cambiarDisponibilidadProducto: CambiarDisponibilidadProducto(repository),
       crearProducto: CrearProducto(
         repositorioProductos: repository,
@@ -611,7 +609,7 @@ class _RepositorioProductosCreacionFake implements RepositorioProductos {
 
   @override
   Future<PaginaProductos> obtenerPaginaProductos(
-    String uid, {
+    String negocioId, {
     CursorProductos? despuesDe,
     int limite = 10,
   }) {
@@ -625,7 +623,7 @@ class _RepositorioProductosCreacionFake implements RepositorioProductos {
   }
 
   @override
-  Future<Producto> crearProducto(String uid, Producto producto) {
+  Future<Producto> crearProducto(String negocioId, Producto producto) {
     llamadas++;
     ultimoProducto = producto;
     if (error != null) return Future.error(error!);
@@ -635,21 +633,21 @@ class _RepositorioProductosCreacionFake implements RepositorioProductos {
   }
 
   @override
-  Future<String> guardarProducto(String uid, Producto producto) {
+  Future<String> guardarProducto(String negocioId, Producto producto) {
     llamadasGuardado++;
     if (errorGuardado != null) return Future.error(errorGuardado!);
     return guardadoPendiente?.future ?? Future.value(producto.id);
   }
 
   @override
-  Future<void> eliminarProducto(String uid, String productoId) async {
+  Future<void> eliminarProducto(String negocioId, String productoId) async {
     llamadasEliminar++;
     if (errorEliminar != null) throw errorEliminar!;
   }
 
   @override
   Future<void> toggleDisponible(
-    String uid,
+    String negocioId,
     String productoId,
     bool disponible,
   ) {

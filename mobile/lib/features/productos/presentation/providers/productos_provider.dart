@@ -34,9 +34,11 @@ class ProductosProvider extends ChangeNotifier {
   final EliminarProducto _eliminarProducto;
   final ObtenerPaginaProductos _obtenerPaginaProductos;
   final String uid;
+  final String negocioId;
 
   factory ProductosProvider({
     required String uid,
+    required String negocioId,
     required CambiarDisponibilidadProducto cambiarDisponibilidadProducto,
     required CrearProducto crearProducto,
     required EditarProducto editarProducto,
@@ -45,6 +47,7 @@ class ProductosProvider extends ChangeNotifier {
   }) {
     return ProductosProvider._(
       uid,
+      negocioId,
       cambiarDisponibilidadProducto,
       crearProducto,
       editarProducto,
@@ -55,6 +58,7 @@ class ProductosProvider extends ChangeNotifier {
 
   ProductosProvider._(
     this.uid,
+    this.negocioId,
     this._cambiarDisponibilidadProducto,
     this._crearProducto,
     this._editarProducto,
@@ -166,7 +170,7 @@ class ProductosProvider extends ChangeNotifier {
     _notificar();
     try {
       final pagina = await _obtenerPaginaProductos(
-        uid: uid,
+        negocioId: negocioId,
         limite: _tamanoPagina,
       );
       _productos = List<Producto>.of(pagina.productos);
@@ -206,7 +210,7 @@ class ProductosProvider extends ChangeNotifier {
     _notificar();
     try {
       final pagina = await _obtenerPaginaProductos(
-        uid: uid,
+        negocioId: negocioId,
         despuesDe: _ultimoCursor,
         limite: _tamanoPagina,
       );
@@ -248,6 +252,7 @@ class ProductosProvider extends ChangeNotifier {
     try {
       final productoGuardado = await _crearProducto(
         uid: uid,
+        negocioId: negocioId,
         producto: producto,
         imagenBytes: imagenBytes,
         nombreArchivo: nombreArchivo,
@@ -292,6 +297,7 @@ class ProductosProvider extends ChangeNotifier {
     try {
       final productoGuardado = await _editarProducto(
         uid: uid,
+        negocioId: negocioId,
         producto: producto,
         imagenBytes: imagenBytes,
         nombreArchivo: nombreArchivo,
@@ -322,7 +328,7 @@ class ProductosProvider extends ChangeNotifier {
     _errorMessage = null;
     _notificar();
     try {
-      await _eliminarProducto(uid: uid, productoId: productoId);
+      await _eliminarProducto(negocioId: negocioId, productoId: productoId);
       _productos.removeWhere((producto) => producto.id == productoId);
       _invalidarProductosFiltrados();
       _notificar();
@@ -341,7 +347,7 @@ class ProductosProvider extends ChangeNotifier {
     _notificar();
     try {
       await _cambiarDisponibilidadProducto(
-        uid: uid,
+        negocioId: negocioId,
         productoId: productoId,
         disponible: disponible,
       );

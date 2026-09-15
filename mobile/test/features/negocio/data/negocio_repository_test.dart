@@ -228,6 +228,23 @@ void main() {
       expect(firestore.negociosCollectionAccesses, 0);
     });
 
+    test('acepta un negocioId ya resuelto sin releer users/{uid}', () async {
+      await _prepararNegocio(
+        firestore,
+        'usuario-1',
+        datos: {'rubro': 'Bodega'},
+      );
+      firestore.usersCollectionAccesses = 0;
+
+      final progreso = await repository.obtenerProgresoConfiguracion(
+        'usuario-1',
+        negocioId: 'negocio-usuario-1',
+      );
+
+      expect(progreso.rubroCompleto, isTrue);
+      expect(firestore.usersCollectionAccesses, 0);
+    });
+
     test('avanza a negocio al encontrar un rubro válido', () async {
       await _prepararNegocio(
         firestore,
@@ -1308,10 +1325,12 @@ Future<void> _guardarConfiguracionBasica(
 // opciones reales para poder verificar la semántica merge de guardarRubro.
 class _MergeAwareFakeFirebaseFirestore extends FakeFirebaseFirestore {
   int negociosCollectionAccesses = 0;
+  int usersCollectionAccesses = 0;
 
   @override
   CollectionReference<Map<String, dynamic>> collection(String collectionPath) {
     if (collectionPath == 'negocios') negociosCollectionAccesses++;
+    if (collectionPath == 'users') usersCollectionAccesses++;
     return super.collection(collectionPath);
   }
 

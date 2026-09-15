@@ -1,7 +1,10 @@
 import '../models/progreso_configuracion.dart';
 
 abstract interface class RepositorioProgresoConfiguracion {
-  Future<ProgresoConfiguracion> obtenerProgresoConfiguracion(String uid);
+  Future<ProgresoConfiguracion> obtenerProgresoConfiguracion(
+    String uid, {
+    String? negocioId,
+  });
 
   Future<void> guardarRubro(String uid, String rubro);
 
@@ -9,5 +12,6 @@ abstract interface class RepositorioProgresoConfiguracion {
     String uid, {
     required bool setupComplete,
     required bool confirmarProductos,
+    String? negocioId,
   });
 }

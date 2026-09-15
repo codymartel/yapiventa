@@ -29,6 +29,7 @@ class AccesoProvider extends ChangeNotifier {
   ProgresoConfiguracion? _progreso;
   String? _uid;
   String? _email;
+  String? _negocioId;
   String? _errorMessage;
   Future<void>? _cargaEnCurso;
   Future<bool>? _guardadoRubroEnCurso;
@@ -68,6 +69,7 @@ class AccesoProvider extends ChangeNotifier {
   ProgresoConfiguracion? get progreso => _progreso;
   String? get uid => _uid;
   String? get email => _email;
+  String? get negocioId => _negocioId;
   String? get errorMessage => _errorMessage;
   bool get configuracionCompleta => _progreso?.completo ?? false;
 
@@ -103,6 +105,7 @@ class AccesoProvider extends ChangeNotifier {
     _errorMessage = null;
     _uid = usuario?.uid;
     _email = usuario?.email;
+    _negocioId = null;
 
     if (usuario == null) {
       _estado = EstadoAcceso.sinSesion;
@@ -178,29 +181,29 @@ class AccesoProvider extends ChangeNotifier {
     _estado = EstadoAcceso.cargandoProgreso;
     _notificar();
     try {
-      final existePerfil = await _userRepository.existePerfil(uid);
-      if (!_esRespuestaVigente(uid, revision)) return;
-      if (!existePerfil) {
-        final usaPassword = usuario.providerData.any(
-          (proveedor) => proveedor.providerId == EmailAuthProvider.PROVIDER_ID,
-        );
-        if (!usaPassword) {
-          _establecerError(
-            'No se encontró un perfil registrado para esta cuenta.',
-          );
-          return;
-        }
-      }
-      await _userRepository.asegurarPerfilYPlan(
+      final usaPassword = usuario.providerData.any(
+        (proveedor) => proveedor.providerId == EmailAuthProvider.PROVIDER_ID,
+      );
+      final perfil = await _userRepository.asegurarPerfilYPlan(
         uid: uid,
         email: usuario.email ?? '',
         limiteProductos: 20,
         minimoProductos: 1,
+        crearPerfilSiNoExiste: usaPassword,
       );
       if (!_esRespuestaVigente(uid, revision)) return;
+      if (!perfil.existiaPerfil && !usaPassword) {
+        _establecerError(
+          'No se encontró un perfil registrado para esta cuenta.',
+        );
+        return;
+      }
+
+      _negocioId = perfil.negocioId;
 
       var progreso = await _progresoRepository.obtenerProgresoConfiguracion(
         uid,
+        negocioId: perfil.negocioId,
       );
       if (!_esRespuestaVigente(uid, revision)) return;
 
@@ -212,6 +215,7 @@ class AccesoProvider extends ChangeNotifier {
           uid,
           setupComplete: progreso.completo,
           confirmarProductos: progreso.completo,
+          negocioId: perfil.negocioId,
         );
         if (!_esRespuestaVigente(uid, revision)) return;
         progreso = progreso.copyWith(

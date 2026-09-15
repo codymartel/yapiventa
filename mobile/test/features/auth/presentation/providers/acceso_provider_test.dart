@@ -44,16 +44,14 @@ void main() {
     ).thenAnswer((_) => cambiosDeAuth.stream);
     when(() => authProvider.isLoading).thenReturn(false);
     when(
-      () => userRepository.existePerfil(any()),
-    ).thenAnswer((_) async => true);
-    when(
       () => userRepository.asegurarPerfilYPlan(
         uid: any(named: 'uid'),
         email: any(named: 'email'),
         limiteProductos: any(named: 'limiteProductos'),
         minimoProductos: any(named: 'minimoProductos'),
+        crearPerfilSiNoExiste: any(named: 'crearPerfilSiNoExiste'),
       ),
-    ).thenAnswer((_) async {});
+    ).thenAnswer((_) async => (existiaPerfil: true, negocioId: null));
   });
 
   tearDown(() async {
@@ -68,7 +66,10 @@ void main() {
       var intentos = 0;
       when(() => authRepository.usuarioActual).thenReturn(usuario);
       when(
-        () => progresoRepository.obtenerProgresoConfiguracion('usuario-1'),
+        () => progresoRepository.obtenerProgresoConfiguracion(
+          'usuario-1',
+          negocioId: any(named: 'negocioId'),
+        ),
       ).thenAnswer((_) async {
         intentos++;
         if (intentos == 1) throw Exception('Firestore no disponible');
@@ -95,7 +96,10 @@ void main() {
       expect(provider!.progreso!.slug, 'bodega-ana');
       expect(provider!.errorMessage, isNull);
       verify(
-        () => progresoRepository.obtenerProgresoConfiguracion('usuario-1'),
+        () => progresoRepository.obtenerProgresoConfiguracion(
+          'usuario-1',
+          negocioId: any(named: 'negocioId'),
+        ),
       ).called(2);
     },
   );
@@ -112,11 +116,17 @@ void main() {
     final respuestaAnterior = Completer<ProgresoConfiguracion>();
     final respuestaActual = Completer<ProgresoConfiguracion>();
     when(
-      () => progresoRepository.obtenerProgresoConfiguracion('usuario-anterior'),
-    ).thenAnswer((_) => respuestaAnterior.future);
+        () => progresoRepository.obtenerProgresoConfiguracion(
+          'usuario-anterior',
+          negocioId: any(named: 'negocioId'),
+        ),
+      ).thenAnswer((_) => respuestaAnterior.future);
     when(
-      () => progresoRepository.obtenerProgresoConfiguracion('usuario-actual'),
-    ).thenAnswer((_) => respuestaActual.future);
+        () => progresoRepository.obtenerProgresoConfiguracion(
+          'usuario-actual',
+          negocioId: any(named: 'negocioId'),
+        ),
+      ).thenAnswer((_) => respuestaActual.future);
     provider = AccesoProvider(
       authRepository: authRepository,
       authProvider: authProvider,
@@ -147,6 +157,7 @@ void main() {
         'usuario-anterior',
         setupComplete: any(named: 'setupComplete'),
         confirmarProductos: any(named: 'confirmarProductos'),
+        negocioId: any(named: 'negocioId'),
       ),
     );
   });
@@ -157,11 +168,11 @@ void main() {
     when(() => proveedor.providerId).thenReturn(EmailAuthProvider.PROVIDER_ID);
     when(() => usuario.providerData).thenReturn([proveedor]);
     when(
-      () => userRepository.existePerfil('usuario-1'),
-    ).thenAnswer((_) async => false);
-    when(
-      () => progresoRepository.obtenerProgresoConfiguracion('usuario-1'),
-    ).thenAnswer((_) async => _progreso(slug: ''));
+        () => progresoRepository.obtenerProgresoConfiguracion(
+          'usuario-1',
+          negocioId: any(named: 'negocioId'),
+        ),
+      ).thenAnswer((_) async => _progreso(slug: ''));
     provider = AccesoProvider(
       authRepository: authRepository,
       authProvider: authProvider,
@@ -179,6 +190,7 @@ void main() {
         email: 'ana@example.com',
         limiteProductos: 20,
         minimoProductos: 1,
+        crearPerfilSiNoExiste: true,
       ),
     ).called(1);
   });
@@ -189,8 +201,14 @@ void main() {
     when(() => proveedor.providerId).thenReturn(GoogleAuthProvider.PROVIDER_ID);
     when(() => usuario.providerData).thenReturn([proveedor]);
     when(
-      () => userRepository.existePerfil('usuario-1'),
-    ).thenAnswer((_) async => false);
+      () => userRepository.asegurarPerfilYPlan(
+        uid: any(named: 'uid'),
+        email: any(named: 'email'),
+        limiteProductos: any(named: 'limiteProductos'),
+        minimoProductos: any(named: 'minimoProductos'),
+        crearPerfilSiNoExiste: any(named: 'crearPerfilSiNoExiste'),
+      ),
+    ).thenAnswer((_) async => (existiaPerfil: false, negocioId: null));
     provider = AccesoProvider(
       authRepository: authRepository,
       authProvider: authProvider,
@@ -203,7 +221,12 @@ void main() {
 
     expect(provider!.estado, EstadoAcceso.error);
     expect(provider!.errorMessage, contains('perfil registrado'));
-    verifyNever(() => progresoRepository.obtenerProgresoConfiguracion(any()));
+    verifyNever(
+      () => progresoRepository.obtenerProgresoConfiguracion(
+        any(),
+        negocioId: any(named: 'negocioId'),
+      ),
+    );
   });
 
   test('espera a que termine la operación de autenticación', () async {
@@ -219,8 +242,11 @@ void main() {
       () => authRepository.emailEstaVerificado(),
     ).thenAnswer((_) async => true);
     when(
-      () => progresoRepository.obtenerProgresoConfiguracion('usuario-1'),
-    ).thenAnswer((_) async => _progreso(slug: ''));
+        () => progresoRepository.obtenerProgresoConfiguracion(
+          'usuario-1',
+          negocioId: any(named: 'negocioId'),
+        ),
+      ).thenAnswer((_) async => _progreso(slug: ''));
     final authProviderReal = app_auth.AuthProvider(
       repository: authRepository,
       userRepository: userRepository,
@@ -237,7 +263,12 @@ void main() {
     await pumpEventQueue();
 
     expect(provider!.estado, EstadoAcceso.cargandoSesion);
-    verifyNever(() => progresoRepository.obtenerProgresoConfiguracion(any()));
+    verifyNever(
+      () => progresoRepository.obtenerProgresoConfiguracion(
+        any(),
+        negocioId: any(named: 'negocioId'),
+      ),
+    );
 
     respuestaLogin.complete(usuario);
     await login;
@@ -245,7 +276,10 @@ void main() {
 
     expect(provider!.estado, EstadoAcceso.listo);
     verify(
-      () => progresoRepository.obtenerProgresoConfiguracion('usuario-1'),
+      () => progresoRepository.obtenerProgresoConfiguracion(
+        'usuario-1',
+        negocioId: any(named: 'negocioId'),
+      ),
     ).called(1);
     provider!.dispose();
     provider = null;
@@ -262,7 +296,10 @@ void main() {
       var escriturasRubro = 0;
       when(() => authRepository.usuarioActual).thenReturn(usuario);
       when(
-        () => progresoRepository.obtenerProgresoConfiguracion('usuario-1'),
+        () => progresoRepository.obtenerProgresoConfiguracion(
+          'usuario-1',
+          negocioId: any(named: 'negocioId'),
+        ),
       ).thenAnswer((_) async {
         lecturasProgreso++;
         if (lecturasProgreso == 1) return _progreso(slug: '');
@@ -308,6 +345,7 @@ User _usuario({required String uid, required String email}) {
   when(() => usuario.uid).thenReturn(uid);
   when(() => usuario.email).thenReturn(email);
   when(() => usuario.emailVerified).thenReturn(true);
+  when(() => usuario.providerData).thenReturn(const []);
   return usuario;
 }
 

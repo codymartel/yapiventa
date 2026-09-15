@@ -5,10 +5,10 @@ class EliminarProducto {
 
   const EliminarProducto(this._repositorioProductos);
 
-  Future<void> call({required String uid, required String productoId}) {
+  Future<void> call({required String negocioId, required String productoId}) {
     if (productoId.trim().isEmpty) {
       throw ArgumentError('El producto debe tener un identificador.');
     }
-    return _repositorioProductos.eliminarProducto(uid, productoId);
+    return _repositorioProductos.eliminarProducto(negocioId, productoId);
   }
 }

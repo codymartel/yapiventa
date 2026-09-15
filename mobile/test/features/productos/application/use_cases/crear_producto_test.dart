@@ -27,12 +27,13 @@ void main() {
   test('sin imagen omite la subida y guarda una sola vez', () async {
     final guardado = await crearProducto(
       uid: 'usuario-1',
+      negocioId: 'negocio-1',
       producto: producto(),
     );
 
     expect(subidorDeImagenes.llamadas, 0);
     expect(repositorioProductos.llamadas, 1);
-    expect(repositorioProductos.ultimoUid, 'usuario-1');
+    expect(repositorioProductos.ultimoNegocioId, 'negocio-1');
     expect(repositorioProductos.ultimoProducto?.negocioId, '');
     expect(
       repositorioProductos.ultimoProducto?.id,
@@ -45,6 +46,7 @@ void main() {
   test('con imagen utiliza la URL e identificador y guarda una vez', () async {
     final guardado = await crearProducto(
       uid: 'usuario-1',
+      negocioId: 'negocio-1',
       producto: producto(),
       imagenBytes: Uint8List.fromList([1, 2, 3]),
       nombreArchivo: 'cafe.jpg',
@@ -65,6 +67,7 @@ void main() {
     await expectLater(
       crearProducto(
         uid: 'usuario-1',
+        negocioId: 'negocio-1',
         producto: producto(),
         imagenBytes: Uint8List.fromList([1]),
         nombreArchivo: 'cafe.jpg',
@@ -83,6 +86,7 @@ void main() {
       await expectLater(
         crearProducto(
           uid: 'usuario-1',
+          negocioId: 'negocio-1',
           producto: producto(),
           imagenBytes: Uint8List.fromList([1]),
           nombreArchivo: 'cafe.jpg',
@@ -97,13 +101,13 @@ void main() {
 
 class _RepositorioProductosFake implements RepositorioProductos {
   int llamadas = 0;
-  String? ultimoUid;
+  String? ultimoNegocioId;
   Producto? ultimoProducto;
   Object? error;
 
   @override
   Future<PaginaProductos> obtenerPaginaProductos(
-    String uid, {
+    String negocioId, {
     CursorProductos? despuesDe,
     int limite = 10,
   }) {
@@ -111,27 +115,27 @@ class _RepositorioProductosFake implements RepositorioProductos {
   }
 
   @override
-  Future<Producto> crearProducto(String uid, Producto producto) async {
+  Future<Producto> crearProducto(String negocioId, Producto producto) async {
     llamadas++;
-    ultimoUid = uid;
+    ultimoNegocioId = negocioId;
     ultimoProducto = producto;
     if (error != null) throw error!;
     return producto.copyWith(id: 'producto-1');
   }
 
   @override
-  Future<String> guardarProducto(String uid, Producto producto) {
+  Future<String> guardarProducto(String negocioId, Producto producto) {
     throw UnimplementedError();
   }
 
   @override
-  Future<void> eliminarProducto(String uid, String productoId) {
+  Future<void> eliminarProducto(String negocioId, String productoId) {
     throw UnimplementedError();
   }
 
   @override
   Future<void> toggleDisponible(
-    String uid,
+    String negocioId,
     String productoId,
     bool disponible,
   ) {

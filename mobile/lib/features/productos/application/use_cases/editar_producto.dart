@@ -12,6 +12,7 @@ class EditarProducto {
 
   Future<Producto> call({
     required String uid,
+    required String negocioId,
     required Producto producto,
     Uint8List? imagenBytes,
     String? nombreArchivo,
@@ -33,14 +34,17 @@ class EditarProducto {
     }
 
     final productoParaGuardar = producto.copyWith(
-      // El negocioId se resuelve y estampa en ProductosRepository (lee
-      // users/{uid}.negocioId), no se deduce desde el uid del usuario.
+      // El negocioId lo aporta quien crea el provider (ya resuelto al iniciar
+      // sesión) y se estampa en ProductosRepository sin releer users/{uid}.
       urlImagen: imagenSubida?.url ?? producto.urlImagen,
       cloudinaryPublicId:
           imagenSubida?.identificador ?? producto.cloudinaryPublicId,
     );
 
-    await _repositorioProductos.guardarProducto(uid, productoParaGuardar);
+    await _repositorioProductos.guardarProducto(
+      negocioId,
+      productoParaGuardar,
+    );
     return productoParaGuardar;
   }
 }

@@ -16,30 +16,23 @@ class ProductosRepository implements RepositorioProductos {
   ProductosRepository([FirebaseFirestore? db])
     : _db = db ?? FirebaseFirestore.instance;
 
-  /// Resuelve el id del negocio leyendo `users/{uid}.negocioId`.
-  ///
-  /// No escribe nada en users/{uid}: solo lo lee. Si el perfil no tiene
-  /// negocioId (por ejemplo un usuario antiguo sin aprovisionar), lanza un
-  /// error claro y la operación no se ejecuta sobre una ruta incorrecta.
-  Future<String> _obtenerNegocioId(String uid) async {
-    final perfil = await _db.collection('users').doc(uid).get();
-    final negocioId = perfil.data()?['negocioId'];
-    if (negocioId is! String || negocioId.trim().isEmpty) {
+  /// Los productos viven bajo `negocios/{negocioId}/productos`. El `negocioId`
+  /// ya viene resuelto (se leyó users/{uid} una sola vez al iniciar sesión) y
+  /// se reutiliza en todas las operaciones, sin releer `users/{uid}`.
+  CollectionReference<Map<String, dynamic>> _coleccionProductos(
+    String negocioId,
+  ) {
+    final negocioIdLimpio = negocioId.trim();
+    if (negocioIdLimpio.isEmpty) {
       throw StateError(
-        'No se encontró un negocioId para el usuario "$uid". '
+        'No se encontró un negocioId para operar los productos. '
         'Asegúrate de que el registro esté completo antes de operar los productos.',
       );
     }
-    return negocioId.trim();
-  }
-
-  /// Los productos viven bajo `negocios/{negocioId}/productos`; el id del
-  /// negocio se resuelve desde el perfil del usuario.
-  Future<CollectionReference<Map<String, dynamic>>> _coleccionProductos(
-    String uid,
-  ) async {
-    final negocioId = await _obtenerNegocioId(uid);
-    return _db.collection('negocios').doc(negocioId).collection('productos');
+    return _db
+        .collection('negocios')
+        .doc(negocioIdLimpio)
+        .collection('productos');
   }
 
   // Equivale a pedir una pagina manual del catalogo: la primera consulta
@@ -47,11 +40,11 @@ class ProductosRepository implements RepositorioProductos {
   // [despuesDe], sin volver a leer los documentos de paginas anteriores.
   @override
   Future<PaginaProductos> obtenerPaginaProductos(
-    String uid, {
+    String negocioId, {
     CursorProductos? despuesDe,
     int limite = 10,
   }) async {
-    final coleccion = await _coleccionProductos(uid);
+    final coleccion = _coleccionProductos(negocioId);
     Query<Map<String, dynamic>> query = coleccion.orderBy(
       'fechaCreacion',
       descending: true,
@@ -94,11 +87,10 @@ class ProductosRepository implements RepositorioProductos {
   }
 
   @override
-  Future<String> guardarProducto(String uid, Producto producto) async {
+  Future<String> guardarProducto(String negocioId, Producto producto) async {
     if (producto.id.isEmpty) {
-      return (await crearProducto(uid, producto)).id;
+      return (await crearProducto(negocioId, producto)).id;
     } else {
-      final negocioId = await _obtenerNegocioId(uid);
       final datos = ProductoFirestoreMapper.paraFirestore(producto)
         ..['negocioId'] = negocioId;
       // Una edicion conserva fechaCreacion para no mover un producto antiguo
@@ -114,8 +106,7 @@ class ProductosRepository implements RepositorioProductos {
   }
 
   @override
-  Future<Producto> crearProducto(String uid, Producto producto) async {
-    final negocioId = await _obtenerNegocioId(uid);
+  Future<Producto> crearProducto(String negocioId, Producto producto) async {
     final datos = ProductoFirestoreMapper.paraFirestore(producto)
       ..['negocioId'] = negocioId
       ..['fechaCreacion'] = FieldValue.serverTimestamp();
@@ -128,18 +119,18 @@ class ProductosRepository implements RepositorioProductos {
   }
 
   @override
-  Future<void> eliminarProducto(String uid, String productoId) async {
-    final coleccion = await _coleccionProductos(uid);
+  Future<void> eliminarProducto(String negocioId, String productoId) async {
+    final coleccion = _coleccionProductos(negocioId);
     await coleccion.doc(productoId).delete();
   }
 
   @override
   Future<void> toggleDisponible(
-    String uid,
+    String negocioId,
     String productoId,
     bool disponible,
   ) async {
-    final coleccion = await _coleccionProductos(uid);
+    final coleccion = _coleccionProductos(negocioId);
     await coleccion.doc(productoId).update({'disponible': disponible});
   }
 }

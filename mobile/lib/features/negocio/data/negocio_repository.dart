@@ -112,9 +112,13 @@ class NegocioRepository
   }
 
   @override
-  Future<ProgresoConfiguracion> obtenerProgresoConfiguracion(String uid) async {
-    final negocioId = await _obtenerNegocioIdOpcional(uid);
-    if (negocioId == null) {
+  Future<ProgresoConfiguracion> obtenerProgresoConfiguracion(
+    String uid, {
+    String? negocioId,
+  }) async {
+    final negocioIdResuelto =
+        negocioId ?? await _obtenerNegocioIdOpcional(uid);
+    if (negocioIdResuelto == null) {
       return ProgresoConfiguracion(
         catalogo: CatalogoNegocio(
           rubro: '',
@@ -131,7 +135,7 @@ class NegocioRepository
         productosConfirmadosPersistidos: false,
       );
     }
-    final negocioRef = _firestore.collection('negocios').doc(negocioId);
+    final negocioRef = _firestore.collection('negocios').doc(negocioIdResuelto);
     final negocioDocumento = await negocioRef.get();
     final datos = negocioDocumento.data() ?? const <String, dynamic>{};
     final catalogo = CatalogoNegocio(
@@ -245,8 +249,9 @@ class NegocioRepository
     String uid, {
     required bool setupComplete,
     required bool confirmarProductos,
+    String? negocioId,
   }) async {
-    final negocioId = await _obtenerNegocioId(uid);
+    final negocioIdResuelto = negocioId ?? await _obtenerNegocioId(uid);
     final actualizacion = <String, dynamic>{'setupComplete': setupComplete};
     if (confirmarProductos) {
       actualizacion.addAll({
@@ -256,7 +261,7 @@ class NegocioRepository
     }
     await _firestore
         .collection('negocios')
-        .doc(negocioId)
+        .doc(negocioIdResuelto)
         .set(actualizacion, SetOptions(merge: true));
   }
 

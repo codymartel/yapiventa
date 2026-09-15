@@ -68,6 +68,7 @@ void main() {
     when(() => usuario.uid).thenReturn('usuario-1');
     when(() => usuario.email).thenReturn('ana@example.com');
     when(() => usuario.emailVerified).thenReturn(true);
+    when(() => usuario.providerData).thenReturn(const []);
     when(
       () => authRepository.cambiosDeAuth,
     ).thenAnswer((_) => Stream.value(usuario));

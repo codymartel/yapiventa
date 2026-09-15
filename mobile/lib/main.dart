@@ -186,6 +186,7 @@ class _RutaConAcceso extends StatelessWidget {
       case RutasAcceso.productos:
         return ProductosScreen(
           uid: acceso.uid!,
+          negocioId: acceso.negocioId,
           catalogoInicial: progreso.catalogo,
           onProgressChanged: () => acceso.recargar(),
         );

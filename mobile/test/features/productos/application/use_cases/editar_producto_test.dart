@@ -31,12 +31,13 @@ void main() {
   test('edita sin imagen y conserva la imagen anterior', () async {
     final guardado = await editarProducto(
       uid: 'usuario-1',
+      negocioId: 'negocio-1',
       producto: producto().copyWith(nombre: 'Cafe editado'),
     );
 
     expect(subidorDeImagenes.llamadas, 0);
     expect(repositorioProductos.llamadasGuardado, 1);
-    expect(repositorioProductos.ultimoUid, 'usuario-1');
+    expect(repositorioProductos.ultimoNegocioId, 'negocio-1');
     expect(
       guardado.negocioId,
       'negocio-anterior',
@@ -51,6 +52,7 @@ void main() {
   test('edita con imagen y guarda la nueva URL e identificador', () async {
     final guardado = await editarProducto(
       uid: 'usuario-1',
+      negocioId: 'negocio-1',
       producto: producto(),
       imagenBytes: Uint8List.fromList([1, 2, 3]),
       nombreArchivo: 'cafe-nuevo.jpg',
@@ -69,6 +71,7 @@ void main() {
     await expectLater(
       editarProducto(
         uid: 'usuario-1',
+        negocioId: 'negocio-1',
         producto: producto().copyWith(id: ''),
       ),
       throwsArgumentError,
@@ -81,30 +84,30 @@ void main() {
 
 class _RepositorioProductosFake implements RepositorioProductos {
   int llamadasGuardado = 0;
-  String? ultimoUid;
+  String? ultimoNegocioId;
   Producto? ultimoProducto;
 
   @override
-  Future<String> guardarProducto(String uid, Producto producto) async {
+  Future<String> guardarProducto(String negocioId, Producto producto) async {
     llamadasGuardado++;
-    ultimoUid = uid;
+    ultimoNegocioId = negocioId;
     ultimoProducto = producto;
     return producto.id;
   }
 
   @override
-  Future<Producto> crearProducto(String uid, Producto producto) {
+  Future<Producto> crearProducto(String negocioId, Producto producto) {
     throw UnimplementedError();
   }
 
   @override
-  Future<void> eliminarProducto(String uid, String productoId) {
+  Future<void> eliminarProducto(String negocioId, String productoId) {
     throw UnimplementedError();
   }
 
   @override
   Future<PaginaProductos> obtenerPaginaProductos(
-    String uid, {
+    String negocioId, {
     CursorProductos? despuesDe,
     int limite = 10,
   }) {
@@ -113,7 +116,7 @@ class _RepositorioProductosFake implements RepositorioProductos {
 
   @override
   Future<void> toggleDisponible(
-    String uid,
+    String negocioId,
     String productoId,
     bool disponible,
   ) {

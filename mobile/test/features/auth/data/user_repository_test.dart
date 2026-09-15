@@ -153,6 +153,49 @@ void main() {
     expect((await firestore.collection('negocios').get()).docs, isEmpty);
   });
 
+  test(
+    'asegurarPerfilYPlan devuelve si el perfil existía y su negocioId',
+    () async {
+      await firestore.collection('users').doc('usuario-1').set({
+        'email': 'ana@example.com',
+        'negocioId': 'negocio-existente',
+      });
+
+      final resultado = await repository.asegurarPerfilYPlan(
+        uid: 'usuario-1',
+        email: 'ana@example.com',
+        limiteProductos: 20,
+        minimoProductos: 1,
+      );
+
+      expect(resultado.existiaPerfil, isTrue);
+      expect(resultado.negocioId, 'negocio-existente');
+    },
+  );
+
+  test('asegurarPerfilYPlan sin crearPerfilSiNoExiste no escribe nada', () async {
+    final resultado = await repository.asegurarPerfilYPlan(
+      uid: 'cuenta-social',
+      email: 'social@example.com',
+      limiteProductos: 20,
+      minimoProductos: 1,
+      crearPerfilSiNoExiste: false,
+    );
+
+    expect(resultado.existiaPerfil, isFalse);
+    expect(resultado.negocioId, isNull);
+    expect((await firestore.collection('users').get()).docs, isEmpty);
+    expect(
+      (await firestore
+              .collection('users')
+              .doc('cuenta-social')
+              .collection('plan')
+              .get())
+          .docs,
+      isEmpty,
+    );
+  });
+
   test('consulta existencia y estado de configuracion del perfil', () async {
     await firestore.collection('users').doc('configurado').set({
       'negocioId': 'negocio-configurado',

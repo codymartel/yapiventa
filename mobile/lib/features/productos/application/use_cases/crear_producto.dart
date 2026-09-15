@@ -16,6 +16,7 @@ class CrearProducto {
 
   Future<Producto> call({
     required String uid,
+    required String negocioId,
     required Producto producto,
     Uint8List? imagenBytes,
     String? nombreArchivo,
@@ -34,13 +35,13 @@ class CrearProducto {
 
     final productoParaGuardar = producto.copyWith(
       id: '',
-      // El negocioId se resuelve y estampa en ProductosRepository (lee
-      // users/{uid}.negocioId), no se deduce desde el uid del usuario.
+      // El negocioId lo aporta quien crea el provider (ya resuelto al iniciar
+      // sesión) y se estampa en ProductosRepository sin releer users/{uid}.
       urlImagen: imagenSubida?.url ?? producto.urlImagen,
       cloudinaryPublicId:
           imagenSubida?.identificador ?? producto.cloudinaryPublicId,
     );
 
-    return _repositorioProductos.crearProducto(uid, productoParaGuardar);
+    return _repositorioProductos.crearProducto(negocioId, productoParaGuardar);
   }
 }

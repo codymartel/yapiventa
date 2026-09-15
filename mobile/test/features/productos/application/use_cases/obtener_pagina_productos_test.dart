@@ -23,11 +23,14 @@ void main() {
       );
       repository.respuesta = paginaEsperada;
 
-      final pagina = await obtenerPaginaProductos(uid: 'usuario-1', limite: 12);
+      final pagina = await obtenerPaginaProductos(
+        negocioId: 'negocio-1',
+        limite: 12,
+      );
 
       expect(pagina, same(paginaEsperada));
       expect(repository.llamadas, 1);
-      expect(repository.ultimoUid, 'usuario-1');
+      expect(repository.ultimoNegocioId, 'negocio-1');
       expect(repository.ultimoCursor, isNull);
       expect(repository.ultimoLimite, 12);
     },
@@ -36,7 +39,7 @@ void main() {
   test('envía el cursor recibido para obtener la página siguiente', () async {
     const cursor = _CursorProductosPrueba('pagina-1');
 
-    await obtenerPaginaProductos(uid: 'usuario-1', despuesDe: cursor);
+    await obtenerPaginaProductos(negocioId: 'negocio-1', despuesDe: cursor);
 
     expect(repository.ultimoCursor, same(cursor));
     expect(repository.ultimoLimite, 10);
@@ -47,7 +50,7 @@ void main() {
     repository.error = error;
 
     await expectLater(
-      obtenerPaginaProductos(uid: 'usuario-1'),
+      obtenerPaginaProductos(negocioId: 'negocio-1'),
       throwsA(same(error)),
     );
   });
@@ -55,7 +58,7 @@ void main() {
 
 class _RepositorioProductosFake implements RepositorioProductos {
   int llamadas = 0;
-  String? ultimoUid;
+  String? ultimoNegocioId;
   CursorProductos? ultimoCursor;
   int? ultimoLimite;
   Object? error;
@@ -67,12 +70,12 @@ class _RepositorioProductosFake implements RepositorioProductos {
 
   @override
   Future<PaginaProductos> obtenerPaginaProductos(
-    String uid, {
+    String negocioId, {
     CursorProductos? despuesDe,
     int limite = 10,
   }) async {
     llamadas++;
-    ultimoUid = uid;
+    ultimoNegocioId = negocioId;
     ultimoCursor = despuesDe;
     ultimoLimite = limite;
     if (error != null) throw error!;
@@ -80,23 +83,23 @@ class _RepositorioProductosFake implements RepositorioProductos {
   }
 
   @override
-  Future<Producto> crearProducto(String uid, Producto producto) {
+  Future<Producto> crearProducto(String negocioId, Producto producto) {
     throw UnimplementedError();
   }
 
   @override
-  Future<String> guardarProducto(String uid, Producto producto) {
+  Future<String> guardarProducto(String negocioId, Producto producto) {
     throw UnimplementedError();
   }
 
   @override
-  Future<void> eliminarProducto(String uid, String productoId) {
+  Future<void> eliminarProducto(String negocioId, String productoId) {
     throw UnimplementedError();
   }
 
   @override
   Future<void> toggleDisponible(
-    String uid,
+    String negocioId,
     String productoId,
     bool disponible,
   ) {

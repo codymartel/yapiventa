@@ -91,6 +91,7 @@ AuthRepository _authRepositoryVerificado() {
   when(() => usuario.uid).thenReturn('usuario-1');
   when(() => usuario.email).thenReturn('ana@example.com');
   when(() => usuario.emailVerified).thenReturn(true);
+  when(() => usuario.providerData).thenReturn(const []);
   when(() => repository.usuarioActual).thenReturn(usuario);
   when(() => repository.cambiosDeAuth).thenAnswer((_) => Stream.value(usuario));
   return repository;

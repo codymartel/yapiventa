@@ -7,12 +7,12 @@ class ObtenerPaginaProductos {
   const ObtenerPaginaProductos(this._repositorioProductos);
 
   Future<PaginaProductos> call({
-    required String uid,
+    required String negocioId,
     CursorProductos? despuesDe,
     int limite = 10,
   }) {
     return _repositorioProductos.obtenerPaginaProductos(
-      uid,
+      negocioId,
       despuesDe: despuesDe,
       limite: limite,
     );

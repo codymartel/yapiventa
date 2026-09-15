@@ -14,16 +14,16 @@ void main() {
   });
 
   test('elimina el documento del repositorio', () async {
-    await eliminarProducto(uid: 'usuario-1', productoId: 'producto-1');
+    await eliminarProducto(negocioId: 'negocio-1', productoId: 'producto-1');
 
     expect(repositorioProductos.llamadasEliminar, 1);
-    expect(repositorioProductos.ultimoUid, 'usuario-1');
+    expect(repositorioProductos.ultimoNegocioId, 'negocio-1');
     expect(repositorioProductos.ultimoProductoId, 'producto-1');
   });
 
   test('no elimina si el identificador es vacío', () async {
     expect(
-      () => eliminarProducto(uid: 'usuario-1', productoId: ' '),
+      () => eliminarProducto(negocioId: 'negocio-1', productoId: ' '),
       throwsArgumentError,
     );
 
@@ -33,29 +33,29 @@ void main() {
 
 class _RepositorioProductosFake implements RepositorioProductos {
   int llamadasEliminar = 0;
-  String? ultimoUid;
+  String? ultimoNegocioId;
   String? ultimoProductoId;
 
   @override
-  Future<void> eliminarProducto(String uid, String productoId) async {
+  Future<void> eliminarProducto(String negocioId, String productoId) async {
     llamadasEliminar++;
-    ultimoUid = uid;
+    ultimoNegocioId = negocioId;
     ultimoProductoId = productoId;
   }
 
   @override
-  Future<Producto> crearProducto(String uid, Producto producto) {
+  Future<Producto> crearProducto(String negocioId, Producto producto) {
     throw UnimplementedError();
   }
 
   @override
-  Future<String> guardarProducto(String uid, Producto producto) {
+  Future<String> guardarProducto(String negocioId, Producto producto) {
     throw UnimplementedError();
   }
 
   @override
   Future<PaginaProductos> obtenerPaginaProductos(
-    String uid, {
+    String negocioId, {
     CursorProductos? despuesDe,
     int limite = 10,
   }) {
@@ -64,7 +64,7 @@ class _RepositorioProductosFake implements RepositorioProductos {
 
   @override
   Future<void> toggleDisponible(
-    String uid,
+    String negocioId,
     String productoId,
     bool disponible,
   ) {

@@ -14,13 +14,6 @@ void main() {
     repository = ProductosRepository(firestore);
   });
 
-  Future<void> prepararCuenta(String uid, {String negocioId = 'negocio-1'}) {
-    return firestore.collection('users').doc(uid).set({
-      'email': '$uid@example.com',
-      'negocioId': negocioId,
-    });
-  }
-
   Producto producto({
     String id = '',
     String nombre = 'Cafe',
@@ -36,11 +29,9 @@ void main() {
 
   test(
     'crea productos nuevos bajo negocios/{negocioId}/productos y estampa '
-    'el negocioId resuelto',
+    'el negocioId recibido',
     () async {
-      await prepararCuenta('usuario-1');
-
-      await repository.guardarProducto('usuario-1', producto());
+      await repository.guardarProducto('negocio-1', producto());
 
       final productos = await firestore
           .collection('negocios')
@@ -68,7 +59,6 @@ void main() {
   test(
     'lee productos por fecha descendente e ignora documentos invalidos',
     () async {
-      await prepararCuenta('usuario-1');
       final coleccion = firestore
           .collection('negocios')
           .doc('negocio-1')
@@ -85,7 +75,7 @@ void main() {
         'fechaCreacion': Timestamp.fromDate(DateTime(2026, 3, 1)),
       });
 
-      final pagina = await repository.obtenerPaginaProductos('usuario-1');
+      final pagina = await repository.obtenerPaginaProductos('negocio-1');
 
       expect(pagina.productos.map((producto) => producto.nombre), [
         'Reciente',
@@ -97,7 +87,6 @@ void main() {
   );
 
   test('pagina de diez en diez sin volver a leer productos previos', () async {
-    await prepararCuenta('usuario-1');
     final coleccion = firestore
         .collection('negocios')
         .doc('negocio-1')
@@ -111,13 +100,13 @@ void main() {
       });
     }
 
-    final primera = await repository.obtenerPaginaProductos('usuario-1');
+    final primera = await repository.obtenerPaginaProductos('negocio-1');
     final segunda = await repository.obtenerPaginaProductos(
-      'usuario-1',
+      'negocio-1',
       despuesDe: primera.ultimoCursor,
     );
     final tercera = await repository.obtenerPaginaProductos(
-      'usuario-1',
+      'negocio-1',
       despuesDe: segunda.ultimoCursor,
     );
 
@@ -143,7 +132,6 @@ void main() {
   });
 
   test('actualiza disponibilidad y elimina un producto existente', () async {
-    await prepararCuenta('usuario-1');
     await firestore
         .collection('negocios')
         .doc('negocio-1')
@@ -164,10 +152,10 @@ void main() {
             .data()!['fechaCreacion'];
 
     await repository.guardarProducto(
-      'usuario-1',
+      'negocio-1',
       producto(id: 'producto-1', nombre: 'Te'),
     );
-    await repository.toggleDisponible('usuario-1', 'producto-1', false);
+    await repository.toggleDisponible('negocio-1', 'producto-1', false);
 
     final actualizado = await firestore
         .collection('negocios')
@@ -180,7 +168,7 @@ void main() {
     expect(actualizado.data(), containsPair('fechaCreacion', fechaCreacion));
     expect(actualizado.data(), containsPair('negocioId', 'negocio-1'));
 
-    await repository.eliminarProducto('usuario-1', 'producto-1');
+    await repository.eliminarProducto('negocio-1', 'producto-1');
 
     expect(actualizado.exists, isTrue);
     expect(
@@ -195,13 +183,9 @@ void main() {
     );
   });
 
-  test('rechaza operaciones cuando el perfil no tiene negocioId', () async {
-    await firestore.collection('users').doc('sin-negocio').set({
-      'email': 'x@example.com',
-    });
-
+  test('rechaza operaciones cuando no se recibe negocioId', () async {
     await expectLater(
-      repository.obtenerPaginaProductos('sin-negocio'),
+      repository.obtenerPaginaProductos(''),
       throwsStateError,
     );
   });

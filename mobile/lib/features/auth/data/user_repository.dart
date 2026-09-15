@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+typedef PerfilAsegurado = ({bool existiaPerfil, String? negocioId});
+
 class UserRepository {
   final FirebaseFirestore _firestore;
 
@@ -30,23 +32,34 @@ class UserRepository {
     await referencia.set(actualizacion, SetOptions(merge: true));
   }
 
-  Future<void> asegurarPerfilYPlan({
+  Future<PerfilAsegurado> asegurarPerfilYPlan({
     required String uid,
     required String email,
     required int limiteProductos,
     required int minimoProductos,
+    bool crearPerfilSiNoExiste = true,
   }) async {
     final perfilRef = _firestore.collection('users').doc(uid);
-    await _firestore.runTransaction((transaction) async {
+    return _firestore.runTransaction((transaction) async {
       final perfil = await transaction.get(perfilRef);
       final datosPerfil = perfil.data();
+      final existiaPerfil = perfil.exists;
+      final negocioIdBruto = datosPerfil?['negocioId'];
+      final negocioId = negocioIdBruto is String &&
+              negocioIdBruto.trim().isNotEmpty
+          ? negocioIdBruto.trim()
+          : null;
+
+      if (!existiaPerfil && !crearPerfilSiNoExiste) {
+        return (existiaPerfil: false, negocioId: negocioId);
+      }
 
       final planRef = perfilRef.collection('plan').doc('actual');
 
       // Todas las lecturas antes de las escrituras (requisito de Firestore).
       final plan = await transaction.get(planRef);
 
-      if (datosPerfil == null) {
+      if (!existiaPerfil) {
         transaction.set(perfilRef, {
           'email': email,
           'terminosAceptados': true,
@@ -54,7 +67,7 @@ class UserRepository {
         });
       } else {
         final actualizacion = <String, dynamic>{'email': email};
-        if (!datosPerfil.containsKey('terminosAceptados')) {
+        if (datosPerfil?.containsKey('terminosAceptados') != true) {
           actualizacion['terminosAceptados'] = true;
         }
         transaction.update(perfilRef, actualizacion);
@@ -71,6 +84,8 @@ class UserRepository {
           'minimoProductos': minimoProductos,
         });
       }
+
+      return (existiaPerfil: existiaPerfil, negocioId: negocioId);
     });
   }
 

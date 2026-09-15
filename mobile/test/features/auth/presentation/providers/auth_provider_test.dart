@@ -89,7 +89,7 @@ void main() {
           limiteProductos: 20,
           minimoProductos: 1,
         ),
-      ).thenAnswer((_) async {});
+      ).thenAnswer((_) async => (existiaPerfil: true, negocioId: null));
 
       await provider.revisarSiYaVerificoEmail();
 
@@ -152,14 +152,14 @@ void main() {
         password: 'secreto',
       ),
     ).thenAnswer((_) async => usuario);
-    when(
-      () => userRepository.asegurarPerfilYPlan(
-        uid: 'usuario-1',
-        email: 'nuevo@example.com',
-        limiteProductos: 20,
-        minimoProductos: 1,
-      ),
-    ).thenAnswer((_) async {});
+when(
+        () => userRepository.asegurarPerfilYPlan(
+          uid: 'usuario-1',
+          email: 'nuevo@example.com',
+          limiteProductos: 20,
+          minimoProductos: 1,
+        ),
+      ).thenAnswer((_) async => (existiaPerfil: false, negocioId: null));
 
     await provider.registrarse('nuevo@example.com', 'secreto');
 

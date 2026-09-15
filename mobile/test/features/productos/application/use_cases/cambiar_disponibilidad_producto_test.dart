@@ -15,13 +15,13 @@ void main() {
 
   test('cambia únicamente la disponibilidad mediante el repositorio', () async {
     await cambiarDisponibilidad(
-      uid: 'usuario-1',
+      negocioId: 'negocio-1',
       productoId: 'producto-1',
       disponible: false,
     );
 
     expect(repositorioProductos.llamadas, 1);
-    expect(repositorioProductos.ultimoUid, 'usuario-1');
+    expect(repositorioProductos.ultimoNegocioId, 'negocio-1');
     expect(repositorioProductos.ultimoProductoId, 'producto-1');
     expect(repositorioProductos.ultimaDisponibilidad, isFalse);
   });
@@ -29,7 +29,7 @@ void main() {
   test('no actualiza si el identificador es vacío', () {
     expect(
       () => cambiarDisponibilidad(
-        uid: 'usuario-1',
+        negocioId: 'negocio-1',
         productoId: ' ',
         disponible: false,
       ),
@@ -42,40 +42,40 @@ void main() {
 
 class _RepositorioProductosFake implements RepositorioProductos {
   int llamadas = 0;
-  String? ultimoUid;
+  String? ultimoNegocioId;
   String? ultimoProductoId;
   bool? ultimaDisponibilidad;
 
   @override
   Future<void> toggleDisponible(
-    String uid,
+    String negocioId,
     String productoId,
     bool disponible,
   ) async {
     llamadas++;
-    ultimoUid = uid;
+    ultimoNegocioId = negocioId;
     ultimoProductoId = productoId;
     ultimaDisponibilidad = disponible;
   }
 
   @override
-  Future<Producto> crearProducto(String uid, Producto producto) {
+  Future<Producto> crearProducto(String negocioId, Producto producto) {
     throw UnimplementedError();
   }
 
   @override
-  Future<void> eliminarProducto(String uid, String productoId) {
+  Future<void> eliminarProducto(String negocioId, String productoId) {
     throw UnimplementedError();
   }
 
   @override
-  Future<String> guardarProducto(String uid, Producto producto) {
+  Future<String> guardarProducto(String negocioId, Producto producto) {
     throw UnimplementedError();
   }
 
   @override
   Future<PaginaProductos> obtenerPaginaProductos(
-    String uid, {
+    String negocioId, {
     CursorProductos? despuesDe,
     int limite = 10,
   }) {
