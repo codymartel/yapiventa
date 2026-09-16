@@ -349,6 +349,57 @@ test('an atomic batch can change matching private and public webActiva values', 
   await assertSucceeds(batch.commit());
 });
 
+test('an atomic batch can move a business to a new public slug', async () => {
+  await seedDocuments({
+    'negocios/owned-business': {
+      propietarioUid: 'owner',
+      slug: 'old-store',
+      nombreNegocio: 'Old store',
+      webActiva: false,
+    },
+    'negocios_publicos/old-store': {
+      negocioId: 'owned-business',
+      slug: 'old-store',
+      nombreNegocio: 'Old store',
+      webActiva: false,
+    },
+  });
+
+  const db = dbFor('owner');
+  const batch = writeBatch(db);
+  batch.update(doc(db, 'negocios/owned-business'), {
+    slug: 'new-store',
+    nombreNegocio: 'New store',
+  });
+  batch.set(doc(db, 'negocios_publicos/new-store'), {
+    negocioId: 'owned-business',
+    slug: 'new-store',
+    nombreNegocio: 'New store',
+    webActiva: false,
+  });
+  batch.delete(doc(db, 'negocios_publicos/old-store'));
+
+  await assertSucceeds(batch.commit());
+
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    const adminDb = context.firestore();
+    const privateBusiness = await getDoc(
+      doc(adminDb, 'negocios/owned-business'),
+    );
+    const oldPublic = await getDoc(
+      doc(adminDb, 'negocios_publicos/old-store'),
+    );
+    const newPublic = await getDoc(
+      doc(adminDb, 'negocios_publicos/new-store'),
+    );
+
+    assert.equal(privateBusiness.data().slug, 'new-store');
+    assert.equal(oldPublic.exists(), false);
+    assert.equal(newPublic.data().slug, 'new-store');
+    assert.equal(newPublic.data().nombreNegocio, 'New store');
+  });
+});
+
 test('a private-only webActiva update is rejected as an incomplete batch', async () => {
   await seedDocuments({
     'negocios/owned-business': {
