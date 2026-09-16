@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/features/dashboard/presentation/providers/dashboard_provider.dart';
 import 'package:mobile/features/dashboard/presentation/screens/dashboard_web_screen.dart';
+import 'package:mobile/features/dashboard/presentation/widgets/dashboard_sidebar.dart';
+import 'package:mobile/features/dashboard/presentation/widgets/dashboard_top_bar.dart';
 import 'package:mobile/features/negocio/domain/models/catalogo_negocio.dart';
 import 'package:mobile/features/negocio/domain/models/plantilla_web.dart';
 import 'package:mobile/features/negocio/domain/models/progreso_configuracion.dart';
@@ -13,8 +15,10 @@ void main() {
     bool resultado = true,
     Object? error,
     ProgresoConfiguracion? progreso,
+    Size size = const Size(1400, 1000),
+    TextScaler textScaler = TextScaler.noScaling,
   }) async {
-    tester.view.physicalSize = const Size(1400, 1000);
+    tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -29,9 +33,7 @@ void main() {
         value: dashboardProvider,
         child: MaterialApp(
           builder: (context, child) => MediaQuery(
-            data: MediaQuery.of(
-              context,
-            ).copyWith(textScaler: const TextScaler.linear(0.8)),
+            data: MediaQuery.of(context).copyWith(textScaler: textScaler),
             child: child!,
           ),
           home: Builder(
@@ -145,6 +147,93 @@ void main() {
       find.text('Completa primero las etapas pendientes de configuración.'),
       findsOneWidget,
     );
+  });
+
+  testWidgets('usa tres columnas y un unico Scaffold en escritorio', (
+    tester,
+  ) async {
+    await mostrarDashboard(tester, size: const Size(1050, 1000));
+
+    expect(find.byType(Scaffold), findsOneWidget);
+    expect(find.byType(DashboardTopBar), findsOneWidget);
+    expect(find.byType(DashboardSidebar), findsOneWidget);
+    expect(
+      find.byKey(const Key('authenticated-shell-navigation')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('authenticated-shell-contextual-panel')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('authenticated-shell-contextual-expansion')),
+      findsNothing,
+    );
+    expect(find.text('Necesita tu atención'), findsOneWidget);
+    expect(find.text('Resumen de tu negocio'), findsOneWidget);
+    expect(find.text('Ventas de los últimos 7 días'), findsOneWidget);
+    expect(find.text('Acciones rápidas'), findsOneWidget);
+    expect(find.text('Pedidos recientes'), findsOneWidget);
+
+    final navegacion = tester.getRect(
+      find.byKey(const Key('authenticated-shell-navigation')),
+    );
+    final contenido = tester.getRect(
+      find.byKey(const Key('authenticated-shell-content')),
+    );
+    final panel = tester.getRect(
+      find.byKey(const Key('authenticated-shell-contextual-panel')),
+    );
+    expect(navegacion.width, 252);
+    expect(panel.width, 320);
+    expect(navegacion.right, contenido.left);
+    expect(contenido.right, panel.left);
+  });
+
+  testWidgets('muestra Drawer y ayuda contextual plegable bajo 1050 px', (
+    tester,
+  ) async {
+    await mostrarDashboard(tester, size: const Size(1049, 1000));
+
+    expect(find.byType(Scaffold), findsOneWidget);
+    expect(find.byType(DashboardTopBar), findsOneWidget);
+    expect(find.byTooltip('Abrir menú'), findsOneWidget);
+    expect(
+      find.byKey(const Key('authenticated-shell-navigation')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const Key('authenticated-shell-contextual-panel')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const Key('authenticated-shell-contextual-expansion')),
+      findsOneWidget,
+    );
+    expect(find.text('Necesita tu atención'), findsNothing);
+
+    await tester.tap(find.text('Ayuda contextual'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Necesita tu atención'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Abrir menú'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(DashboardSidebar), findsOneWidget);
+  });
+
+  testWidgets('mantiene el shell estable con texto ampliado', (tester) async {
+    await mostrarDashboard(
+      tester,
+      size: const Size(1050, 1000),
+      textScaler: const TextScaler.linear(1.3),
+    );
+
+    expect(find.byKey(const Key('authenticated-shell')), findsOneWidget);
+    expect(find.byType(DashboardTopBar), findsOneWidget);
+    expect(find.text('Resumen de tu negocio'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }
 

@@ -177,23 +177,29 @@ class _MarcaYapiVenta extends StatelessWidget {
           child: const Icon(Icons.storefront_rounded, color: Colors.white),
         ),
         const SizedBox(width: 12),
-        const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'YapiVenta',
-              style: TextStyle(
-                color: AppColors.texto,
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -0.4,
+        const Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'YapiVenta',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: AppColors.texto,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.4,
+                ),
               ),
-            ),
-            Text(
-              'Panel de negocio',
-              style: TextStyle(color: AppColors.muted, fontSize: 11),
-            ),
-          ],
+              Text(
+                'Panel de negocio',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: AppColors.muted, fontSize: 11),
+              ),
+            ],
+          ),
         ),
       ],
     );
