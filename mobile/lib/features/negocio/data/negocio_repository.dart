@@ -510,14 +510,31 @@ class NegocioRepository
     };
 
     final negocioId = await _obtenerNegocioId(uid);
-    final referencia = _firestore.collection('negocios').doc(negocioId);
-    final anterior = await referencia.get();
-    final slugAnterior = _leerSlug(anterior.data());
-    await referencia.set(updateMap, SetOptions(merge: true));
-    await _persistirProyeccionPublica(
-      negocioId: negocioId,
-      slugAnterior: slugAnterior,
-    );
+    final negocioRef = _firestore.collection('negocios').doc(negocioId);
+    await _firestore.runTransaction((transaction) async {
+      final anterior = await transaction.get(negocioRef);
+      final datosAnteriores = anterior.data() ?? const <String, dynamic>{};
+      final slugAnterior = _leerSlug(datosAnteriores);
+      final datosActuales = {...datosAnteriores, ...updateMap};
+      final slugNuevo = _leerSlug(datosActuales);
+
+      transaction.set(negocioRef, updateMap, SetOptions(merge: true));
+      if (slugNuevo.isNotEmpty) {
+        final publicoRef = _firestore
+            .collection('negocios_publicos')
+            .doc(slugNuevo);
+        transaction.set(
+          publicoRef,
+          _construirProyeccionPublica(negocioId, datosActuales),
+        );
+      }
+      if (slugAnterior.isNotEmpty && slugAnterior != slugNuevo) {
+        final publicoAnteriorRef = _firestore
+            .collection('negocios_publicos')
+            .doc(slugAnterior);
+        transaction.delete(publicoAnteriorRef);
+      }
+    });
   }
 
   /// Guarda solo el id corto del molde web seleccionado.
@@ -529,26 +546,53 @@ class NegocioRepository
         'Completa el negocio y agrega al menos un producto válido antes de elegir la plantilla.',
       );
     }
-    final progreso = await obtenerProgresoConfiguracion(
-      uid,
-      negocioId: negocioId,
+    final negocioRef = _firestore.collection('negocios').doc(negocioId);
+    final productos = await negocioRef
+        .collection('productos')
+        .orderBy('fechaCreacion', descending: true)
+        .get();
+    final tieneProductoValido = productos.docs.any(
+      (documento) => _productoValido(documento.data()),
     );
-    if (!progreso.productosCompletos || progreso.slug.trim().isEmpty) {
-      throw StateError(
-        'Completa el negocio y agrega al menos un producto válido antes de elegir la plantilla.',
-      );
-    }
-    await _firestore.collection('negocios').doc(negocioId).set({
+    final plantillaMap = <String, dynamic>{
       'plantillaWeb': plantilla.valorPersistencia,
       'onboardingTemplateCompletedAt': FieldValue.serverTimestamp(),
       'onboardingProductsConfirmed': true,
       'onboardingCompletedAt': FieldValue.serverTimestamp(),
       'setupComplete': true,
-    }, SetOptions(merge: true));
-    await _persistirProyeccionPublica(
-      negocioId: negocioId,
-      slugAnterior: progreso.slug,
-    );
+    };
+
+    await _firestore.runTransaction((transaction) async {
+      final negocio = await transaction.get(negocioRef);
+      final datos = negocio.data() ?? const <String, dynamic>{};
+      final catalogo = CatalogoNegocio(
+        rubro: datos['rubro'] is String ? datos['rubro'] as String : '',
+        categorias: _leerCategorias(datos['categorias']),
+        unidadesMedida: _leerUnidades(datos['unidadesMedida']),
+        configuracionInicial: datos,
+      );
+      final negocioCompleto =
+          _rubroValido(catalogo.rubro) &&
+          _configuracionValida(datos, catalogo) &&
+          datos['onboardingBusinessNeedsReview'] != true;
+      final productosCompletos =
+          negocioCompleto &&
+          (datos['onboardingProductsConfirmed'] == true || tieneProductoValido);
+      final slug = _leerSlug(datos);
+      if (!productosCompletos || slug.isEmpty) {
+        throw StateError(
+          'Completa el negocio y agrega al menos un producto válido antes de elegir la plantilla.',
+        );
+      }
+
+      final datosActuales = {...datos, ...plantillaMap};
+      final publicoRef = _firestore.collection('negocios_publicos').doc(slug);
+      transaction.set(negocioRef, plantillaMap, SetOptions(merge: true));
+      transaction.set(
+        publicoRef,
+        _construirProyeccionPublica(negocioId, datosActuales),
+      );
+    });
   }
 
   Future<void> actualizarWebActiva(String uid, bool activa) async {
@@ -586,36 +630,6 @@ class NegocioRepository
   String _leerSlug(Map<String, dynamic>? datos) {
     final valor = datos?['slug'];
     return valor is String ? valor.trim() : '';
-  }
-
-  /// Proyecta los campos públicos del negocio en negocios_publicos/{slug}.
-  ///
-  /// Se llama tras guardar la configuración o la plantilla web. El doc
-  /// público solo lleva datos que la tienda web necesita; nunca incluye
-  /// email, terminosAceptados, ruc, setupComplete, datos del onboarding,
-  /// plan ni propietarioUid. Si el slug cambió, elimina la ruta pública
-  /// anterior para no dejar activo un enlace viejo.
-  Future<void> _persistirProyeccionPublica({
-    required String negocioId,
-    required String slugAnterior,
-  }) async {
-    final referencia = _firestore.collection('negocios').doc(negocioId);
-    final documento = await referencia.get();
-    final datos = documento.data() ?? const <String, dynamic>{};
-    final slug = _leerSlug(datos);
-
-    if (slugAnterior.isNotEmpty && slugAnterior != slug) {
-      await _firestore
-          .collection('negocios_publicos')
-          .doc(slugAnterior)
-          .delete();
-    }
-    if (slug.isEmpty) return;
-
-    await _firestore
-        .collection('negocios_publicos')
-        .doc(slug)
-        .set(_construirProyeccionPublica(negocioId, datos));
   }
 
   Map<String, dynamic> _construirProyeccionPublica(

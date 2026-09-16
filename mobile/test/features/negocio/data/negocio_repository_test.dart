@@ -178,6 +178,250 @@ void main() {
     expect(perfil.keys.toSet(), {'email', 'negocioId'});
   });
 
+  test(
+    'guardarConfiguracionNegocio no relee negocios/{negocioId} al proyectar',
+    () async {
+      await _prepararNegocio(firestore, 'usuario-1');
+      firestore.negociosCollectionAccesses = 0;
+
+      await _guardarConfiguracionBasica(repository);
+
+      expect(firestore.negociosCollectionAccesses, 1);
+    },
+  );
+
+  test(
+    'conserva webActiva, plantillaWeb y configPagos al actualizar',
+    () async {
+      final negocioId = await _prepararNegocio(
+        firestore,
+        'usuario-1',
+        datos: {
+          'plantillaWeb': 'neon',
+          'setupComplete': false,
+          'webActiva': true,
+        },
+      );
+
+      await _guardarConfiguracionBasica(repository);
+
+      final datos =
+          (await firestore.collection('negocios').doc(negocioId).get()).data()!;
+      expect(datos['webActiva'], isTrue);
+      expect(datos['plantillaWeb'], 'neon');
+      expect(datos['setupComplete'], isFalse);
+      expect(datos['configPagos'], {
+        'yape': {
+          'numero': '999999999',
+          'descuentoActivo': true,
+          'montoMinimo': 20.0,
+          'tipoDescuento': 'porcentaje',
+          'valorDescuento': 10.0,
+        },
+      });
+    },
+  );
+
+  test(
+    'cambia el slug privado y publico y elimina la proyeccion anterior',
+    () async {
+      final negocioId = await _prepararNegocio(
+        firestore,
+        'usuario-1',
+        datos: {
+          'slug': 'tienda-vieja',
+          'plantillaWeb': 'neon',
+          'webActiva': true,
+        },
+      );
+      await firestore.collection('negocios_publicos').doc('tienda-vieja').set({
+        'negocioId': negocioId,
+        'nombreNegocio': 'Vieja',
+      });
+
+      await _guardarConfiguracionBasica(repository);
+
+      final privado =
+          (await firestore.collection('negocios').doc(negocioId).get()).data()!;
+      expect(privado['slug'], 'bodega-ana');
+      expect(privado['nombreNegocio'], 'Bodega Ana');
+
+      final viejo = await firestore
+          .collection('negocios_publicos')
+          .doc('tienda-vieja')
+          .get();
+      expect(viejo.exists, isFalse);
+
+      final publico =
+          (await firestore
+                  .collection('negocios_publicos')
+                  .doc('bodega-ana')
+                  .get())
+              .data()!;
+      expect(publico['negocioId'], negocioId);
+      expect(publico['nombreNegocio'], 'Bodega Ana');
+      expect(publico['slug'], 'bodega-ana');
+      expect(publico['webActiva'], isTrue);
+      expect(publico['rubro'], 'Bodega');
+      expect(publico['metodosPago'], ['yape', 'efectivo']);
+      expect(publico['configPagos'], {
+        'yape': {
+          'numero': '999999999',
+          'descuentoActivo': true,
+          'montoMinimo': 20.0,
+          'tipoDescuento': 'porcentaje',
+          'valorDescuento': 10.0,
+        },
+      });
+      expect(publico['deliveryZonas'], [
+        {'zona': 'Centro', 'costo': 7.5},
+      ]);
+      expect(publico['horarios'], [
+        {
+          'dia': 'Lunes',
+          'apertura': '08:00',
+          'cierre': '18:00',
+          'activo': true,
+        },
+      ]);
+    },
+  );
+
+  test(
+    'una transaccion rechazada no deja configuracion privada parcial',
+    () async {
+      final firestoreConFalla = _AbortTransactionFakeFirebaseFirestore();
+      final repositoryConFalla = NegocioRepository(
+        firestore: firestoreConFalla,
+      );
+      final negocioId = await _prepararNegocio(
+        firestoreConFalla,
+        'usuario-1',
+        datos: {
+          'slug': 'tienda-vieja',
+          'nombreNegocio': 'Tienda Vieja',
+          'plantillaWeb': 'neon',
+          'webActiva': false,
+        },
+      );
+      await firestoreConFalla
+          .collection('negocios_publicos')
+          .doc('tienda-vieja')
+          .set({
+            'negocioId': negocioId,
+            'slug': 'tienda-vieja',
+            'nombreNegocio': 'Tienda Vieja',
+            'plantillaWeb': 'neon',
+            'webActiva': false,
+          });
+      final privadoAntes =
+          (await firestoreConFalla.collection('negocios').doc(negocioId).get())
+              .data()!;
+      final publicoAntes =
+          (await firestoreConFalla
+                  .collection('negocios_publicos')
+                  .doc('tienda-vieja')
+                  .get())
+              .data()!;
+
+      await expectLater(
+        _guardarConfiguracionBasica(repositoryConFalla),
+        throwsA(isA<FirebaseException>()),
+      );
+
+      expect(
+        (await firestoreConFalla.collection('negocios').doc(negocioId).get())
+            .data(),
+        privadoAntes,
+      );
+      expect(
+        (await firestoreConFalla
+                .collection('negocios_publicos')
+                .doc('tienda-vieja')
+                .get())
+            .data(),
+        publicoAntes,
+      );
+      expect(
+        (await firestoreConFalla
+                .collection('negocios_publicos')
+                .doc('bodega-ana')
+                .get())
+            .exists,
+        isFalse,
+      );
+    },
+  );
+
+  test(
+    'un retry proyecta webActiva y plantillaWeb concurrentes recientes',
+    () async {
+      late final _RetryOnceFakeFirebaseFirestore firestoreConReintento;
+      late String negocioId;
+      firestoreConReintento = _RetryOnceFakeFirebaseFirestore(
+        onFirstConflict: () async {
+          await firestoreConReintento
+              .collection('negocios')
+              .doc(negocioId)
+              .update({'webActiva': true, 'plantillaWeb': 'cristal'});
+        },
+      );
+      final repositoryConReintento = NegocioRepository(
+        firestore: firestoreConReintento,
+      );
+      negocioId = await _prepararNegocio(
+        firestoreConReintento,
+        'usuario-1',
+        datos: {
+          'slug': 'tienda-vieja',
+          'nombreNegocio': 'Tienda Vieja',
+          'plantillaWeb': 'neon',
+          'webActiva': false,
+        },
+      );
+      await firestoreConReintento
+          .collection('negocios_publicos')
+          .doc('tienda-vieja')
+          .set({
+            'negocioId': negocioId,
+            'slug': 'tienda-vieja',
+            'nombreNegocio': 'Tienda Vieja',
+            'plantillaWeb': 'neon',
+            'webActiva': false,
+          });
+      firestoreConReintento.usersCollectionAccesses = 0;
+
+      await _guardarConfiguracionBasica(repositoryConReintento);
+
+      expect(firestoreConReintento.transactionAttempts, 2);
+      expect(firestoreConReintento.usersCollectionAccesses, 1);
+      final privado =
+          (await firestoreConReintento
+                  .collection('negocios')
+                  .doc(negocioId)
+                  .get())
+              .data()!;
+      final publico =
+          (await firestoreConReintento
+                  .collection('negocios_publicos')
+                  .doc('bodega-ana')
+                  .get())
+              .data()!;
+      expect(privado['webActiva'], isTrue);
+      expect(privado['plantillaWeb'], 'cristal');
+      expect(publico['webActiva'], isTrue);
+      expect(publico['plantillaWeb'], 'cristal');
+      expect(
+        (await firestoreConReintento
+                .collection('negocios_publicos')
+                .doc('tienda-vieja')
+                .get())
+            .exists,
+        isFalse,
+      );
+    },
+  );
+
   test('guardarPlantillaWeb completa onboarding sin tocar webActiva', () async {
     final negocioId = await _guardarCuentaConNegocioValido(
       firestore,
@@ -186,6 +430,10 @@ void main() {
         'slug': 'bodega-ana',
         'plantilla': 'neon',
         'webActiva': false,
+        'metodosPago': ['yape'],
+        'configPagos': {
+          'yape': {'numero': '999999999'},
+        },
       },
     );
     await _guardarProductoValido(firestore, 'usuario-1');
@@ -202,6 +450,21 @@ void main() {
     expect(datos['onboardingTemplateCompletedAt'], isNotNull);
     expect(datos['onboardingCompletedAt'], isNotNull);
     expect(datos['webActiva'], isFalse);
+    expect(datos['configPagos'], {
+      'yape': {'numero': '999999999'},
+    });
+
+    final publico =
+        (await firestore
+                .collection('negocios_publicos')
+                .doc('bodega-ana')
+                .get())
+            .data()!;
+    expect(publico['plantillaWeb'], 'cristal');
+    expect(publico['webActiva'], isFalse);
+    expect(publico['configPagos'], {
+      'yape': {'numero': '999999999'},
+    });
 
     final perfil = (await firestore.collection('users').doc('usuario-1').get())
         .data()!;
@@ -217,6 +480,164 @@ void main() {
 
     expect(firestore.usersCollectionAccesses, 1);
   });
+
+  test(
+    'guardarPlantillaWeb rechazado no deja estado privado parcial',
+    () async {
+      final firestoreConFalla = _AbortTransactionFakeFirebaseFirestore();
+      final repositoryConFalla = NegocioRepository(
+        firestore: firestoreConFalla,
+      );
+      final negocioId = await _guardarCuentaConNegocioValido(
+        firestoreConFalla,
+        'usuario-1',
+        adicionales: {
+          'plantillaWeb': 'neon',
+          'webActiva': false,
+          'metodosPago': ['yape'],
+          'configPagos': {
+            'yape': {'numero': '999999999'},
+          },
+        },
+      );
+      await _guardarProductoValido(firestoreConFalla, 'usuario-1');
+      await firestoreConFalla
+          .collection('negocios_publicos')
+          .doc('bodega-ana')
+          .set({
+            'negocioId': negocioId,
+            'slug': 'bodega-ana',
+            'nombreNegocio': 'Bodega Ana',
+            'plantillaWeb': 'neon',
+            'webActiva': false,
+            'metodosPago': ['yape'],
+            'configPagos': {
+              'yape': {'numero': '999999999'},
+            },
+          });
+      final privadoAntes =
+          (await firestoreConFalla.collection('negocios').doc(negocioId).get())
+              .data()!;
+      final publicoAntes =
+          (await firestoreConFalla
+                  .collection('negocios_publicos')
+                  .doc('bodega-ana')
+                  .get())
+              .data()!;
+
+      await expectLater(
+        repositoryConFalla.guardarPlantillaWeb(
+          'usuario-1',
+          PlantillaWeb.cristal,
+        ),
+        throwsA(isA<FirebaseException>()),
+      );
+
+      expect(
+        (await firestoreConFalla.collection('negocios').doc(negocioId).get())
+            .data(),
+        privadoAntes,
+      );
+      expect(
+        (await firestoreConFalla
+                .collection('negocios_publicos')
+                .doc('bodega-ana')
+                .get())
+            .data(),
+        publicoAntes,
+      );
+    },
+  );
+
+  test(
+    'guardarPlantillaWeb reintenta y conserva configuracion concurrente',
+    () async {
+      late final _RetryOnceFakeFirebaseFirestore firestoreConReintento;
+      late String negocioId;
+      firestoreConReintento = _RetryOnceFakeFirebaseFirestore(
+        onFirstConflict: () async {
+          final configPagos = {
+            'yape': {'numero': '988888888'},
+          };
+          await firestoreConReintento
+              .collection('negocios')
+              .doc(negocioId)
+              .update({
+                'nombreNegocio': 'Bodega concurrente',
+                'webActiva': true,
+                'metodosPago': ['yape'],
+                'configPagos': configPagos,
+              });
+          await firestoreConReintento
+              .collection('negocios_publicos')
+              .doc('bodega-ana')
+              .update({
+                'nombreNegocio': 'Bodega concurrente',
+                'webActiva': true,
+                'metodosPago': ['yape'],
+                'configPagos': configPagos,
+              });
+        },
+      );
+      final repositoryConReintento = NegocioRepository(
+        firestore: firestoreConReintento,
+      );
+      negocioId = await _guardarCuentaConNegocioValido(
+        firestoreConReintento,
+        'usuario-1',
+        adicionales: {
+          'plantillaWeb': 'neon',
+          'webActiva': false,
+          'metodosPago': ['yape'],
+          'configPagos': {
+            'yape': {'numero': '999999999'},
+          },
+        },
+      );
+      await _guardarProductoValido(firestoreConReintento, 'usuario-1');
+      await firestoreConReintento
+          .collection('negocios_publicos')
+          .doc('bodega-ana')
+          .set({
+            'negocioId': negocioId,
+            'slug': 'bodega-ana',
+            'nombreNegocio': 'Bodega Ana',
+            'plantillaWeb': 'neon',
+            'webActiva': false,
+            'metodosPago': ['yape'],
+            'configPagos': {
+              'yape': {'numero': '999999999'},
+            },
+          });
+
+      await repositoryConReintento.guardarPlantillaWeb(
+        'usuario-1',
+        PlantillaWeb.cristal,
+      );
+
+      expect(firestoreConReintento.transactionAttempts, 2);
+      final privado =
+          (await firestoreConReintento
+                  .collection('negocios')
+                  .doc(negocioId)
+                  .get())
+              .data()!;
+      final publico =
+          (await firestoreConReintento
+                  .collection('negocios_publicos')
+                  .doc('bodega-ana')
+                  .get())
+              .data()!;
+      for (final datos in [privado, publico]) {
+        expect(datos['nombreNegocio'], 'Bodega concurrente');
+        expect(datos['webActiva'], isTrue);
+        expect(datos['plantillaWeb'], 'cristal');
+        expect(datos['configPagos'], {
+          'yape': {'numero': '988888888'},
+        });
+      }
+    },
+  );
 
   group('obtenerProgresoConfiguracion', () {
     test('empieza en rubro para una cuenta sin datos', () async {
@@ -1370,6 +1791,30 @@ class _AbortTransactionFakeFirebaseFirestore
       plugin: 'cloud_firestore',
       message: 'Transacción abortada para la prueba.',
     );
+  }
+}
+
+class _RetryOnceFakeFirebaseFirestore extends _MergeAwareFakeFirebaseFirestore {
+  _RetryOnceFakeFirebaseFirestore({required this.onFirstConflict});
+
+  final Future<void> Function() onFirstConflict;
+  int transactionAttempts = 0;
+
+  @override
+  Future<T> runTransaction<T>(
+    TransactionHandler<T> transactionHandler, {
+    Duration timeout = const Duration(seconds: 30),
+    int maxAttempts = 5,
+  }) async {
+    transactionAttempts++;
+    await transactionHandler(_MergeAwareTransaction());
+    await onFirstConflict();
+
+    transactionAttempts++;
+    final transaction = _MergeAwareTransaction();
+    final result = await transactionHandler(transaction);
+    await transaction.commit();
+    return result;
   }
 }
 
