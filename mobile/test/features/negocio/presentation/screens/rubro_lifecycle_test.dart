@@ -68,6 +68,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Bodega'));
     await tester.pump();
+    await tester.ensureVisible(find.text('Confirmar rubro'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Confirmar rubro'));
     await tester.pumpAndSettle();
 
