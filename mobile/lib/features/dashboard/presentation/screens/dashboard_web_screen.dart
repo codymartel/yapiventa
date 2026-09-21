@@ -14,6 +14,8 @@ typedef AbrirUrlDashboard =
     Future<bool> Function(Uri url, {String? webOnlyWindowName});
 
 class DashboardWebScreen extends StatelessWidget {
+  static const navegadorInicioClave = Key('dashboard-inner-navigator');
+
   final AbrirUrlDashboard? abrirUrl;
   final ProgresoConfiguracion progreso;
   final String email;
@@ -53,26 +55,21 @@ class DashboardWebScreen extends StatelessWidget {
         items: state.necesitanAtencion,
         productos: state.productosDestacados,
       ),
-      child: DashboardHomeContent(
-        state: state,
-        progreso: progreso,
-        onAbrirEtapa: onAbrirEtapa,
-        onAgregarProducto: () => progreso.negocioCompleto
-            ? onAbrirEtapa(EtapaConfiguracion.productos)
-            : _mostrarBloqueado(context),
-        onActualizarStock: () => _mostrarProximamente(
-          context,
-          'El módulo de stock estará disponible próximamente.',
-        ),
-        onVerPedidos: () => _mostrarProximamente(
-          context,
-          'El módulo de pedidos estará disponible próximamente.',
-        ),
-        onResponderQueja: () => _mostrarProximamente(
-          context,
-          'El módulo de reclamaciones estará disponible próximamente.',
-        ),
+      child: Navigator(
+        key: DashboardWebScreen.navegadorInicioClave,
+        onGenerateInitialRoutes: (navigator, inicial) => [
+          _crearRutaDeInicio(RouteSettings(name: inicial)),
+        ],
+        onGenerateRoute: _crearRutaDeInicio,
       ),
+    );
+  }
+
+  Route<dynamic> _crearRutaDeInicio(RouteSettings settings) {
+    return MaterialPageRoute<Object?>(
+      settings: settings,
+      builder: (_) =>
+          _ContenidoInicio(progreso: progreso, onAbrirEtapa: onAbrirEtapa),
     );
   }
 
@@ -161,9 +158,7 @@ class DashboardWebScreen extends StatelessWidget {
   }
 
   void _mostrarProximamente(BuildContext context, String mensaje) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(mensaje)));
+    _mostrarAviso(context, mensaje);
   }
 
   bool _destinoHabilitado(DashboardDestination destino) => switch (destino) {
@@ -181,9 +176,50 @@ class DashboardWebScreen extends StatelessWidget {
   }
 
   void _mostrarBloqueado(BuildContext context) {
-    _mostrarProximamente(
+    _mostrarAviso(
       context,
       'Completa primero las etapas pendientes de configuración.',
+    );
+  }
+}
+
+void _mostrarAviso(BuildContext context, String mensaje) {
+  ScaffoldMessenger.of(context)
+    ..hideCurrentSnackBar()
+    ..showSnackBar(SnackBar(content: Text(mensaje)));
+}
+
+class _ContenidoInicio extends StatelessWidget {
+  final ProgresoConfiguracion progreso;
+  final ValueChanged<EtapaConfiguracion> onAbrirEtapa;
+
+  const _ContenidoInicio({required this.progreso, required this.onAbrirEtapa});
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<DashboardProvider>().state;
+    return DashboardHomeContent(
+      state: state,
+      progreso: progreso,
+      onAbrirEtapa: onAbrirEtapa,
+      onAgregarProducto: () => progreso.negocioCompleto
+          ? onAbrirEtapa(EtapaConfiguracion.productos)
+          : _mostrarAviso(
+              context,
+              'Completa primero las etapas pendientes de configuración.',
+            ),
+      onActualizarStock: () => _mostrarAviso(
+        context,
+        'El módulo de stock estará disponible próximamente.',
+      ),
+      onVerPedidos: () => _mostrarAviso(
+        context,
+        'El módulo de pedidos estará disponible próximamente.',
+      ),
+      onResponderQueja: () => _mostrarAviso(
+        context,
+        'El módulo de reclamaciones estará disponible próximamente.',
+      ),
     );
   }
 }

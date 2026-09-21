@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mobile/core/widgets/authenticated_shell.dart';
+import 'package:mobile/features/auth/domain/politica_acceso.dart';
 import 'package:mobile/features/dashboard/presentation/providers/dashboard_provider.dart';
 import 'package:mobile/features/dashboard/presentation/screens/dashboard_web_screen.dart';
 import 'package:mobile/features/dashboard/presentation/widgets/dashboard_sidebar.dart';
@@ -43,14 +45,19 @@ void main() {
               email: 'ana@example.com',
               onAbrirEtapa: (etapa) {
                 etapasAbiertas.add(etapa);
-                if (etapa == EtapaConfiguracion.plantilla) {
-                  Navigator.of(context).pushNamed('/elegir-plantilla');
-                }
+                Navigator.of(context).pushNamed(PoliticaAcceso.rutaDe(etapa));
               },
               onCerrarSesion: () {},
             ),
           ),
           routes: {
+            '/elegir-rubro': (_) =>
+                const Scaffold(body: Center(child: Text('Seleccion de rubro'))),
+            '/configurar-negocio': (_) => const Scaffold(
+              body: Center(child: Text('Configuracion de negocio')),
+            ),
+            '/productos': (_) =>
+                const Scaffold(body: Center(child: Text('Lista de productos'))),
             '/elegir-plantilla': (_) => const Scaffold(
               body: Center(child: Text('Seleccion de plantilla')),
             ),
@@ -62,6 +69,7 @@ void main() {
     return _EscenarioDashboard(
       abridor: abridor,
       etapasAbiertas: etapasAbiertas,
+      provider: dashboardProvider,
     );
   }
 
@@ -235,15 +243,128 @@ void main() {
     expect(find.text('Resumen de tu negocio'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('conserva un unico shell con Navigator interno e Inicio activo', (
+    tester,
+  ) async {
+    await mostrarDashboard(tester);
+
+    expect(find.byType(AuthenticatedShell), findsOneWidget);
+    expect(find.byType(Scaffold), findsOneWidget);
+    expect(find.byKey(DashboardWebScreen.navegadorInicioClave), findsOneWidget);
+    final shell = find.byKey(const Key('authenticated-shell'));
+    expect(
+      find.descendant(of: shell, matching: find.byType(Navigator)),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: shell, matching: find.text('Resumen de tu negocio')),
+      findsOneWidget,
+    );
+
+    final sidebar = tester.widget<DashboardSidebar>(
+      find.byType(DashboardSidebar),
+    );
+    expect(sidebar.destinoActivo, DashboardDestination.inicio);
+  });
+
+  testWidgets('Productos conserva la ruta raíz /productos', (tester) async {
+    final escenario = await mostrarDashboard(tester);
+
+    await tester.tap(find.text('Productos'));
+    await tester.pumpAndSettle();
+
+    expect(escenario.etapasAbiertas, contains(EtapaConfiguracion.productos));
+    expect(find.text('Lista de productos'), findsOneWidget);
+  });
+
+  testWidgets('Configuración conserva la ruta raíz de negocio', (tester) async {
+    final escenario = await mostrarDashboard(tester);
+
+    await tester.tap(find.text('Configuración'));
+    await tester.pumpAndSettle();
+
+    expect(escenario.etapasAbiertas, contains(EtapaConfiguracion.negocio));
+    expect(find.text('Configuracion de negocio'), findsOneWidget);
+  });
+
+  testWidgets('la continuacion de rubro conserva su ruta raíz', (tester) async {
+    final escenario = await mostrarDashboard(
+      tester,
+      progreso: _progresoPendiente(),
+    );
+
+    await tester.tap(find.text('Continuar configuración'));
+    await tester.pumpAndSettle();
+
+    expect(escenario.etapasAbiertas, [EtapaConfiguracion.rubro]);
+    expect(find.text('Seleccion de rubro'), findsOneWidget);
+  });
+
+  testWidgets('el contenido reconstruido conserva el mismo DashboardProvider', (
+    tester,
+  ) async {
+    final escenario = await mostrarDashboard(tester);
+
+    await tester.tap(find.text('Mes'));
+    await tester.pumpAndSettle();
+
+    final elemento = tester.element(find.byType(DashboardSidebar));
+    final enArbol = Provider.of<DashboardProvider>(elemento, listen: false);
+    expect(identical(enArbol, escenario.provider), isTrue);
+    expect(
+      find.text(
+        'Resumen de mes · gráfico con referencia de los últimos 7 días.',
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets(
+    'bloquea Productos, Configuración y Plantilla sin montar sus pantallas',
+    (tester) async {
+      final escenario = await mostrarDashboard(
+        tester,
+        progreso: _progresoPendiente(),
+      );
+
+      await tester.tap(find.text('Productos').first);
+      await tester.pump();
+      await tester.tap(find.text('Configuración').first);
+      await tester.pump();
+      await tester.tap(find.byTooltip('Elegir plantilla'));
+      await tester.pump();
+
+      expect(escenario.etapasAbiertas, isEmpty);
+      expect(
+        find.text('Completa primero las etapas pendientes de configuración.'),
+        findsOneWidget,
+      );
+      expect(find.text('Lista de productos'), findsNothing);
+      expect(find.text('Configuracion de negocio'), findsNothing);
+      expect(find.text('Seleccion de plantilla'), findsNothing);
+      expect(
+        find.byType(ChangeNotifierProvider<DashboardProvider>),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(DashboardWebScreen.navegadorInicioClave),
+        findsOneWidget,
+      );
+      expect(find.text('Resumen de tu negocio'), findsOneWidget);
+    },
+  );
 }
 
 class _EscenarioDashboard {
   final _AbridorFake abridor;
   final List<EtapaConfiguracion> etapasAbiertas;
+  final DashboardProvider provider;
 
   const _EscenarioDashboard({
     required this.abridor,
     required this.etapasAbiertas,
+    required this.provider,
   });
 }
 
