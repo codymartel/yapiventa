@@ -107,7 +107,15 @@ class _RutaConAcceso extends StatelessWidget {
     final acceso = context.watch<AccesoProvider>();
     switch (acceso.estado) {
       case EstadoAcceso.cargandoSesion:
+        return const _PantallaCargaAcceso();
       case EstadoAcceso.cargandoProgreso:
+        if (acceso.refrescando && acceso.progreso != null) {
+          return _construirContenidoAutorizado(
+            context,
+            acceso,
+            acceso.progreso!,
+          );
+        }
         return const _PantallaCargaAcceso();
       case EstadoAcceso.sinSesion:
         return ruta == RutasAcceso.acceso
@@ -120,15 +128,22 @@ class _RutaConAcceso extends StatelessWidget {
       case EstadoAcceso.error:
         return _PantallaErrorAcceso(mensaje: acceso.errorMessage);
       case EstadoAcceso.listo:
-        final progreso = acceso.progreso!;
-        if (ruta == RutasAcceso.acceso || ruta == RutasAcceso.verificacion) {
-          return const _RedireccionRuta(RutasAcceso.dashboard);
-        }
-        if (!PoliticaAcceso.permite(ruta, progreso)) {
-          return const _RedireccionRuta(RutasAcceso.dashboard);
-        }
-        return _construirRutaAutorizada(context, acceso, progreso);
+        return _construirContenidoAutorizado(context, acceso, acceso.progreso!);
     }
+  }
+
+  Widget _construirContenidoAutorizado(
+    BuildContext context,
+    AccesoProvider acceso,
+    ProgresoConfiguracion progreso,
+  ) {
+    if (ruta == RutasAcceso.acceso || ruta == RutasAcceso.verificacion) {
+      return const _RedireccionRuta(RutasAcceso.dashboard);
+    }
+    if (!PoliticaAcceso.permite(ruta, progreso)) {
+      return const _RedireccionRuta(RutasAcceso.dashboard);
+    }
+    return _construirRutaAutorizada(context, acceso, progreso);
   }
 
   Widget _construirRutaAutorizada(

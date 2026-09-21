@@ -39,6 +39,7 @@ class AccesoProvider extends ChangeNotifier {
   bool _disposed = false;
   bool _cambioAuthPendiente = false;
   User? _usuarioPendiente;
+  bool _refrescando = false;
 
   factory AccesoProvider({
     required AuthRepository authRepository,
@@ -72,6 +73,7 @@ class AccesoProvider extends ChangeNotifier {
   String? get negocioId => _negocioId;
   String? get errorMessage => _errorMessage;
   bool get configuracionCompleta => _progreso?.completo ?? false;
+  bool get refrescando => _refrescando;
 
   void _cambioDeUsuario(User? usuario) {
     if (_authProvider.isLoading) {
@@ -101,27 +103,51 @@ class AccesoProvider extends ChangeNotifier {
       return;
     }
     final revision = ++_revisionSesion;
-    _progreso = null;
-    _errorMessage = null;
-    _uid = usuario?.uid;
-    _email = usuario?.email;
-    _negocioId = null;
 
     if (usuario == null) {
+      _limpiarSesion();
       _estado = EstadoAcceso.sinSesion;
       _notificar();
       return;
     }
     if (!usuario.emailVerified) {
+      _limpiarSesion();
       _estado = EstadoAcceso.correoNoVerificado;
       _notificar();
       return;
     }
+
+    // Una recarga de la misma sesión (recargar) conserva el progreso ya
+    // cargado para que la interfaz autenticada no se desmonte mientras se
+    // consulta Firestore de nuevo.
+    final refrescaMismaSesion =
+        usuario.uid == _uid &&
+        (_estado == EstadoAcceso.listo ||
+            (_estado == EstadoAcceso.cargandoProgreso && _refrescando)) &&
+        _progreso != null;
+    if (refrescaMismaSesion) {
+      _errorMessage = null;
+      _refrescando = true;
+    } else {
+      _limpiarSesion();
+      _uid = usuario.uid;
+      _email = usuario.email;
+    }
+
     final carga = _cargarProgreso(usuario, revision);
     _cargaEnCurso = carga;
     carga.whenComplete(() {
       if (identical(_cargaEnCurso, carga)) _cargaEnCurso = null;
     });
+  }
+
+  void _limpiarSesion() {
+    _progreso = null;
+    _errorMessage = null;
+    _uid = null;
+    _email = null;
+    _negocioId = null;
+    _refrescando = false;
   }
 
   Future<void> recargar() async {
@@ -227,6 +253,7 @@ class AccesoProvider extends ChangeNotifier {
       _progreso = progreso;
       _estado = EstadoAcceso.listo;
       _errorMessage = null;
+      _refrescando = false;
       _notificar();
     } catch (_) {
       if (!_esRespuestaVigente(uid, revision)) return;
@@ -240,6 +267,7 @@ class AccesoProvider extends ChangeNotifier {
   void _establecerError([String? mensaje]) {
     if (_disposed) return;
     _progreso = null;
+    _refrescando = false;
     _estado = EstadoAcceso.error;
     _errorMessage =
         mensaje ??

@@ -116,17 +116,17 @@ void main() {
     final respuestaAnterior = Completer<ProgresoConfiguracion>();
     final respuestaActual = Completer<ProgresoConfiguracion>();
     when(
-        () => progresoRepository.obtenerProgresoConfiguracion(
-          'usuario-anterior',
-          negocioId: any(named: 'negocioId'),
-        ),
-      ).thenAnswer((_) => respuestaAnterior.future);
+      () => progresoRepository.obtenerProgresoConfiguracion(
+        'usuario-anterior',
+        negocioId: any(named: 'negocioId'),
+      ),
+    ).thenAnswer((_) => respuestaAnterior.future);
     when(
-        () => progresoRepository.obtenerProgresoConfiguracion(
-          'usuario-actual',
-          negocioId: any(named: 'negocioId'),
-        ),
-      ).thenAnswer((_) => respuestaActual.future);
+      () => progresoRepository.obtenerProgresoConfiguracion(
+        'usuario-actual',
+        negocioId: any(named: 'negocioId'),
+      ),
+    ).thenAnswer((_) => respuestaActual.future);
     provider = AccesoProvider(
       authRepository: authRepository,
       authProvider: authProvider,
@@ -168,11 +168,11 @@ void main() {
     when(() => proveedor.providerId).thenReturn(EmailAuthProvider.PROVIDER_ID);
     when(() => usuario.providerData).thenReturn([proveedor]);
     when(
-        () => progresoRepository.obtenerProgresoConfiguracion(
-          'usuario-1',
-          negocioId: any(named: 'negocioId'),
-        ),
-      ).thenAnswer((_) async => _progreso(slug: ''));
+      () => progresoRepository.obtenerProgresoConfiguracion(
+        'usuario-1',
+        negocioId: any(named: 'negocioId'),
+      ),
+    ).thenAnswer((_) async => _progreso(slug: ''));
     provider = AccesoProvider(
       authRepository: authRepository,
       authProvider: authProvider,
@@ -242,11 +242,11 @@ void main() {
       () => authRepository.emailEstaVerificado(),
     ).thenAnswer((_) async => true);
     when(
-        () => progresoRepository.obtenerProgresoConfiguracion(
-          'usuario-1',
-          negocioId: any(named: 'negocioId'),
-        ),
-      ).thenAnswer((_) async => _progreso(slug: ''));
+      () => progresoRepository.obtenerProgresoConfiguracion(
+        'usuario-1',
+        negocioId: any(named: 'negocioId'),
+      ),
+    ).thenAnswer((_) async => _progreso(slug: ''));
     final authProviderReal = app_auth.AuthProvider(
       repository: authRepository,
       userRepository: userRepository,
@@ -336,6 +336,174 @@ void main() {
       expect(provider!.estado, EstadoAcceso.listo);
       expect(provider!.progreso!.rubroCompleto, isTrue);
       expect(provider!.progreso!.siguiente, EtapaConfiguracion.negocio);
+    },
+  );
+
+  test('la carga inicial queda pendiente sin marcar refrescando', () async {
+    final usuario = _usuario(uid: 'usuario-1', email: 'ana@example.com');
+    final respuesta = Completer<ProgresoConfiguracion>();
+    when(
+      () => progresoRepository.obtenerProgresoConfiguracion(
+        'usuario-1',
+        negocioId: any(named: 'negocioId'),
+      ),
+    ).thenAnswer((_) => respuesta.future);
+    provider = AccesoProvider(
+      authRepository: authRepository,
+      authProvider: authProvider,
+      userRepository: userRepository,
+      progresoRepository: progresoRepository,
+    );
+
+    cambiosDeAuth.add(usuario);
+    await pumpEventQueue();
+
+    expect(provider!.estado, EstadoAcceso.cargandoProgreso);
+    expect(provider!.refrescando, isFalse);
+    expect(provider!.progreso, isNull);
+
+    respuesta.complete(_progreso(slug: 'bodega-ana'));
+    await pumpEventQueue();
+
+    expect(provider!.estado, EstadoAcceso.listo);
+    expect(provider!.refrescando, isFalse);
+    expect(provider!.progreso!.slug, 'bodega-ana');
+  });
+
+  test(
+    'recargar conserva el progreso del mismo usuario mientras refresca',
+    () async {
+      final usuario = _usuario(uid: 'usuario-1', email: 'ana@example.com');
+      final primera = Completer<ProgresoConfiguracion>();
+      final segunda = Completer<ProgresoConfiguracion>();
+      var lectura = 0;
+      when(() => authRepository.usuarioActual).thenReturn(usuario);
+      when(
+        () => progresoRepository.obtenerProgresoConfiguracion(
+          'usuario-1',
+          negocioId: any(named: 'negocioId'),
+        ),
+      ).thenAnswer((_) {
+        lectura++;
+        return lectura == 1 ? primera.future : segunda.future;
+      });
+      provider = AccesoProvider(
+        authRepository: authRepository,
+        authProvider: authProvider,
+        userRepository: userRepository,
+        progresoRepository: progresoRepository,
+      );
+
+      cambiosDeAuth.add(usuario);
+      await pumpEventQueue();
+      primera.complete(_progreso(slug: 'bodega-ana'));
+      await pumpEventQueue();
+
+      expect(provider!.estado, EstadoAcceso.listo);
+      expect(provider!.progreso!.slug, 'bodega-ana');
+
+      final recarga = provider!.recargar();
+      await pumpEventQueue();
+
+      expect(provider!.estado, EstadoAcceso.cargandoProgreso);
+      expect(provider!.refrescando, isTrue);
+      expect(provider!.progreso, isNotNull);
+      expect(provider!.progreso!.slug, 'bodega-ana');
+
+      segunda.complete(_progreso(slug: 'bodega-renovada', rubroCompleto: true));
+      await recarga;
+      await pumpEventQueue();
+
+      expect(provider!.estado, EstadoAcceso.listo);
+      expect(provider!.refrescando, isFalse);
+      expect(provider!.progreso!.slug, 'bodega-renovada');
+      expect(lectura, 2);
+    },
+  );
+
+  test(
+    'cambiar de usuario descarta el progreso anterior de inmediato',
+    () async {
+      final usuarioA = _usuario(uid: 'usuario-a', email: 'a@example.com');
+      final usuarioB = _usuario(uid: 'usuario-b', email: 'b@example.com');
+      final respuestaB = Completer<ProgresoConfiguracion>();
+      when(
+        () => progresoRepository.obtenerProgresoConfiguracion(
+          'usuario-a',
+          negocioId: any(named: 'negocioId'),
+        ),
+      ).thenAnswer((_) async => _progreso(slug: 'tienda-a'));
+      when(
+        () => progresoRepository.obtenerProgresoConfiguracion(
+          'usuario-b',
+          negocioId: any(named: 'negocioId'),
+        ),
+      ).thenAnswer((_) => respuestaB.future);
+      provider = AccesoProvider(
+        authRepository: authRepository,
+        authProvider: authProvider,
+        userRepository: userRepository,
+        progresoRepository: progresoRepository,
+      );
+
+      cambiosDeAuth.add(usuarioA);
+      await pumpEventQueue();
+
+      expect(provider!.estado, EstadoAcceso.listo);
+      expect(provider!.progreso!.slug, 'tienda-a');
+
+      cambiosDeAuth.add(usuarioB);
+      await pumpEventQueue();
+
+      expect(provider!.uid, 'usuario-b');
+      expect(provider!.refrescando, isFalse);
+      expect(provider!.progreso, isNull);
+      expect(provider!.estado, EstadoAcceso.cargandoProgreso);
+
+      respuestaB.complete(_progreso(slug: 'tienda-b'));
+      await pumpEventQueue();
+
+      expect(provider!.estado, EstadoAcceso.listo);
+      expect(provider!.progreso!.slug, 'tienda-b');
+    },
+  );
+
+  test(
+    'un error durante la recarga descarta el progreso y no deja datos ajenos',
+    () async {
+      final usuario = _usuario(uid: 'usuario-1', email: 'ana@example.com');
+      var lectura = 0;
+      when(() => authRepository.usuarioActual).thenReturn(usuario);
+      when(
+        () => progresoRepository.obtenerProgresoConfiguracion(
+          'usuario-1',
+          negocioId: any(named: 'negocioId'),
+        ),
+      ).thenAnswer((_) async {
+        lectura++;
+        if (lectura == 1) return _progreso(slug: 'tienda-ana');
+        throw Exception('Firestore no disponible');
+      });
+      provider = AccesoProvider(
+        authRepository: authRepository,
+        authProvider: authProvider,
+        userRepository: userRepository,
+        progresoRepository: progresoRepository,
+      );
+
+      cambiosDeAuth.add(usuario);
+      await pumpEventQueue();
+
+      expect(provider!.estado, EstadoAcceso.listo);
+      expect(provider!.progreso!.slug, 'tienda-ana');
+
+      await provider!.recargar();
+      await pumpEventQueue();
+
+      expect(provider!.estado, EstadoAcceso.error);
+      expect(provider!.refrescando, isFalse);
+      expect(provider!.progreso, isNull);
+      expect(provider!.errorMessage, contains('No se pudo consultar'));
     },
   );
 }
