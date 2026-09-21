@@ -61,6 +61,7 @@ class _Panel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final movil = MediaQuery.sizeOf(context).width < 600;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -83,7 +84,7 @@ class _Panel extends StatelessWidget {
           const SizedBox(height: 3),
           Text(
             subtitulo,
-            style: const TextStyle(color: AppColors.muted, fontSize: 11),
+            style: TextStyle(color: AppColors.muted, fontSize: movil ? 12 : 11),
           ),
           const SizedBox(height: 18),
           child,
@@ -100,6 +101,7 @@ class _AttentionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final movil = MediaQuery.sizeOf(context).width < 600;
     final visual = switch (item.tipo) {
       DashboardAttentionType.stock => (
         Icons.inventory_2_outlined,
@@ -127,9 +129,9 @@ class _AttentionRow extends StatelessWidget {
                 item.titulo,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.texto,
-                  fontSize: 13,
+                  fontSize: movil ? 14 : 13,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -138,7 +140,10 @@ class _AttentionRow extends StatelessWidget {
                 item.detalle,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: AppColors.muted, fontSize: 11),
+                style: TextStyle(
+                  color: AppColors.muted,
+                  fontSize: movil ? 12 : 11,
+                ),
               ),
             ],
           ),
@@ -148,7 +153,7 @@ class _AttentionRow extends StatelessWidget {
           item.valor,
           style: TextStyle(
             color: visual.$2,
-            fontSize: 11,
+            fontSize: movil ? 12 : 11,
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -164,6 +169,7 @@ class _ProductRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final movil = MediaQuery.sizeOf(context).width < 600;
     final color = producto.stockBajo
         ? const Color(0xFFFF895D)
         : const Color(0xFF4E8BFF);
@@ -188,7 +194,10 @@ class _ProductRow extends StatelessWidget {
               const SizedBox(height: 3),
               Text(
                 '${producto.categoria} · ${producto.unidades} unidades',
-                style: const TextStyle(color: AppColors.muted, fontSize: 11),
+                style: TextStyle(
+                  color: AppColors.muted,
+                  fontSize: movil ? 12 : 11,
+                ),
               ),
             ],
           ),

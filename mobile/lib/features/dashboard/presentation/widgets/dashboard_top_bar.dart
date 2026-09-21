@@ -26,7 +26,10 @@ class DashboardTopBar extends StatelessWidget {
         final compacto = constraints.maxWidth < 700;
         return Container(
           constraints: const BoxConstraints(minHeight: 76),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          padding: EdgeInsets.symmetric(
+            horizontal: compacto ? 12 : 24,
+            vertical: 12,
+          ),
           decoration: BoxDecoration(
             color: AppColors.fondo.withValues(alpha: 0.94),
             border: Border(bottom: BorderSide(color: AppColors.border)),

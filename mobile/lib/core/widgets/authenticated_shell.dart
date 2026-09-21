@@ -47,12 +47,15 @@ class AuthenticatedShell extends StatelessWidget {
               Expanded(
                 child: Column(
                   children: [
-                    Builder(
-                      builder: (scaffoldContext) => topBarBuilder(
-                        scaffoldContext,
-                        esDesktop
-                            ? null
-                            : () => Scaffold.of(scaffoldContext).openDrawer(),
+                    SafeArea(
+                      bottom: false,
+                      child: Builder(
+                        builder: (scaffoldContext) => topBarBuilder(
+                          scaffoldContext,
+                          esDesktop
+                              ? null
+                              : () => Scaffold.of(scaffoldContext).openDrawer(),
+                        ),
                       ),
                     ),
                     Expanded(
@@ -132,47 +135,50 @@ class _CompactBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
-      builder: (context, constraints) => Column(
-        children: [
-          if (contextualPanel != null)
-            Material(
-              color: AppColors.superficie,
-              child: ExpansionTile(
-                key: const Key('authenticated-shell-contextual-expansion'),
-                collapsedIconColor: AppColors.blueLt,
-                iconColor: AppColors.blueLt,
-                shape: Border(bottom: BorderSide(color: AppColors.border)),
-                collapsedShape: Border(
-                  bottom: BorderSide(color: AppColors.border),
-                ),
-                title: const Text(
-                  'Ayuda contextual',
-                  style: TextStyle(
-                    color: AppColors.texto,
-                    fontWeight: FontWeight.w700,
+      builder: (context, constraints) {
+        final esTelefono = constraints.maxWidth < 600;
+        return Column(
+          children: [
+            if (contextualPanel != null && !esTelefono)
+              Material(
+                color: AppColors.superficie,
+                child: ExpansionTile(
+                  key: const Key('authenticated-shell-contextual-expansion'),
+                  collapsedIconColor: AppColors.blueLt,
+                  iconColor: AppColors.blueLt,
+                  shape: Border(bottom: BorderSide(color: AppColors.border)),
+                  collapsedShape: Border(
+                    bottom: BorderSide(color: AppColors.border),
                   ),
-                ),
-                children: [
-                  ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxHeight: constraints.maxHeight * 0.45,
-                    ),
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(18, 4, 18, 20),
-                      child: contextualPanel,
+                  title: const Text(
+                    'Ayuda contextual',
+                    style: TextStyle(
+                      color: AppColors.texto,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
-                ],
+                  children: [
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxHeight: constraints.maxHeight * 0.45,
+                      ),
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(18, 4, 18, 20),
+                        child: contextualPanel,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            Expanded(
+              child: KeyedSubtree(
+                key: const Key('authenticated-shell-content'),
+                child: child,
               ),
             ),
-          Expanded(
-            child: KeyedSubtree(
-              key: const Key('authenticated-shell-content'),
-              child: child,
-            ),
-          ),
-        ],
-      ),
+          ],
+        );
+      },
     );
   }
 }

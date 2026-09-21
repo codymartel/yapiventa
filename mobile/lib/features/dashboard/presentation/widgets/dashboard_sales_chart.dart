@@ -25,7 +25,7 @@ class DashboardSalesChart extends StatelessWidget {
     );
 
     return Container(
-      height: 360,
+      height: MediaQuery.sizeOf(context).width < 600 ? 300 : 360,
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         color: AppColors.card,
@@ -71,7 +71,7 @@ class DashboardSalesChart extends StatelessWidget {
           Expanded(
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final anchoGrafico = math.max(320.0, constraints.maxWidth);
+                final anchoGrafico = constraints.maxWidth;
                 return SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: SizedBox(
@@ -124,6 +124,7 @@ class _GrupoBarras extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final fontEtiqueta = MediaQuery.sizeOf(context).width < 600 ? 12.0 : 11.0;
     return Semantics(
       label:
           '${punto.label}: online S/ ${punto.online.toStringAsFixed(0)}, '
@@ -154,7 +155,10 @@ class _GrupoBarras extends StatelessWidget {
             ExcludeSemantics(
               child: Text(
                 punto.label,
-                style: const TextStyle(color: AppColors.muted, fontSize: 11),
+                style: TextStyle(
+                  color: AppColors.muted,
+                  fontSize: fontEtiqueta,
+                ),
               ),
             ),
           ],
@@ -227,6 +231,7 @@ class _TotalCanal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final fontEtiqueta = MediaQuery.sizeOf(context).width < 600 ? 12.0 : 11.0;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
       decoration: BoxDecoration(
@@ -238,7 +243,7 @@ class _TotalCanal extends StatelessWidget {
           Expanded(
             child: Text(
               etiqueta,
-              style: const TextStyle(color: AppColors.muted, fontSize: 11),
+              style: TextStyle(color: AppColors.muted, fontSize: fontEtiqueta),
             ),
           ),
           Text(

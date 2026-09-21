@@ -34,7 +34,9 @@ class DashboardHomeContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(26, 28, 26, 40),
+      padding: MediaQuery.sizeOf(context).width < 600
+          ? const EdgeInsets.fromLTRB(16, 16, 16, 28)
+          : const EdgeInsets.fromLTRB(26, 28, 26, 40),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 1540),

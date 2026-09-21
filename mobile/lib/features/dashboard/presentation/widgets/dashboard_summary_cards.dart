@@ -105,6 +105,7 @@ class _ResumenCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final movil = MediaQuery.sizeOf(context).width < 600;
     return Container(
       constraints: const BoxConstraints(minHeight: 142),
       padding: const EdgeInsets.all(19),
@@ -145,7 +146,7 @@ class _ResumenCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: AppColors.texto.withValues(alpha: 0.55),
-                    fontSize: 11,
+                    fontSize: movil ? 12 : 11,
                   ),
                 ),
               ],

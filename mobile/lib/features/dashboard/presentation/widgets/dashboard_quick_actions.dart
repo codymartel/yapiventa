@@ -17,6 +17,7 @@ class DashboardQuickActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final movil = MediaQuery.sizeOf(context).width < 600;
     final acciones = [
       _Accion(
         texto: 'Agregar producto',
@@ -64,9 +65,9 @@ class DashboardQuickActions extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'Atajos para el trabajo diario',
-            style: TextStyle(color: AppColors.muted, fontSize: 11),
+            style: TextStyle(color: AppColors.muted, fontSize: movil ? 12 : 11),
           ),
           const SizedBox(height: 16),
           LayoutBuilder(
@@ -82,7 +83,7 @@ class DashboardQuickActions extends StatelessWidget {
                   for (final accion in acciones)
                     SizedBox(
                       width: ancho,
-                      child: _AccionButton(accion: accion),
+                      child: _AccionButton(accion: accion, movil: movil),
                     ),
                 ],
               );
@@ -110,8 +111,9 @@ class _Accion {
 
 class _AccionButton extends StatelessWidget {
   final _Accion accion;
+  final bool movil;
 
-  const _AccionButton({required this.accion});
+  const _AccionButton({required this.accion, required this.movil});
 
   @override
   Widget build(BuildContext context) {
@@ -132,9 +134,9 @@ class _AccionButton extends StatelessWidget {
                 accion.texto,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.texto,
-                  fontSize: 12,
+                  fontSize: movil ? 13 : 12,
                   fontWeight: FontWeight.w600,
                 ),
               ),
