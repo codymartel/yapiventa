@@ -5,6 +5,7 @@ import 'package:mobile/features/negocio/data/negocio_repository.dart';
 import 'package:mobile/features/negocio/presentation/providers/configuracion_negocio_provider.dart';
 import 'package:mobile/features/negocio/presentation/screens/configuracion_negocio_screen.dart';
 import 'package:mobile/features/negocio/presentation/widgets/configuracion_negocio_content.dart';
+import 'package:mobile/features/negocio/presentation/widgets/configuracion_negocio_flow.dart';
 import 'package:provider/provider.dart';
 
 void main() {
@@ -12,7 +13,8 @@ void main() {
     WidgetTester tester, {
     required ConfiguracionNegocioProvider provider,
     VoidCallback? onVolver,
-    VoidCallback? onFinalizar,
+    VoidCallback? onCompletado,
+    Future<void> Function(String uid, String? negocioId)? onRecargarProgreso,
   }) async {
     tester.view.physicalSize = const Size(500, 850);
     tester.view.devicePixelRatio = 1;
@@ -24,9 +26,10 @@ void main() {
           value: provider,
           child: ConfiguracionNegocioScreen(
             uid: 'usuario-1',
-            rubro: 'Bodega',
+            negocioId: 'negocio-1',
             onVolver: onVolver ?? () {},
-            onFinalizar: onFinalizar ?? () {},
+            onCompletado: onCompletado ?? () {},
+            onRecargarProgreso: onRecargarProgreso,
           ),
         ),
       ),
@@ -46,13 +49,12 @@ void main() {
     return provider;
   }
 
-  testWidgets('conserva un único Scaffold y el contenido extraído', (
-    tester,
-  ) async {
+  testWidgets('conserva un único Scaffold y monta el flujo', (tester) async {
     await montarPantalla(tester, provider: completarDatos());
 
     expect(find.byType(Scaffold), findsOneWidget);
     expect(find.byType(SafeArea), findsOneWidget);
+    expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
     expect(find.byType(ConfiguracionNegocioContent), findsOneWidget);
     expect(find.text('Configura tu Bodega'), findsOneWidget);
   });
@@ -73,7 +75,7 @@ void main() {
     expect(volveres, 1);
   });
 
-  testWidgets('finalizar guarda la configuración y luego ejecuta onFinalizar', (
+  testWidgets('finalizar guarda la configuración y luego ejecuta onCompletado', (
     tester,
   ) async {
     final firestore = FakeFirebaseFirestore();
@@ -90,11 +92,12 @@ void main() {
     provider.direccion = 'Av. Lima 123';
     provider.referencia = 'Frente al parque';
 
-    var finalizadas = 0;
+    var completadas = 0;
     await montarPantalla(
       tester,
       provider: provider,
-      onFinalizar: () => finalizadas++,
+      onCompletado: () => completadas++,
+      onRecargarProgreso: (uid, negocioId) async {},
     );
 
     provider.irAPaso(3);
@@ -102,7 +105,7 @@ void main() {
     await tester.tap(find.text('Finalizar'));
     await tester.pumpAndSettle();
 
-    expect(finalizadas, 1);
+    expect(completadas, 1);
     expect(provider.guardando, isFalse);
     expect(provider.errorValidacion, isNull);
     final negocio = await firestore.collection('negocios').get();

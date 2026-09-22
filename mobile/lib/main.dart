@@ -185,7 +185,7 @@ class _RutaConAcceso extends StatelessWidget {
           ),
           child: ConfiguracionNegocioScreen(
             uid: acceso.uid!,
-            rubro: progreso.catalogo.rubro,
+            negocioId: acceso.negocioId,
             onVolver: () {
               if (Navigator.of(context).canPop()) {
                 Navigator.of(context).pop();
@@ -193,8 +193,8 @@ class _RutaConAcceso extends StatelessWidget {
                 _irAlDashboard(context);
               }
             },
-            onFinalizar: () async {
-              await acceso.recargar();
+            onRecargarProgreso: (uid, negocioId) => acceso.recargar(),
+            onCompletado: () {
               if (context.mounted) _irAlDashboard(context);
             },
           ),

@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+
 import '../../../../core/theme/app_colors.dart';
-import '../providers/configuracion_negocio_provider.dart';
-import '../widgets/configuracion_negocio_content.dart';
+import '../widgets/configuracion_negocio_flow.dart';
 
 // ═════════════════════════════════════════════════════════════════════════
 // ConfiguracionNegocioScreen
 // ═════════════════════════════════════════════════════════════════════════
-// Marco raíz del wizard de 4 pasos, migración de
-// ConfiguracionNegocioScreen.kt. Conserva el andamiaje de navegación
-// (Scaffold + SafeArea + PopScope) y delega el contenido del wizard a
-// ConfiguracionNegocioContent.
+// Wrapper de ruta del wizard de 4 pasos (migración de
+// ConfiguracionNegocioScreen.kt). Conserva únicamente el andamiaje de
+// navegación (Scaffold + SafeArea); la coordinación del guardado, la
+// recarga de progreso, el bloqueo durante la operación, los errores, el
+// PopScope y los callbacks viven en ConfiguracionNegocioFlow.
 //
 // IMPORTANTE: esta pantalla espera que YA exista un
 // ConfiguracionNegocioProvider más arriba en el árbol de widgets — se
@@ -20,38 +20,34 @@ import '../widgets/configuracion_negocio_content.dart';
 
 class ConfiguracionNegocioScreen extends StatelessWidget {
   final String uid;
-  final String rubro;
+  final String? negocioId;
   final VoidCallback onVolver;
-  final VoidCallback onFinalizar;
+  final VoidCallback onCompletado;
+  final Future<void> Function(
+    String uid,
+    String? negocioId,
+  )? onRecargarProgreso;
 
   const ConfiguracionNegocioScreen({
     super.key,
     required this.uid,
-    required this.rubro,
+    this.negocioId,
     required this.onVolver,
-    required this.onFinalizar,
+    required this.onCompletado,
+    this.onRecargarProgreso,
   });
 
   @override
   Widget build(BuildContext context) {
-    final p = context.watch<ConfiguracionNegocioProvider>();
-
-    return PopScope(
-      canPop: !p.guardando,
-      child: Scaffold(
-        backgroundColor: AppColors.fondo,
-        body: AbsorbPointer(
-          absorbing: p.guardando,
-          child: SafeArea(
-            child: ConfiguracionNegocioContent(
-              rubro: rubro,
-              onVolver: onVolver,
-              onFinalizar: () async {
-                final exito = await p.guardar(uid);
-                if (exito && context.mounted) onFinalizar();
-              },
-            ),
-          ),
+    return Scaffold(
+      backgroundColor: AppColors.fondo,
+      body: SafeArea(
+        child: ConfiguracionNegocioFlow(
+          uid: uid,
+          negocioId: negocioId,
+          onVolver: onVolver,
+          onCompletado: onCompletado,
+          onRecargarProgreso: onRecargarProgreso,
         ),
       ),
     );
