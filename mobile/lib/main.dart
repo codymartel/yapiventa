@@ -156,6 +156,9 @@ class _RutaConAcceso extends StatelessWidget {
         return ChangeNotifierProvider(
           create: (_) => DashboardProvider(),
           child: DashboardWebScreen(
+            uid: acceso.uid!,
+            negocioId: acceso.negocioId,
+            recargarProgreso: () => acceso.recargar(),
             progreso: progreso,
             email: acceso.email ?? '',
             onAbrirEtapa: (etapa) =>

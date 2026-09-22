@@ -1,3 +1,4 @@
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/core/widgets/authenticated_shell.dart';
@@ -8,9 +9,12 @@ import 'package:mobile/features/dashboard/presentation/widgets/dashboard_attenti
 import 'package:mobile/features/dashboard/presentation/widgets/dashboard_sidebar.dart';
 import 'package:mobile/features/dashboard/presentation/widgets/dashboard_top_bar.dart';
 import 'package:mobile/features/dashboard/presentation/widgets/rubro_contextual_panel.dart';
+import 'package:mobile/features/negocio/data/negocio_repository.dart';
 import 'package:mobile/features/negocio/domain/models/catalogo_negocio.dart';
 import 'package:mobile/features/negocio/domain/models/plantilla_web.dart';
 import 'package:mobile/features/negocio/domain/models/progreso_configuracion.dart';
+import 'package:mobile/features/negocio/presentation/providers/configuracion_negocio_provider.dart';
+import 'package:mobile/features/negocio/presentation/widgets/configuracion_negocio_flow.dart';
 import 'package:mobile/features/negocio/presentation/widgets/seleccion_negocio_flow.dart';
 import 'package:provider/provider.dart';
 
@@ -20,6 +24,7 @@ void main() {
     bool resultado = true,
     Object? error,
     ProgresoConfiguracion? progreso,
+    NegocioRepository? repositorio,
     Size size = const Size(1400, 1000),
     TextScaler textScaler = TextScaler.noScaling,
   }) async {
@@ -31,40 +36,47 @@ void main() {
     final dashboardProvider = DashboardProvider();
     final abridor = _AbridorFake(resultado: resultado, error: error);
     final etapasAbiertas = <EtapaConfiguracion>[];
+    final repositorioNegocio =
+        repositorio ?? NegocioRepository(firestore: FakeFirebaseFirestore());
     addTearDown(dashboardProvider.dispose);
 
     await tester.pumpWidget(
       ChangeNotifierProvider.value(
         value: dashboardProvider,
-        child: MaterialApp(
-          builder: (context, child) => MediaQuery(
-            data: MediaQuery.of(context).copyWith(textScaler: textScaler),
-            child: child!,
+        child: Provider<NegocioRepository>.value(
+          value: repositorioNegocio,
+          child: MaterialApp(
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(textScaler: textScaler),
+              child: child!,
+            ),
+            home: Builder(
+              builder: (context) => DashboardWebScreen(
+                uid: 'usuario-1',
+                negocioId: 'negocio-1',
+                abrirUrl: abridor.call,
+                progreso: progreso ?? _progresoCompleto(),
+                email: 'ana@example.com',
+                onAbrirEtapa: (etapa) {
+                  etapasAbiertas.add(etapa);
+                  Navigator.of(context).pushNamed(PoliticaAcceso.rutaDe(etapa));
+                },
+                onCerrarSesion: () {},
+              ),
+            ),
+            routes: {
+              '/elegir-rubro': (_) =>
+                  const Scaffold(body: Center(child: Text('Seleccion de rubro'))),
+              '/configurar-negocio': (_) => const Scaffold(
+                body: Center(child: Text('Configuracion de negocio')),
+              ),
+              '/productos': (_) =>
+                  const Scaffold(body: Center(child: Text('Lista de productos'))),
+              '/elegir-plantilla': (_) => const Scaffold(
+                body: Center(child: Text('Seleccion de plantilla')),
+              ),
+            },
           ),
-          home: Builder(
-            builder: (context) => DashboardWebScreen(
-              abrirUrl: abridor.call,
-              progreso: progreso ?? _progresoCompleto(),
-              email: 'ana@example.com',
-              onAbrirEtapa: (etapa) {
-                etapasAbiertas.add(etapa);
-                Navigator.of(context).pushNamed(PoliticaAcceso.rutaDe(etapa));
-              },
-              onCerrarSesion: () {},
-            ),
-          ),
-          routes: {
-            '/elegir-rubro': (_) =>
-                const Scaffold(body: Center(child: Text('Seleccion de rubro'))),
-            '/configurar-negocio': (_) => const Scaffold(
-              body: Center(child: Text('Configuracion de negocio')),
-            ),
-            '/productos': (_) =>
-                const Scaffold(body: Center(child: Text('Lista de productos'))),
-            '/elegir-plantilla': (_) => const Scaffold(
-              body: Center(child: Text('Seleccion de plantilla')),
-            ),
-          },
         ),
       ),
     );
@@ -79,6 +91,8 @@ void main() {
   Future<_EscenarioDashboard> mostrarDashboardConProgresoActualizable(
     WidgetTester tester, {
     required ProgresoConfiguracion progreso,
+    NegocioRepository? repositorio,
+    Future<void> Function()? recargarProgreso,
   }) async {
     tester.view.physicalSize = const Size(1400, 1000);
     tester.view.devicePixelRatio = 1;
@@ -88,39 +102,47 @@ void main() {
     final dashboardProvider = DashboardProvider();
     final abridor = _AbridorFake(resultado: true);
     final etapasAbiertas = <EtapaConfiguracion>[];
+    final repositorioNegocio =
+        repositorio ?? NegocioRepository(firestore: FakeFirebaseFirestore());
     addTearDown(dashboardProvider.dispose);
 
     final llave = GlobalKey<_EstadoProgresoRecargableState>();
     await tester.pumpWidget(
       ChangeNotifierProvider.value(
         value: dashboardProvider,
-        child: MaterialApp(
-          home: _EstadoProgresoRecargable(
-            key: llave,
-            progreso: progreso,
-            builder: (context, progresoActual) => DashboardWebScreen(
-              abrirUrl: abridor.call,
-              progreso: progresoActual,
-              email: 'ana@example.com',
-              onAbrirEtapa: (etapa) {
-                etapasAbiertas.add(etapa);
-                Navigator.of(context).pushNamed(PoliticaAcceso.rutaDe(etapa));
-              },
-              onCerrarSesion: () {},
+        child: Provider<NegocioRepository>.value(
+          value: repositorioNegocio,
+          child: MaterialApp(
+            home: _EstadoProgresoRecargable(
+              key: llave,
+              progreso: progreso,
+              builder: (context, progresoActual) => DashboardWebScreen(
+                uid: 'usuario-1',
+                negocioId: 'negocio-1',
+                recargarProgreso: recargarProgreso,
+                abrirUrl: abridor.call,
+                progreso: progresoActual,
+                email: 'ana@example.com',
+                onAbrirEtapa: (etapa) {
+                  etapasAbiertas.add(etapa);
+                  Navigator.of(context).pushNamed(PoliticaAcceso.rutaDe(etapa));
+                },
+                onCerrarSesion: () {},
+              ),
             ),
+            routes: {
+              '/elegir-rubro': (_) =>
+                  const Scaffold(body: Center(child: Text('Seleccion de rubro'))),
+              '/configurar-negocio': (_) => const Scaffold(
+                body: Center(child: Text('Configuracion de negocio')),
+              ),
+              '/productos': (_) =>
+                  const Scaffold(body: Center(child: Text('Lista de productos'))),
+              '/elegir-plantilla': (_) => const Scaffold(
+                body: Center(child: Text('Seleccion de plantilla')),
+              ),
+            },
           ),
-          routes: {
-            '/elegir-rubro': (_) =>
-                const Scaffold(body: Center(child: Text('Seleccion de rubro'))),
-            '/configurar-negocio': (_) => const Scaffold(
-              body: Center(child: Text('Configuracion de negocio')),
-            ),
-            '/productos': (_) =>
-                const Scaffold(body: Center(child: Text('Lista de productos'))),
-            '/elegir-plantilla': (_) => const Scaffold(
-              body: Center(child: Text('Seleccion de plantilla')),
-            ),
-          },
         ),
       ),
     );
@@ -341,15 +363,212 @@ void main() {
     expect(find.text('Lista de productos'), findsOneWidget);
   });
 
-  testWidgets('Configuración conserva la ruta raíz de negocio', (tester) async {
-    final escenario = await mostrarDashboard(tester);
+  testWidgets(
+    'Configuración se abre dentro del Navigator interno sin usar la ruta raíz',
+    (tester) async {
+      final escenario = await mostrarDashboard(tester);
+
+      await tester.tap(find.text('Configuración'));
+      await tester.pumpAndSettle();
+
+      expect(
+        escenario.etapasAbiertas,
+        isNot(contains(EtapaConfiguracion.negocio)),
+      );
+      expect(find.text('Configuracion de negocio'), findsNothing);
+      expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
+      expect(find.text('Configura tu Bodega'), findsOneWidget);
+
+      final sidebar = tester.widget<DashboardSidebar>(
+        find.byType(DashboardSidebar),
+      );
+      expect(sidebar.destinoActivo, DashboardDestination.configuracion);
+    },
+  );
+
+  testWidgets('Configuración interna conserva un único Scaffold y el shell', (
+    tester,
+  ) async {
+    await mostrarDashboard(tester, progreso: _progresoConRubro());
 
     await tester.tap(find.text('Configuración'));
     await tester.pumpAndSettle();
 
-    expect(escenario.etapasAbiertas, contains(EtapaConfiguracion.negocio));
-    expect(find.text('Configuracion de negocio'), findsOneWidget);
+    expect(find.byType(AuthenticatedShell), findsOneWidget);
+    expect(find.byType(Scaffold), findsOneWidget);
+    expect(find.byType(DashboardTopBar), findsOneWidget);
+    expect(find.byType(DashboardSidebar), findsOneWidget);
+    expect(find.byKey(DashboardWebScreen.navegadorInicioClave), findsOneWidget);
+    expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
   });
+
+  testWidgets(
+    'el shell, el Navigator y el provider conservan identidad con Configuración',
+    (tester) async {
+      final escenario = await mostrarDashboardConProgresoActualizable(
+        tester,
+        progreso: _progresoConRubro(),
+      );
+
+      final navegador = find.byKey(DashboardWebScreen.navegadorInicioClave);
+      final estadoNavigator = tester.state<NavigatorState>(navegador);
+      final shellElemento = tester.element(find.byType(AuthenticatedShell));
+
+      await tester.tap(find.text('Configuración'));
+      await tester.pumpAndSettle();
+
+      expect(
+        identical(tester.state<NavigatorState>(navegador), estadoNavigator),
+        isTrue,
+      );
+      expect(
+        identical(
+          tester.element(find.byType(AuthenticatedShell)),
+          shellElemento,
+        ),
+        isTrue,
+      );
+      expect(find.byType(AuthenticatedShell), findsOneWidget);
+
+      final elemento = tester.element(find.byType(DashboardSidebar));
+      final enArbol = Provider.of<DashboardProvider>(elemento, listen: false);
+      expect(identical(enArbol, escenario.provider), isTrue);
+    },
+  );
+
+  testWidgets(
+    'el provider de Configuración solo se crea al abrir la fase interna',
+    (tester) async {
+      await mostrarDashboard(tester, progreso: _progresoConRubro());
+
+      expect(find.byType(ConfiguracionNegocioFlow), findsNothing);
+      expect(
+        find.byType(ChangeNotifierProvider<ConfiguracionNegocioProvider>),
+        findsNothing,
+      );
+
+      await tester.tap(find.text('Configuración'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
+      expect(
+        find.byType(ChangeNotifierProvider<ConfiguracionNegocioProvider>),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'Configuración interna oculta el panel contextual derecho y lo restaura',
+    (tester) async {
+      await mostrarDashboard(tester, progreso: _progresoConRubro());
+
+      expect(
+        find.byKey(const Key('authenticated-shell-contextual-panel')),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text('Configuración'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
+      expect(
+        find.byKey(const Key('authenticated-shell-contextual-panel')),
+        findsNothing,
+      );
+      expect(find.byType(DashboardAttentionPanel), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'volver desde Configuración interna restaura Inicio y su ayuda contextual',
+    (tester) async {
+      await mostrarDashboard(tester, progreso: _progresoConRubro());
+
+      await tester.tap(find.text('Configuración'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Cambiar rubro'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ConfiguracionNegocioFlow), findsNothing);
+      expect(find.text('Resumen de tu negocio'), findsOneWidget);
+      expect(
+        find.byKey(const Key('authenticated-shell-contextual-panel')),
+        findsOneWidget,
+      );
+      expect(find.byType(DashboardAttentionPanel), findsOneWidget);
+
+      final sidebar = tester.widget<DashboardSidebar>(
+        find.byType(DashboardSidebar),
+      );
+      expect(sidebar.destinoActivo, DashboardDestination.inicio);
+    },
+  );
+
+  testWidgets(
+    'guardar desde Configuración interna recarga el progreso y desbloquea Productos',
+    (tester) async {
+      final firestore = FakeFirebaseFirestore();
+      await firestore.collection('users').doc('usuario-1').set({
+        'email': 'ana@example.com',
+        'negocioId': 'negocio-1',
+      });
+      final repositorio = NegocioRepository(firestore: firestore);
+
+      late _EscenarioDashboard escenario;
+      escenario = await mostrarDashboardConProgresoActualizable(
+        tester,
+        progreso: _progresoConRubro(),
+        repositorio: repositorio,
+        recargarProgreso: () async {
+          final datos = (await firestore
+                  .collection('negocios')
+                  .doc('negocio-1')
+                  .get())
+              .data() ??
+              const <String, dynamic>{};
+          escenario.actualizarProgreso(_progresoPostGuardado(datos));
+        },
+      );
+
+      await tester.tap(find.text('Configuración'));
+      await tester.pumpAndSettle();
+
+      final elemento = tester.element(find.byType(ConfiguracionNegocioFlow));
+      final provider = Provider.of<ConfiguracionNegocioProvider>(
+        elemento,
+        listen: false,
+      );
+      provider
+        ..nombreNegocio = 'Bodega Ana'
+        ..telefono = '999999999'
+        ..direccion = 'Av. Lima 123'
+        ..referencia = 'Frente al parque'
+        ..irAPaso(3);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Finalizar'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ConfiguracionNegocioFlow), findsNothing);
+      expect(find.text('Resumen de tu negocio'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Elegir plantilla'));
+      await tester.pump();
+      expect(
+        find.text('Completa primero las etapas pendientes de configuración.'),
+        findsOneWidget,
+      );
+      expect(escenario.etapasAbiertas, isEmpty);
+
+      await tester.tap(find.text('Productos').first);
+      await tester.pumpAndSettle();
+      expect(escenario.etapasAbiertas, contains(EtapaConfiguracion.productos));
+      expect(find.text('Lista de productos'), findsOneWidget);
+    },
+  );
 
   testWidgets('el Rubro interno conserva shell, provider y un único Scaffold', (
     tester,
@@ -664,10 +883,11 @@ void main() {
 
       await tester.tap(find.text('Configuración'));
       await tester.pumpAndSettle();
-      expect(escenario.etapasAbiertas, contains(EtapaConfiguracion.negocio));
-      expect(find.text('Configuracion de negocio'), findsOneWidget);
+      expect(escenario.etapasAbiertas, isNot(contains(EtapaConfiguracion.negocio)));
+      expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
+      expect(find.text('Configuracion de negocio'), findsNothing);
 
-      Navigator.of(tester.element(find.text('Configuracion de negocio'))).pop();
+      await tester.tap(find.byTooltip('Cambiar rubro'));
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('dashboard-setup-panel')), findsOneWidget);
 
@@ -737,7 +957,12 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Lista de productos'), findsNothing);
+      expect(find.byType(ConfiguracionNegocioFlow), findsNothing);
       expect(find.text('Configuracion de negocio'), findsNothing);
+      expect(
+        find.byType(ChangeNotifierProvider<ConfiguracionNegocioProvider>),
+        findsNothing,
+      );
       expect(find.text('Seleccion de plantilla'), findsNothing);
       expect(
         find.byType(ChangeNotifierProvider<DashboardProvider>),
@@ -860,3 +1085,24 @@ ProgresoConfiguracion _progresoConRubro() => ProgresoConfiguracion(
   setupCompletePersistido: false,
   productosConfirmadosPersistidos: false,
 );
+
+ProgresoConfiguracion _progresoPostGuardado(Map<String, dynamic> datos) =>
+    ProgresoConfiguracion(
+      catalogo: CatalogoNegocio(
+        rubro: datos['rubro'] is String
+            ? datos['rubro'] as String
+            : 'Bodega',
+        categorias: (datos['categorias'] as List?)?.cast<String>() ??
+            const ['Bebidas'],
+        unidadesMedida: const [],
+        configuracionInicial: datos,
+      ),
+      slug: datos['slug'] is String ? (datos['slug'] as String).trim() : '',
+      plantilla: null,
+      plantillaProvieneDeCampoOficial: false,
+      rubroCompleto: true,
+      negocioCompleto: true,
+      productosCompletos: false,
+      setupCompletePersistido: datos['setupComplete'] == true,
+      productosConfirmadosPersistidos: false,
+    );
