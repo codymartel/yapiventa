@@ -24,94 +24,109 @@ class DashboardSalesChart extends StatelessWidget {
       (total, punto) => total + punto.fisicas,
     );
 
-    return Container(
-      height: MediaQuery.sizeOf(context).width < 600 ? 300 : 360,
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            runSpacing: 10,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final movil = constraints.maxWidth < 600;
+        final escala = MediaQuery.textScalerOf(context).scale(12.0);
+        final alturaBarras = (movil ? 120 : 170) + escala;
+        return Container(
+          padding: const EdgeInsets.all(22),
+          decoration: BoxDecoration(
+            color: AppColors.card,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                runSpacing: 10,
                 children: [
-                  Text(
-                    'Ventas de los últimos 7 días',
-                    style: TextStyle(
-                      color: AppColors.texto,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                    ),
+                  const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Ventas de los últimos 7 días',
+                        style: TextStyle(
+                          color: AppColors.texto,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Comparación por canal',
+                        style: TextStyle(color: AppColors.muted, fontSize: 12),
+                      ),
+                    ],
                   ),
-                  SizedBox(height: 4),
-                  Text(
-                    'Comparación por canal',
-                    style: TextStyle(color: AppColors.muted, fontSize: 12),
+                  Wrap(
+                    spacing: 14,
+                    runSpacing: 8,
+                    children: [
+                      _Leyenda(color: const Color(0xFF4E8BFF), texto: 'Online'),
+                      _Leyenda(color: const Color(0xFF35C59A), texto: 'Físico'),
+                    ],
                   ),
                 ],
               ),
+              const SizedBox(height: 18),
+              SizedBox(
+                height: alturaBarras,
+                child: LayoutBuilder(
+                  builder: (context, chartConstraints) {
+                    final anchoGrafico = chartConstraints.maxWidth;
+                    final anchoMinimo = puntos.length * 40.0;
+                    return SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: SizedBox(
+                        width: math.max(anchoGrafico, anchoMinimo),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            for (final punto in puntos)
+                              Expanded(
+                                child: _GrupoBarras(
+                                  punto: punto,
+                                  maximo: maximo,
+                                  movil: movil,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 16),
               Row(
-                mainAxisSize: MainAxisSize.min,
                 children: [
-                  _Leyenda(color: const Color(0xFF4E8BFF), texto: 'Online'),
-                  const SizedBox(width: 14),
-                  _Leyenda(color: const Color(0xFF35C59A), texto: 'Físico'),
+                  Expanded(
+                    child: _TotalCanal(
+                      etiqueta: 'Online',
+                      valor: totalOnline,
+                      color: const Color(0xFF4E8BFF),
+                      movil: movil,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _TotalCanal(
+                      etiqueta: 'Físico',
+                      valor: totalFisico,
+                      color: const Color(0xFF35C59A),
+                      movil: movil,
+                    ),
+                  ),
                 ],
               ),
             ],
           ),
-          const SizedBox(height: 22),
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final anchoGrafico = constraints.maxWidth;
-                return SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: SizedBox(
-                    width: anchoGrafico,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        for (final punto in puntos)
-                          Expanded(
-                            child: _GrupoBarras(punto: punto, maximo: maximo),
-                          ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _TotalCanal(
-                  etiqueta: 'Online',
-                  valor: totalOnline,
-                  color: const Color(0xFF4E8BFF),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _TotalCanal(
-                  etiqueta: 'Físico',
-                  valor: totalFisico,
-                  color: const Color(0xFF35C59A),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -119,12 +134,17 @@ class DashboardSalesChart extends StatelessWidget {
 class _GrupoBarras extends StatelessWidget {
   final DashboardSalesPoint punto;
   final double maximo;
+  final bool movil;
 
-  const _GrupoBarras({required this.punto, required this.maximo});
+  const _GrupoBarras({
+    required this.punto,
+    required this.maximo,
+    required this.movil,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final fontEtiqueta = MediaQuery.sizeOf(context).width < 600 ? 12.0 : 11.0;
+    final fontEtiqueta = movil ? 12.0 : 11.0;
     return Semantics(
       label:
           '${punto.label}: online S/ ${punto.online.toStringAsFixed(0)}, '
@@ -222,40 +242,51 @@ class _TotalCanal extends StatelessWidget {
   final String etiqueta;
   final double valor;
   final Color color;
+  final bool movil;
 
   const _TotalCanal({
     required this.etiqueta,
     required this.valor,
     required this.color,
+    required this.movil,
   });
 
   @override
   Widget build(BuildContext context) {
-    final fontEtiqueta = MediaQuery.sizeOf(context).width < 600 ? 12.0 : 11.0;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              etiqueta,
-              style: TextStyle(color: AppColors.muted, fontSize: fontEtiqueta),
-            ),
+    final etiquetaWidget = Text(
+      etiqueta,
+      style: TextStyle(color: AppColors.muted, fontSize: movil ? 12.0 : 11.0),
+    );
+    final valorWidget = Text(
+      'S/ ${valor.toStringAsFixed(0)}',
+      style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.w700),
+    );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final contenido = constraints.maxWidth < 230
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  etiquetaWidget,
+                  const SizedBox(height: 3),
+                  valorWidget,
+                ],
+              )
+            : Row(
+                children: [
+                  Expanded(child: etiquetaWidget),
+                  valorWidget,
+                ],
+              );
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(10),
           ),
-          Text(
-            'S/ ${valor.toStringAsFixed(0)}',
-            style: TextStyle(
-              color: color,
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ],
-      ),
+          child: contenido,
+        );
+      },
     );
   }
 }

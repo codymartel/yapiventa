@@ -25,30 +25,43 @@ class DashboardRecentOrders extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Expanded(
-                child: Column(
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final encabezado = Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text(
+                    'Pedidos recientes',
+                    style: TextStyle(
+                      color: AppColors.texto,
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  SizedBox(height: 3),
+                  Text(
+                    'Últimos movimientos de tu tienda',
+                    style: TextStyle(color: AppColors.muted, fontSize: 11),
+                  ),
+                ],
+              );
+              final boton = TextButton(
+                onPressed: onVerTodos,
+                child: const Text('Ver todos'),
+              );
+              if (constraints.maxWidth < 300) {
+                return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Pedidos recientes',
-                      style: TextStyle(
-                        color: AppColors.texto,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    SizedBox(height: 3),
-                    Text(
-                      'Últimos movimientos de tu tienda',
-                      style: TextStyle(color: AppColors.muted, fontSize: 11),
-                    ),
-                  ],
-                ),
-              ),
-              TextButton(onPressed: onVerTodos, child: const Text('Ver todos')),
-            ],
+                  children: [encabezado, const SizedBox(height: 6), boton],
+                );
+              }
+              return Row(
+                children: [
+                  Expanded(child: encabezado),
+                  boton,
+                ],
+              );
+            },
           ),
           const SizedBox(height: 18),
           for (var i = 0; i < pedidos.length; i++) ...[

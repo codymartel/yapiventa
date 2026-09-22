@@ -33,42 +33,47 @@ class DashboardHomeContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: MediaQuery.sizeOf(context).width < 600
-          ? const EdgeInsets.fromLTRB(16, 16, 16, 28)
-          : const EdgeInsets.fromLTRB(26, 28, 26, 40),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1540),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              DashboardSetupPanel(
-                progreso: progreso,
-                onAbrirEtapa: onAbrirEtapa,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final movil = constraints.maxWidth < 600;
+        return SingleChildScrollView(
+          padding: movil
+              ? const EdgeInsets.fromLTRB(16, 16, 16, 28)
+              : const EdgeInsets.fromLTRB(26, 28, 26, 40),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 1540),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  DashboardSetupPanel(
+                    progreso: progreso,
+                    onAbrirEtapa: onAbrirEtapa,
+                  ),
+                  if (!progreso.completo) const SizedBox(height: 18),
+                  _DashboardHeading(periodo: state.periodo),
+                  const SizedBox(height: 24),
+                  DashboardSummaryCards(state: state),
+                  const SizedBox(height: 18),
+                  DashboardSalesChart(puntos: state.ventasUltimos7Dias),
+                  const SizedBox(height: 18),
+                  DashboardQuickActions(
+                    onAgregarProducto: onAgregarProducto,
+                    onActualizarStock: onActualizarStock,
+                    onVerPedidos: onVerPedidos,
+                    onResponderQueja: onResponderQueja,
+                  ),
+                  const SizedBox(height: 18),
+                  DashboardRecentOrders(
+                    pedidos: state.pedidosRecientes,
+                    onVerTodos: onVerPedidos,
+                  ),
+                ],
               ),
-              if (!progreso.completo) const SizedBox(height: 18),
-              _DashboardHeading(periodo: state.periodo),
-              const SizedBox(height: 24),
-              DashboardSummaryCards(state: state),
-              const SizedBox(height: 18),
-              DashboardSalesChart(puntos: state.ventasUltimos7Dias),
-              const SizedBox(height: 18),
-              DashboardQuickActions(
-                onAgregarProducto: onAgregarProducto,
-                onActualizarStock: onActualizarStock,
-                onVerPedidos: onVerPedidos,
-                onResponderQueja: onResponderQueja,
-              ),
-              const SizedBox(height: 18),
-              DashboardRecentOrders(
-                pedidos: state.pedidosRecientes,
-                onVerTodos: onVerPedidos,
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -125,36 +130,35 @@ class _PeriodSelector extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.border),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+      child: Wrap(
+        alignment: WrapAlignment.center,
+        spacing: 4,
+        runSpacing: 6,
         children: [
           for (final opcion in DashboardPeriod.values)
             Semantics(
               selected: opcion == periodo,
               button: true,
-              child: Padding(
-                padding: const EdgeInsets.only(right: 2),
-                child: TextButton(
-                  onPressed: () => context
-                      .read<DashboardProvider>()
-                      .seleccionarPeriodo(opcion),
-                  style: TextButton.styleFrom(
-                    foregroundColor: opcion == periodo
-                        ? AppColors.texto
-                        : AppColors.muted,
-                    backgroundColor: opcion == periodo
-                        ? AppColors.blue
-                        : Colors.transparent,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 11,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(9),
-                    ),
+              child: TextButton(
+                onPressed: () => context
+                    .read<DashboardProvider>()
+                    .seleccionarPeriodo(opcion),
+                style: TextButton.styleFrom(
+                  foregroundColor: opcion == periodo
+                      ? AppColors.texto
+                      : AppColors.muted,
+                  backgroundColor: opcion == periodo
+                      ? AppColors.blue
+                      : Colors.transparent,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 11,
                   ),
-                  child: Text(opcion.label),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(9),
+                  ),
                 ),
+                child: Text(opcion.label),
               ),
             ),
         ],
