@@ -17,7 +17,8 @@ typedef AbrirUrlDashboard =
     Future<bool> Function(Uri url, {String? webOnlyWindowName});
 
 class DashboardWebScreen extends StatefulWidget {
-  static const navegadorInicioClave = Key('dashboard-inner-navigator');
+  static final GlobalKey<NavigatorState> navegadorInicioClave =
+      GlobalKey<NavigatorState>();
 
   final AbrirUrlDashboard? abrirUrl;
   final ProgresoConfiguracion progreso;
@@ -41,10 +42,12 @@ class DashboardWebScreen extends StatefulWidget {
 class _DashboardWebScreenState extends State<DashboardWebScreen> {
   bool _rubroAbierta = false;
   late final NavigatorObserver _observadorInterno;
+  late final ValueNotifier<ProgresoConfiguracion> _progresoNotifier;
 
   @override
   void initState() {
     super.initState();
+    _progresoNotifier = ValueNotifier<ProgresoConfiguracion>(widget.progreso);
     _observadorInterno = _ObservadorRutasInternas(() {
       if (!mounted || !_rubroAbierta) return;
       setState(() => _rubroAbierta = false);
@@ -54,9 +57,15 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
   @override
   void didUpdateWidget(covariant DashboardWebScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (_claveProgreso(oldWidget.progreso) != _claveProgreso(widget.progreso)) {
-      _rubroAbierta = false;
+    if (!identical(oldWidget.progreso, widget.progreso)) {
+      _progresoNotifier.value = widget.progreso;
     }
+  }
+
+  @override
+  void dispose() {
+    _progresoNotifier.dispose();
+    super.dispose();
   }
 
   @override
@@ -85,18 +94,13 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
               items: state.necesitanAtencion,
               productos: state.productosDestacados,
             ),
-      child: KeyedSubtree(
+      child: Navigator(
         key: DashboardWebScreen.navegadorInicioClave,
-        child: Navigator(
-          key: ValueKey(
-            'dashboard-progreso-${_claveProgreso(widget.progreso)}',
-          ),
-          observers: [_observadorInterno],
-          onGenerateInitialRoutes: (navigator, inicial) => [
-            _crearRutaDeInicio(RouteSettings(name: inicial)),
-          ],
-          onGenerateRoute: _crearRutaInterna,
-        ),
+        observers: [_observadorInterno],
+        onGenerateInitialRoutes: (navigator, inicial) => [
+          _crearRutaDeInicio(RouteSettings(name: inicial)),
+        ],
+        onGenerateRoute: _crearRutaInterna,
       ),
     );
   }
@@ -111,9 +115,12 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
   Route<dynamic> _crearRutaDeInicio(RouteSettings settings) {
     return MaterialPageRoute<Object?>(
       settings: settings,
-      builder: (rutaContexto) => _ContenidoInicio(
-        progreso: widget.progreso,
-        onAbrirEtapa: (etapa) => _abrirEtapa(rutaContexto, etapa),
+      builder: (rutaContexto) => ValueListenableBuilder<ProgresoConfiguracion>(
+        valueListenable: _progresoNotifier,
+        builder: (rutaContexto, progreso, _) => _ContenidoInicio(
+          progreso: progreso,
+          onAbrirEtapa: (etapa) => _abrirEtapa(rutaContexto, progreso, etapa),
+        ),
       ),
     );
   }
@@ -138,16 +145,20 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
     }
   }
 
-  void _abrirEtapa(BuildContext rutaContexto, EtapaConfiguracion etapa) {
+  void _abrirEtapa(
+    BuildContext rutaContexto,
+    ProgresoConfiguracion progreso,
+    EtapaConfiguracion etapa,
+  ) {
     if (etapa == EtapaConfiguracion.rubro) {
-      _abrirRubro(rutaContexto);
+      _abrirRubro(rutaContexto, progreso);
       return;
     }
     widget.onAbrirEtapa(etapa);
   }
 
-  void _abrirRubro(BuildContext rutaContexto) {
-    if (!PoliticaAcceso.permite(RutasAcceso.rubro, widget.progreso)) {
+  void _abrirRubro(BuildContext rutaContexto, ProgresoConfiguracion progreso) {
+    if (!PoliticaAcceso.permite(RutasAcceso.rubro, progreso)) {
       _mostrarBloqueado(rutaContexto);
       return;
     }
@@ -279,13 +290,6 @@ class _ObservadorRutasInternas extends NavigatorObserver {
     _alRegresar();
   }
 }
-
-String _claveProgreso(ProgresoConfiguracion p) =>
-    '${p.catalogo.rubro}'
-    '|${p.rubroCompleto}'
-    '|${p.negocioCompleto}'
-    '|${p.productosCompletos}'
-    '|${p.plantillaCompleta}';
 
 void _mostrarAviso(BuildContext context, String mensaje) {
   ScaffoldMessenger.of(context)

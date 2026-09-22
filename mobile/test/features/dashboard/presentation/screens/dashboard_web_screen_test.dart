@@ -74,6 +74,64 @@ void main() {
     );
   }
 
+  Future<_EscenarioDashboard> mostrarDashboardConProgresoActualizable(
+    WidgetTester tester, {
+    required ProgresoConfiguracion progreso,
+  }) async {
+    tester.view.physicalSize = const Size(1400, 1000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final dashboardProvider = DashboardProvider();
+    final abridor = _AbridorFake(resultado: true);
+    final etapasAbiertas = <EtapaConfiguracion>[];
+    addTearDown(dashboardProvider.dispose);
+
+    final llave = GlobalKey<_EstadoProgresoRecargableState>();
+    await tester.pumpWidget(
+      ChangeNotifierProvider.value(
+        value: dashboardProvider,
+        child: MaterialApp(
+          home: _EstadoProgresoRecargable(
+            key: llave,
+            progreso: progreso,
+            builder: (context, progresoActual) => DashboardWebScreen(
+              abrirUrl: abridor.call,
+              progreso: progresoActual,
+              email: 'ana@example.com',
+              onAbrirEtapa: (etapa) {
+                etapasAbiertas.add(etapa);
+                Navigator.of(context).pushNamed(PoliticaAcceso.rutaDe(etapa));
+              },
+              onCerrarSesion: () {},
+            ),
+          ),
+          routes: {
+            '/elegir-rubro': (_) =>
+                const Scaffold(body: Center(child: Text('Seleccion de rubro'))),
+            '/configurar-negocio': (_) => const Scaffold(
+              body: Center(child: Text('Configuracion de negocio')),
+            ),
+            '/productos': (_) =>
+                const Scaffold(body: Center(child: Text('Lista de productos'))),
+            '/elegir-plantilla': (_) => const Scaffold(
+              body: Center(child: Text('Seleccion de plantilla')),
+            ),
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    return _EscenarioDashboard(
+      abridor: abridor,
+      etapasAbiertas: etapasAbiertas,
+      provider: dashboardProvider,
+      actualizarProgreso: (nuevo) =>
+          llave.currentState!.actualizarProgreso(nuevo),
+    );
+  }
+
   testWidgets(
     'usa el progreso compartido y abre el dominio publico sin releer',
     (tester) async {
@@ -377,6 +435,93 @@ void main() {
     expect(find.byKey(const Key('dashboard-setup-panel')), findsOneWidget);
   });
 
+  testWidgets(
+    'el Navigator interno conserva identidad y refleja el nuevo progreso',
+    (tester) async {
+      final escenario = await mostrarDashboardConProgresoActualizable(
+        tester,
+        progreso: _progresoPendiente(),
+      );
+
+      final navegador = find.byKey(DashboardWebScreen.navegadorInicioClave);
+      final estadoNavigator = tester.state<NavigatorState>(navegador);
+      final shellElemento = tester.element(find.byType(AuthenticatedShell));
+
+      expect(find.text('Requiere un rubro guardado.'), findsOneWidget);
+
+      escenario.actualizarProgreso(_progresoConRubro());
+      await tester.pumpAndSettle();
+
+      expect(
+        identical(tester.state<NavigatorState>(navegador), estadoNavigator),
+        isTrue,
+      );
+      expect(find.byType(AuthenticatedShell), findsOneWidget);
+      expect(
+        identical(
+          tester.element(find.byType(AuthenticatedShell)),
+          shellElemento,
+        ),
+        isTrue,
+      );
+      expect(find.byType(Scaffold), findsOneWidget);
+
+      final elemento = tester.element(find.byType(DashboardSidebar));
+      final enArbol = Provider.of<DashboardProvider>(elemento, listen: false);
+      expect(identical(enArbol, escenario.provider), isTrue);
+
+      expect(find.text('Requiere un rubro guardado.'), findsNothing);
+      expect(find.text('Siguiente etapa pendiente.'), findsOneWidget);
+      expect(find.text('Completado. Puedes revisarlo.'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'el progreso reactivo desbloquea Configuración y mantiene bloqueos',
+    (tester) async {
+      final escenario = await mostrarDashboardConProgresoActualizable(
+        tester,
+        progreso: _progresoPendiente(),
+      );
+
+      escenario.actualizarProgreso(_progresoConRubro());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Configuración'));
+      await tester.pumpAndSettle();
+      expect(escenario.etapasAbiertas, contains(EtapaConfiguracion.negocio));
+      expect(find.text('Configuracion de negocio'), findsOneWidget);
+
+      Navigator.of(tester.element(find.text('Configuracion de negocio'))).pop();
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('dashboard-setup-panel')), findsOneWidget);
+
+      await tester.tap(find.text('Productos').first);
+      await tester.pump();
+      expect(
+        escenario.etapasAbiertas,
+        isNot(contains(EtapaConfiguracion.productos)),
+      );
+      expect(
+        find.text('Completa primero las etapas pendientes de configuración.'),
+        findsOneWidget,
+      );
+      expect(find.text('Lista de productos'), findsNothing);
+
+      await tester.tap(find.byTooltip('Elegir plantilla'));
+      await tester.pump();
+      expect(
+        escenario.etapasAbiertas,
+        isNot(contains(EtapaConfiguracion.plantilla)),
+      );
+      expect(
+        find.text('Completa primero las etapas pendientes de configuración.'),
+        findsOneWidget,
+      );
+      expect(find.text('Seleccion de plantilla'), findsNothing);
+    },
+  );
+
   testWidgets('el contenido reconstruido conserva el mismo DashboardProvider', (
     tester,
   ) async {
@@ -436,13 +581,44 @@ class _EscenarioDashboard {
   final _AbridorFake abridor;
   final List<EtapaConfiguracion> etapasAbiertas;
   final DashboardProvider provider;
+  final void Function(ProgresoConfiguracion progreso) actualizarProgreso;
 
   const _EscenarioDashboard({
     required this.abridor,
     required this.etapasAbiertas,
     required this.provider,
+    this.actualizarProgreso = _sinActualizar,
   });
 }
+
+class _EstadoProgresoRecargable extends StatefulWidget {
+  final ProgresoConfiguracion progreso;
+  final Widget Function(BuildContext context, ProgresoConfiguracion progreso)
+  builder;
+
+  const _EstadoProgresoRecargable({
+    super.key,
+    required this.progreso,
+    required this.builder,
+  });
+
+  @override
+  State<_EstadoProgresoRecargable> createState() =>
+      _EstadoProgresoRecargableState();
+}
+
+class _EstadoProgresoRecargableState extends State<_EstadoProgresoRecargable> {
+  late ProgresoConfiguracion _progreso = widget.progreso;
+
+  void actualizarProgreso(ProgresoConfiguracion nuevo) {
+    setState(() => _progreso = nuevo);
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.builder(context, _progreso);
+}
+
+void _sinActualizar(ProgresoConfiguracion progreso) {}
 
 class _AbridorFake {
   final bool resultado;
@@ -488,6 +664,22 @@ ProgresoConfiguracion _progresoPendiente() => ProgresoConfiguracion(
   plantilla: null,
   plantillaProvieneDeCampoOficial: false,
   rubroCompleto: false,
+  negocioCompleto: false,
+  productosCompletos: false,
+  setupCompletePersistido: false,
+  productosConfirmadosPersistidos: false,
+);
+
+ProgresoConfiguracion _progresoConRubro() => ProgresoConfiguracion(
+  catalogo: CatalogoNegocio(
+    rubro: 'Bodega',
+    categorias: const ['Bebidas'],
+    unidadesMedida: const [],
+  ),
+  slug: '',
+  plantilla: null,
+  plantillaProvieneDeCampoOficial: false,
+  rubroCompleto: true,
   negocioCompleto: false,
   productosCompletos: false,
   setupCompletePersistido: false,
