@@ -72,6 +72,15 @@ class NegocioRepository
     return negocioId;
   }
 
+  /// Prefiere el negocioId recibido (ya resuelto en la sesión) y solo relée
+  /// users/{uid} si llega null o vacío, conservando el comportamiento
+  /// histórico de las llamadas que aún no lo inyectan.
+  Future<String> _resolverNegocioId(String uid, String? negocioId) async {
+    final limpio = negocioId?.trim();
+    if (limpio != null && limpio.isNotEmpty) return limpio;
+    return _obtenerNegocioId(uid);
+  }
+
   @override
   Future<CatalogoNegocio> obtenerCatalogoNegocio(String uid) async {
     final negocioId = await _obtenerNegocioId(uid);
@@ -116,8 +125,7 @@ class NegocioRepository
     String uid, {
     String? negocioId,
   }) async {
-    final negocioIdResuelto =
-        negocioId ?? await _obtenerNegocioIdOpcional(uid);
+    final negocioIdResuelto = negocioId ?? await _obtenerNegocioIdOpcional(uid);
     if (negocioIdResuelto == null) {
       return ProgresoConfiguracion(
         catalogo: CatalogoNegocio(
@@ -329,11 +337,12 @@ class NegocioRepository
     required String uid,
     required List<String> categorias,
     required List<String> unidades,
+    String? negocioId,
   }) async {
-    final negocioId = await _obtenerNegocioId(uid);
+    final negocioIdResuelto = await _resolverNegocioId(uid, negocioId);
     final productos = _firestore
         .collection('negocios')
-        .doc(negocioId)
+        .doc(negocioIdResuelto)
         .collection('productos');
     for (final categoria in categorias) {
       final resultado = await productos
@@ -430,6 +439,7 @@ class NegocioRepository
     required List<ZonaDelivery> zonasDelivery,
     required List<HorarioDia> horarios,
     required List<ConfigPagoMetodo> metodosPagoConfig,
+    String? negocioId,
   }) async {
     final zonasMap = zonasDelivery
         .map((z) => {'zona': z.zona, 'costo': double.tryParse(z.costo) ?? 0.0})
@@ -509,8 +519,8 @@ class NegocioRepository
       'onboardingBusinessCompletedAt': FieldValue.serverTimestamp(),
     };
 
-    final negocioId = await _obtenerNegocioId(uid);
-    final negocioRef = _firestore.collection('negocios').doc(negocioId);
+    final negocioIdResuelto = await _resolverNegocioId(uid, negocioId);
+    final negocioRef = _firestore.collection('negocios').doc(negocioIdResuelto);
     await _firestore.runTransaction((transaction) async {
       final anterior = await transaction.get(negocioRef);
       final datosAnteriores = anterior.data() ?? const <String, dynamic>{};
@@ -525,7 +535,7 @@ class NegocioRepository
             .doc(slugNuevo);
         transaction.set(
           publicoRef,
-          _construirProyeccionPublica(negocioId, datosActuales),
+          _construirProyeccionPublica(negocioIdResuelto, datosActuales),
         );
       }
       if (slugAnterior.isNotEmpty && slugAnterior != slugNuevo) {

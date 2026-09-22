@@ -36,12 +36,16 @@ import '../../../../domain/models/tipo_unidad.dart';
 class ConfiguracionNegocioProvider extends ChangeNotifier {
   final NegocioRepository _repository;
   final String rubro;
+
+  /// Resuelto en la sesión por AccesoProvider; evita releer users/{uid}.
+  final String? negocioId;
   late final Set<String> _categoriasIniciales;
   late final Set<String> _unidadesIniciales;
   bool _disposed = false;
 
   ConfiguracionNegocioProvider({
     required this.rubro,
+    this.negocioId,
     Map<String, dynamic>? configuracionInicial,
     NegocioRepository? repository,
   }) : _repository = repository ?? NegocioRepository() {
@@ -503,6 +507,7 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
           (categoriasEliminadas.isNotEmpty || unidadesEliminadas.isNotEmpty) &&
           await _repository.existenProductosDependientes(
             uid: uid,
+            negocioId: negocioId,
             categorias: categoriasEliminadas,
             unidades: unidadesEliminadas,
           );
@@ -514,6 +519,7 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
       }
       await _repository.guardarConfiguracionNegocio(
         uid: uid,
+        negocioId: negocioId,
         rubro: rubro,
         nombreNegocio: _nombreNegocio,
         slug: slugFinal,

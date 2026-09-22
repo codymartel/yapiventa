@@ -191,6 +191,141 @@ void main() {
   );
 
   test(
+    'guardarConfiguracionNegocio con negocioId evita leer users/{uid}',
+    () async {
+      final negocioId = _negocioIdDe('usuario-1');
+      await firestore.collection('negocios').doc(negocioId).set({
+        'propietarioUid': 'usuario-1',
+      });
+      firestore.usersCollectionAccesses = 0;
+
+      await _guardarConfiguracionBasica(repository, negocioId: negocioId);
+
+      expect(firestore.usersCollectionAccesses, 0);
+      final datos =
+          (await firestore.collection('negocios').doc(negocioId).get()).data()!;
+      expect(datos['nombreNegocio'], 'Bodega Ana');
+      expect(
+        (await firestore
+                .collection('negocios_publicos')
+                .doc('bodega-ana')
+                .get())
+            .exists,
+        isTrue,
+      );
+    },
+  );
+
+  test(
+    'existenProductosDependientes con negocioId evita leer users/{uid}',
+    () async {
+      final negocioId = _negocioIdDe('usuario-1');
+      await firestore
+          .collection('negocios')
+          .doc(negocioId)
+          .collection('productos')
+          .doc('producto-1')
+          .set({'categoria': 'Bebidas'});
+      firestore.usersCollectionAccesses = 0;
+
+      final dependencia = await repository.existenProductosDependientes(
+        uid: 'usuario-1',
+        negocioId: negocioId,
+        categorias: ['Bebidas'],
+        unidades: const [],
+      );
+
+      expect(dependencia, isTrue);
+      expect(firestore.usersCollectionAccesses, 0);
+    },
+  );
+
+  test(
+    'sin negocioId conserva el fallback que resuelve desde users/{uid}',
+    () async {
+      await _prepararNegocio(firestore, 'usuario-1');
+      firestore.usersCollectionAccesses = 0;
+
+      await _guardarConfiguracionBasica(repository);
+
+      expect(firestore.usersCollectionAccesses, 1);
+      final datos =
+          (await firestore
+                  .collection('negocios')
+                  .doc(_negocioIdDe('usuario-1'))
+                  .get())
+              .data()!;
+      expect(datos['nombreNegocio'], 'Bodega Ana');
+    },
+  );
+
+  test(
+    'negocioId vacío usa el fallback y no escribe en rutas incorrectas',
+    () async {
+      await _prepararNegocio(firestore, 'usuario-1');
+      firestore.usersCollectionAccesses = 0;
+
+      await _guardarConfiguracionBasica(repository, negocioId: '   ');
+
+      expect(firestore.usersCollectionAccesses, 1);
+      final negocios = await firestore.collection('negocios').get();
+      expect(negocios.docs, hasLength(1));
+      expect(negocios.docs.single.id, _negocioIdDe('usuario-1'));
+    },
+  );
+
+  test(
+    'crear/actualizar produce los mismos documentos con y sin negocioId',
+    () async {
+      final firestoreFallback = _MergeAwareFakeFirebaseFirestore();
+      await _prepararNegocio(firestoreFallback, 'usuario-1');
+      await _guardarConfiguracionBasica(
+        NegocioRepository(firestore: firestoreFallback),
+      );
+
+      final firestoreDirecto = _MergeAwareFakeFirebaseFirestore();
+      await firestoreDirecto
+          .collection('negocios')
+          .doc(_negocioIdDe('usuario-1'))
+          .set({'propietarioUid': 'usuario-1'});
+      await _guardarConfiguracionBasica(
+        NegocioRepository(firestore: firestoreDirecto),
+        negocioId: _negocioIdDe('usuario-1'),
+      );
+
+      Map<String, dynamic> sinTimestamp(Map<String, dynamic> datos) =>
+          Map.of(datos)..remove('onboardingBusinessCompletedAt');
+      final docFallback =
+          (await firestoreFallback
+                  .collection('negocios')
+                  .doc(_negocioIdDe('usuario-1'))
+                  .get())
+              .data()!;
+      final docDirecto =
+          (await firestoreDirecto
+                  .collection('negocios')
+                  .doc(_negocioIdDe('usuario-1'))
+                  .get())
+              .data()!;
+      final publicoFallback =
+          (await firestoreFallback
+                  .collection('negocios_publicos')
+                  .doc('bodega-ana')
+                  .get())
+              .data()!;
+      final publicoDirecto =
+          (await firestoreDirecto
+                  .collection('negocios_publicos')
+                  .doc('bodega-ana')
+                  .get())
+              .data()!;
+
+      expect(sinTimestamp(docDirecto), sinTimestamp(docFallback));
+      expect(publicoDirecto, publicoFallback);
+    },
+  );
+
+  test(
     'conserva webActiva, plantillaWeb y configPagos al actualizar',
     () async {
       final negocioId = await _prepararNegocio(
@@ -1703,9 +1838,11 @@ Future<void> _guardarConfiguracionBasica(
   NegocioRepository repository, {
   String nombreNegocio = 'Bodega Ana',
   String slug = 'bodega-ana',
+  String? negocioId,
 }) {
   return repository.guardarConfiguracionNegocio(
     uid: 'usuario-1',
+    negocioId: negocioId,
     rubro: 'Bodega',
     nombreNegocio: nombreNegocio,
     slug: slug,

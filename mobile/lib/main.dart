@@ -179,6 +179,7 @@ class _RutaConAcceso extends StatelessWidget {
         return ChangeNotifierProvider(
           create: (_) => ConfiguracionNegocioProvider(
             rubro: progreso.catalogo.rubro,
+            negocioId: acceso.negocioId,
             configuracionInicial: progreso.catalogo.configuracionInicial,
             repository: context.read<NegocioRepository>(),
           ),

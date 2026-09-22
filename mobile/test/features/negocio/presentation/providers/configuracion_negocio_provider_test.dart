@@ -195,4 +195,105 @@ void main() {
       '999999999',
     );
   });
+
+  test('con negocioId inyectado guarda sin leer el perfil de users', () async {
+    final firestore = FakeFirebaseFirestore();
+    final provider = ConfiguracionNegocioProvider(
+      rubro: 'Bodega',
+      negocioId: 'negocio-1',
+      repository: NegocioRepository(firestore: firestore),
+    );
+    provider.nombreNegocio = 'Bodega Ana';
+    provider.telefono = '999999999';
+    provider.direccion = 'Av. Lima 123';
+    provider.referencia = 'Frente al parque';
+
+    final guardado = await provider.guardar('usuario-sin-perfil');
+
+    expect(guardado, isTrue);
+    expect(provider.guardando, isFalse);
+    final perfil = await firestore
+        .collection('users')
+        .doc('usuario-sin-perfil')
+        .get();
+    expect(perfil.exists, isFalse);
+    final datos =
+        (await firestore.collection('negocios').doc('negocio-1').get()).data()!;
+    expect(datos['nombreNegocio'], 'Bodega Ana');
+    expect(datos['onboardingBusinessRubro'], 'Bodega');
+    expect(
+      (await firestore
+              .collection('negocios_publicos')
+              .doc('bodega-ana-9999')
+              .get())
+          .exists,
+      isTrue,
+    );
+  });
+
+  test(
+    'negocioId vacío conserva el fallback y no escribe en rutas incorrectas',
+    () async {
+      final firestore = FakeFirebaseFirestore();
+      await firestore.collection('users').doc('usuario-1').set({
+        'email': 'ana@example.com',
+        'negocioId': 'negocio-1',
+      });
+      final provider = ConfiguracionNegocioProvider(
+        rubro: 'Bodega',
+        negocioId: '   ',
+        repository: NegocioRepository(firestore: firestore),
+      );
+      provider.nombreNegocio = 'Bodega Ana';
+      provider.telefono = '999999999';
+      provider.direccion = 'Av. Lima 123';
+      provider.referencia = 'Frente al parque';
+
+      final guardado = await provider.guardar('usuario-1');
+
+      expect(guardado, isTrue);
+      expect(provider.errorValidacion, isNull);
+      final negocios = await firestore.collection('negocios').get();
+      expect(negocios.docs, hasLength(1));
+      expect(negocios.docs.single.id, 'negocio-1');
+    },
+  );
+
+  test('valida dependencias con negocioId sin depender del perfil', () async {
+    final firestore = FakeFirebaseFirestore();
+    await firestore
+        .collection('negocios')
+        .doc('negocio-1')
+        .collection('productos')
+        .doc('producto-1')
+        .set({'categoria': 'Bebidas'});
+    final provider = ConfiguracionNegocioProvider(
+      rubro: 'Bodega',
+      negocioId: 'negocio-1',
+      configuracionInicial: {
+        'nombreNegocio': 'Bodega Ana',
+        'telefono': '+51999999999',
+        'direccion': 'Av. Lima 123 (Ref: Frente al parque)',
+        'categorias': ['Bebidas'],
+        'unidadesMedida': [
+          {
+            'nombre': 'Unidad',
+            'tipo': 'entera',
+            'fraccionesPermitidas': <String>[],
+            'esOpcional': false,
+          },
+        ],
+        'delivery': false,
+      },
+      repository: NegocioRepository(firestore: firestore),
+    );
+    provider.eliminarCategoria(0);
+    provider.agregarCategoria('Snacks');
+
+    final guardado = await provider.guardar('usuario-sin-perfil');
+
+    expect(guardado, isFalse);
+    expect(provider.guardando, isFalse);
+    expect(provider.errorValidacion, contains('Hay productos'));
+  });
 }
