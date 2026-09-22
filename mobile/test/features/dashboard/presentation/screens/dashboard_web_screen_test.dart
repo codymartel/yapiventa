@@ -4,8 +4,10 @@ import 'package:mobile/core/widgets/authenticated_shell.dart';
 import 'package:mobile/features/auth/domain/politica_acceso.dart';
 import 'package:mobile/features/dashboard/presentation/providers/dashboard_provider.dart';
 import 'package:mobile/features/dashboard/presentation/screens/dashboard_web_screen.dart';
+import 'package:mobile/features/dashboard/presentation/widgets/dashboard_attention_panel.dart';
 import 'package:mobile/features/dashboard/presentation/widgets/dashboard_sidebar.dart';
 import 'package:mobile/features/dashboard/presentation/widgets/dashboard_top_bar.dart';
+import 'package:mobile/features/dashboard/presentation/widgets/rubro_contextual_panel.dart';
 import 'package:mobile/features/negocio/domain/models/catalogo_negocio.dart';
 import 'package:mobile/features/negocio/domain/models/plantilla_web.dart';
 import 'package:mobile/features/negocio/domain/models/progreso_configuracion.dart';
@@ -377,7 +379,7 @@ void main() {
     expect(sidebar.destinoActivo, DashboardDestination.inicio);
   });
 
-  testWidgets('oculta la ayuda contextual mientras el Rubro está abierto', (
+  testWidgets('Rubro muestra su panel contextual y oculta el de Inicio', (
     tester,
   ) async {
     await mostrarDashboard(tester, progreso: _progresoPendiente());
@@ -386,6 +388,8 @@ void main() {
       find.byKey(const Key('authenticated-shell-contextual-panel')),
       findsOneWidget,
     );
+    expect(find.byType(RubroContextualPanel), findsNothing);
+    expect(find.byType(DashboardAttentionPanel), findsOneWidget);
 
     await tester.tap(find.text('Continuar configuración'));
     await tester.pumpAndSettle();
@@ -393,8 +397,10 @@ void main() {
     expect(find.byType(SeleccionNegocioFlow), findsOneWidget);
     expect(
       find.byKey(const Key('authenticated-shell-contextual-panel')),
-      findsNothing,
+      findsOneWidget,
     );
+    expect(find.byType(RubroContextualPanel), findsOneWidget);
+    expect(find.byType(DashboardAttentionPanel), findsNothing);
     expect(find.text('Necesita tu atención'), findsNothing);
   });
 
@@ -417,8 +423,177 @@ void main() {
         find.byKey(const Key('authenticated-shell-contextual-panel')),
         findsOneWidget,
       );
+      expect(find.byType(RubroContextualPanel), findsNothing);
+      expect(find.byType(DashboardAttentionPanel), findsOneWidget);
+      expect(find.text('Necesita tu atención'), findsOneWidget);
     },
   );
+
+  testWidgets('Inicio muestra el panel de atención y oculta el de Rubro', (
+    tester,
+  ) async {
+    await mostrarDashboard(tester);
+
+    expect(find.byType(DashboardAttentionPanel), findsOneWidget);
+    expect(find.byType(RubroContextualPanel), findsNothing);
+  });
+
+  testWidgets('la ayuda de Rubro usa el panel derecho en escritorio', (
+    tester,
+  ) async {
+    for (final ancho in const [1050.0, 1440.0]) {
+      await mostrarDashboard(
+        tester,
+        size: Size(ancho, 1000),
+        progreso: _progresoPendiente(),
+      );
+
+      await tester.tap(find.text('Continuar configuración'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SeleccionNegocioFlow), findsOneWidget);
+      expect(
+        find.byKey(const Key('authenticated-shell-contextual-panel')),
+        findsOneWidget,
+      );
+      expect(find.byType(RubroContextualPanel), findsOneWidget);
+      expect(find.text('Ayuda contextual'), findsNothing);
+
+      await tester.tap(find.byTooltip('Volver al dashboard'));
+      await tester.pumpAndSettle();
+    }
+  });
+
+  testWidgets(
+    'en compacto la ayuda de Rubro es plegable y cerrada por defecto',
+    (tester) async {
+      for (final ancho in const [768.0, 1049.0]) {
+        await mostrarDashboard(
+          tester,
+          size: Size(ancho, 1000),
+          progreso: _progresoPendiente(),
+        );
+
+        await tester.tap(find.text('Continuar configuración'));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(SeleccionNegocioFlow), findsOneWidget);
+        expect(
+          find.byKey(const Key('authenticated-shell-contextual-panel')),
+          findsNothing,
+        );
+        expect(
+          find.byKey(const Key('authenticated-shell-contextual-expansion')),
+          findsOneWidget,
+        );
+        expect(find.text('Ayuda contextual'), findsOneWidget);
+
+        final tileFinder = find.byKey(
+          const Key('authenticated-shell-contextual-expansion'),
+        );
+        expect(tester.getRect(tileFinder).height, lessThan(160));
+
+        await tester.tap(find.text('Ayuda contextual'));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(RubroContextualPanel), findsOneWidget);
+        expect(find.text('¿Qué es un rubro?').hitTestable(), findsOneWidget);
+        expect(tester.getRect(tileFinder).height, greaterThan(200));
+        expect(find.text('Necesita tu atención'), findsNothing);
+
+        await tester.tap(find.text('Ayuda contextual'));
+        await tester.pumpAndSettle();
+        expect(tester.getRect(tileFinder).height, lessThan(160));
+
+        await tester.tap(find.byTooltip('Volver al dashboard'));
+        await tester.pumpAndSettle();
+      }
+    },
+  );
+
+  testWidgets('en 360 px la ayuda de Rubro es accesible sin overflow', (
+    tester,
+  ) async {
+    await mostrarDashboard(
+      tester,
+      size: const Size(360, 700),
+      progreso: _progresoPendiente(),
+    );
+
+    await tester.ensureVisible(find.text('Continuar configuración'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Continuar configuración'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SeleccionNegocioFlow), findsOneWidget);
+    expect(
+      find.byKey(const Key('authenticated-shell-contextual-expansion')),
+      findsOneWidget,
+    );
+    expect(find.text('Ayuda contextual'), findsOneWidget);
+    expect(find.byType(Scaffold), findsOneWidget);
+    expect(find.byType(DashboardTopBar), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.text('Ayuda contextual'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('¿Qué es un rubro?'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('la ayuda de Rubro soporta texto ampliado sin overflow', (
+    tester,
+  ) async {
+    await mostrarDashboard(
+      tester,
+      size: const Size(1050, 1000),
+      textScaler: const TextScaler.linear(1.3),
+      progreso: _progresoPendiente(),
+    );
+
+    await tester.ensureVisible(find.text('Continuar configuración'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Continuar configuración'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(RubroContextualPanel), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.byTooltip('Volver al dashboard'));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('el panel de Rubro se mantiene sin overflow a escala 1.3 y 2.0', (
+    tester,
+  ) async {
+    for (final escala in const [
+      TextScaler.linear(1.3),
+      TextScaler.linear(2.0),
+    ]) {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(textScaler: escala),
+              child: const Scaffold(
+                body: SingleChildScrollView(
+                  child: SizedBox(
+                    width: AuthenticatedShell.contextualPanelWidth,
+                    child: RubroContextualPanel(),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(RubroContextualPanel), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    }
+  });
 
   testWidgets('una etapa bloqueada no monta el flow de Rubro', (tester) async {
     final escenario = await mostrarDashboard(

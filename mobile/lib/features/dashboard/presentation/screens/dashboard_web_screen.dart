@@ -9,6 +9,7 @@ import '../../../negocio/presentation/widgets/seleccion_negocio_flow.dart';
 import '../providers/dashboard_provider.dart';
 import '../state/dashboard_ui_state.dart';
 import '../widgets/dashboard_attention_panel.dart';
+import '../widgets/rubro_contextual_panel.dart';
 import '../widgets/dashboard_home_content.dart';
 import '../widgets/dashboard_sidebar.dart';
 import '../widgets/dashboard_top_bar.dart';
@@ -89,7 +90,7 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
         onCerrarSesion: widget.onCerrarSesion,
       ),
       contextualPanel: _rubroAbierta
-          ? null
+          ? const RubroContextualPanel()
           : DashboardAttentionPanel(
               items: state.necesitanAtencion,
               productos: state.productosDestacados,

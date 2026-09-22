@@ -136,10 +136,9 @@ class _CompactBody extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final esTelefono = constraints.maxWidth < 600;
         return Column(
           children: [
-            if (contextualPanel != null && !esTelefono)
+            if (contextualPanel != null)
               Material(
                 color: AppColors.superficie,
                 child: ExpansionTile(
