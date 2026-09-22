@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -79,27 +81,37 @@ class _PasoNegocioState extends State<PasoNegocio> {
   @override
   Widget build(BuildContext context) {
     final p = context.watch<ConfiguracionNegocioProvider>();
-    final esDesktop = MediaQuery.sizeOf(context).width >= 600;
 
-    final contenido = esDesktop
-        ? _buildDesktop(context, p)
-        : _buildMovil(context, p);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final esDesktop = constraints.maxWidth >= 600;
+        final anchoContenido = esDesktop
+            ? math.min(constraints.maxWidth, 720.0) - 48
+            : constraints.maxWidth - 40;
+        final contenido = esDesktop
+            ? _buildDesktop(context, p, anchoContenido)
+            : _buildMovil(context, p);
 
-    if (esDesktop) {
-      return Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
-          child: ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
-            children: contenido,
-          ),
-        ),
-      );
-    }
+        if (esDesktop) {
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 720),
+              child: ListView(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 28,
+                ),
+                children: contenido,
+              ),
+            ),
+          );
+        }
 
-    return ListView(
-      padding: const EdgeInsets.all(20),
-      children: contenido,
+        return ListView(
+          padding: const EdgeInsets.all(20),
+          children: contenido,
+        );
+      },
     );
   }
 
@@ -107,7 +119,9 @@ class _PasoNegocioState extends State<PasoNegocio> {
   List<Widget> _buildDesktop(
     BuildContext context,
     ConfiguracionNegocioProvider p,
+    double anchoContenido,
   ) {
+    final apilado = anchoContenido < 560;
     return [
       Text(
         'Datos del negocio',
@@ -139,22 +153,18 @@ class _PasoNegocioState extends State<PasoNegocio> {
             children: [
               _seccionLabel('Información principal'),
               const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _nombreController,
-                      onChanged: (v) => p.nombreNegocio = v,
-                      style: TextStyle(color: AppColors.texto),
-                      decoration: _decoracion(
-                        'Nombre del negocio *',
-                        'Ej: Carnes Don José',
-                      ),
-                    ),
+              _unPar(
+                apilado,
+                TextField(
+                  controller: _nombreController,
+                  onChanged: (v) => p.nombreNegocio = v,
+                  style: TextStyle(color: AppColors.texto),
+                  decoration: _decoracion(
+                    'Nombre del negocio *',
+                    'Ej: Carnes Don José',
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(child: _campoTelefono(p)),
-                ],
+                ),
+                _campoTelefono(p),
               ),
               if (p.faltaNombre && p.nombreNegocio.isNotEmpty)
                 _error('Mínimo 3 caracteres'),
@@ -164,32 +174,26 @@ class _PasoNegocioState extends State<PasoNegocio> {
                 ),
 
               const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _direccionController,
-                      onChanged: (v) => p.direccion = v,
-                      style: TextStyle(color: AppColors.texto),
-                      decoration: _decoracion(
-                        'Dirección *',
-                        'Ej: Av. Perú 123',
-                      ),
-                    ),
+              _unPar(
+                apilado,
+                TextField(
+                  controller: _direccionController,
+                  onChanged: (v) => p.direccion = v,
+                  style: TextStyle(color: AppColors.texto),
+                  decoration: _decoracion(
+                    'Dirección *',
+                    'Ej: Av. Perú 123',
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: TextField(
-                      controller: _referenciaController,
-                      onChanged: (v) => p.referencia = v,
-                      style: TextStyle(color: AppColors.texto),
-                      decoration: _decoracion(
-                        'Referencia *',
-                        'Ej: Frente a la plaza',
-                      ),
-                    ),
+                ),
+                TextField(
+                  controller: _referenciaController,
+                  onChanged: (v) => p.referencia = v,
+                  style: TextStyle(color: AppColors.texto),
+                  decoration: _decoracion(
+                    'Referencia *',
+                    'Ej: Frente a la plaza',
                   ),
-                ],
+                ),
               ),
             ],
           ),
@@ -224,78 +228,55 @@ class _PasoNegocioState extends State<PasoNegocio> {
           padding: const EdgeInsets.all(24),
           child: Column(
             children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _rucController,
-                      onChanged: (v) => p.ruc = v,
-                      style: TextStyle(color: AppColors.texto),
-                      decoration: _decoracion(
-                        'RUC / documento tributario',
-                        'Opcional',
-                      ),
-                    ),
+              _unPar(
+                apilado,
+                TextField(
+                  controller: _rucController,
+                  onChanged: (v) => p.ruc = v,
+                  style: TextStyle(color: AppColors.texto),
+                  decoration: _decoracion(
+                    'RUC / documento tributario',
+                    'Opcional',
                   ),
-                  const SizedBox(width: 16),
-                  const Expanded(child: SizedBox.shrink()),
-                ],
+                ),
               ),
               const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _facebookController,
-                      onChanged: (v) => p.linkFacebook = v,
-                      style: TextStyle(color: AppColors.texto),
-                      decoration: _decoracion(
-                        'Facebook',
-                        'https://facebook.com/...',
-                      ),
-                    ),
+              _unPar(
+                apilado,
+                TextField(
+                  controller: _facebookController,
+                  onChanged: (v) => p.linkFacebook = v,
+                  style: TextStyle(color: AppColors.texto),
+                  decoration: _decoracion(
+                    'Facebook',
+                    'https://facebook.com/...',
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: TextField(
-                      controller: _tiktokController,
-                      onChanged: (v) => p.linkTiktok = v,
-                      style: TextStyle(color: AppColors.texto),
-                      decoration: _decoracion(
-                        'TikTok',
-                        'https://tiktok.com/...',
-                      ),
-                    ),
-                  ),
-                ],
+                ),
+                TextField(
+                  controller: _tiktokController,
+                  onChanged: (v) => p.linkTiktok = v,
+                  style: TextStyle(color: AppColors.texto),
+                  decoration: _decoracion('TikTok', 'https://tiktok.com/...'),
+                ),
               ),
               const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _instagramController,
-                      onChanged: (v) => p.linkInstagram = v,
-                      style: TextStyle(color: AppColors.texto),
-                      decoration: _decoracion(
-                        'Instagram',
-                        'https://instagram.com/...',
-                      ),
-                    ),
+              _unPar(
+                apilado,
+                TextField(
+                  controller: _instagramController,
+                  onChanged: (v) => p.linkInstagram = v,
+                  style: TextStyle(color: AppColors.texto),
+                  decoration: _decoracion(
+                    'Instagram',
+                    'https://instagram.com/...',
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: TextField(
-                      controller: _youtubeController,
-                      onChanged: (v) => p.linkYoutube = v,
-                      style: TextStyle(color: AppColors.texto),
-                      decoration: _decoracion(
-                        'YouTube',
-                        'https://youtube.com/...',
-                      ),
-                    ),
-                  ),
-                ],
+                ),
+                TextField(
+                  controller: _youtubeController,
+                  onChanged: (v) => p.linkYoutube = v,
+                  style: TextStyle(color: AppColors.texto),
+                  decoration: _decoracion('YouTube', 'https://youtube.com/...'),
+                ),
               ),
               if (p.linksMalos) ...[
                 const SizedBox(height: 8),
@@ -426,6 +407,30 @@ class _PasoNegocioState extends State<PasoNegocio> {
   }
 
   // ── Helpers compartidos ───────────────────────────────────────────────
+  Widget _unPar(bool apilado, Widget izquierda, [Widget? derecha]) {
+    if (apilado) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          izquierda,
+          if (derecha != null) ...[
+            const SizedBox(height: 16),
+            derecha,
+          ],
+        ],
+      );
+    }
+    return Row(
+      children: [
+        Expanded(child: izquierda),
+        if (derecha != null) ...[
+          const SizedBox(width: 16),
+          Expanded(child: derecha),
+        ],
+      ],
+    );
+  }
+
   Widget _campoTelefono(ConfiguracionNegocioProvider p) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -435,9 +440,27 @@ class _PasoNegocioState extends State<PasoNegocio> {
           style: TextStyle(color: AppColors.muted, fontSize: 12),
         ),
         const SizedBox(height: 6),
-        Row(
-          children: [
-            DropdownButton<PaisTelefono>(
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final apilado = constraints.maxWidth < 360;
+            final tel = TextField(
+              controller: _telefonoController,
+              onChanged: (v) => p.telefono = v,
+              keyboardType: TextInputType.number,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(
+                  p.paisTelefono.digitosEsperados,
+                ),
+              ],
+              style: TextStyle(color: AppColors.texto),
+              decoration: _decoracion(
+                null,
+                '${p.paisTelefono.digitosEsperados} dígitos',
+              ),
+            );
+            final prefijo = DropdownButton<PaisTelefono>(
+              isExpanded: apilado,
               value: p.paisTelefono,
               dropdownColor: AppColors.card,
               underline: const SizedBox(),
@@ -456,27 +479,25 @@ class _PasoNegocioState extends State<PasoNegocio> {
                   _actualizarTelefonoVisible(p.telefono);
                 }
               },
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: TextField(
-                controller: _telefonoController,
-                onChanged: (v) => p.telefono = v,
-                keyboardType: TextInputType.number,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  LengthLimitingTextInputFormatter(
-                    p.paisTelefono.digitosEsperados,
-                  ),
+            );
+            if (apilado) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(width: double.infinity, child: prefijo),
+                  const SizedBox(height: 8),
+                  SizedBox(width: double.infinity, child: tel),
                 ],
-                style: TextStyle(color: AppColors.texto),
-                decoration: _decoracion(
-                  null,
-                  '${p.paisTelefono.digitosEsperados} dígitos',
-                ),
-              ),
-            ),
-          ],
+              );
+            }
+            return Row(
+              children: [
+                prefijo,
+                const SizedBox(width: 8),
+                Expanded(child: tel),
+              ],
+            );
+          },
         ),
       ],
     );
