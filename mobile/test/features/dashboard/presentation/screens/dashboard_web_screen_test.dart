@@ -28,6 +28,7 @@ import 'package:mobile/features/productos/domain/models/pagina_productos.dart';
 import 'package:mobile/features/productos/domain/models/producto.dart';
 import 'package:mobile/features/productos/presentation/providers/productos_provider.dart';
 import 'package:mobile/features/productos/presentation/widgets/productos_content.dart';
+import 'package:mobile/features/productos/presentation/widgets/productos_contextual_panel.dart';
 import 'package:mobile/features/productos/presentation/widgets/productos_flow.dart';
 import 'package:mobile/features/productos/productos_dependencies.dart';
 import 'package:mocktail/mocktail.dart';
@@ -540,7 +541,7 @@ void main() {
   );
 
   testWidgets(
-    'Productos oculta el panel contextual del shell y conserva sus paneles',
+    'Productos usa un único panel de ayuda en el shell y restaura Inicio',
     (tester) async {
       await mostrarDashboard(tester, progreso: _progresoConNegocio());
 
@@ -548,6 +549,8 @@ void main() {
         find.byKey(const Key('authenticated-shell-contextual-panel')),
         findsOneWidget,
       );
+      expect(find.byType(DashboardAttentionPanel), findsOneWidget);
+      expect(find.byType(ProductosContextualPanel), findsNothing);
 
       await tester.tap(find.text('Productos'));
       await tester.pumpAndSettle();
@@ -555,16 +558,18 @@ void main() {
       expect(find.byType(ProductosFlow), findsOneWidget);
       expect(
         find.byKey(const Key('authenticated-shell-contextual-panel')),
-        findsNothing,
+        findsOneWidget,
       );
+      expect(find.byType(ProductosContextualPanel), findsOneWidget);
       expect(find.byType(DashboardAttentionPanel), findsNothing);
-      expect(find.byKey(const Key('fases-negocio-panel')), findsOneWidget);
-      expect(find.byKey(const Key('ayuda-productos-panel')), findsOneWidget);
+      expect(find.byKey(const Key('fases-negocio-panel')), findsNothing);
+      expect(find.text('¿Cómo funciona?'), findsOneWidget);
 
       await tester.tap(find.text('Inicio'));
       await tester.pumpAndSettle();
 
       expect(find.byType(ProductosFlow), findsNothing);
+      expect(find.byType(ProductosContextualPanel), findsNothing);
       expect(
         find.byKey(const Key('authenticated-shell-contextual-panel')),
         findsOneWidget,
@@ -572,6 +577,173 @@ void main() {
       expect(find.byType(DashboardAttentionPanel), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'en escritorio amplio Productos no muestra dos paneles de ayuda',
+    (tester) async {
+      await mostrarDashboard(
+        tester,
+        size: const Size(1720, 1000),
+        progreso: _progresoConNegocio(),
+      );
+
+      await tester.tap(find.text('Productos'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ProductosFlow), findsOneWidget);
+      expect(find.byType(ProductosContextualPanel), findsOneWidget);
+      expect(find.byKey(const Key('fases-negocio-panel')), findsNothing);
+      expect(find.byKey(const Key('ayuda-productos-panel')), findsNothing);
+      expect(find.text('¿Cómo funciona?'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'en compacto la ayuda de Productos es plegable y cerrada por defecto',
+    (tester) async {
+      for (final ancho in const [768.0, 1049.0]) {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await mostrarDashboard(
+          tester,
+          size: Size(ancho, 1000),
+          progreso: _progresoConNegocio(),
+        );
+
+        await tester.tap(find.byTooltip('Abrir menú'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Productos'));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(ProductosFlow), findsOneWidget);
+        expect(
+          find.byKey(const Key('authenticated-shell-contextual-panel')),
+          findsNothing,
+        );
+        expect(
+          find.byKey(const Key('authenticated-shell-contextual-expansion')),
+          findsOneWidget,
+        );
+        expect(find.text('Ayuda contextual'), findsOneWidget);
+        expect(find.byType(ProductosContextualPanel), findsNothing);
+        expect(find.byKey(const Key('fases-negocio-panel')), findsNothing);
+
+        final tileFinder = find.byKey(
+          const Key('authenticated-shell-contextual-expansion'),
+        );
+        expect(tester.getRect(tileFinder).height, lessThan(160));
+
+        await tester.tap(find.text('Ayuda contextual'));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(ProductosContextualPanel), findsOneWidget);
+        expect(find.text('¿Cómo funciona?').hitTestable(), findsOneWidget);
+        expect(tester.getRect(tileFinder).height, greaterThan(200));
+
+        await tester.tap(find.text('Ayuda contextual'));
+        await tester.pumpAndSettle();
+        expect(tester.getRect(tileFinder).height, lessThan(160));
+      }
+    },
+  );
+
+  testWidgets('en 360 px la ayuda de Productos es accesible sin overflow', (
+    tester,
+  ) async {
+    await mostrarDashboard(
+      tester,
+      size: const Size(360, 700),
+      progreso: _progresoConNegocio(),
+    );
+
+    await tester.tap(find.byTooltip('Abrir menú'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Productos'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(DashboardSidebar), findsNothing);
+    expect(find.byType(ProductosFlow), findsOneWidget);
+    expect(
+      find.byKey(const Key('authenticated-shell-contextual-expansion')),
+      findsOneWidget,
+    );
+    expect(find.byType(Scaffold), findsOneWidget);
+    expect(find.byType(DashboardTopBar), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    final tileFinder360 = find.byKey(
+      const Key('authenticated-shell-contextual-expansion'),
+    );
+    expect(tester.getRect(tileFinder360).height, lessThan(160));
+
+    await tester.tap(find.text('Ayuda contextual'));
+    await tester.pumpAndSettle();
+
+    expect(tester.getRect(tileFinder360).height, greaterThan(160));
+    expect(find.byType(ProductosContextualPanel), findsOneWidget);
+    expect(find.text('¿Cómo funciona?'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('en compacto la ayuda de Productos soporta texto ampliado', (
+    tester,
+  ) async {
+    for (final escala in const [
+      TextScaler.linear(1.3),
+      TextScaler.linear(2.0),
+    ]) {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await mostrarDashboard(
+        tester,
+        size: const Size(768, 1000),
+        textScaler: escala,
+        progreso: _progresoConNegocio(),
+      );
+
+      await tester.tap(find.byTooltip('Abrir menú'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Productos'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ProductosFlow), findsOneWidget);
+      expect(find.text('Ayuda contextual'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+
+      await tester.tap(find.text('Ayuda contextual'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ProductosContextualPanel), findsOneWidget);
+      expect(find.text('¿Cómo funciona?'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    }
+  });
+
+  testWidgets('la ayuda de Productos soporta texto ampliado en escritorio', (
+    tester,
+  ) async {
+    for (final escala in const [
+      TextScaler.linear(1.3),
+      TextScaler.linear(2.0),
+    ]) {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await mostrarDashboard(
+        tester,
+        size: const Size(1440, 1000),
+        textScaler: escala,
+        progreso: _progresoConNegocio(),
+      );
+
+      await tester.tap(find.text('Productos'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ProductosContextualPanel), findsOneWidget);
+      expect(
+        find.byKey(const Key('authenticated-shell-contextual-panel')),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    }
+  });
 
   testWidgets(
     'el cierre de Productos desde onVolver vuelve a Inicio sin destruir la rama',

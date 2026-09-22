@@ -47,6 +47,7 @@ class ProductosFlow extends StatefulWidget {
   final VoidCallback? onProgressChanged;
   final ProductosDependencies? productosDependencies;
   final CatalogoNegocioDependencies? catalogoDependencies;
+  final bool mostrarPanelesLaterales;
 
   const ProductosFlow({
     super.key,
@@ -58,6 +59,7 @@ class ProductosFlow extends StatefulWidget {
     this.onProgressChanged,
     this.productosDependencies,
     this.catalogoDependencies,
+    this.mostrarPanelesLaterales = true,
   });
 
   @override
@@ -138,6 +140,7 @@ class _ProductosFlowState extends State<ProductosFlow> {
           child: Stack(
             children: [
               ProductosContent(
+                mostrarPanelesLaterales: widget.mostrarPanelesLaterales,
                 onAgregar: () => _abrirFormulario(),
                 onEditar: (producto) => _abrirFormulario(producto: producto),
                 onEliminar: _confirmarEliminacion,

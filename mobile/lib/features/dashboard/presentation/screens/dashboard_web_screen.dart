@@ -11,6 +11,7 @@ import '../../../negocio/presentation/providers/configuracion_negocio_provider.d
 import '../../../negocio/presentation/widgets/configuracion_negocio_flow.dart';
 import '../../../negocio/presentation/widgets/seleccion_negocio_flow.dart';
 import '../../../productos/presentation/widgets/productos_flow.dart';
+import '../../../productos/presentation/widgets/productos_contextual_panel.dart';
 import '../../../productos/productos_dependencies.dart';
 import '../providers/dashboard_provider.dart';
 import '../state/dashboard_ui_state.dart';
@@ -120,8 +121,10 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
         email: widget.email,
         onCerrarSesion: widget.onCerrarSesion,
       ),
-      contextualPanel: _configuracionAbierta || _productosAbierta
+      contextualPanel: _configuracionAbierta
           ? null
+          : _productosAbierta
+          ? const ProductosContextualPanel()
           : _rubroAbierta
           ? const RubroContextualPanel()
           : DashboardAttentionPanel(
@@ -303,6 +306,7 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
       onProgressChanged: widget.recargarProgreso,
       productosDependencies: widget.productosDependencies,
       catalogoDependencies: widget.catalogoDependencies,
+      mostrarPanelesLaterales: false,
     );
   }
 

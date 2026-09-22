@@ -27,9 +27,11 @@ import '../../../negocio/presentation/providers/catalogo_negocio_provider.dart';
 import '../../domain/models/producto.dart';
 import '../providers/productos_provider.dart';
 import 'producto_card.dart';
+import 'productos_contextual_panel.dart';
 
 class ProductosContent extends StatelessWidget {
   final bool mostrarGuiaConfiguracion;
+  final bool mostrarPanelesLaterales;
   final VoidCallback? onAgregar;
   final ValueChanged<Producto>? onEditar;
   final ValueChanged<String>? onEliminar;
@@ -38,6 +40,7 @@ class ProductosContent extends StatelessWidget {
   const ProductosContent({
     super.key,
     this.mostrarGuiaConfiguracion = true,
+    this.mostrarPanelesLaterales = true,
     this.onAgregar,
     this.onEditar,
     this.onEliminar,
@@ -128,6 +131,61 @@ class ProductosContent extends StatelessWidget {
         !provider.cargandoMas &&
         !provider.creandoProducto &&
         !provider.editandoProducto;
+    final contenidoCentral = Expanded(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _EncabezadoProductos(
+            agregarHabilitado: agregarHabilitado,
+            onAgregar: () => onAgregar?.call(),
+          ),
+          const SizedBox(height: 18),
+          ..._mensajes(provider, catalogoProvider),
+          if (provider.cargando && productos.isEmpty)
+            const SizedBox(
+              height: 320,
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (productos.isEmpty && !provider.hayMas)
+            const SizedBox(height: 320, child: _CatalogoVacio())
+          else ...[
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final columnas = constraints.maxWidth >= 1000 ? 4 : 3;
+                return GridView.builder(
+                  key: const Key('productos-grid'),
+                  shrinkWrap: true,
+                  primary: false,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: productos.length,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: columnas,
+                    mainAxisExtent: alturaTarjeta,
+                    crossAxisSpacing: 14,
+                    mainAxisSpacing: 14,
+                  ),
+                  itemBuilder: (context, index) => _construirProductoCard(
+                    context,
+                    provider,
+                    catalogoProvider,
+                    productos[index],
+                    esCuadricula: true,
+                  ),
+                );
+              },
+            ),
+            if (provider.hayMas) _BotonVerMas(provider: provider),
+            if (provider.totalProductos > 0) ...[
+              const SizedBox(height: 12),
+              _BotonElegirPlantilla(
+                catalogoProvider: catalogoProvider,
+                onElegirPlantilla: onElegirPlantilla,
+              ),
+            ],
+          ],
+        ],
+      ),
+    );
     return SingleChildScrollView(
       key: const Key('productos-page-scroll'),
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
@@ -137,69 +195,15 @@ class ProductosContent extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (mostrarGuiaConfiguracion) ...[
+              if (mostrarPanelesLaterales && mostrarGuiaConfiguracion) ...[
                 const SizedBox(width: 196, child: FasesNegocioPanel()),
                 const SizedBox(width: 18),
               ],
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _EncabezadoProductos(
-                      agregarHabilitado: agregarHabilitado,
-                      onAgregar: () => onAgregar?.call(),
-                    ),
-                    const SizedBox(height: 18),
-                    ..._mensajes(provider, catalogoProvider),
-                    if (provider.cargando && productos.isEmpty)
-                      const SizedBox(
-                        height: 320,
-                        child: Center(child: CircularProgressIndicator()),
-                      )
-                    else if (productos.isEmpty && !provider.hayMas)
-                      const SizedBox(height: 320, child: _CatalogoVacio())
-                    else ...[
-                      LayoutBuilder(
-                        builder: (context, constraints) {
-                          final columnas = constraints.maxWidth >= 1000 ? 4 : 3;
-                          return GridView.builder(
-                            key: const Key('productos-grid'),
-                            shrinkWrap: true,
-                            primary: false,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: productos.length,
-                            gridDelegate:
-                                SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: columnas,
-                                  mainAxisExtent: alturaTarjeta,
-                                  crossAxisSpacing: 14,
-                                  mainAxisSpacing: 14,
-                                ),
-                            itemBuilder: (context, index) =>
-                                _construirProductoCard(
-                                  context,
-                                  provider,
-                                  catalogoProvider,
-                                  productos[index],
-                                  esCuadricula: true,
-                                ),
-                          );
-                        },
-                      ),
-                      if (provider.hayMas) _BotonVerMas(provider: provider),
-                      if (provider.totalProductos > 0) ...[
-                        const SizedBox(height: 12),
-                        _BotonElegirPlantilla(
-                          catalogoProvider: catalogoProvider,
-                          onElegirPlantilla: onElegirPlantilla,
-                        ),
-                      ],
-                    ],
-                  ],
-                ),
-              ),
-              const SizedBox(width: 18),
-              const SizedBox(width: 224, child: AyudaProductosPanel()),
+              contenidoCentral,
+              if (mostrarPanelesLaterales) ...[
+                const SizedBox(width: 18),
+                const SizedBox(width: 224, child: ProductosContextualPanel()),
+              ],
             ],
           ),
         ),
@@ -412,43 +416,6 @@ class FasesNegocioPanel extends StatelessWidget {
   }
 }
 
-class AyudaProductosPanel extends StatelessWidget {
-  const AyudaProductosPanel({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return _PanelLateral(
-      key: const Key('ayuda-productos-panel'),
-      titulo: '¿Cómo funciona?',
-      child: const Column(
-        children: [
-          _AyudaProducto(
-            icono: Icons.add_photo_alternate_outlined,
-            titulo: 'Agregar producto',
-            descripcion: 'Crea un producto con imagen, precio y stock.',
-          ),
-          _AyudaProducto(
-            icono: Icons.edit_outlined,
-            titulo: 'Editar',
-            descripcion: 'Modifica sus datos.',
-          ),
-          _AyudaProducto(
-            icono: Icons.visibility_outlined,
-            titulo: 'Disponibilidad',
-            descripcion: 'Activa o desactiva su publicación.',
-          ),
-          _AyudaProducto(
-            icono: Icons.delete_outline,
-            titulo: 'Eliminar',
-            descripcion: 'Quita el producto del catálogo.',
-            ultimo: true,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _PanelLateral extends StatelessWidget {
   final String titulo;
   final Widget child;
@@ -546,66 +513,6 @@ class _FaseNegocio extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _AyudaProducto extends StatelessWidget {
-  final IconData icono;
-  final String titulo;
-  final String descripcion;
-  final bool ultimo;
-
-  const _AyudaProducto({
-    required this.icono,
-    required this.titulo,
-    required this.descripcion,
-    this.ultimo = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: ultimo ? 0 : 16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: AppColors.blueLt.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(9),
-            ),
-            child: Icon(icono, size: 17, color: AppColors.blueLt),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  titulo,
-                  style: TextStyle(
-                    color: AppColors.texto,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  descripcion,
-                  style: TextStyle(
-                    color: AppColors.texto.withValues(alpha: 0.72),
-                    fontSize: 12,
-                    height: 1.35,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

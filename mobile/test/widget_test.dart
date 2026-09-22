@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' show User;
-import 'package:flutter/material.dart' show Key;
+import 'package:flutter/material.dart' show Key, Size;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:mobile/features/auth/data/auth_repository.dart';
@@ -300,6 +300,11 @@ void main() {
   testWidgets(
     'la ruta raíz /productos sigue funcionando como pantalla directa',
     (tester) async {
+      tester.view.physicalSize = const Size(1440, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
       final authRepository = _AuthRepositoryFake();
       final usuario = _UserFake();
       final firestore = FakeFirebaseFirestore();
@@ -349,6 +354,14 @@ void main() {
       expect(find.byType(ProductosScreen), findsOneWidget);
       expect(find.text('Todavía no tienes productos.'), findsOneWidget);
       expect(find.text('Inicia sesion para ver tus productos.'), findsNothing);
+
+      expect(find.byKey(const Key('fases-negocio-panel')), findsOneWidget);
+      expect(
+        find.byKey(const Key('productos-contextual-panel')),
+        findsOneWidget,
+      );
+      expect(find.text('¿Cómo funciona?'), findsOneWidget);
+      expect(tester.takeException(), isNull);
     },
   );
 }

@@ -68,6 +68,7 @@ void main() {
     ValueChanged<Producto>? onEditar,
     ValueChanged<String>? onEliminar,
     VoidCallback? onElegirPlantilla,
+    bool mostrarPanelesLaterales = true,
   }) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = tamano;
@@ -94,6 +95,7 @@ void main() {
           ),
           home: Scaffold(
             body: ProductosContent(
+              mostrarPanelesLaterales: mostrarPanelesLaterales,
               onAgregar: onAgregar,
               onEditar: onEditar,
               onEliminar: onEliminar,
@@ -139,7 +141,7 @@ void main() {
     await cargarVista(tester, tamano: const Size(1099, 900));
 
     expect(find.byKey(const Key('fases-negocio-panel')), findsNothing);
-    expect(find.byKey(const Key('ayuda-productos-panel')), findsNothing);
+    expect(find.byKey(const Key('productos-contextual-panel')), findsNothing);
     expect(find.byKey(const Key('productos-grid')), findsNothing);
     expect(
       tester.widget<ProductoCard>(find.byType(ProductoCard)).esCuadricula,
@@ -154,7 +156,7 @@ void main() {
 
     expect(find.byKey(const Key('fases-negocio-panel')), findsOneWidget);
     expect(find.byKey(const Key('productos-grid')), findsOneWidget);
-    expect(find.byKey(const Key('ayuda-productos-panel')), findsOneWidget);
+    expect(find.byKey(const Key('productos-contextual-panel')), findsOneWidget);
     expect(find.byKey(const Key('productos-page-scroll')), findsOneWidget);
     expect(find.byType(CustomScrollView), findsNothing);
     expect(
@@ -197,6 +199,26 @@ void main() {
               as SliverGridDelegateWithFixedCrossAxisCount)
           .crossAxisCount,
       4,
+    );
+  });
+
+  testWidgets('oculta los paneles laterales al embeberse en el shell', (
+    tester,
+  ) async {
+    await cargarVista(
+      tester,
+      tamano: const Size(1440, 900),
+      mostrarPanelesLaterales: false,
+    );
+
+    expect(find.byKey(const Key('fases-negocio-panel')), findsNothing);
+    expect(find.byKey(const Key('productos-contextual-panel')), findsNothing);
+    expect(find.text('Fases de tu negocio'), findsNothing);
+    expect(find.text('¿Cómo funciona?'), findsNothing);
+    expect(find.byKey(const Key('productos-grid')), findsOneWidget);
+    expect(
+      tester.widget<ProductoCard>(find.byType(ProductoCard)).esCuadricula,
+      isTrue,
     );
   });
 
