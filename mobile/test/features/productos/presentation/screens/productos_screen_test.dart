@@ -1,28 +1,65 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/domain/models/tipo_unidad.dart';
+import 'package:mobile/features/negocio/application/use_cases/obtener_catalogo_negocio.dart';
+import 'package:mobile/features/negocio/catalogo_negocio_dependencies.dart';
 import 'package:mobile/features/negocio/domain/models/catalogo_negocio.dart';
 import 'package:mobile/features/negocio/presentation/providers/catalogo_negocio_provider.dart';
+import 'package:mobile/features/productos/application/use_cases/cambiar_disponibilidad_producto.dart';
+import 'package:mobile/features/productos/application/use_cases/crear_producto.dart';
+import 'package:mobile/features/productos/application/use_cases/editar_producto.dart';
+import 'package:mobile/features/productos/application/use_cases/eliminar_producto.dart';
+import 'package:mobile/features/productos/application/use_cases/obtener_pagina_productos.dart';
+import 'package:mobile/features/productos/domain/models/pagina_productos.dart';
 import 'package:mobile/features/productos/domain/models/producto.dart';
 import 'package:mobile/features/productos/presentation/providers/productos_provider.dart';
 import 'package:mobile/features/productos/presentation/screens/productos_screen.dart';
-import 'package:mobile/features/productos/presentation/widgets/producto_card.dart';
+import 'package:mobile/features/productos/presentation/widgets/formulario_producto.dart';
+import 'package:mobile/features/productos/presentation/widgets/productos_content.dart';
+import 'package:mobile/features/productos/productos_dependencies.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:provider/provider.dart';
 
-class _ProductosProviderMock extends Mock implements ProductosProvider {}
+class _ProductosDependenciesMock extends Mock
+    implements ProductosDependencies {}
 
-class _CatalogoNegocioProviderMock extends Mock
-    implements CatalogoNegocioProvider {}
+class _CatalogoNegocioDependenciesMock extends Mock
+    implements CatalogoNegocioDependencies {}
+
+class _ObtenerCatalogoNegocioMock extends Mock
+    implements ObtenerCatalogoNegocio {}
+
+class _ObtenerPaginaProductosMock extends Mock
+    implements ObtenerPaginaProductos {}
+
+class _CambiarDisponibilidadMock extends Mock
+    implements CambiarDisponibilidadProducto {}
+
+class _CrearProductoMock extends Mock implements CrearProducto {}
+
+class _EditarProductoMock extends Mock implements EditarProducto {}
+
+class _EliminarProductoMock extends Mock implements EliminarProducto {}
 
 void main() {
-  late _ProductosProviderMock productosProvider;
-  late _CatalogoNegocioProviderMock catalogoProvider;
+  late _ProductosDependenciesMock productosDependencies;
+  late _CatalogoNegocioDependenciesMock catalogoDependencies;
+  late _ObtenerCatalogoNegocioMock obtenerCatalogo;
+  late _ObtenerPaginaProductosMock obtenerPagina;
 
   setUp(() {
-    productosProvider = _ProductosProviderMock();
-    catalogoProvider = _CatalogoNegocioProviderMock();
+    productosDependencies = _ProductosDependenciesMock();
+    catalogoDependencies = _CatalogoNegocioDependenciesMock();
+    obtenerCatalogo = _ObtenerCatalogoNegocioMock();
+    obtenerPagina = _ObtenerPaginaProductosMock();
 
+    final catalogo = CatalogoNegocio(
+      rubro: 'Cafetería',
+      categorias: const ['Bebidas'],
+      unidadesMedida: const [
+        UnidadInfo(nombre: 'Unidad', tipo: TipoUnidad.entera),
+      ],
+    );
     final producto = Producto(
       id: 'producto-1',
       negocioId: 'usuario-1',
@@ -32,131 +69,142 @@ void main() {
       categoria: 'Bebidas',
       unidadMedidaNombre: 'Unidad',
     );
-    final catalogo = CatalogoNegocio(
-      rubro: 'Cafetería',
-      categorias: const ['Bebidas'],
-      unidadesMedida: const [
-        UnidadInfo(nombre: 'Unidad', tipo: TipoUnidad.entera),
-      ],
-    );
 
-    when(() => productosProvider.productosFiltrados).thenReturn([producto]);
-    when(() => productosProvider.totalProductos).thenReturn(1);
-    when(() => productosProvider.cargando).thenReturn(false);
-    when(() => productosProvider.refrescando).thenReturn(false);
-    when(() => productosProvider.cargandoMas).thenReturn(false);
-    when(() => productosProvider.creandoProducto).thenReturn(false);
-    when(() => productosProvider.editandoProducto).thenReturn(false);
-    when(() => productosProvider.hayMas).thenReturn(true);
-    when(() => productosProvider.errorMessage).thenReturn(null);
-    when(() => productosProvider.cargarMasProductos()).thenAnswer((_) async {});
     when(
-      () => productosProvider.cambiandoDisponibilidad(any()),
-    ).thenReturn(false);
-    when(() => catalogoProvider.catalogo).thenReturn(catalogo);
-    when(() => catalogoProvider.disponible).thenReturn(true);
-    when(() => catalogoProvider.errorMessage).thenReturn(null);
+      () => obtenerPagina(
+        negocioId: any(named: 'negocioId'),
+        despuesDe: any(named: 'despuesDe'),
+        limite: any(named: 'limite'),
+      ),
+    ).thenAnswer(
+      (_) async => PaginaProductos(
+        productos: [producto],
+        ultimoCursor: null,
+        hayMas: true,
+      ),
+    );
+    when(() => obtenerCatalogo(any())).thenAnswer((_) async => catalogo);
+
+    when(
+      () => productosDependencies.obtenerPaginaProductos,
+    ).thenReturn(obtenerPagina);
+    when(
+      () => productosDependencies.cambiarDisponibilidadProducto,
+    ).thenReturn(_CambiarDisponibilidadMock());
+    when(
+      () => productosDependencies.crearProducto,
+    ).thenReturn(_CrearProductoMock());
+    when(
+      () => productosDependencies.editarProducto,
+    ).thenReturn(_EditarProductoMock());
+    when(
+      () => productosDependencies.eliminarProducto,
+    ).thenReturn(_EliminarProductoMock());
+    when(
+      () => catalogoDependencies.obtenerCatalogoNegocio,
+    ).thenReturn(obtenerCatalogo);
   });
 
-  Future<void> cargarVista(WidgetTester tester, {required Size tamano}) async {
+  CatalogoNegocio crearCatalogo() => CatalogoNegocio(
+    rubro: 'Cafetería',
+    categorias: const ['Bebidas'],
+    unidadesMedida: const [
+      UnidadInfo(nombre: 'Unidad', tipo: TipoUnidad.entera),
+    ],
+  );
+
+  Future<void> cargarPantalla(
+    WidgetTester tester, {
+    required Size tamano,
+  }) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = tamano;
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.view.resetPhysicalSize);
 
     await tester.pumpWidget(
-      MultiProvider(
-        providers: [
-          ChangeNotifierProvider<ProductosProvider>.value(
-            value: productosProvider,
-          ),
-          ChangeNotifierProvider<CatalogoNegocioProvider>.value(
-            value: catalogoProvider,
-          ),
-        ],
-        child: MaterialApp(
-          theme: ThemeData.dark(),
-          home: const ContenidoProductos(),
+      MaterialApp(
+        theme: ThemeData.dark(),
+        home: ProductosScreen(
+          uid: 'usuario-1',
+          negocioId: 'usuario-1',
+          catalogoInicial: crearCatalogo(),
+          productosDependencies: productosDependencies,
+          catalogoDependencies: catalogoDependencies,
         ),
       ),
     );
     await tester.pump();
+    await tester.pump();
   }
 
-  testWidgets('mantiene el diseño móvil sin paneles laterales', (tester) async {
-    await cargarVista(tester, tamano: const Size(1099, 900));
-
-    expect(find.byKey(const Key('fases-negocio-panel')), findsNothing);
-    expect(find.byKey(const Key('ayuda-productos-panel')), findsNothing);
-    expect(find.byKey(const Key('productos-grid')), findsNothing);
-    expect(
-      tester.widget<ProductoCard>(find.byType(ProductoCard)).esCuadricula,
-      isFalse,
-    );
-  });
-
-  testWidgets('muestra izquierda, catálogo y ayuda en escritorio', (
+  testWidgets('mantiene un único Scaffold y AppBar propios en la pantalla', (
     tester,
   ) async {
-    await cargarVista(tester, tamano: const Size(1100, 900));
+    await cargarPantalla(tester, tamano: const Size(1440, 900));
 
-    expect(find.byKey(const Key('fases-negocio-panel')), findsOneWidget);
-    expect(find.byKey(const Key('productos-grid')), findsOneWidget);
-    expect(find.byKey(const Key('ayuda-productos-panel')), findsOneWidget);
-    expect(find.byKey(const Key('productos-page-scroll')), findsOneWidget);
-    expect(find.byType(CustomScrollView), findsNothing);
-    expect(
-      tester.widget<GridView>(find.byKey(const Key('productos-grid'))).physics,
-      isA<NeverScrollableScrollPhysics>(),
+    expect(find.byType(ProductosScreen), findsOneWidget);
+    expect(find.byType(Scaffold), findsOneWidget);
+    expect(find.byType(AppBar), findsOneWidget);
+    expect(find.byType(ProductosContent), findsOneWidget);
+    expect(find.byType(FloatingActionButton), findsNothing);
+
+    tester.view.physicalSize = const Size(430, 900);
+    await tester.pump();
+    expect(find.byType(FloatingActionButton), findsOneWidget);
+    expect(find.byType(ProductosContent), findsOneWidget);
+  });
+
+  testWidgets('no recrea los providers al reconstruir el árbol', (
+    tester,
+  ) async {
+    await cargarPantalla(tester, tamano: const Size(800, 900));
+
+    verify(
+      () => obtenerPagina(
+        negocioId: any(named: 'negocioId'),
+        despuesDe: any(named: 'despuesDe'),
+        limite: any(named: 'limite'),
+      ),
+    ).called(1);
+
+    final ctxAntes = tester.element(find.byType(ProductosContent));
+    final productosAntes = ctxAntes.read<ProductosProvider>();
+    final catalogoAntes = ctxAntes.read<CatalogoNegocioProvider>();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData.dark(),
+        home: ProductosScreen(
+          uid: 'usuario-1',
+          negocioId: 'usuario-1',
+          catalogoInicial: crearCatalogo(),
+          productosDependencies: productosDependencies,
+          catalogoDependencies: catalogoDependencies,
+        ),
+      ),
     );
-    expect(find.text('1. Rubro'), findsOneWidget);
-    expect(find.text('2. Configuración del negocio'), findsOneWidget);
-    expect(find.text('3. Agregado de productos'), findsOneWidget);
+    await tester.pump();
+
+    final ctxDespues = tester.element(find.byType(ProductosContent));
     expect(
-      tester.widget<ProductoCard>(find.byType(ProductoCard)).esCuadricula,
+      identical(ctxDespues.read<ProductosProvider>(), productosAntes),
       isTrue,
     );
     expect(
-      (tester
-                  .widget<GridView>(find.byKey(const Key('productos-grid')))
-                  .gridDelegate
-              as SliverGridDelegateWithFixedCrossAxisCount)
-          .crossAxisCount,
-      3,
-    );
-
-    tester.view.physicalSize = const Size(1440, 900);
-    await tester.pump();
-    expect(
-      (tester
-                  .widget<GridView>(find.byKey(const Key('productos-grid')))
-                  .gridDelegate
-              as SliverGridDelegateWithFixedCrossAxisCount)
-          .crossAxisCount,
-      3,
-    );
-
-    tester.view.physicalSize = const Size(1600, 900);
-    await tester.pump();
-    expect(
-      (tester
-                  .widget<GridView>(find.byKey(const Key('productos-grid')))
-                  .gridDelegate
-              as SliverGridDelegateWithFixedCrossAxisCount)
-          .crossAxisCount,
-      4,
+      identical(ctxDespues.read<CatalogoNegocioProvider>(), catalogoAntes),
+      isTrue,
     );
   });
 
-  testWidgets('muestra Agregar producto y la paginación manual', (
+  testWidgets('abre el formulario de producto al tocar Agregar (móvil)', (
     tester,
   ) async {
-    await cargarVista(tester, tamano: const Size(430, 900));
+    await cargarPantalla(tester, tamano: const Size(430, 900));
 
-    expect(find.text('Agregar producto'), findsOneWidget);
-    expect(find.text('Ver más'), findsOneWidget);
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Ver más'));
-    verify(() => productosProvider.cargarMasProductos()).called(1);
+    expect(find.byType(FormularioProducto), findsOneWidget);
   });
 }

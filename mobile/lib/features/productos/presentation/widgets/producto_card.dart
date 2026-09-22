@@ -92,22 +92,30 @@ class ProductoCard extends StatelessWidget {
                     const SizedBox(height: 3),
                     Row(
                       children: [
-                        Text(
-                          'S/ ${producto.precio.toStringAsFixed(2)}',
-                          style: TextStyle(
-                            color: _precio,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
+                        Flexible(
+                          child: Text(
+                            'S/ ${producto.precio.toStringAsFixed(2)}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: _precio,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                         Text(' · ', style: TextStyle(color: _textoSecundario)),
-                        Text(
-                          producto.esStockInfinito
-                              ? '∞'
-                              : '${producto.stock} uds.',
-                          style: TextStyle(
-                            color: _textoSecundario,
-                            fontSize: 12,
+                        Flexible(
+                          child: Text(
+                            producto.esStockInfinito
+                                ? '∞'
+                                : '${producto.stock} uds.',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: _textoSecundario,
+                              fontSize: 12,
+                            ),
                           ),
                         ),
                         if (producto.categoria.isNotEmpty) ...[
