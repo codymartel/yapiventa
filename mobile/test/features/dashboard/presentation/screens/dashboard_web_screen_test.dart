@@ -9,6 +9,7 @@ import 'package:mobile/features/dashboard/presentation/widgets/dashboard_top_bar
 import 'package:mobile/features/negocio/domain/models/catalogo_negocio.dart';
 import 'package:mobile/features/negocio/domain/models/plantilla_web.dart';
 import 'package:mobile/features/negocio/domain/models/progreso_configuracion.dart';
+import 'package:mobile/features/negocio/presentation/widgets/seleccion_negocio_flow.dart';
 import 'package:provider/provider.dart';
 
 void main() {
@@ -125,7 +126,7 @@ void main() {
     expect(escenario.abridor.llamadas, 0);
   });
 
-  testWidgets('muestra etapas y continúa por la primera pendiente', (
+  testWidgets('abre la primera etapa pendiente dentro del Navigator interno', (
     tester,
   ) async {
     final escenario = await mostrarDashboard(
@@ -138,9 +139,11 @@ void main() {
     expect(find.text('Requiere un rubro guardado.'), findsOneWidget);
 
     await tester.tap(find.text('Continuar configuración'));
-    await tester.pump();
+    await tester.pumpAndSettle();
 
-    expect(escenario.etapasAbiertas, [EtapaConfiguracion.rubro]);
+    expect(escenario.etapasAbiertas, isEmpty);
+    expect(find.byType(SeleccionNegocioFlow), findsOneWidget);
+    expect(find.text('Seleccion de rubro'), findsNothing);
   });
 
   testWidgets('bloquea módulos ajenos mientras el onboarding está pendiente', (
@@ -288,7 +291,9 @@ void main() {
     expect(find.text('Configuracion de negocio'), findsOneWidget);
   });
 
-  testWidgets('la continuacion de rubro conserva su ruta raíz', (tester) async {
+  testWidgets('el Rubro interno conserva shell, provider y un único Scaffold', (
+    tester,
+  ) async {
     final escenario = await mostrarDashboard(
       tester,
       progreso: _progresoPendiente(),
@@ -297,8 +302,79 @@ void main() {
     await tester.tap(find.text('Continuar configuración'));
     await tester.pumpAndSettle();
 
-    expect(escenario.etapasAbiertas, [EtapaConfiguracion.rubro]);
-    expect(find.text('Seleccion de rubro'), findsOneWidget);
+    expect(find.byType(AuthenticatedShell), findsOneWidget);
+    expect(find.byType(Scaffold), findsOneWidget);
+    expect(find.byType(DashboardTopBar), findsOneWidget);
+    expect(find.byType(DashboardSidebar), findsOneWidget);
+    expect(find.byKey(DashboardWebScreen.navegadorInicioClave), findsOneWidget);
+    expect(find.byType(SeleccionNegocioFlow), findsOneWidget);
+
+    final elemento = tester.element(find.byType(DashboardSidebar));
+    final enArbol = Provider.of<DashboardProvider>(elemento, listen: false);
+    expect(identical(enArbol, escenario.provider), isTrue);
+
+    final sidebar = tester.widget<DashboardSidebar>(
+      find.byType(DashboardSidebar),
+    );
+    expect(sidebar.destinoActivo, DashboardDestination.inicio);
+  });
+
+  testWidgets('oculta la ayuda contextual mientras el Rubro está abierto', (
+    tester,
+  ) async {
+    await mostrarDashboard(tester, progreso: _progresoPendiente());
+
+    expect(
+      find.byKey(const Key('authenticated-shell-contextual-panel')),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('Continuar configuración'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SeleccionNegocioFlow), findsOneWidget);
+    expect(
+      find.byKey(const Key('authenticated-shell-contextual-panel')),
+      findsNothing,
+    );
+    expect(find.text('Necesita tu atención'), findsNothing);
+  });
+
+  testWidgets(
+    'volver desde Rubro interno regresa a Inicio y restaura la ayuda',
+    (tester) async {
+      await mostrarDashboard(tester, progreso: _progresoPendiente());
+
+      await tester.tap(find.text('Continuar configuración'));
+      await tester.pumpAndSettle();
+      expect(find.byType(SeleccionNegocioFlow), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Volver al dashboard'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SeleccionNegocioFlow), findsNothing);
+      expect(find.byKey(const Key('dashboard-setup-panel')), findsOneWidget);
+      expect(find.text('Resumen de tu negocio'), findsOneWidget);
+      expect(
+        find.byKey(const Key('authenticated-shell-contextual-panel')),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets('una etapa bloqueada no monta el flow de Rubro', (tester) async {
+    final escenario = await mostrarDashboard(
+      tester,
+      progreso: _progresoPendiente(),
+    );
+
+    await tester.tap(find.text('Agregar productos').first);
+    await tester.pump();
+
+    expect(escenario.etapasAbiertas, isEmpty);
+    expect(find.byType(SeleccionNegocioFlow), findsNothing);
+    expect(find.text('Lista de productos'), findsNothing);
+    expect(find.byKey(const Key('dashboard-setup-panel')), findsOneWidget);
   });
 
   testWidgets('el contenido reconstruido conserva el mismo DashboardProvider', (

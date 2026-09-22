@@ -6,7 +6,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:mobile/features/auth/data/auth_repository.dart';
 import 'package:mobile/features/auth/data/user_repository.dart';
+import 'package:mobile/features/auth/domain/politica_acceso.dart';
 import 'package:mobile/features/negocio/data/negocio_repository.dart';
+import 'package:mobile/features/negocio/presentation/screens/seleccion_negocio_screen.dart';
 import 'package:mobile/main.dart';
 
 class _AuthRepositoryMock extends Mock implements AuthRepository {}
@@ -84,7 +86,48 @@ void main() {
     final perfil = (await firestore.collection('users').doc('usuario-1').get())
         .data()!;
     expect(perfil['negocioId'], negocios.docs.single.id);
+
+    expect(
+      find.text('Requiere la configuración obligatoria del negocio.'),
+      findsOneWidget,
+    );
+    expect(find.text('Requiere al menos un producto válido.'), findsOneWidget);
+
+    await tester.tap(find.text('Agregar productos').first);
+    await tester.pump();
+    expect(find.text('Lista de productos'), findsNothing);
+
+    await tester.tap(find.text('Plantilla web').first);
+    await tester.pump();
+    expect(find.text('Seleccion de plantilla'), findsNothing);
   });
+
+  testWidgets(
+    'la ruta raíz /elegir-rubro sigue usando SeleccionNegocioScreen',
+    (tester) async {
+      final firestore = FakeFirebaseFirestore();
+      final authRepository = _authRepositoryVerificado();
+      await firestore.collection('users').doc('usuario-1').set({
+        'email': 'ana@example.com',
+        'terminosAceptados': true,
+        'createdAt': Timestamp.now(),
+      });
+
+      await tester.pumpWidget(
+        MyApp(
+          initialRoute: RutasAcceso.rubro,
+          authRepository: authRepository,
+          userRepository: UserRepository(firestore: firestore),
+          negocioRepository: NegocioRepository(firestore: firestore),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SeleccionNegocioScreen), findsOneWidget);
+      expect(find.text('¿A qué se dedica\ntu negocio?'), findsOneWidget);
+      expect(find.byKey(const Key('dashboard-setup-panel')), findsNothing);
+    },
+  );
 }
 
 AuthRepository _authRepositoryVerificado() {

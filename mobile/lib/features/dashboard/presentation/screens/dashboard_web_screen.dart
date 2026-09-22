@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/widgets/authenticated_shell.dart';
+import '../../../auth/domain/politica_acceso.dart';
+import '../../../auth/presentation/providers/acceso_provider.dart';
 import '../../../negocio/domain/models/progreso_configuracion.dart';
+import '../../../negocio/presentation/widgets/seleccion_negocio_flow.dart';
 import '../providers/dashboard_provider.dart';
 import '../state/dashboard_ui_state.dart';
 import '../widgets/dashboard_attention_panel.dart';
@@ -13,7 +16,7 @@ import '../widgets/dashboard_top_bar.dart';
 typedef AbrirUrlDashboard =
     Future<bool> Function(Uri url, {String? webOnlyWindowName});
 
-class DashboardWebScreen extends StatelessWidget {
+class DashboardWebScreen extends StatefulWidget {
   static const navegadorInicioClave = Key('dashboard-inner-navigator');
 
   final AbrirUrlDashboard? abrirUrl;
@@ -32,6 +35,31 @@ class DashboardWebScreen extends StatelessWidget {
   });
 
   @override
+  State<DashboardWebScreen> createState() => _DashboardWebScreenState();
+}
+
+class _DashboardWebScreenState extends State<DashboardWebScreen> {
+  bool _rubroAbierta = false;
+  late final NavigatorObserver _observadorInterno;
+
+  @override
+  void initState() {
+    super.initState();
+    _observadorInterno = _ObservadorRutasInternas(() {
+      if (!mounted || !_rubroAbierta) return;
+      setState(() => _rubroAbierta = false);
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant DashboardWebScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_claveProgreso(oldWidget.progreso) != _claveProgreso(widget.progreso)) {
+      _rubroAbierta = false;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final state = context.watch<DashboardProvider>().state;
     return AuthenticatedShell(
@@ -48,29 +76,83 @@ class DashboardWebScreen extends StatelessWidget {
         onElegirPlantilla: () => _elegirPlantilla(context),
         onVerTienda: () => _verTiendaWeb(context),
         onAbrirMenu: openNavigation,
-        email: email,
-        onCerrarSesion: onCerrarSesion,
+        email: widget.email,
+        onCerrarSesion: widget.onCerrarSesion,
       ),
-      contextualPanel: DashboardAttentionPanel(
-        items: state.necesitanAtencion,
-        productos: state.productosDestacados,
-      ),
-      child: Navigator(
+      contextualPanel: _rubroAbierta
+          ? null
+          : DashboardAttentionPanel(
+              items: state.necesitanAtencion,
+              productos: state.productosDestacados,
+            ),
+      child: KeyedSubtree(
         key: DashboardWebScreen.navegadorInicioClave,
-        onGenerateInitialRoutes: (navigator, inicial) => [
-          _crearRutaDeInicio(RouteSettings(name: inicial)),
-        ],
-        onGenerateRoute: _crearRutaDeInicio,
+        child: Navigator(
+          key: ValueKey(
+            'dashboard-progreso-${_claveProgreso(widget.progreso)}',
+          ),
+          observers: [_observadorInterno],
+          onGenerateInitialRoutes: (navigator, inicial) => [
+            _crearRutaDeInicio(RouteSettings(name: inicial)),
+          ],
+          onGenerateRoute: _crearRutaInterna,
+        ),
       ),
     );
+  }
+
+  Route<dynamic> _crearRutaInterna(RouteSettings settings) {
+    if (settings.name == RutasAcceso.rubro) {
+      return _crearRutaDeRubro(settings);
+    }
+    return _crearRutaDeInicio(settings);
   }
 
   Route<dynamic> _crearRutaDeInicio(RouteSettings settings) {
     return MaterialPageRoute<Object?>(
       settings: settings,
-      builder: (_) =>
-          _ContenidoInicio(progreso: progreso, onAbrirEtapa: onAbrirEtapa),
+      builder: (rutaContexto) => _ContenidoInicio(
+        progreso: widget.progreso,
+        onAbrirEtapa: (etapa) => _abrirEtapa(rutaContexto, etapa),
+      ),
     );
+  }
+
+  Route<dynamic> _crearRutaDeRubro(RouteSettings settings) {
+    return MaterialPageRoute<Object?>(
+      settings: settings,
+      builder: (rutaContexto) => SeleccionNegocioFlow(
+        rubroInicial: widget.progreso.catalogo.rubro,
+        onTipoSeleccionado: (rubro) async =>
+            rutaContexto.read<AccesoProvider>().guardarRubro(rubro),
+        onVolver: () => _regresarAInicio(rutaContexto),
+        onCompletado: () => _regresarAInicio(rutaContexto),
+      ),
+    );
+  }
+
+  void _regresarAInicio(BuildContext context) {
+    final navegador = Navigator.of(context);
+    if (navegador.canPop()) {
+      navegador.pop();
+    }
+  }
+
+  void _abrirEtapa(BuildContext rutaContexto, EtapaConfiguracion etapa) {
+    if (etapa == EtapaConfiguracion.rubro) {
+      _abrirRubro(rutaContexto);
+      return;
+    }
+    widget.onAbrirEtapa(etapa);
+  }
+
+  void _abrirRubro(BuildContext rutaContexto) {
+    if (!PoliticaAcceso.permite(RutasAcceso.rubro, widget.progreso)) {
+      _mostrarBloqueado(rutaContexto);
+      return;
+    }
+    setState(() => _rubroAbierta = true);
+    Navigator.of(rutaContexto).pushNamed(RutasAcceso.rubro);
   }
 
   void _seleccionarDestino(BuildContext context, DashboardDestination destino) {
@@ -82,7 +164,7 @@ class DashboardWebScreen extends StatelessWidget {
       case DashboardDestination.inicio:
         return;
       case DashboardDestination.productos:
-        onAbrirEtapa(EtapaConfiguracion.productos);
+        widget.onAbrirEtapa(EtapaConfiguracion.productos);
         return;
       case DashboardDestination.pedidos:
         _mostrarProximamente(
@@ -100,7 +182,7 @@ class DashboardWebScreen extends StatelessWidget {
         );
         return;
       case DashboardDestination.configuracion:
-        onAbrirEtapa(EtapaConfiguracion.negocio);
+        widget.onAbrirEtapa(EtapaConfiguracion.negocio);
         return;
       case DashboardDestination.plan:
         _mostrarProximamente(context, 'Plan estará disponible próximamente.');
@@ -112,19 +194,19 @@ class DashboardWebScreen extends StatelessWidget {
   }
 
   Future<void> _elegirPlantilla(BuildContext context) async {
-    if (!progreso.productosCompletos) {
+    if (!widget.progreso.productosCompletos) {
       _mostrarBloqueado(context);
       return;
     }
-    onAbrirEtapa(EtapaConfiguracion.plantilla);
+    widget.onAbrirEtapa(EtapaConfiguracion.plantilla);
   }
 
   Future<void> _verTiendaWeb(BuildContext context) async {
-    if (!progreso.completo) {
+    if (!widget.progreso.completo) {
       _mostrarBloqueado(context);
       return;
     }
-    if (progreso.slug.isEmpty || progreso.plantilla == null) {
+    if (widget.progreso.slug.isEmpty || widget.progreso.plantilla == null) {
       _mostrarProximamente(
         context,
         'Selecciona una plantilla para publicar tu tienda web.',
@@ -132,9 +214,12 @@ class DashboardWebScreen extends StatelessWidget {
       return;
     }
 
-    final url = Uri.https('yapiventa-tienda.web.app', '/${progreso.slug}');
+    final url = Uri.https(
+      'yapiventa-tienda.web.app',
+      '/${widget.progreso.slug}',
+    );
     try {
-      final lanzarUrl = abrirUrl ?? launchUrl;
+      final lanzarUrl = widget.abrirUrl ?? launchUrl;
       final abierto = await lanzarUrl(url, webOnlyWindowName: '_blank');
       if (!abierto && context.mounted) {
         _mostrarProximamente(
@@ -163,13 +248,14 @@ class DashboardWebScreen extends StatelessWidget {
 
   bool _destinoHabilitado(DashboardDestination destino) => switch (destino) {
     DashboardDestination.inicio => true,
-    DashboardDestination.productos => progreso.negocioCompleto,
-    DashboardDestination.configuracion => progreso.rubroCompleto,
-    _ => progreso.completo,
+    DashboardDestination.productos => widget.progreso.negocioCompleto,
+    DashboardDestination.configuracion => widget.progreso.rubroCompleto,
+    _ => widget.progreso.completo,
   };
 
   String _nombreNegocio(DashboardUiState state) {
-    final nombre = progreso.catalogo.configuracionInicial['nombreNegocio'];
+    final nombre =
+        widget.progreso.catalogo.configuracionInicial['nombreNegocio'];
     return nombre is String && nombre.trim().isNotEmpty
         ? nombre.trim()
         : state.nombreNegocio;
@@ -182,6 +268,24 @@ class DashboardWebScreen extends StatelessWidget {
     );
   }
 }
+
+class _ObservadorRutasInternas extends NavigatorObserver {
+  final VoidCallback _alRegresar;
+
+  _ObservadorRutasInternas(this._alRegresar);
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    _alRegresar();
+  }
+}
+
+String _claveProgreso(ProgresoConfiguracion p) =>
+    '${p.catalogo.rubro}'
+    '|${p.rubroCompleto}'
+    '|${p.negocioCompleto}'
+    '|${p.productosCompletos}'
+    '|${p.plantillaCompleta}';
 
 void _mostrarAviso(BuildContext context, String mensaje) {
   ScaffoldMessenger.of(context)
