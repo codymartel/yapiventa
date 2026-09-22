@@ -62,52 +62,64 @@ class _SeleccionNegocioScreenState extends State<SeleccionNegocioScreen> {
       _guardando = true;
       _error = null;
     });
-    final guardado = await widget.onTipoSeleccionado(rubro);
-    if (!mounted) return;
-    if (!guardado) {
-      setState(() {
-        _guardando = false;
-        _error = 'No se pudo guardar el rubro. Intenta de nuevo.';
-      });
+    String? error;
+    try {
+      final guardado = await widget.onTipoSeleccionado(rubro);
+      if (!guardado) {
+        error = 'No se pudo guardar el rubro. Intenta de nuevo.';
+      }
+    } catch (_) {
+      error = 'No se pudo guardar el rubro. Intenta de nuevo.';
+    } finally {
+      if (mounted) {
+        setState(() {
+          _guardando = false;
+          _error = error;
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: SeleccionNegocioContent.fondo,
-      body: SafeArea(
-        child: Column(
-          children: [
-            const SizedBox(height: 12),
-            Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 900),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: IconButton(
-                      tooltip: 'Volver al dashboard',
-                      onPressed: _guardando ? null : widget.onVolverDashboard,
-                      icon: const Icon(Icons.arrow_back),
+    return PopScope(
+      canPop: !_guardando,
+      child: Scaffold(
+        backgroundColor: SeleccionNegocioContent.fondo,
+        body: SafeArea(
+          child: Column(
+            children: [
+              const SizedBox(height: 12),
+              Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 900),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: IconButton(
+                        tooltip: 'Volver al dashboard',
+                        onPressed: _guardando ? null : widget.onVolverDashboard,
+                        icon: const Icon(Icons.arrow_back),
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-            Expanded(
-              child: SeleccionNegocioContent(
-                rubroSeleccionado: _rubroSeleccionado,
-                guardando: _guardando,
-                error: _error,
-                onRubroSeleccionado: (rubro) {
-                  setState(() => _rubroSeleccionado = rubro);
-                },
-                onConfirmar: _confirmar,
+              Expanded(
+                child: SeleccionNegocioContent(
+                  rubroSeleccionado: _rubroSeleccionado,
+                  guardando: _guardando,
+                  error: _error,
+                  onRubroSeleccionado: (rubro) {
+                    if (_guardando) return;
+                    setState(() => _rubroSeleccionado = rubro);
+                  },
+                  onConfirmar: _confirmar,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
