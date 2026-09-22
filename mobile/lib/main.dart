@@ -207,6 +207,16 @@ class _RutaConAcceso extends StatelessWidget {
           uid: acceso.uid!,
           negocioId: acceso.negocioId,
           catalogoInicial: progreso.catalogo,
+          onVolver: () {
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            } else {
+              _irAlDashboard(context);
+            }
+          },
+          onElegirPlantilla: (rubro) => Navigator.of(
+            context,
+          ).pushNamed(RutasAcceso.plantilla, arguments: {'rubro': rubro}),
           onProgressChanged: () => acceso.recargar(),
         );
       case RutasAcceso.plantilla:

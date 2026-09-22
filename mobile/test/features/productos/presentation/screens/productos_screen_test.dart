@@ -116,6 +116,7 @@ void main() {
   Future<void> cargarPantalla(
     WidgetTester tester, {
     required Size tamano,
+    VoidCallback? onVolver,
   }) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = tamano;
@@ -129,6 +130,7 @@ void main() {
           uid: 'usuario-1',
           negocioId: 'usuario-1',
           catalogoInicial: crearCatalogo(),
+          onVolver: onVolver,
           productosDependencies: productosDependencies,
           catalogoDependencies: catalogoDependencies,
         ),
@@ -148,6 +150,7 @@ void main() {
     expect(find.byType(AppBar), findsOneWidget);
     expect(find.byType(ProductosContent), findsOneWidget);
     expect(find.byType(FloatingActionButton), findsNothing);
+    expect(find.byTooltip('Volver'), findsNothing);
 
     tester.view.physicalSize = const Size(430, 900);
     await tester.pump();
@@ -206,5 +209,19 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(FormularioProducto), findsOneWidget);
+  });
+
+  testWidgets('propaga onVolver desde el botón del AppBar', (tester) async {
+    var volvio = 0;
+    await cargarPantalla(
+      tester,
+      tamano: const Size(800, 900),
+      onVolver: () => volvio++,
+    );
+
+    await tester.tap(find.byTooltip('Volver'));
+    await tester.pump();
+
+    expect(volvio, 1);
   });
 }
