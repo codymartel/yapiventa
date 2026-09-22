@@ -4,11 +4,14 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/widgets/authenticated_shell.dart';
 import '../../../auth/domain/politica_acceso.dart';
 import '../../../auth/presentation/providers/acceso_provider.dart';
+import '../../../negocio/catalogo_negocio_dependencies.dart';
 import '../../../negocio/data/negocio_repository.dart';
 import '../../../negocio/domain/models/progreso_configuracion.dart';
 import '../../../negocio/presentation/providers/configuracion_negocio_provider.dart';
 import '../../../negocio/presentation/widgets/configuracion_negocio_flow.dart';
 import '../../../negocio/presentation/widgets/seleccion_negocio_flow.dart';
+import '../../../productos/presentation/widgets/productos_flow.dart';
+import '../../../productos/productos_dependencies.dart';
 import '../providers/dashboard_provider.dart';
 import '../state/dashboard_ui_state.dart';
 import '../widgets/dashboard_attention_panel.dart';
@@ -32,6 +35,8 @@ class DashboardWebScreen extends StatefulWidget {
   final Future<void> Function()? recargarProgreso;
   final ValueChanged<EtapaConfiguracion> onAbrirEtapa;
   final VoidCallback onCerrarSesion;
+  final ProductosDependencies? productosDependencies;
+  final CatalogoNegocioDependencies? catalogoDependencies;
 
   const DashboardWebScreen({
     super.key,
@@ -43,6 +48,8 @@ class DashboardWebScreen extends StatefulWidget {
     this.recargarProgreso,
     required this.onAbrirEtapa,
     required this.onCerrarSesion,
+    this.productosDependencies,
+    this.catalogoDependencies,
   });
 
   @override
@@ -52,6 +59,11 @@ class DashboardWebScreen extends StatefulWidget {
 class _DashboardWebScreenState extends State<DashboardWebScreen> {
   bool _rubroAbierta = false;
   bool _configuracionAbierta = false;
+  bool _productosAbierta = false;
+
+  /// Se marca en la primera visita para montar la rama Productos de forma
+  /// perezosa: al entrar al dashboard no existe ninguna instancia del flow.
+  bool _productosVisitada = false;
   ConfiguracionNegocioProvider? _providerConfiguracion;
   late final NavigatorObserver _observadorInterno;
   late final ValueNotifier<ProgresoConfiguracion> _progresoNotifier;
@@ -89,7 +101,9 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
     final state = context.watch<DashboardProvider>().state;
     return AuthenticatedShell(
       navigationBuilder: (_, closeNavigation) => DashboardSidebar(
-        destinoActivo: _configuracionAbierta
+        destinoActivo: _productosAbierta
+            ? DashboardDestination.productos
+            : _configuracionAbierta
             ? DashboardDestination.configuracion
             : DashboardDestination.inicio,
         onSeleccionar: (destino) {
@@ -106,7 +120,7 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
         email: widget.email,
         onCerrarSesion: widget.onCerrarSesion,
       ),
-      contextualPanel: _configuracionAbierta
+      contextualPanel: _configuracionAbierta || _productosAbierta
           ? null
           : _rubroAbierta
           ? const RubroContextualPanel()
@@ -114,13 +128,26 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
               items: state.necesitanAtencion,
               productos: state.productosDestacados,
             ),
-      child: Navigator(
-        key: DashboardWebScreen.navegadorInicioClave,
-        observers: [_observadorInterno],
-        onGenerateInitialRoutes: (navigator, inicial) => [
-          _crearRutaDeInicio(RouteSettings(name: inicial)),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Offstage(
+            offstage: _productosAbierta,
+            child: Navigator(
+              key: DashboardWebScreen.navegadorInicioClave,
+              observers: [_observadorInterno],
+              onGenerateInitialRoutes: (navigator, inicial) => [
+                _crearRutaDeInicio(RouteSettings(name: inicial)),
+              ],
+              onGenerateRoute: _crearRutaInterna,
+            ),
+          ),
+          if (_productosVisitada)
+            Offstage(
+              offstage: !_productosAbierta,
+              child: _crearRamaProductos(),
+            ),
         ],
-        onGenerateRoute: _crearRutaInterna,
       ),
     );
   }
@@ -129,7 +156,8 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
     if (settings.name == RutasAcceso.rubro) {
       return _crearRutaDeRubro(settings);
     }
-    if (settings.name == RutasAcceso.negocio && _providerConfiguracion != null) {
+    if (settings.name == RutasAcceso.negocio &&
+        _providerConfiguracion != null) {
       return _crearRutaDeConfiguracion(settings);
     }
     return _crearRutaDeInicio(settings);
@@ -141,17 +169,17 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
       settings: settings,
       builder: (rutaContexto) =>
           ChangeNotifierProvider<ConfiguracionNegocioProvider>.value(
-        value: provider,
-        child: ConfiguracionNegocioFlow(
-          uid: widget.uid,
-          negocioId: widget.negocioId,
-          onVolver: () => _regresarAInicio(rutaContexto),
-          onCompletado: () => _regresarAInicio(rutaContexto),
-          onRecargarProgreso: widget.recargarProgreso == null
-              ? null
-              : (uid, negocioId) => widget.recargarProgreso!(),
-        ),
-      ),
+            value: provider,
+            child: ConfiguracionNegocioFlow(
+              uid: widget.uid,
+              negocioId: widget.negocioId,
+              onVolver: () => _regresarAInicio(rutaContexto),
+              onCompletado: () => _regresarAInicio(rutaContexto),
+              onRecargarProgreso: widget.recargarProgreso == null
+                  ? null
+                  : (uid, negocioId) => widget.recargarProgreso!(),
+            ),
+          ),
     );
   }
 
@@ -201,6 +229,10 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
       _abrirConfiguracion(rutaContexto, progreso);
       return;
     }
+    if (etapa == EtapaConfiguracion.productos) {
+      _abrirProductos(rutaContexto, progreso);
+      return;
+    }
     widget.onAbrirEtapa(etapa);
   }
 
@@ -209,7 +241,11 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
       _mostrarBloqueado(rutaContexto);
       return;
     }
-    setState(() => _rubroAbierta = true);
+    setState(() {
+      _productosAbierta = false;
+      _rubroAbierta = true;
+      _configuracionAbierta = false;
+    });
     Navigator.of(rutaContexto).pushNamed(RutasAcceso.rubro);
   }
 
@@ -228,11 +264,46 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
       repository: rutaContexto.read<NegocioRepository>(),
     );
     setState(() {
+      _productosAbierta = false;
       _configuracionAbierta = true;
       _rubroAbierta = false;
     });
-    DashboardWebScreen.navegadorInicioClave.currentState!
-        .pushNamed(RutasAcceso.negocio);
+    DashboardWebScreen.navegadorInicioClave.currentState!.pushNamed(
+      RutasAcceso.negocio,
+    );
+  }
+
+  void _abrirProductos(
+    BuildContext rutaContexto,
+    ProgresoConfiguracion progreso,
+  ) {
+    if (!PoliticaAcceso.permite(RutasAcceso.productos, progreso)) {
+      _mostrarBloqueado(rutaContexto);
+      return;
+    }
+    setState(() {
+      _productosAbierta = true;
+      _configuracionAbierta = false;
+      _rubroAbierta = false;
+      _productosVisitada = true;
+    });
+  }
+
+  Widget _crearRamaProductos() {
+    return ProductosFlow(
+      uid: widget.uid,
+      negocioId: widget.negocioId,
+      catalogoInicial: widget.progreso.catalogo,
+      onVolver: () {
+        if (!mounted) return;
+        setState(() => _productosAbierta = false);
+      },
+      onElegirPlantilla: (_) =>
+          widget.onAbrirEtapa(EtapaConfiguracion.plantilla),
+      onProgressChanged: widget.recargarProgreso,
+      productosDependencies: widget.productosDependencies,
+      catalogoDependencies: widget.catalogoDependencies,
+    );
   }
 
   void _seleccionarDestino(BuildContext context, DashboardDestination destino) {
@@ -242,9 +313,12 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
     }
     switch (destino) {
       case DashboardDestination.inicio:
+        if (_productosAbierta) {
+          setState(() => _productosAbierta = false);
+        }
         return;
       case DashboardDestination.productos:
-        widget.onAbrirEtapa(EtapaConfiguracion.productos);
+        _abrirProductos(context, widget.progreso);
         return;
       case DashboardDestination.pedidos:
         _mostrarProximamente(
@@ -329,10 +403,14 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
   bool _destinoHabilitado(DashboardDestination destino) {
     return switch (destino) {
       DashboardDestination.inicio => true,
-      DashboardDestination.productos =>
-        PoliticaAcceso.permite(RutasAcceso.productos, widget.progreso),
-      DashboardDestination.configuracion =>
-        PoliticaAcceso.permite(RutasAcceso.negocio, widget.progreso),
+      DashboardDestination.productos => PoliticaAcceso.permite(
+        RutasAcceso.productos,
+        widget.progreso,
+      ),
+      DashboardDestination.configuracion => PoliticaAcceso.permite(
+        RutasAcceso.negocio,
+        widget.progreso,
+      ),
       _ => widget.progreso.completo,
     };
   }

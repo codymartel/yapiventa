@@ -9,13 +9,28 @@ import 'package:mobile/features/dashboard/presentation/widgets/dashboard_attenti
 import 'package:mobile/features/dashboard/presentation/widgets/dashboard_sidebar.dart';
 import 'package:mobile/features/dashboard/presentation/widgets/dashboard_top_bar.dart';
 import 'package:mobile/features/dashboard/presentation/widgets/rubro_contextual_panel.dart';
+import 'package:mobile/features/negocio/application/use_cases/obtener_catalogo_negocio.dart';
+import 'package:mobile/features/negocio/catalogo_negocio_dependencies.dart';
 import 'package:mobile/features/negocio/data/negocio_repository.dart';
 import 'package:mobile/features/negocio/domain/models/catalogo_negocio.dart';
 import 'package:mobile/features/negocio/domain/models/plantilla_web.dart';
 import 'package:mobile/features/negocio/domain/models/progreso_configuracion.dart';
+import 'package:mobile/features/negocio/presentation/providers/catalogo_negocio_provider.dart';
 import 'package:mobile/features/negocio/presentation/providers/configuracion_negocio_provider.dart';
 import 'package:mobile/features/negocio/presentation/widgets/configuracion_negocio_flow.dart';
 import 'package:mobile/features/negocio/presentation/widgets/seleccion_negocio_flow.dart';
+import 'package:mobile/features/productos/application/use_cases/cambiar_disponibilidad_producto.dart';
+import 'package:mobile/features/productos/application/use_cases/crear_producto.dart';
+import 'package:mobile/features/productos/application/use_cases/editar_producto.dart';
+import 'package:mobile/features/productos/application/use_cases/eliminar_producto.dart';
+import 'package:mobile/features/productos/application/use_cases/obtener_pagina_productos.dart';
+import 'package:mobile/features/productos/domain/models/pagina_productos.dart';
+import 'package:mobile/features/productos/domain/models/producto.dart';
+import 'package:mobile/features/productos/presentation/providers/productos_provider.dart';
+import 'package:mobile/features/productos/presentation/widgets/productos_content.dart';
+import 'package:mobile/features/productos/presentation/widgets/productos_flow.dart';
+import 'package:mobile/features/productos/productos_dependencies.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:provider/provider.dart';
 
 void main() {
@@ -25,6 +40,7 @@ void main() {
     Object? error,
     ProgresoConfiguracion? progreso,
     NegocioRepository? repositorio,
+    _DependenciasProductos? dependencias,
     Size size = const Size(1400, 1000),
     TextScaler textScaler = TextScaler.noScaling,
   }) async {
@@ -36,6 +52,7 @@ void main() {
     final dashboardProvider = DashboardProvider();
     final abridor = _AbridorFake(resultado: resultado, error: error);
     final etapasAbiertas = <EtapaConfiguracion>[];
+    final deps = dependencias ?? _crearDependenciasTest();
     final repositorioNegocio =
         repositorio ?? NegocioRepository(firestore: FakeFirebaseFirestore());
     addTearDown(dashboardProvider.dispose);
@@ -62,16 +79,20 @@ void main() {
                   Navigator.of(context).pushNamed(PoliticaAcceso.rutaDe(etapa));
                 },
                 onCerrarSesion: () {},
+                productosDependencies: deps.productos,
+                catalogoDependencies: deps.catalogo,
               ),
             ),
             routes: {
-              '/elegir-rubro': (_) =>
-                  const Scaffold(body: Center(child: Text('Seleccion de rubro'))),
+              '/elegir-rubro': (_) => const Scaffold(
+                body: Center(child: Text('Seleccion de rubro')),
+              ),
               '/configurar-negocio': (_) => const Scaffold(
                 body: Center(child: Text('Configuracion de negocio')),
               ),
-              '/productos': (_) =>
-                  const Scaffold(body: Center(child: Text('Lista de productos'))),
+              '/productos': (_) => const Scaffold(
+                body: Center(child: Text('Lista de productos')),
+              ),
               '/elegir-plantilla': (_) => const Scaffold(
                 body: Center(child: Text('Seleccion de plantilla')),
               ),
@@ -85,6 +106,7 @@ void main() {
       abridor: abridor,
       etapasAbiertas: etapasAbiertas,
       provider: dashboardProvider,
+      dependencias: deps,
     );
   }
 
@@ -92,6 +114,7 @@ void main() {
     WidgetTester tester, {
     required ProgresoConfiguracion progreso,
     NegocioRepository? repositorio,
+    _DependenciasProductos? dependencias,
     Future<void> Function()? recargarProgreso,
   }) async {
     tester.view.physicalSize = const Size(1400, 1000);
@@ -102,6 +125,7 @@ void main() {
     final dashboardProvider = DashboardProvider();
     final abridor = _AbridorFake(resultado: true);
     final etapasAbiertas = <EtapaConfiguracion>[];
+    final deps = dependencias ?? _crearDependenciasTest();
     final repositorioNegocio =
         repositorio ?? NegocioRepository(firestore: FakeFirebaseFirestore());
     addTearDown(dashboardProvider.dispose);
@@ -128,16 +152,20 @@ void main() {
                   Navigator.of(context).pushNamed(PoliticaAcceso.rutaDe(etapa));
                 },
                 onCerrarSesion: () {},
+                productosDependencies: deps.productos,
+                catalogoDependencies: deps.catalogo,
               ),
             ),
             routes: {
-              '/elegir-rubro': (_) =>
-                  const Scaffold(body: Center(child: Text('Seleccion de rubro'))),
+              '/elegir-rubro': (_) => const Scaffold(
+                body: Center(child: Text('Seleccion de rubro')),
+              ),
               '/configurar-negocio': (_) => const Scaffold(
                 body: Center(child: Text('Configuracion de negocio')),
               ),
-              '/productos': (_) =>
-                  const Scaffold(body: Center(child: Text('Lista de productos'))),
+              '/productos': (_) => const Scaffold(
+                body: Center(child: Text('Lista de productos')),
+              ),
               '/elegir-plantilla': (_) => const Scaffold(
                 body: Center(child: Text('Seleccion de plantilla')),
               ),
@@ -151,6 +179,7 @@ void main() {
       abridor: abridor,
       etapasAbiertas: etapasAbiertas,
       provider: dashboardProvider,
+      dependencias: deps,
       actualizarProgreso: (nuevo) =>
           llave.currentState!.actualizarProgreso(nuevo),
     );
@@ -353,15 +382,276 @@ void main() {
     expect(sidebar.destinoActivo, DashboardDestination.inicio);
   });
 
-  testWidgets('Productos conserva la ruta raíz /productos', (tester) async {
-    final escenario = await mostrarDashboard(tester);
+  testWidgets(
+    'Productos se abre dentro de la navegación interna sin la ruta raíz',
+    (tester) async {
+      final escenario = await mostrarDashboard(tester);
+
+      await tester.tap(find.text('Productos'));
+      await tester.pumpAndSettle();
+
+      expect(
+        escenario.etapasAbiertas,
+        isNot(contains(EtapaConfiguracion.productos)),
+      );
+      expect(find.byType(ProductosFlow), findsOneWidget);
+      expect(find.text('Lista de productos'), findsNothing);
+      expect(find.byType(AuthenticatedShell), findsOneWidget);
+      expect(find.byType(Scaffold), findsOneWidget);
+
+      final sidebar = tester.widget<DashboardSidebar>(
+        find.byType(DashboardSidebar),
+      );
+      expect(sidebar.destinoActivo, DashboardDestination.productos);
+    },
+  );
+
+  testWidgets('Productos bloqueado no monta la rama ni lee dependencias', (
+    tester,
+  ) async {
+    final escenario = await mostrarDashboard(
+      tester,
+      progreso: _progresoConRubro(),
+    );
 
     await tester.tap(find.text('Productos'));
-    await tester.pumpAndSettle();
+    await tester.pump();
 
-    expect(escenario.etapasAbiertas, contains(EtapaConfiguracion.productos));
-    expect(find.text('Lista de productos'), findsOneWidget);
+    expect(escenario.etapasAbiertas, isEmpty);
+    expect(find.byType(ProductosFlow), findsNothing);
+    expect(find.byType(ProductosContent, skipOffstage: false), findsNothing);
+    verifyNever(
+      () => escenario.dependencias.obtenerPagina(
+        negocioId: any(named: 'negocioId'),
+        despuesDe: any(named: 'despuesDe'),
+        limite: any(named: 'limite'),
+      ),
+    );
+    expect(
+      find.text('Completa primero las etapas pendientes de configuración.'),
+      findsOneWidget,
+    );
   });
+
+  testWidgets(
+    'la primera visita a Productos crea la rama y sus providers una sola vez',
+    (tester) async {
+      await mostrarDashboard(tester, progreso: _progresoConNegocio());
+
+      expect(find.byType(ProductosFlow, skipOffstage: false), findsNothing);
+      expect(find.byType(ProductosContent, skipOffstage: false), findsNothing);
+
+      await tester.tap(find.text('Productos'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ProductosFlow), findsOneWidget);
+      expect(find.byType(ProductosContent), findsOneWidget);
+      expect(_leerProveedorProductos(tester), isNotNull);
+      expect(_leerProveedorCatalogo(tester), isNotNull);
+      expect(find.text('Café molido'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'Productos→Inicio→Productos conserva providers, lista y no relee',
+    (tester) async {
+      final escenario = await mostrarDashboardConProgresoActualizable(
+        tester,
+        progreso: _progresoConNegocio(),
+      );
+
+      await tester.tap(find.text('Productos'));
+      await tester.pumpAndSettle();
+      expect(find.text('Café molido'), findsOneWidget);
+
+      final proveedorProductos = _leerProveedorProductos(tester);
+      final proveedorCatalogo = _leerProveedorCatalogo(tester);
+
+      await tester.tap(find.text('Inicio'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ProductosFlow), findsNothing);
+      expect(find.text('Resumen de tu negocio'), findsOneWidget);
+      expect(
+        find.byKey(const Key('authenticated-shell-contextual-panel')),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text('Productos'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ProductosFlow), findsOneWidget);
+      expect(find.text('Café molido'), findsOneWidget);
+
+      expect(
+        identical(_leerProveedorProductos(tester), proveedorProductos),
+        isTrue,
+      );
+      expect(
+        identical(_leerProveedorCatalogo(tester), proveedorCatalogo),
+        isTrue,
+      );
+
+      verify(
+        () => escenario.dependencias.obtenerPagina(
+          negocioId: any(named: 'negocioId'),
+          despuesDe: any(named: 'despuesDe'),
+          limite: any(named: 'limite'),
+        ),
+      ).called(1);
+    },
+  );
+
+  testWidgets(
+    'al abrir Productos el shell, el Navigator y el provider conservan identidad',
+    (tester) async {
+      final escenario = await mostrarDashboardConProgresoActualizable(
+        tester,
+        progreso: _progresoConNegocio(),
+      );
+
+      final navegador = find.byKey(
+        DashboardWebScreen.navegadorInicioClave,
+        skipOffstage: false,
+      );
+      final estadoNavigator = tester.state<NavigatorState>(navegador);
+      final shellElemento = tester.element(find.byType(AuthenticatedShell));
+
+      await tester.tap(find.text('Productos'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ProductosFlow), findsOneWidget);
+      expect(
+        identical(tester.state<NavigatorState>(navegador), estadoNavigator),
+        isTrue,
+      );
+      expect(
+        identical(
+          tester.element(find.byType(AuthenticatedShell)),
+          shellElemento,
+        ),
+        isTrue,
+      );
+      expect(find.byType(AuthenticatedShell), findsOneWidget);
+      expect(find.byType(Scaffold), findsOneWidget);
+
+      final elemento = tester.element(find.byType(DashboardSidebar));
+      final enArbol = Provider.of<DashboardProvider>(elemento, listen: false);
+      expect(identical(enArbol, escenario.provider), isTrue);
+    },
+  );
+
+  testWidgets(
+    'Productos oculta el panel contextual del shell y conserva sus paneles',
+    (tester) async {
+      await mostrarDashboard(tester, progreso: _progresoConNegocio());
+
+      expect(
+        find.byKey(const Key('authenticated-shell-contextual-panel')),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text('Productos'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ProductosFlow), findsOneWidget);
+      expect(
+        find.byKey(const Key('authenticated-shell-contextual-panel')),
+        findsNothing,
+      );
+      expect(find.byType(DashboardAttentionPanel), findsNothing);
+      expect(find.byKey(const Key('fases-negocio-panel')), findsOneWidget);
+      expect(find.byKey(const Key('ayuda-productos-panel')), findsOneWidget);
+
+      await tester.tap(find.text('Inicio'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ProductosFlow), findsNothing);
+      expect(
+        find.byKey(const Key('authenticated-shell-contextual-panel')),
+        findsOneWidget,
+      );
+      expect(find.byType(DashboardAttentionPanel), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'el cierre de Productos desde onVolver vuelve a Inicio sin destruir la rama',
+    (tester) async {
+      await mostrarDashboardConProgresoActualizable(
+        tester,
+        progreso: _progresoConNegocio(),
+      );
+
+      await tester.tap(find.text('Productos'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ProductosFlow), findsOneWidget);
+
+      final flujo = tester.widget<ProductosFlow>(find.byType(ProductosFlow));
+      flujo.onVolver!();
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ProductosFlow), findsNothing);
+      expect(
+        find.byType(ProductosContent, skipOffstage: false),
+        findsOneWidget,
+      );
+      expect(_leerProveedorProductos(tester), isNotNull);
+      expect(find.text('Resumen de tu negocio'), findsOneWidget);
+      expect(
+        find.byKey(const Key('authenticated-shell-contextual-panel')),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text('Productos'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ProductosFlow), findsOneWidget);
+      expect(find.text('Café molido'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'el progreso reactivo desbloquea Plantilla tras completar Productos',
+    (tester) async {
+      final escenario = await mostrarDashboardConProgresoActualizable(
+        tester,
+        progreso: _progresoConNegocio(),
+      );
+
+      await tester.tap(find.byTooltip('Elegir plantilla'));
+      await tester.pump();
+      expect(
+        find.text('Completa primero las etapas pendientes de configuración.'),
+        findsOneWidget,
+      );
+
+      escenario.actualizarProgreso(_progresoConProductos());
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byTooltip('Elegir plantilla'));
+      await tester.pumpAndSettle();
+      expect(find.text('Seleccion de plantilla'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'elegir plantilla desde Productos conserva la navegación a la ruta raíz',
+    (tester) async {
+      final escenario = await mostrarDashboardConProgresoActualizable(
+        tester,
+        progreso: _progresoConProductos(),
+      );
+
+      await tester.tap(find.text('Productos'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ProductosFlow), findsOneWidget);
+
+      final flujo = tester.widget<ProductosFlow>(find.byType(ProductosFlow));
+      flujo.onElegirPlantilla!('Bodega');
+      await tester.pumpAndSettle();
+
+      expect(escenario.etapasAbiertas, contains(EtapaConfiguracion.plantilla));
+      expect(find.text('Seleccion de plantilla'), findsOneWidget);
+    },
+  );
 
   testWidgets(
     'Configuración se abre dentro del Navigator interno sin usar la ruta raíz',
@@ -523,11 +813,9 @@ void main() {
         progreso: _progresoConRubro(),
         repositorio: repositorio,
         recargarProgreso: () async {
-          final datos = (await firestore
-                  .collection('negocios')
-                  .doc('negocio-1')
-                  .get())
-              .data() ??
+          final datos =
+              (await firestore.collection('negocios').doc('negocio-1').get())
+                  .data() ??
               const <String, dynamic>{};
           escenario.actualizarProgreso(_progresoPostGuardado(datos));
         },
@@ -565,8 +853,13 @@ void main() {
 
       await tester.tap(find.text('Productos').first);
       await tester.pumpAndSettle();
-      expect(escenario.etapasAbiertas, contains(EtapaConfiguracion.productos));
-      expect(find.text('Lista de productos'), findsOneWidget);
+      expect(
+        escenario.etapasAbiertas,
+        isNot(contains(EtapaConfiguracion.productos)),
+      );
+      expect(find.byType(ProductosFlow), findsOneWidget);
+      expect(find.text('Lista de productos'), findsNothing);
+      expect(find.byType(Scaffold), findsOneWidget);
     },
   );
 
@@ -883,7 +1176,10 @@ void main() {
 
       await tester.tap(find.text('Configuración'));
       await tester.pumpAndSettle();
-      expect(escenario.etapasAbiertas, isNot(contains(EtapaConfiguracion.negocio)));
+      expect(
+        escenario.etapasAbiertas,
+        isNot(contains(EtapaConfiguracion.negocio)),
+      );
       expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
       expect(find.text('Configuracion de negocio'), findsNothing);
 
@@ -981,12 +1277,14 @@ class _EscenarioDashboard {
   final _AbridorFake abridor;
   final List<EtapaConfiguracion> etapasAbiertas;
   final DashboardProvider provider;
+  final _DependenciasProductos dependencias;
   final void Function(ProgresoConfiguracion progreso) actualizarProgreso;
 
   const _EscenarioDashboard({
     required this.abridor,
     required this.etapasAbiertas,
     required this.provider,
+    required this.dependencias,
     this.actualizarProgreso = _sinActualizar,
   });
 }
@@ -1019,6 +1317,119 @@ class _EstadoProgresoRecargableState extends State<_EstadoProgresoRecargable> {
 }
 
 void _sinActualizar(ProgresoConfiguracion progreso) {}
+
+ProductosProvider _leerProveedorProductos(WidgetTester tester) {
+  final elemento = tester.element(
+    find.byType(ProductosContent, skipOffstage: false).first,
+  );
+  return Provider.of<ProductosProvider>(elemento, listen: false);
+}
+
+CatalogoNegocioProvider _leerProveedorCatalogo(WidgetTester tester) {
+  final elemento = tester.element(
+    find.byType(ProductosContent, skipOffstage: false).first,
+  );
+  return Provider.of<CatalogoNegocioProvider>(elemento, listen: false);
+}
+
+class _DependenciasProductos {
+  final ProductosDependencies productos;
+  final CatalogoNegocioDependencies catalogo;
+  final _ObtenerPaginaProductosMock obtenerPagina;
+  final _CambiarDisponibilidadMock cambiarDisponibilidad;
+  final _EliminarProductoMock eliminarProducto;
+
+  const _DependenciasProductos({
+    required this.productos,
+    required this.catalogo,
+    required this.obtenerPagina,
+    required this.cambiarDisponibilidad,
+    required this.eliminarProducto,
+  });
+}
+
+_DependenciasProductos _crearDependenciasTest() {
+  final obtenerPagina = _ObtenerPaginaProductosMock();
+  final cambiarDisponibilidad = _CambiarDisponibilidadMock();
+  final eliminarProducto = _EliminarProductoMock();
+  final obtenerCatalogo = _ObtenerCatalogoNegocioMock();
+  final productos = _ProductosDependenciesMock();
+  final catalogo = _CatalogoNegocioDependenciesMock();
+
+  when(
+    () => obtenerPagina(
+      negocioId: any(named: 'negocioId'),
+      despuesDe: any(named: 'despuesDe'),
+      limite: any(named: 'limite'),
+    ),
+  ).thenAnswer(
+    (_) async => PaginaProductos(
+      productos: [
+        Producto(
+          id: 'producto-1',
+          negocioId: 'negocio-1',
+          nombre: 'Café molido',
+          precio: 18.5,
+          stock: 12,
+          categoria: 'Bebidas',
+          unidadMedidaNombre: 'Unidad',
+        ),
+      ],
+      ultimoCursor: null,
+      hayMas: false,
+    ),
+  );
+  when(
+    () => cambiarDisponibilidad(
+      negocioId: any(named: 'negocioId'),
+      productoId: any(named: 'productoId'),
+      disponible: any(named: 'disponible'),
+    ),
+  ).thenAnswer((_) async {});
+  when(
+    () => eliminarProducto(
+      negocioId: any(named: 'negocioId'),
+      productoId: any(named: 'productoId'),
+    ),
+  ).thenAnswer((_) async {});
+  when(() => productos.obtenerPaginaProductos).thenReturn(obtenerPagina);
+  when(
+    () => productos.cambiarDisponibilidadProducto,
+  ).thenReturn(cambiarDisponibilidad);
+  when(() => productos.crearProducto).thenReturn(_CrearProductoMock());
+  when(() => productos.editarProducto).thenReturn(_EditarProductoMock());
+  when(() => productos.eliminarProducto).thenReturn(eliminarProducto);
+  when(() => catalogo.obtenerCatalogoNegocio).thenReturn(obtenerCatalogo);
+
+  return _DependenciasProductos(
+    productos: productos,
+    catalogo: catalogo,
+    obtenerPagina: obtenerPagina,
+    cambiarDisponibilidad: cambiarDisponibilidad,
+    eliminarProducto: eliminarProducto,
+  );
+}
+
+class _ProductosDependenciesMock extends Mock
+    implements ProductosDependencies {}
+
+class _CatalogoNegocioDependenciesMock extends Mock
+    implements CatalogoNegocioDependencies {}
+
+class _ObtenerCatalogoNegocioMock extends Mock
+    implements ObtenerCatalogoNegocio {}
+
+class _ObtenerPaginaProductosMock extends Mock
+    implements ObtenerPaginaProductos {}
+
+class _CambiarDisponibilidadMock extends Mock
+    implements CambiarDisponibilidadProducto {}
+
+class _CrearProductoMock extends Mock implements CrearProducto {}
+
+class _EditarProductoMock extends Mock implements EditarProducto {}
+
+class _EliminarProductoMock extends Mock implements EliminarProducto {}
 
 class _AbridorFake {
   final bool resultado;
@@ -1086,14 +1497,44 @@ ProgresoConfiguracion _progresoConRubro() => ProgresoConfiguracion(
   productosConfirmadosPersistidos: false,
 );
 
+ProgresoConfiguracion _progresoConNegocio() => ProgresoConfiguracion(
+  catalogo: CatalogoNegocio(
+    rubro: 'Bodega',
+    categorias: const ['Bebidas'],
+    unidadesMedida: const [],
+  ),
+  slug: '',
+  plantilla: null,
+  plantillaProvieneDeCampoOficial: false,
+  rubroCompleto: true,
+  negocioCompleto: true,
+  productosCompletos: false,
+  setupCompletePersistido: false,
+  productosConfirmadosPersistidos: false,
+);
+
+ProgresoConfiguracion _progresoConProductos() => ProgresoConfiguracion(
+  catalogo: CatalogoNegocio(
+    rubro: 'Bodega',
+    categorias: const ['Bebidas'],
+    unidadesMedida: const [],
+  ),
+  slug: '',
+  plantilla: null,
+  plantillaProvieneDeCampoOficial: false,
+  rubroCompleto: true,
+  negocioCompleto: true,
+  productosCompletos: true,
+  setupCompletePersistido: false,
+  productosConfirmadosPersistidos: false,
+);
+
 ProgresoConfiguracion _progresoPostGuardado(Map<String, dynamic> datos) =>
     ProgresoConfiguracion(
       catalogo: CatalogoNegocio(
-        rubro: datos['rubro'] is String
-            ? datos['rubro'] as String
-            : 'Bodega',
-        categorias: (datos['categorias'] as List?)?.cast<String>() ??
-            const ['Bebidas'],
+        rubro: datos['rubro'] is String ? datos['rubro'] as String : 'Bodega',
+        categorias:
+            (datos['categorias'] as List?)?.cast<String>() ?? const ['Bebidas'],
         unidadesMedida: const [],
         configuracionInicial: datos,
       ),
