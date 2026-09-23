@@ -10,15 +10,22 @@ import 'package:mobile/features/dashboard/presentation/widgets/dashboard_sidebar
 import 'package:mobile/features/dashboard/presentation/widgets/dashboard_top_bar.dart';
 import 'package:mobile/features/dashboard/presentation/widgets/rubro_contextual_panel.dart';
 import 'package:mobile/features/negocio/application/use_cases/obtener_catalogo_negocio.dart';
+import 'package:mobile/features/negocio/application/use_cases/guardar_plantilla_web.dart';
+import 'package:mobile/features/negocio/application/use_cases/obtener_seleccion_plantilla.dart';
 import 'package:mobile/features/negocio/catalogo_negocio_dependencies.dart';
 import 'package:mobile/features/negocio/data/negocio_repository.dart';
 import 'package:mobile/features/negocio/domain/models/catalogo_negocio.dart';
 import 'package:mobile/features/negocio/domain/models/plantilla_web.dart';
 import 'package:mobile/features/negocio/domain/models/progreso_configuracion.dart';
+import 'package:mobile/features/negocio/domain/models/seleccion_plantilla_info.dart';
 import 'package:mobile/features/negocio/presentation/providers/catalogo_negocio_provider.dart';
 import 'package:mobile/features/negocio/presentation/providers/configuracion_negocio_provider.dart';
+import 'package:mobile/features/negocio/presentation/providers/seleccion_plantilla_provider.dart';
 import 'package:mobile/features/negocio/presentation/widgets/configuracion_negocio_flow.dart';
 import 'package:mobile/features/negocio/presentation/widgets/seleccion_negocio_flow.dart';
+import 'package:mobile/features/negocio/presentation/widgets/seleccion_plantilla_content.dart';
+import 'package:mobile/features/negocio/presentation/widgets/seleccion_plantilla_flow.dart';
+import 'package:mobile/features/negocio/seleccion_plantilla_dependencies.dart';
 import 'package:mobile/features/productos/application/use_cases/cambiar_disponibilidad_producto.dart';
 import 'package:mobile/features/productos/application/use_cases/crear_producto.dart';
 import 'package:mobile/features/productos/application/use_cases/editar_producto.dart';
@@ -35,6 +42,11 @@ import 'package:mocktail/mocktail.dart';
 import 'package:provider/provider.dart';
 
 void main() {
+  setUpAll(() {
+    registerFallbackValue(PlantillaWeb.cristal);
+    registerFallbackValue(PlantillaWeb.galeria);
+  });
+
   Future<_EscenarioDashboard> mostrarDashboard(
     WidgetTester tester, {
     bool resultado = true,
@@ -42,6 +54,7 @@ void main() {
     ProgresoConfiguracion? progreso,
     NegocioRepository? repositorio,
     _DependenciasProductos? dependencias,
+    _DependenciasPlantilla? dependenciasPlantilla,
     Size size = const Size(1400, 1000),
     TextScaler textScaler = TextScaler.noScaling,
   }) async {
@@ -54,6 +67,8 @@ void main() {
     final abridor = _AbridorFake(resultado: resultado, error: error);
     final etapasAbiertas = <EtapaConfiguracion>[];
     final deps = dependencias ?? _crearDependenciasTest();
+    final depsPlantilla =
+        dependenciasPlantilla ?? _crearDependenciasPlantillaTest();
     final repositorioNegocio =
         repositorio ?? NegocioRepository(firestore: FakeFirebaseFirestore());
     addTearDown(dashboardProvider.dispose);
@@ -82,6 +97,8 @@ void main() {
                 onCerrarSesion: () {},
                 productosDependencies: deps.productos,
                 catalogoDependencies: deps.catalogo,
+                seleccionPlantillaDependencies:
+                    depsPlantilla.seleccionPlantilla,
               ),
             ),
             routes: {
@@ -108,6 +125,7 @@ void main() {
       etapasAbiertas: etapasAbiertas,
       provider: dashboardProvider,
       dependencias: deps,
+      dependenciasPlantilla: depsPlantilla,
     );
   }
 
@@ -116,6 +134,7 @@ void main() {
     required ProgresoConfiguracion progreso,
     NegocioRepository? repositorio,
     _DependenciasProductos? dependencias,
+    _DependenciasPlantilla? dependenciasPlantilla,
     Future<void> Function()? recargarProgreso,
   }) async {
     tester.view.physicalSize = const Size(1400, 1000);
@@ -127,6 +146,8 @@ void main() {
     final abridor = _AbridorFake(resultado: true);
     final etapasAbiertas = <EtapaConfiguracion>[];
     final deps = dependencias ?? _crearDependenciasTest();
+    final depsPlantilla =
+        dependenciasPlantilla ?? _crearDependenciasPlantillaTest();
     final repositorioNegocio =
         repositorio ?? NegocioRepository(firestore: FakeFirebaseFirestore());
     addTearDown(dashboardProvider.dispose);
@@ -155,6 +176,8 @@ void main() {
                 onCerrarSesion: () {},
                 productosDependencies: deps.productos,
                 catalogoDependencies: deps.catalogo,
+                seleccionPlantillaDependencies:
+                    depsPlantilla.seleccionPlantilla,
               ),
             ),
             routes: {
@@ -181,6 +204,7 @@ void main() {
       etapasAbiertas: etapasAbiertas,
       provider: dashboardProvider,
       dependencias: deps,
+      dependenciasPlantilla: depsPlantilla,
       actualizarProgreso: (nuevo) =>
           llave.currentState!.actualizarProgreso(nuevo),
     );
@@ -226,17 +250,25 @@ void main() {
     );
   });
 
-  testWidgets('navega a elegir plantilla desde la barra superior', (
-    tester,
-  ) async {
-    final escenario = await mostrarDashboard(tester);
+  testWidgets(
+    'abre el flujo de plantilla interno desde la barra superior sin ruta raíz',
+    (tester) async {
+      final escenario = await mostrarDashboard(tester);
 
-    await tester.tap(find.byTooltip('Elegir plantilla'));
-    await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Elegir plantilla'));
+      await tester.pumpAndSettle();
 
-    expect(find.text('Seleccion de plantilla'), findsOneWidget);
-    expect(escenario.abridor.llamadas, 0);
-  });
+      expect(escenario.etapasAbiertas, isEmpty);
+      expect(escenario.abridor.llamadas, 0);
+      expect(find.text('Seleccion de plantilla'), findsNothing);
+      expect(find.byType(SeleccionPlantillaFlow), findsOneWidget);
+      expect(find.byType(SeleccionPlantillaContent), findsOneWidget);
+      final sidebar = tester.widget<DashboardSidebar>(
+        find.byType(DashboardSidebar),
+      );
+      expect(sidebar.destinoActivo, DashboardDestination.plantilla);
+    },
+  );
 
   testWidgets('abre la primera etapa pendiente dentro del Navigator interno', (
     tester,
@@ -800,12 +832,14 @@ void main() {
 
       await tester.tap(find.byTooltip('Elegir plantilla'));
       await tester.pumpAndSettle();
-      expect(find.text('Seleccion de plantilla'), findsOneWidget);
+      expect(find.text('Seleccion de plantilla'), findsNothing);
+      expect(find.byType(SeleccionPlantillaFlow), findsOneWidget);
+      expect(find.byKey(const Key('plantillas-wrap')), findsOneWidget);
     },
   );
 
   testWidgets(
-    'elegir plantilla desde Productos conserva la navegación a la ruta raíz',
+    'elegir plantilla desde Productos la abre internamente y conserva Productos',
     (tester) async {
       final escenario = await mostrarDashboardConProgresoActualizable(
         tester,
@@ -820,8 +854,18 @@ void main() {
       flujo.onElegirPlantilla!('Bodega');
       await tester.pumpAndSettle();
 
-      expect(escenario.etapasAbiertas, contains(EtapaConfiguracion.plantilla));
-      expect(find.text('Seleccion de plantilla'), findsOneWidget);
+      expect(escenario.etapasAbiertas, isEmpty);
+      expect(find.text('Seleccion de plantilla'), findsNothing);
+      expect(find.byType(SeleccionPlantillaFlow), findsOneWidget);
+      expect(
+        find.byType(ProductosContent, skipOffstage: false),
+        findsOneWidget,
+      );
+      expect(_leerProveedorProductos(tester), isNotNull);
+      final sidebar = tester.widget<DashboardSidebar>(
+        find.byType(DashboardSidebar),
+      );
+      expect(sidebar.destinoActivo, DashboardDestination.plantilla);
     },
   );
 
@@ -1433,6 +1477,17 @@ void main() {
       );
       expect(find.text('Seleccion de plantilla'), findsNothing);
       expect(
+        find.byType(SeleccionPlantillaFlow, skipOffstage: false),
+        findsNothing,
+      );
+      expect(
+        find.byType(ChangeNotifierProvider<SeleccionPlantillaProvider>),
+        findsNothing,
+      );
+      verifyNever(
+        () => escenario.dependenciasPlantilla.obtenerSeleccion(any()),
+      );
+      expect(
         find.byType(ChangeNotifierProvider<DashboardProvider>),
         findsOneWidget,
       );
@@ -1443,6 +1498,238 @@ void main() {
       expect(find.text('Resumen de tu negocio'), findsOneWidget);
     },
   );
+
+  testWidgets(
+    'la rama de Plantilla nace perezosa y conserva provider y selección',
+    (tester) async {
+      final escenario = await mostrarDashboard(
+        tester,
+        progreso: _progresoConProductos(),
+      );
+
+      expect(
+        find.byType(SeleccionPlantillaFlow, skipOffstage: false),
+        findsNothing,
+      );
+      expect(
+        find.byType(
+          ChangeNotifierProvider<SeleccionPlantillaProvider>,
+          skipOffstage: false,
+        ),
+        findsNothing,
+      );
+      expect(find.byType(ProductosFlow, skipOffstage: false), findsNothing);
+
+      await tester.tap(_textoSidebar('Plantilla web'));
+      await tester.pumpAndSettle();
+      expect(find.byType(SeleccionPlantillaFlow), findsOneWidget);
+      final provider1 = _leerProveedorPlantilla(tester);
+
+      await tester.tap(find.byKey(const Key('plantilla-card-galeria')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Inicio'));
+      await tester.pumpAndSettle();
+      expect(find.byType(SeleccionPlantillaFlow), findsNothing);
+
+      await tester.tap(_textoSidebar('Plantilla web'));
+      await tester.pumpAndSettle();
+      expect(find.byType(SeleccionPlantillaFlow), findsOneWidget);
+      expect(identical(_leerProveedorPlantilla(tester), provider1), isTrue);
+
+      final provider2 = _leerProveedorPlantilla(tester);
+      expect(provider2.cargado, isTrue);
+      expect(provider2.cargando, isFalse);
+      expect(provider2.seleccionTemporal, PlantillaWeb.galeria);
+      verifyNever(
+        () => escenario.dependenciasPlantilla.obtenerSeleccion(any()),
+      );
+    },
+  );
+
+  testWidgets(
+    'alternar entre Productos y Plantilla conserva ambas ramas vivas',
+    (tester) async {
+      await mostrarDashboardConProgresoActualizable(
+        tester,
+        progreso: _progresoConProductos(),
+      );
+
+      expect(find.byType(ProductosFlow, skipOffstage: false), findsNothing);
+      expect(
+        find.byType(SeleccionPlantillaFlow, skipOffstage: false),
+        findsNothing,
+      );
+
+      await tester.tap(find.text('Productos'));
+      await tester.pumpAndSettle();
+      final productos1 = _leerProveedorProductos(tester);
+
+      await tester.tap(_textoSidebar('Plantilla web'));
+      await tester.pumpAndSettle();
+      final plantilla1 = _leerProveedorPlantilla(tester);
+
+      await tester.tap(find.text('Productos'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ProductosFlow), findsOneWidget);
+      expect(identical(_leerProveedorProductos(tester), productos1), isTrue);
+
+      await tester.tap(_textoSidebar('Plantilla web'));
+      await tester.pumpAndSettle();
+      expect(find.byType(SeleccionPlantillaFlow), findsOneWidget);
+      expect(identical(_leerProveedorPlantilla(tester), plantilla1), isTrue);
+    },
+  );
+
+  testWidgets('onVolver desde Plantilla regresa a Productos sin recrearlo', (
+    tester,
+  ) async {
+    final escenario = await mostrarDashboardConProgresoActualizable(
+      tester,
+      progreso: _progresoCompleto(),
+    );
+
+    await tester.tap(find.text('Productos'));
+    await tester.pumpAndSettle();
+    final productos1 = _leerProveedorProductos(tester);
+
+    await tester.tap(_textoSidebar('Plantilla web'));
+    await tester.pumpAndSettle();
+    expect(find.byType(SeleccionPlantillaFlow), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('ir-dashboard-plantilla')));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SeleccionPlantillaFlow), findsNothing);
+    expect(find.byType(ProductosFlow), findsOneWidget);
+    expect(identical(_leerProveedorProductos(tester), productos1), isTrue);
+    verify(
+      () => escenario.dependencias.obtenerPagina(
+        negocioId: 'negocio-1',
+        despuesDe: any(named: 'despuesDe'),
+        limite: any(named: 'limite'),
+      ),
+    ).called(1);
+  });
+
+  testWidgets(
+    'guardar recarga el progreso y vuelve a Inicio sin desmontar el shell',
+    (tester) async {
+      late void Function(ProgresoConfiguracion) actualizar;
+      final escenario = await mostrarDashboardConProgresoActualizable(
+        tester,
+        progreso: _progresoConProductos(),
+        recargarProgreso: () async {
+          actualizar(_progresoCompleto());
+        },
+      );
+      actualizar = escenario.actualizarProgreso;
+
+      await tester.tap(_textoSidebar('Plantilla web'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('plantilla-card-galeria')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('finalizar-plantilla')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SeleccionPlantillaFlow), findsNothing);
+      expect(find.text('Resumen de tu negocio'), findsOneWidget);
+      expect(find.byType(AuthenticatedShell), findsOneWidget);
+      expect(find.byType(Scaffold), findsOneWidget);
+      expect(
+        find.byKey(DashboardWebScreen.navegadorInicioClave),
+        findsOneWidget,
+      );
+      expect(
+        find.byType(ChangeNotifierProvider<DashboardProvider>),
+        findsOneWidget,
+      );
+      final sidebar = tester.widget<DashboardSidebar>(
+        find.byType(DashboardSidebar),
+      );
+      expect(sidebar.destinoActivo, DashboardDestination.inicio);
+      verify(
+        () => escenario.dependenciasPlantilla.guardarPlantilla(
+          'usuario-1',
+          PlantillaWeb.galeria,
+        ),
+      ).called(1);
+    },
+  );
+
+  testWidgets(
+    'Plantilla interna conserva un único Scaffold, shell, Navigator y provider',
+    (tester) async {
+      final escenario = await mostrarDashboard(tester);
+
+      final navegador = find.byKey(
+        DashboardWebScreen.navegadorInicioClave,
+        skipOffstage: false,
+      );
+      final estadoNavigator = tester.state<NavigatorState>(navegador);
+      final shellElemento = tester.element(find.byType(AuthenticatedShell));
+
+      await tester.tap(_textoSidebar('Plantilla web'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AuthenticatedShell), findsOneWidget);
+      expect(find.byType(Scaffold), findsOneWidget);
+      expect(find.byType(DashboardTopBar), findsOneWidget);
+      expect(find.byType(DashboardSidebar), findsOneWidget);
+      expect(
+        find.byKey(
+          DashboardWebScreen.navegadorInicioClave,
+          skipOffstage: false,
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.byType(ChangeNotifierProvider<DashboardProvider>),
+        findsOneWidget,
+      );
+      expect(
+        identical(tester.state<NavigatorState>(navegador), estadoNavigator),
+        isTrue,
+      );
+      expect(
+        identical(
+          tester.element(find.byType(AuthenticatedShell)),
+          shellElemento,
+        ),
+        isTrue,
+      );
+      final elementoArbol = tester.element(find.byType(DashboardSidebar));
+      expect(
+        identical(
+          Provider.of<DashboardProvider>(elementoArbol, listen: false),
+          escenario.provider,
+        ),
+        isTrue,
+      );
+      expect(
+        find.byKey(const Key('authenticated-shell-contextual-panel')),
+        findsNothing,
+      );
+    },
+  );
+
+  testWidgets('onVerTienda desde Plantilla conserva la apertura de la tienda', (
+    tester,
+  ) async {
+    final escenario = await mostrarDashboard(tester);
+
+    await tester.tap(_textoSidebar('Plantilla web'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('ver-tienda-plantilla')));
+    await tester.pumpAndSettle();
+
+    expect(escenario.abridor.llamadas, 1);
+    expect(
+      escenario.abridor.ultimaUrl,
+      Uri.parse('https://yapiventa-tienda.web.app/mi-tienda'),
+    );
+    expect(escenario.abridor.ultimoDestino, '_blank');
+  });
 }
 
 class _EscenarioDashboard {
@@ -1450,6 +1737,7 @@ class _EscenarioDashboard {
   final List<EtapaConfiguracion> etapasAbiertas;
   final DashboardProvider provider;
   final _DependenciasProductos dependencias;
+  final _DependenciasPlantilla dependenciasPlantilla;
   final void Function(ProgresoConfiguracion progreso) actualizarProgreso;
 
   const _EscenarioDashboard({
@@ -1457,6 +1745,7 @@ class _EscenarioDashboard {
     required this.etapasAbiertas,
     required this.provider,
     required this.dependencias,
+    required this.dependenciasPlantilla,
     this.actualizarProgreso = _sinActualizar,
   });
 }
@@ -1503,6 +1792,56 @@ CatalogoNegocioProvider _leerProveedorCatalogo(WidgetTester tester) {
   );
   return Provider.of<CatalogoNegocioProvider>(elemento, listen: false);
 }
+
+SeleccionPlantillaProvider _leerProveedorPlantilla(WidgetTester tester) {
+  final elemento = tester.element(
+    find.byType(SeleccionPlantillaContent, skipOffstage: false).first,
+  );
+  return Provider.of<SeleccionPlantillaProvider>(elemento, listen: false);
+}
+
+Finder _textoSidebar(String texto) => find
+    .descendant(of: find.byType(DashboardSidebar), matching: find.text(texto))
+    .first;
+
+class _DependenciasPlantilla {
+  final SeleccionPlantillaDependencies seleccionPlantilla;
+  final _ObtenerSeleccionPlantillaMock obtenerSeleccion;
+  final _GuardarPlantillaWebMock guardarPlantilla;
+
+  const _DependenciasPlantilla({
+    required this.seleccionPlantilla,
+    required this.obtenerSeleccion,
+    required this.guardarPlantilla,
+  });
+}
+
+_DependenciasPlantilla _crearDependenciasPlantillaTest() {
+  final obtenerSeleccion = _ObtenerSeleccionPlantillaMock();
+  final guardarPlantilla = _GuardarPlantillaWebMock();
+  when(() => obtenerSeleccion(any())).thenAnswer(
+    (_) async => const SeleccionPlantillaInfo(
+      slug: '',
+      plantillaGuardada: null,
+      provieneDeCampoOficial: false,
+    ),
+  );
+  when(() => guardarPlantilla(any(), any())).thenAnswer((_) async {});
+
+  return _DependenciasPlantilla(
+    seleccionPlantilla: SeleccionPlantillaDependencies(
+      obtenerSeleccionPlantilla: obtenerSeleccion,
+      guardarPlantillaWeb: guardarPlantilla,
+    ),
+    obtenerSeleccion: obtenerSeleccion,
+    guardarPlantilla: guardarPlantilla,
+  );
+}
+
+class _ObtenerSeleccionPlantillaMock extends Mock
+    implements ObtenerSeleccionPlantilla {}
+
+class _GuardarPlantillaWebMock extends Mock implements GuardarPlantillaWeb {}
 
 class _DependenciasProductos {
   final ProductosDependencies productos;

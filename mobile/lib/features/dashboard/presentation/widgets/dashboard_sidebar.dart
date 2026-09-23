@@ -4,6 +4,7 @@ import '../../../../core/theme/app_colors.dart';
 enum DashboardDestination {
   inicio,
   productos,
+  plantilla,
   pedidos,
   ventas,
   quejas,
@@ -49,6 +50,11 @@ class DashboardSidebar extends StatelessWidget {
                     destino: DashboardDestination.productos,
                     icono: Icons.inventory_2_outlined,
                     texto: 'Productos',
+                  ),
+                  _item(
+                    destino: DashboardDestination.plantilla,
+                    icono: Icons.palette_outlined,
+                    texto: 'Plantilla web',
                   ),
                   _item(
                     destino: DashboardDestination.pedidos,

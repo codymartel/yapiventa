@@ -14,6 +14,8 @@ import 'package:mobile/features/negocio/data/negocio_repository.dart';
 import 'package:mobile/features/negocio/domain/models/catalogo_negocio.dart';
 import 'package:mobile/features/negocio/domain/models/progreso_configuracion.dart';
 import 'package:mobile/features/negocio/presentation/screens/configuracion_negocio_screen.dart';
+import 'package:mobile/features/negocio/presentation/screens/seleccion_plantilla_screen.dart';
+import 'package:mobile/features/negocio/seleccion_plantilla_dependencies.dart';
 import 'package:mobile/features/productos/application/use_cases/cambiar_disponibilidad_producto.dart';
 import 'package:mobile/features/productos/application/use_cases/crear_producto.dart';
 import 'package:mobile/features/productos/application/use_cases/editar_producto.dart';
@@ -364,4 +366,68 @@ void main() {
       expect(tester.takeException(), isNull);
     },
   );
+
+  testWidgets('la ruta raíz /elegir-plantilla sigue funcionando directa', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final authRepository = _AuthRepositoryFake();
+    final usuario = _UserFake();
+    final firestore = FakeFirebaseFirestore();
+    when(() => usuario.uid).thenReturn('usuario-1');
+    when(() => usuario.email).thenReturn('ana@example.com');
+    when(() => usuario.emailVerified).thenReturn(true);
+    when(() => usuario.providerData).thenReturn(const []);
+    when(
+      () => authRepository.cambiosDeAuth,
+    ).thenAnswer((_) => Stream.value(usuario));
+    when(() => authRepository.usuarioActual).thenReturn(usuario);
+    await firestore.collection('users').doc('usuario-1').set({
+      'email': 'ana@example.com',
+      'negocioId': 'negocio-1',
+    });
+    await firestore.collection('negocios').doc('negocio-1').set({
+      'rubro': 'Bodega',
+      'nombreNegocio': 'Bodega Ana',
+      'telefono': '999999999',
+      'direccion': 'Av Lima 123',
+      'categorias': ['Bebidas'],
+      'unidadesMedida': [
+        {
+          'nombre': 'Unidad',
+          'tipo': 'entera',
+          'fraccionesPermitidas': <String>[],
+          'esOpcional': false,
+        },
+      ],
+      'onboardingBusinessRubro': 'Bodega',
+      'onboardingProductsConfirmed': true,
+      'slug': '',
+    });
+    final seleccionPlantillaDependencies =
+        SeleccionPlantillaDependencies.fromRepository(
+          NegocioRepository(firestore: firestore),
+        );
+
+    await tester.pumpWidget(
+      MyApp(
+        authRepository: authRepository,
+        userRepository: UserRepository(firestore: firestore),
+        negocioRepository: NegocioRepository(firestore: firestore),
+        seleccionPlantillaDependencies: seleccionPlantillaDependencies,
+        initialRoute: '/elegir-plantilla',
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SeleccionPlantillaScreen), findsOneWidget);
+    expect(find.text('Elige el estilo\nde tu tienda'), findsOneWidget);
+    expect(find.byKey(const Key('plantillas-wrap')), findsOneWidget);
+    expect(find.byKey(const Key('finalizar-plantilla')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 }

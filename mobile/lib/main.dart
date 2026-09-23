@@ -20,6 +20,7 @@ import 'features/negocio/presentation/screens/configuracion_negocio_screen.dart'
 import 'features/negocio/presentation/screens/seleccion_negocio_screen.dart';
 import 'features/negocio/presentation/screens/seleccion_plantilla_screen.dart';
 import 'features/negocio/catalogo_negocio_dependencies.dart';
+import 'features/negocio/seleccion_plantilla_dependencies.dart';
 import 'features/productos/presentation/screens/productos_screen.dart';
 import 'features/productos/productos_dependencies.dart';
 import 'firebase_options.dart';
@@ -36,6 +37,7 @@ class MyApp extends StatelessWidget {
   final NegocioRepository? negocioRepository;
   final ProductosDependencies? productosDependencies;
   final CatalogoNegocioDependencies? catalogoDependencies;
+  final SeleccionPlantillaDependencies? seleccionPlantillaDependencies;
   final String? initialRoute;
 
   const MyApp({
@@ -45,6 +47,7 @@ class MyApp extends StatelessWidget {
     this.negocioRepository,
     this.productosDependencies,
     this.catalogoDependencies,
+    this.seleccionPlantillaDependencies,
     this.initialRoute,
   });
 
@@ -81,12 +84,14 @@ class MyApp extends StatelessWidget {
             RouteSettings(name: rutaInicial),
             productosDependencies: productosDependencies,
             catalogoDependencies: catalogoDependencies,
+            seleccionPlantillaDependencies: seleccionPlantillaDependencies,
           ),
         ],
         onGenerateRoute: (settings) => _crearRuta(
           settings,
           productosDependencies: productosDependencies,
           catalogoDependencies: catalogoDependencies,
+          seleccionPlantillaDependencies: seleccionPlantillaDependencies,
         ),
       ),
     );
@@ -97,6 +102,7 @@ Route<dynamic> _crearRuta(
   RouteSettings settings, {
   ProductosDependencies? productosDependencies,
   CatalogoNegocioDependencies? catalogoDependencies,
+  SeleccionPlantillaDependencies? seleccionPlantillaDependencies,
 }) {
   final ruta = switch (settings.name) {
     RutasAcceso.verificacion => RutasAcceso.verificacion,
@@ -113,6 +119,7 @@ Route<dynamic> _crearRuta(
       ruta: ruta,
       productosDependencies: productosDependencies,
       catalogoDependencies: catalogoDependencies,
+      seleccionPlantillaDependencies: seleccionPlantillaDependencies,
     ),
   );
 }
@@ -121,11 +128,13 @@ class _RutaConAcceso extends StatelessWidget {
   final String ruta;
   final ProductosDependencies? productosDependencies;
   final CatalogoNegocioDependencies? catalogoDependencies;
+  final SeleccionPlantillaDependencies? seleccionPlantillaDependencies;
 
   const _RutaConAcceso({
     required this.ruta,
     this.productosDependencies,
     this.catalogoDependencies,
+    this.seleccionPlantillaDependencies,
   });
 
   @override
@@ -192,6 +201,7 @@ class _RutaConAcceso extends StatelessWidget {
             onCerrarSesion: () => context.read<AuthProvider>().cerrarSesion(),
             productosDependencies: productosDependencies,
             catalogoDependencies: catalogoDependencies,
+            seleccionPlantillaDependencies: seleccionPlantillaDependencies,
           ),
         );
       case RutasAcceso.rubro:
@@ -258,6 +268,7 @@ class _RutaConAcceso extends StatelessWidget {
             plantillaGuardada: progreso.plantilla,
             provieneDeCampoOficial: progreso.plantillaProvieneDeCampoOficial,
           ),
+          dependencies: seleccionPlantillaDependencies,
           onVolver: () {
             if (Navigator.of(context).canPop()) {
               Navigator.of(context).pop();
