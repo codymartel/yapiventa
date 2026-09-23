@@ -102,6 +102,63 @@ void main() {
     expect(selecciones, ['Bodega']);
   });
 
+  testWidgets('muestra exactamente los seis rubros en el orden definido', (
+    tester,
+  ) async {
+    await mostrarContenido(tester, size: const Size(868, 800));
+    const rubros = [
+      'Bodega',
+      'Restaurante',
+      'Ropa',
+      'Accesorios y regalos',
+      'Belleza y cuidado personal',
+      'Otros',
+    ];
+
+    for (final rubro in rubros) {
+      expect(find.byKey(Key('rubro-card-$rubro')), findsOneWidget);
+    }
+    expect(find.byKey(const Key('rubro-card-Farmacia')), findsNothing);
+    expect(find.byKey(const Key('rubro-card-Ferretería')), findsNothing);
+
+    final ordenVisual = [...rubros]
+      ..sort((a, b) {
+        final posicionA = tester.getTopLeft(find.byKey(Key('rubro-card-$a')));
+        final posicionB = tester.getTopLeft(find.byKey(Key('rubro-card-$b')));
+        final fila = posicionA.dy.compareTo(posicionB.dy);
+        return fila != 0 ? fila : posicionA.dx.compareTo(posicionB.dx);
+      });
+    expect(ordenVisual, rubros);
+  });
+
+  testWidgets('las flechas recorren columnas y Enter selecciona', (
+    tester,
+  ) async {
+    final selecciones = <String>[];
+    await mostrarContenido(
+      tester,
+      size: const Size(868, 800),
+      onSeleccionar: selecciones.add,
+    );
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+    expect(selecciones, ['Belleza y cuidado personal']);
+  });
+
+  testWidgets('Espacio selecciona el rubro con foco', (tester) async {
+    final selecciones = <String>[];
+    await mostrarContenido(tester, onSeleccionar: selecciones.add);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyEvent(LogicalKeyboardKey.space);
+
+    expect(selecciones, ['Bodega']);
+  });
+
   testWidgets('usa una columna y padding 16 en 360 px', (tester) async {
     await mostrarContenido(tester);
 
@@ -146,7 +203,9 @@ void main() {
       find.byKey(const Key('rubro-card-Restaurante')),
     );
     final tercera = tester.getRect(find.byKey(const Key('rubro-card-Ropa')));
-    final cuarta = tester.getRect(find.byKey(const Key('rubro-card-Farmacia')));
+    final cuarta = tester.getRect(
+      find.byKey(const Key('rubro-card-Accesorios y regalos')),
+    );
     expect(segunda.top, primera.top);
     expect(tercera.top, primera.top);
     expect(cuarta.top, greaterThan(primera.bottom));
@@ -186,6 +245,24 @@ void main() {
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
     });
+  }
+
+  for (final ancho in [320.0, 360.0, 768.0, 1050.0, 1440.0]) {
+    for (final escala in [1.0, 1.3, 2.0]) {
+      testWidgets('sin overflow a ${ancho}px con texto $escala', (
+        tester,
+      ) async {
+        await mostrarContenido(
+          tester,
+          size: Size(ancho, 900),
+          textScaler: TextScaler.linear(escala),
+        );
+
+        await tester.ensureVisible(find.byKey(const Key('confirmar-rubro')));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+      });
+    }
   }
 
   testWidgets('deshabilita tarjetas y CTA mientras guarda', (tester) async {
@@ -263,5 +340,33 @@ void main() {
       findsOneWidget,
     );
     expect(find.byType(Scaffold), findsOneWidget);
+  });
+
+  testWidgets('Escape cierra el diálogo de cambio sin guardar', (tester) async {
+    final guardados = <String>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SeleccionNegocioScreen(
+          rubroInicial: 'Bodega',
+          onVolverDashboard: () {},
+          onTipoSeleccionado: (rubro) async {
+            guardados.add(rubro);
+            return true;
+          },
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('rubro-card-Restaurante')));
+    await tester.ensureVisible(find.byKey(const Key('confirmar-rubro')));
+    await tester.tap(find.byKey(const Key('confirmar-rubro')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Cambiar rubro'), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Cambiar rubro'), findsNothing);
+    expect(guardados, isEmpty);
   });
 }

@@ -51,6 +51,7 @@ class PasoCatalogo extends StatelessWidget {
                 onPressed: () => _dialogoCategoria(context, p, index: i),
               ),
             IconButton(
+              tooltip: 'Agregar categoría',
               icon: Icon(Icons.add_circle, color: AppColors.blueLt),
               onPressed: () => _dialogoCategoria(context, p),
             ),
@@ -80,27 +81,76 @@ class PasoCatalogo extends StatelessWidget {
         ),
         const SizedBox(height: 10),
 
+        LayoutBuilder(
+          builder: (context, constraints) {
+            const separacion = 12.0;
+            final columnas = constraints.maxWidth >= 680 ? 2 : 1;
+            final ancho =
+                (constraints.maxWidth - separacion * (columnas - 1)) / columnas;
+            return Wrap(
+              spacing: separacion,
+              runSpacing: separacion,
+              children: [
+                for (final unidad in p.unidadesPredefinidas)
+                  SizedBox(
+                    width: ancho,
+                    child: _UnidadPredefinidaCard(
+                      unidad: unidad,
+                      activa: p.unidadPredefinidaActiva(unidad.nombre),
+                      onChanged: (activa) =>
+                          p.establecerUnidadPredefinidaActiva(
+                            unidad,
+                            activa: activa,
+                          ),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
+        const SizedBox(height: 20),
+        Text(
+          'Unidades personalizadas',
+          style: TextStyle(
+            color: AppColors.texto,
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+          ),
+        ),
+        const SizedBox(height: 8),
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
             for (var i = 0; i < p.unidadesMedida.length; i++)
-              InputChip(
-                backgroundColor: AppColors.card,
-                label: Text(
-                  '${p.unidadesMedida[i].nombre}'
-                  '${p.unidadesMedida[i].tipo == TipoUnidad.fraccionaria ? " (fraccionaria)" : ""}',
-                  style: TextStyle(color: AppColors.texto, fontSize: 13),
+              if (!p.unidadPredefinida(p.unidadesMedida[i]))
+                InputChip(
+                  backgroundColor: AppColors.card,
+                  label: Text(
+                    p.unidadesMedida[i].nombre,
+                    style: TextStyle(color: AppColors.texto, fontSize: 13),
+                  ),
+                  tooltip: 'Editar ${p.unidadesMedida[i].nombre}',
+                  deleteButtonTooltipMessage:
+                      'Eliminar ${p.unidadesMedida[i].nombre}',
+                  onPressed: () => _dialogoUnidad(context, p, index: i),
+                  onDeleted: () => p.eliminarUnidad(i),
                 ),
-                onPressed: () => _dialogoUnidad(context, p, index: i),
-                onDeleted: () => p.eliminarUnidad(i),
-              ),
-            IconButton(
-              icon: Icon(Icons.add_circle, color: AppColors.blueLt),
+            OutlinedButton.icon(
               onPressed: () => _dialogoUnidad(context, p),
+              icon: const Icon(Icons.add),
+              label: const Text('Agregar unidad'),
             ),
           ],
         ),
+        if (p.faltaUnidad)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              'Activa o agrega al menos una unidad',
+              style: TextStyle(color: AppColors.error, fontSize: 12),
+            ),
+          ),
       ],
     );
   }
@@ -224,7 +274,7 @@ class PasoCatalogo extends StatelessWidget {
                   },
                   decoration: InputDecoration(
                     labelText: 'Fracciones permitidas *',
-                    hintText: 'Ej: 0.25, 0.5, 1',
+                    hintText: 'Ej: 1/4, 1/2, 1',
                     errorText: errorFracciones,
                   ),
                 ),
@@ -282,5 +332,92 @@ class PasoCatalogo extends StatelessWidget {
       nombreController.dispose();
       fraccionesController.dispose();
     });
+  }
+}
+
+class _UnidadPredefinidaCard extends StatelessWidget {
+  final UnidadInfo unidad;
+  final bool activa;
+  final ValueChanged<bool> onChanged;
+
+  const _UnidadPredefinidaCard({
+    required this.unidad,
+    required this.activa,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final tipo = unidad.tipo == TipoUnidad.entera ? 'Entera' : 'Fraccionaria';
+    final cantidades = _cantidadesLegibles(unidad);
+    return Material(
+      color: AppColors.card,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: AppColors.border),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: SwitchListTile(
+        key: Key('unidad-predefinida-${unidad.nombre}'),
+        value: activa,
+        onChanged: onChanged,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        title: Text(
+          unidad.nombre,
+          style: TextStyle(color: AppColors.texto, fontWeight: FontWeight.w700),
+        ),
+        subtitle: Padding(
+          padding: const EdgeInsets.only(top: 4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Tipo: $tipo', style: TextStyle(color: AppColors.muted)),
+              Text(
+                'Opcional: ${unidad.esOpcional ? "Sí" : "No"}',
+                style: TextStyle(color: AppColors.muted),
+              ),
+              Text(
+                'Cantidades sugeridas: $cantidades',
+                style: TextStyle(color: AppColors.muted),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  static String _cantidadesLegibles(UnidadInfo unidad) {
+    if (unidad.fraccionesPermitidas.isEmpty) return 'Cantidades enteras';
+    return unidad.fraccionesPermitidas
+        .map((valor) => _cantidadLegible(unidad.nombre, valor))
+        .join(', ');
+  }
+
+  static String _cantidadLegible(String unidad, String valor) {
+    if (unidad == 'Docena') {
+      return valor == '0.5' ? 'Media docena' : 'Docena';
+    }
+    if (unidad == 'Porción') {
+      return switch (valor) {
+        '0.125' => '⅛ de porción',
+        '0.25' => '¼ de porción',
+        '0.5' => 'Media porción',
+        _ => 'Porción',
+      };
+    }
+    if (unidad == 'kg' || unidad == 'L') {
+      final numero = switch (valor) {
+        '0.25' => '¼',
+        '0.5' => '½',
+        '0.75' => '¾',
+        '1.5' => '1½',
+        '2.5' => '2½',
+        _ => valor,
+      };
+      return '$numero $unidad';
+    }
+    if (unidad == 'g' || unidad == 'ml') return '$valor $unidad';
+    return valor;
   }
 }

@@ -308,18 +308,83 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
 
   late List<UnidadInfo> _unidadesMedida;
   List<UnidadInfo> get unidadesMedida => List.unmodifiable(_unidadesMedida);
+  List<UnidadInfo> get unidadesPredefinidas =>
+      List.unmodifiable(UnidadesMedida.obtener(rubro));
+
+  bool unidadPredefinidaActiva(String nombre) =>
+      _unidadesMedida.any((unidad) => unidad.nombre == nombre);
+
+  bool unidadPredefinida(UnidadInfo unidad) => unidadesPredefinidas.any(
+    (predefinida) => predefinida.nombre == unidad.nombre,
+  );
+
+  bool unidadBaseProtegida(String nombre) {
+    return const {
+      'unidad',
+      'g',
+      'kg',
+      'ml',
+      'l',
+      // Compatibilidad con configuraciones guardadas antes del nombre "L".
+      'litro (l)',
+    }.contains(nombre.trim().toLowerCase());
+  }
+
+  void establecerUnidadPredefinidaActiva(
+    UnidadInfo unidad, {
+    required bool activa,
+  }) {
+    final predefinida = unidadesPredefinidas.where(
+      (opcion) => opcion.nombre == unidad.nombre,
+    );
+    if (predefinida.isEmpty) return;
+
+    final index = _unidadesMedida.indexWhere(
+      (opcion) => opcion.nombre == unidad.nombre,
+    );
+    if (activa && index == -1) {
+      _unidadesMedida.add(predefinida.first);
+    } else if (!activa && index != -1) {
+      _unidadesMedida.removeAt(index);
+    } else {
+      return;
+    }
+    notifyListeners();
+  }
 
   void agregarUnidad(UnidadInfo unidad) {
+    if (_unidadesMedida.any(
+      (actual) =>
+          actual.nombre.trim().toLowerCase() ==
+          unidad.nombre.trim().toLowerCase(),
+    )) {
+      return;
+    }
     _unidadesMedida.add(unidad);
     notifyListeners();
   }
 
   void editarUnidad(int index, UnidadInfo unidad) {
+    final actual = _unidadesMedida[index];
+    if ((unidadPredefinida(actual) || unidadBaseProtegida(actual.nombre)) &&
+        actual.nombre != unidad.nombre) {
+      return;
+    }
+    if (_unidadesMedida.asMap().entries.any(
+      (entry) =>
+          entry.key != index &&
+          entry.value.nombre.trim().toLowerCase() ==
+              unidad.nombre.trim().toLowerCase(),
+    )) {
+      return;
+    }
     _unidadesMedida[index] = unidad;
     notifyListeners();
   }
 
   void eliminarUnidad(int index) {
+    final unidad = _unidadesMedida[index];
+    if (unidadPredefinida(unidad) || unidadBaseProtegida(unidad.nombre)) return;
     _unidadesMedida.removeAt(index);
     notifyListeners();
   }

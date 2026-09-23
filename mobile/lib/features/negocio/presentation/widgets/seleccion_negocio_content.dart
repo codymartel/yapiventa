@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-class SeleccionNegocioContent extends StatelessWidget {
+class SeleccionNegocioContent extends StatefulWidget {
   static const fondo = Color(0xFF000000);
   static const _marinoCard = Color(0xFF0A1B2E);
   static const _azulAcento = Color(0xFF1E88E5);
@@ -15,8 +15,8 @@ class SeleccionNegocioContent extends StatelessWidget {
     _Rubro('Bodega', '🏪'),
     _Rubro('Restaurante', '🍽️'),
     _Rubro('Ropa', '👕'),
-    _Rubro('Farmacia', '💊'),
-    _Rubro('Ferretería', '🔧'),
+    _Rubro('Accesorios y regalos', '🎁'),
+    _Rubro('Belleza y cuidado personal', '🧴'),
     _Rubro('Otros', '✨'),
   ];
 
@@ -37,6 +37,46 @@ class SeleccionNegocioContent extends StatelessWidget {
 
   static bool esRubroDisponible(String rubro) {
     return _rubros.any((opcion) => opcion.nombre == rubro);
+  }
+
+  @override
+  State<SeleccionNegocioContent> createState() =>
+      _SeleccionNegocioContentState();
+}
+
+class _SeleccionNegocioContentState extends State<SeleccionNegocioContent> {
+  static const _marinoCard = SeleccionNegocioContent._marinoCard;
+  static const _azulAcento = SeleccionNegocioContent._azulAcento;
+  static const _marinoBorde = SeleccionNegocioContent._marinoBorde;
+  static const _blancoPuro = SeleccionNegocioContent._blancoPuro;
+  static const _grisTenue = SeleccionNegocioContent._grisTenue;
+  late final List<FocusNode> _focos = List.generate(
+    SeleccionNegocioContent._rubros.length,
+    (index) => FocusNode(debugLabel: 'rubro-$index'),
+  );
+
+  @override
+  void dispose() {
+    for (final foco in _focos) {
+      foco.dispose();
+    }
+    super.dispose();
+  }
+
+  void _moverFoco(int index, _DireccionRubro direccion, int columnas) {
+    final fila = index ~/ columnas;
+    final columna = index % columnas;
+    final total = SeleccionNegocioContent._rubros.length;
+    final destino = switch (direccion) {
+      _DireccionRubro.izquierda when columna > 0 => index - 1,
+      _DireccionRubro.derecha
+          when columna < columnas - 1 && index + 1 < total =>
+        index + 1,
+      _DireccionRubro.arriba when fila > 0 => index - columnas,
+      _DireccionRubro.abajo when index + columnas < total => index + columnas,
+      _ => index,
+    };
+    _focos[destino].requestFocus();
   }
 
   @override
@@ -104,15 +144,28 @@ class SeleccionNegocioContent extends StatelessWidget {
                       spacing: separacion,
                       runSpacing: separacion,
                       children: [
-                        for (final rubro in _rubros)
+                        for (
+                          var index = 0;
+                          index < SeleccionNegocioContent._rubros.length;
+                          index++
+                        )
                           SizedBox(
                             width: anchoTarjeta,
                             child: _RubroCard(
-                              nombre: rubro.nombre,
-                              icono: rubro.icono,
-                              seleccionado: rubroSeleccionado == rubro.nombre,
-                              habilitado: !guardando,
-                              onTap: () => onRubroSeleccionado(rubro.nombre),
+                              focusNode: _focos[index],
+                              nombre:
+                                  SeleccionNegocioContent._rubros[index].nombre,
+                              icono:
+                                  SeleccionNegocioContent._rubros[index].icono,
+                              seleccionado:
+                                  widget.rubroSeleccionado ==
+                                  SeleccionNegocioContent._rubros[index].nombre,
+                              habilitado: !widget.guardando,
+                              onMover: (direccion) =>
+                                  _moverFoco(index, direccion, columnas),
+                              onTap: () => widget.onRubroSeleccionado(
+                                SeleccionNegocioContent._rubros[index].nombre,
+                              ),
                             ),
                           ),
                       ],
@@ -122,10 +175,11 @@ class SeleccionNegocioContent extends StatelessWidget {
                       width: double.infinity,
                       child: ElevatedButton.icon(
                         key: const Key('confirmar-rubro'),
-                        onPressed: rubroSeleccionado == null || guardando
+                        onPressed:
+                            widget.rubroSeleccionado == null || widget.guardando
                             ? null
-                            : onConfirmar,
-                        icon: guardando
+                            : widget.onConfirmar,
+                        icon: widget.guardando
                             ? const SizedBox.square(
                                 dimension: 18,
                                 child: CircularProgressIndicator(
@@ -134,16 +188,19 @@ class SeleccionNegocioContent extends StatelessWidget {
                               )
                             : const Icon(Icons.arrow_forward),
                         label: Text(
-                          guardando ? 'Guardando...' : 'Confirmar rubro',
+                          widget.guardando ? 'Guardando...' : 'Confirmar rubro',
                         ),
                       ),
                     ),
-                    if (error != null)
+                    if (widget.error != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 8),
-                        child: Text(
-                          error!,
-                          style: const TextStyle(color: Colors.redAccent),
+                        child: Semantics(
+                          liveRegion: true,
+                          child: Text(
+                            widget.error!,
+                            style: const TextStyle(color: Colors.redAccent),
+                          ),
                         ),
                       ),
                     Padding(
@@ -194,6 +251,14 @@ class SeleccionNegocioContent extends StatelessWidget {
   }
 }
 
+enum _DireccionRubro { izquierda, derecha, arriba, abajo }
+
+class _MoverRubroIntent extends Intent {
+  final _DireccionRubro direccion;
+
+  const _MoverRubroIntent(this.direccion);
+}
+
 class _Rubro {
   final String nombre;
   final String icono;
@@ -202,17 +267,21 @@ class _Rubro {
 }
 
 class _RubroCard extends StatefulWidget {
+  final FocusNode focusNode;
   final String nombre;
   final String icono;
   final bool seleccionado;
   final bool habilitado;
+  final ValueChanged<_DireccionRubro> onMover;
   final VoidCallback onTap;
 
   const _RubroCard({
+    required this.focusNode,
     required this.nombre,
     required this.icono,
     required this.seleccionado,
     required this.habilitado,
+    required this.onMover,
     required this.onTap,
   });
 
@@ -234,15 +303,34 @@ class _RubroCardState extends State<_RubroCard> {
       enabled: widget.habilitado,
       onTap: widget.habilitado ? widget.onTap : null,
       child: FocusableActionDetector(
+        focusNode: widget.focusNode,
         enabled: widget.habilitado,
         shortcuts: const <ShortcutActivator, Intent>{
           SingleActivator(LogicalKeyboardKey.enter): ActivateIntent(),
           SingleActivator(LogicalKeyboardKey.space): ActivateIntent(),
+          SingleActivator(LogicalKeyboardKey.arrowLeft): _MoverRubroIntent(
+            _DireccionRubro.izquierda,
+          ),
+          SingleActivator(LogicalKeyboardKey.arrowRight): _MoverRubroIntent(
+            _DireccionRubro.derecha,
+          ),
+          SingleActivator(LogicalKeyboardKey.arrowUp): _MoverRubroIntent(
+            _DireccionRubro.arriba,
+          ),
+          SingleActivator(LogicalKeyboardKey.arrowDown): _MoverRubroIntent(
+            _DireccionRubro.abajo,
+          ),
         },
         actions: <Type, Action<Intent>>{
           ActivateIntent: CallbackAction<ActivateIntent>(
             onInvoke: (_) {
               widget.onTap();
+              return null;
+            },
+          ),
+          _MoverRubroIntent: CallbackAction<_MoverRubroIntent>(
+            onInvoke: (intent) {
+              widget.onMover(intent.direccion);
               return null;
             },
           ),

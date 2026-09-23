@@ -5,6 +5,7 @@ import 'seleccion_negocio_content.dart';
 class SeleccionNegocioFlow extends StatefulWidget {
   final String rubroInicial;
   final Future<bool> Function(String rubro) onTipoSeleccionado;
+  final ValueChanged<String>? onRubroCambiado;
   final VoidCallback onCompletado;
   final VoidCallback onVolver;
 
@@ -12,6 +13,7 @@ class SeleccionNegocioFlow extends StatefulWidget {
     super.key,
     this.rubroInicial = '',
     required this.onTipoSeleccionado,
+    this.onRubroCambiado,
     required this.onCompletado,
     required this.onVolver,
   });
@@ -117,6 +119,7 @@ class _SeleccionNegocioFlowState extends State<SeleccionNegocioFlow> {
               onRubroSeleccionado: (rubro) {
                 if (_guardando) return;
                 setState(() => _rubroSeleccionado = rubro);
+                widget.onRubroCambiado?.call(rubro);
               },
               onConfirmar: _confirmar,
             ),

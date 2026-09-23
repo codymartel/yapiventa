@@ -30,7 +30,7 @@ void main() {
 
     provider.agregarUnidad(
       const UnidadInfo(
-        nombre: 'Botella',
+        nombre: 'Medida propia',
         tipo: TipoUnidad.fraccionaria,
         fraccionesPermitidas: ['0.5', '1'],
       ),
@@ -38,13 +38,16 @@ void main() {
     provider.editarUnidad(
       totalInicial,
       const UnidadInfo(
-        nombre: 'Botella grande',
+        nombre: 'Medida propia grande',
         tipo: TipoUnidad.fraccionaria,
         fraccionesPermitidas: ['1', '2'],
       ),
     );
 
-    expect(provider.unidadesMedida[totalInicial].nombre, 'Botella grande');
+    expect(
+      provider.unidadesMedida[totalInicial].nombre,
+      'Medida propia grande',
+    );
     expect(provider.unidadesMedida[totalInicial].fraccionesPermitidas, [
       '1',
       '2',
@@ -57,13 +60,87 @@ void main() {
       repository: NegocioRepository(firestore: FakeFirebaseFirestore()),
     );
 
-    while (provider.unidadesMedida.isNotEmpty) {
-      provider.eliminarUnidad(0);
+    for (final unidad in provider.unidadesPredefinidas) {
+      provider.establecerUnidadPredefinidaActiva(unidad, activa: false);
     }
 
     expect(provider.faltaUnidad, isTrue);
     expect(provider.puedeAvanzarPaso1, isFalse);
   });
+
+  test('las unidades base no se eliminan ni se renombran', () {
+    final provider = ConfiguracionNegocioProvider(
+      rubro: 'Bodega',
+      repository: NegocioRepository(firestore: FakeFirebaseFirestore()),
+    );
+    final bases = ['Unidad', 'g', 'kg', 'ml', 'L'];
+
+    for (final nombre in bases) {
+      final index = provider.unidadesMedida.indexWhere(
+        (unidad) => unidad.nombre == nombre,
+      );
+      final actual = provider.unidadesMedida[index];
+      provider.editarUnidad(
+        index,
+        UnidadInfo(
+          nombre: '$nombre editada',
+          tipo: actual.tipo,
+          fraccionesPermitidas: actual.fraccionesPermitidas,
+        ),
+      );
+      provider.eliminarUnidad(index);
+    }
+
+    expect(
+      provider.unidadesMedida.map((unidad) => unidad.nombre),
+      containsAll(bases),
+    );
+  });
+
+  test(
+    'un preset puede desactivarse y reactivarse sin eliminar su definición',
+    () {
+      final provider = ConfiguracionNegocioProvider(
+        rubro: 'Bodega',
+        repository: NegocioRepository(firestore: FakeFirebaseFirestore()),
+      );
+      final botella = provider.unidadesPredefinidas.firstWhere(
+        (unidad) => unidad.nombre == 'Botella',
+      );
+
+      provider.establecerUnidadPredefinidaActiva(botella, activa: false);
+      expect(provider.unidadPredefinidaActiva('Botella'), isFalse);
+      expect(
+        provider.unidadesPredefinidas.map((unidad) => unidad.nombre),
+        contains('Botella'),
+      );
+
+      provider.establecerUnidadPredefinidaActiva(botella, activa: true);
+      expect(provider.unidadPredefinidaActiva('Botella'), isTrue);
+    },
+  );
+
+  for (final legacy in ['Farmacia', 'Ferretería']) {
+    test('$legacy carga presets compatibles sin cambiar el rubro', () {
+      final provider = ConfiguracionNegocioProvider(
+        rubro: legacy,
+        repository: NegocioRepository(firestore: FakeFirebaseFirestore()),
+      );
+
+      expect(provider.rubro, legacy);
+      expect(provider.unidadesPredefinidas.map((unidad) => unidad.nombre), [
+        'Unidad',
+        'Par',
+        'Juego',
+        'Set',
+        'Paquete',
+        'Caja',
+        'Bolsa',
+        'Botella',
+        'Frasco',
+      ]);
+    });
+  }
 
   test('bloquea un segundo guardado concurrente', () async {
     final firestore = FakeFirebaseFirestore();

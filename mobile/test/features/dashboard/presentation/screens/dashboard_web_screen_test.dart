@@ -1131,6 +1131,44 @@ void main() {
     expect(find.byType(RubroContextualPanel), findsOneWidget);
     expect(find.byType(DashboardAttentionPanel), findsNothing);
     expect(find.text('Necesita tu atención'), findsNothing);
+    expect(find.text('Sirve para'), findsOneWidget);
+    expect(find.text('Medidas sugeridas'), findsOneWidget);
+    expect(find.text('No incluye'), findsOneWidget);
+  });
+
+  testWidgets('el panel derecho sigue exclusivamente el rubro seleccionado', (
+    tester,
+  ) async {
+    await mostrarDashboard(
+      tester,
+      size: const Size(1440, 1000),
+      progreso: _progresoPendiente(),
+    );
+    await tester.tap(find.text('Continuar configuración'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('Crear un catálogo básico de productos'),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const Key('rubro-card-Bodega')));
+    await tester.pump();
+    expect(
+      find.textContaining('Organizar productos vendidos por unidad, peso'),
+      findsOneWidget,
+    );
+    expect(find.byType(ProductosContextualPanel), findsNothing);
+
+    await tester.tap(find.byKey(const Key('rubro-card-Restaurante')));
+    await tester.pump();
+    expect(
+      find.textContaining('Organizar una carta de comidas y bebidas'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('Organizar productos vendidos por unidad, peso'),
+      findsNothing,
+    );
   });
 
   testWidgets(
@@ -1226,7 +1264,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.byType(RubroContextualPanel), findsOneWidget);
-        expect(find.text('¿Qué es un rubro?').hitTestable(), findsOneWidget);
+        expect(find.text('Sirve para').hitTestable(), findsOneWidget);
         expect(tester.getRect(tileFinder).height, greaterThan(200));
         expect(find.text('Necesita tu atención'), findsNothing);
 
@@ -1267,7 +1305,7 @@ void main() {
     await tester.tap(find.text('Ayuda contextual'));
     await tester.pumpAndSettle();
 
-    expect(find.text('¿Qué es un rubro?'), findsOneWidget);
+    expect(find.text('Sirve para'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

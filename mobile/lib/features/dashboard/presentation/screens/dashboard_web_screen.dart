@@ -10,6 +10,7 @@ import '../../../negocio/domain/models/progreso_configuracion.dart';
 import '../../../negocio/domain/models/seleccion_plantilla_info.dart';
 import '../../../negocio/presentation/providers/configuracion_negocio_provider.dart';
 import '../../../negocio/presentation/widgets/configuracion_negocio_flow.dart';
+import '../../../negocio/presentation/widgets/seleccion_negocio_content.dart';
 import '../../../negocio/presentation/widgets/seleccion_negocio_flow.dart';
 import '../../../negocio/presentation/widgets/seleccion_plantilla_flow.dart';
 import '../../../negocio/seleccion_plantilla_dependencies.dart';
@@ -77,6 +78,7 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
   /// (y, con ella, el provider y la carga inicial) una sola vez. Mientras el
   /// usuario esté en Plantilla, la rama se mantiene viva vía Offstage.
   bool _plantillaVisitada = false;
+  late String _rubroContextual;
   ConfiguracionNegocioProvider? _providerConfiguracion;
   late final NavigatorObserver _observadorInterno;
   late final ValueNotifier<ProgresoConfiguracion> _progresoNotifier;
@@ -84,6 +86,7 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
   @override
   void initState() {
     super.initState();
+    _rubroContextual = _rubroCompatible(widget.progreso.catalogo.rubro);
     _progresoNotifier = ValueNotifier<ProgresoConfiguracion>(widget.progreso);
     _observadorInterno = _ObservadorRutasInternas(() {
       if (!mounted || (!_rubroAbierta && !_configuracionAbierta)) return;
@@ -99,6 +102,13 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
     super.didUpdateWidget(oldWidget);
     if (!identical(oldWidget.progreso, widget.progreso)) {
       _progresoNotifier.value = widget.progreso;
+    }
+    if (oldWidget.progreso.catalogo.rubro != widget.progreso.catalogo.rubro) {
+      _providerConfiguracion?.dispose();
+      _providerConfiguracion = null;
+      if (!_rubroAbierta) {
+        _rubroContextual = _rubroCompatible(widget.progreso.catalogo.rubro);
+      }
     }
   }
 
@@ -142,7 +152,7 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
           : _productosAbierta
           ? const ProductosContextualPanel()
           : _rubroAbierta
-          ? const RubroContextualPanel()
+          ? RubroContextualPanel(rubro: _rubroContextual)
           : DashboardAttentionPanel(
               items: state.necesitanAtencion,
               productos: state.productosDestacados,
@@ -227,6 +237,10 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
         rubroInicial: widget.progreso.catalogo.rubro,
         onTipoSeleccionado: (rubro) async =>
             rutaContexto.read<AccesoProvider>().guardarRubro(rubro),
+        onRubroCambiado: (rubro) {
+          if (!mounted || _rubroContextual == rubro) return;
+          setState(() => _rubroContextual = rubro);
+        },
         onVolver: () => _regresarAInicio(rutaContexto),
         onCompletado: () => _regresarAInicio(rutaContexto),
       ),
@@ -266,12 +280,18 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
       return;
     }
     setState(() {
+      _rubroContextual = _rubroCompatible(progreso.catalogo.rubro);
       _productosAbierta = false;
       _rubroAbierta = true;
       _configuracionAbierta = false;
       _plantillaAbierta = false;
     });
     Navigator.of(rutaContexto).pushNamed(RutasAcceso.rubro);
+  }
+
+  String _rubroCompatible(String rubro) {
+    if (rubro == 'Farmacia' || rubro == 'Ferretería') return 'Otros';
+    return SeleccionNegocioContent.esRubroDisponible(rubro) ? rubro : 'Otros';
   }
 
   void _abrirConfiguracion(

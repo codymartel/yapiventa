@@ -3,21 +3,9 @@ import 'tipo_unidad.dart';
 // ═════════════════════════════════════════════════════════════════════════
 // UnidadesMedida
 // ═════════════════════════════════════════════════════════════════════════
-// Migración de tu `object UnidadesMedida`. Mismos rubros y valores que tu
-// Kotlin, con estos cambios respecto al original:
-//
-//   1. Se QUITÓ "Tecnología" (descartado en la investigación de mercado)
-//   2. Se AGREGÓ "Ferretería" — investigado con fuentes reales (INVY
-//      Perú, OKFAC, Ferretero.pe)
-//   3. TODAS las `fraccionesPermitidas` de tipo FRACCIONARIA ahora usan
-//      decimales consistentes (0.25, 0.5, 1.5, etc.) en vez de mezclar
-//      fracciones ("1/2") y decimales ("1.5") como pasaba en el Kotlin
-//      original (ej. el "kg" de Bodega tenía ["1/4","1/2","3/4","1",
-//      "1.5","2"] — mezcla que detectamos y corregimos aquí).
-//      Esto es solo el catálogo BASE de valores rápidos — el usuario
-//      igual puede escribir en fracción si quiere, eso lo maneja
-//      ValidadorCantidad, que convierte cualquier fracción a decimal
-//      antes de guardarla. Ver validador_cantidad.dart.
+// Las cantidades comerciales se guardan en `fraccionesPermitidas` de una
+// unidad base. Por ejemplo, "500 g" es el valor 500 de la base "g", no una
+// unidad independiente.
 // ═════════════════════════════════════════════════════════════════════════
 
 class UnidadesMedida {
@@ -28,330 +16,147 @@ class UnidadesMedida {
       UnidadInfo(
         nombre: 'Unidad',
         tipo: TipoUnidad.entera,
-        fraccionesPermitidas: ['1', '2', '3', '6', '12'],
+        fraccionesPermitidas: ['1'],
       ),
       UnidadInfo(
-        nombre: 'kg',
+        nombre: 'Docena',
         tipo: TipoUnidad.fraccionaria,
-        fraccionesPermitidas: ['0.25', '0.5', '0.75', '1', '1.5', '2'],
+        fraccionesPermitidas: ['0.5', '1'],
       ),
       UnidadInfo(
         nombre: 'g',
         tipo: TipoUnidad.fraccionaria,
         fraccionesPermitidas: ['100', '250', '500', '750'],
-        esOpcional: true,
       ),
       UnidadInfo(
-        nombre: 'Litro (L)',
+        nombre: 'kg',
         tipo: TipoUnidad.fraccionaria,
-        fraccionesPermitidas: ['0.25', '0.5', '1', '2'],
+        fraccionesPermitidas: ['1', '1.5', '2', '5'],
       ),
       UnidadInfo(
         nombre: 'ml',
         tipo: TipoUnidad.fraccionaria,
         fraccionesPermitidas: ['250', '500', '750'],
-        esOpcional: true,
       ),
       UnidadInfo(
-        nombre: 'Paquete',
-        tipo: TipoUnidad.entera,
-        fraccionesPermitidas: ['1', '2', '3'],
-      ),
-      UnidadInfo(
-        nombre: 'Docena',
+        nombre: 'L',
         tipo: TipoUnidad.fraccionaria,
-        fraccionesPermitidas: ['0.25', '0.5', '1'],
+        fraccionesPermitidas: ['1', '1.5', '2', '2.5', '3', '5', '20'],
       ),
-      UnidadInfo(
-        nombre: 'Arroba (@)',
-        tipo: TipoUnidad.fraccionaria,
-        fraccionesPermitidas: ['0.25', '0.5', '1'],
-        esOpcional: true,
-      ),
-      UnidadInfo(
-        nombre: 'Saco',
-        tipo: TipoUnidad.entera,
-        fraccionesPermitidas: ['1', '2', '5'],
-        esOpcional: true,
-      ),
-      UnidadInfo(
-        nombre: 'Plancha',
-        tipo: TipoUnidad.entera,
-        fraccionesPermitidas: ['1', '2'],
-        esOpcional: true,
-      ),
-    ],
-
-    'Farmacia': [
-      UnidadInfo(
-        nombre: 'Pastilla',
-        tipo: TipoUnidad.entera,
-        fraccionesPermitidas: ['1', '2', '5', '10'],
-      ),
-      UnidadInfo(
-        nombre: 'Blíster',
-        tipo: TipoUnidad.entera,
-        fraccionesPermitidas: ['1', '2', '3'],
-      ),
-      UnidadInfo(
-        nombre: 'Caja',
-        tipo: TipoUnidad.entera,
-        fraccionesPermitidas: ['1', '2'],
-      ),
-      UnidadInfo(
-        nombre: 'Frasco',
-        tipo: TipoUnidad.entera,
-        fraccionesPermitidas: ['1', '2'],
-      ),
-      UnidadInfo(
-        nombre: 'ml',
-        tipo: TipoUnidad.fraccionaria,
-        fraccionesPermitidas: ['5', '10', '20', '50', '100'],
-      ),
-      UnidadInfo(
-        nombre: 'mg',
-        tipo: TipoUnidad.fraccionaria,
-        fraccionesPermitidas: ['250', '500'],
-        esOpcional: true,
-      ),
-      UnidadInfo(
-        nombre: 'g',
-        tipo: TipoUnidad.fraccionaria,
-        fraccionesPermitidas: ['1', '5', '10'],
-        esOpcional: true,
-      ),
-      UnidadInfo(
-        nombre: 'Sachet',
-        tipo: TipoUnidad.entera,
-        fraccionesPermitidas: ['1', '2', '5'],
-        esOpcional: true,
-      ),
-      UnidadInfo(
-        nombre: 'Unidad',
-        tipo: TipoUnidad.entera,
-        fraccionesPermitidas: ['1', '2', '3'],
-      ),
+      UnidadInfo(nombre: 'Bolsa', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Botella', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Lata', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Caja', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Paquete', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Bandeja', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Saco', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Bidón', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Pote', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Frasco', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Rollo', tipo: TipoUnidad.entera),
     ],
 
     'Restaurante': [
       UnidadInfo(
-        nombre: 'Plato',
+        nombre: 'Unidad',
         tipo: TipoUnidad.entera,
-        fraccionesPermitidas: ['1', '2'],
+        fraccionesPermitidas: ['1'],
       ),
       UnidadInfo(
         nombre: 'Porción',
-        tipo: TipoUnidad.entera,
-        fraccionesPermitidas: ['1', '2'],
-      ),
-      UnidadInfo(
-        nombre: 'Jarra',
         tipo: TipoUnidad.fraccionaria,
-        fraccionesPermitidas: ['0.25', '0.5', '1'],
-      ),
-      UnidadInfo(
-        nombre: 'Vaso',
-        tipo: TipoUnidad.fraccionaria,
-        fraccionesPermitidas: ['0.5', '1'],
-      ),
-      UnidadInfo(
-        nombre: 'Copa',
-        tipo: TipoUnidad.fraccionaria,
-        fraccionesPermitidas: ['0.5', '1'],
-        esOpcional: true,
-      ),
-      UnidadInfo(
-        nombre: 'Unidad',
-        tipo: TipoUnidad.entera,
-        fraccionesPermitidas: ['1', '2', '3'],
-      ),
-      UnidadInfo(
-        nombre: 'Combo',
-        tipo: TipoUnidad.entera,
-        fraccionesPermitidas: ['1', '2'],
-      ),
-      UnidadInfo(
-        nombre: 'Dúo',
-        tipo: TipoUnidad.entera,
-        fraccionesPermitidas: ['1'],
-        esOpcional: true,
-      ),
-    ],
-
-    'Ropa': [
-      UnidadInfo(
-        nombre: 'Unidad',
-        tipo: TipoUnidad.entera,
-        fraccionesPermitidas: ['1', '2', '3'],
-      ),
-      UnidadInfo(
-        nombre: 'Par',
-        tipo: TipoUnidad.entera,
-        fraccionesPermitidas: ['1', '2'],
-      ),
-      UnidadInfo(
-        nombre: 'Set',
-        tipo: TipoUnidad.entera,
-        fraccionesPermitidas: ['1', '2'],
-        esOpcional: true,
-      ),
-    ],
-
-    'Ferretería': [
-      UnidadInfo(
-        nombre: 'Unidad',
-        tipo: TipoUnidad.entera,
-        fraccionesPermitidas: ['1', '2', '5', '10', '20'],
-      ),
-      UnidadInfo(
-        nombre: 'kg',
-        tipo: TipoUnidad.fraccionaria,
-        fraccionesPermitidas: ['0.25', '0.5', '1', '2', '5'],
-      ),
-      UnidadInfo(
-        nombre: 'Metro (m)',
-        tipo: TipoUnidad.fraccionaria,
-        fraccionesPermitidas: ['0.5', '1', '2', '5', '10'],
-      ),
-      UnidadInfo(
-        nombre: 'Caja',
-        tipo: TipoUnidad.entera,
-        fraccionesPermitidas: ['1', '2', '5'],
-      ),
-      UnidadInfo(
-        nombre: 'Litro (L)',
-        tipo: TipoUnidad.fraccionaria,
-        fraccionesPermitidas: ['0.25', '0.5', '1', '4'],
-      ),
-      UnidadInfo(
-        nombre: 'Rollo',
-        tipo: TipoUnidad.entera,
-        fraccionesPermitidas: ['1', '2'],
-        esOpcional: true,
-      ),
-      UnidadInfo(
-        nombre: 'Galón (gal)',
-        tipo: TipoUnidad.fraccionaria,
-        fraccionesPermitidas: ['0.25', '0.5', '1'],
-        esOpcional: true,
-      ),
-    ],
-
-    'Otros': [
-      UnidadInfo(
-        nombre: 'Unidad',
-        tipo: TipoUnidad.entera,
-        fraccionesPermitidas: ['1', '2', '3', '6', '12'],
-      ),
-      UnidadInfo(
-        nombre: 'kg',
-        tipo: TipoUnidad.fraccionaria,
-        fraccionesPermitidas: ['0.25', '0.5', '0.75', '1', '2'],
-      ),
-      UnidadInfo(
-        nombre: 'Litro (L)',
-        tipo: TipoUnidad.fraccionaria,
-        fraccionesPermitidas: ['0.25', '0.5', '1', '2'],
-      ),
-      UnidadInfo(
-        nombre: 'Metro (m)',
-        tipo: TipoUnidad.fraccionaria,
-        fraccionesPermitidas: ['0.25', '0.5', '1', '2', '5'],
-      ),
-      UnidadInfo(
-        nombre: 'Docena',
-        tipo: TipoUnidad.fraccionaria,
-        fraccionesPermitidas: ['0.25', '0.5', '1'],
-      ),
-      UnidadInfo(
-        nombre: 'Par',
-        tipo: TipoUnidad.entera,
-        fraccionesPermitidas: ['1', '2'],
-      ),
-      UnidadInfo(
-        nombre: 'g',
-        tipo: TipoUnidad.fraccionaria,
-        fraccionesPermitidas: ['100', '250', '500'],
-        esOpcional: true,
+        fraccionesPermitidas: ['0.125', '0.25', '0.5', '1'],
       ),
       UnidadInfo(
         nombre: 'ml',
         tipo: TipoUnidad.fraccionaria,
-        fraccionesPermitidas: ['250', '500', '750'],
-        esOpcional: true,
+        fraccionesPermitidas: ['250', '500'],
       ),
       UnidadInfo(
-        nombre: 'Galón (gal)',
+        nombre: 'L',
         tipo: TipoUnidad.fraccionaria,
-        fraccionesPermitidas: ['0.25', '0.5', '1'],
-        esOpcional: true,
-      ),
-      UnidadInfo(
-        nombre: 'Cilindro',
-        tipo: TipoUnidad.fraccionaria,
-        fraccionesPermitidas: ['0.25', '0.5', '1'],
-        esOpcional: true,
-      ),
-      UnidadInfo(
-        nombre: 'cm',
-        tipo: TipoUnidad.fraccionaria,
-        fraccionesPermitidas: ['10', '20', '50', '100'],
-        esOpcional: true,
-      ),
-      UnidadInfo(
-        nombre: 'Pulgada (in)',
-        tipo: TipoUnidad.fraccionaria,
-        fraccionesPermitidas: ['0.25', '0.5', '1'],
-        esOpcional: true,
-      ),
-      UnidadInfo(
-        nombre: 'Pie',
-        tipo: TipoUnidad.fraccionaria,
-        fraccionesPermitidas: ['0.5', '1', '2'],
-        esOpcional: true,
-      ),
-      UnidadInfo(
-        nombre: 'm²',
-        tipo: TipoUnidad.fraccionaria,
-        fraccionesPermitidas: ['1', '2', '5', '10'],
-        esOpcional: true,
-      ),
-      UnidadInfo(
-        nombre: 'Ciento',
-        tipo: TipoUnidad.entera,
         fraccionesPermitidas: ['1'],
-        esOpcional: true,
+      ),
+      UnidadInfo(nombre: 'Vaso', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Botella', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Lata', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Jarra', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Plato', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Combo', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Bandeja', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Caja', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Paquete', tipo: TipoUnidad.entera),
+    ],
+
+    'Ropa': [
+      UnidadInfo(nombre: 'Unidad', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Par', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Conjunto', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Paquete', tipo: TipoUnidad.entera),
+    ],
+
+    'Accesorios y regalos': [
+      UnidadInfo(nombre: 'Unidad', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Par', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Juego', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Set', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Paquete', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Caja', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Bolsa', tipo: TipoUnidad.entera),
+    ],
+
+    'Belleza y cuidado personal': [
+      UnidadInfo(nombre: 'Unidad', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Set', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Paquete', tipo: TipoUnidad.entera),
+      UnidadInfo(
+        nombre: 'g',
+        tipo: TipoUnidad.fraccionaria,
+        fraccionesPermitidas: ['10', '30', '50', '100', '250', '500'],
       ),
       UnidadInfo(
-        nombre: 'Millar',
-        tipo: TipoUnidad.entera,
+        nombre: 'kg',
+        tipo: TipoUnidad.fraccionaria,
         fraccionesPermitidas: ['1'],
-        esOpcional: true,
       ),
       UnidadInfo(
-        nombre: 'Paquete',
-        tipo: TipoUnidad.entera,
-        fraccionesPermitidas: ['1', '2', '3'],
-        esOpcional: true,
-      ),
-      UnidadInfo(
-        nombre: 'Saco',
-        tipo: TipoUnidad.entera,
-        fraccionesPermitidas: ['1', '2'],
-        esOpcional: true,
-      ),
-      UnidadInfo(
-        nombre: 'Arroba (@)',
+        nombre: 'ml',
         tipo: TipoUnidad.fraccionaria,
-        fraccionesPermitidas: ['0.25', '0.5', '1'],
-        esOpcional: true,
+        fraccionesPermitidas: [
+          '30',
+          '50',
+          '100',
+          '120',
+          '200',
+          '250',
+          '500',
+          '750',
+        ],
       ),
       UnidadInfo(
-        nombre: 'Tonelada (t)',
+        nombre: 'L',
         tipo: TipoUnidad.fraccionaria,
-        fraccionesPermitidas: ['0.25', '0.5', '1'],
-        esOpcional: true,
+        fraccionesPermitidas: ['1'],
       ),
+      UnidadInfo(nombre: 'Frasco', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Botella', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Pote', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Tubo', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Sachet', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Spray', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Caja', tipo: TipoUnidad.entera),
+    ],
+
+    'Otros': [
+      UnidadInfo(nombre: 'Unidad', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Par', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Juego', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Set', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Paquete', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Caja', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Bolsa', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Botella', tipo: TipoUnidad.entera),
+      UnidadInfo(nombre: 'Frasco', tipo: TipoUnidad.entera),
     ],
   };
 
@@ -360,7 +165,10 @@ class UnidadesMedida {
 
   /// Equivale a `UnidadesMedida.obtener(rubro)`.
   static List<UnidadInfo> obtener(String rubro) {
-    return porRubro[rubro] ?? porRubro['Otros']!;
+    final rubroPreset = rubro == 'Farmacia' || rubro == 'Ferretería'
+        ? 'Otros'
+        : rubro;
+    return porRubro[rubroPreset] ?? porRubro['Otros']!;
   }
 
   /// Equivale a `UnidadesMedida.fraccionADecimal(fraccion)`.

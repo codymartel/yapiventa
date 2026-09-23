@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../domain/models/categoria.dart';
 import '../../../domain/models/tipo_unidad.dart';
+import '../../../domain/models/unidad_medida.dart';
 import '../domain/models/catalogo_negocio.dart';
 import '../domain/models/zona_delivery.dart';
 import '../domain/models/horario_dia.dart';
@@ -215,6 +217,10 @@ class NegocioRepository
         transaction.set(referencia, {
           'propietarioUid': uid,
           'rubro': rubroLimpio,
+          'categorias': Categorias.obtener(rubroLimpio),
+          'unidadesMedida': _serializarUnidades(
+            UnidadesMedida.obtener(rubroLimpio),
+          ),
           'onboardingBusinessRubro': rubroLimpio,
           'onboardingRubroCompletedAt': FieldValue.serverTimestamp(),
           'setupComplete': false,
@@ -242,6 +248,14 @@ class NegocioRepository
         'rubro': rubroLimpio,
         'onboardingRubroCompletedAt': FieldValue.serverTimestamp(),
       };
+      if (datos['categorias'] is! List) {
+        actualizacion['categorias'] = Categorias.obtener(rubroLimpio);
+      }
+      if (datos['unidadesMedida'] is! List) {
+        actualizacion['unidadesMedida'] = _serializarUnidades(
+          UnidadesMedida.obtener(rubroLimpio),
+        );
+      }
       if (cambioConConfiguracion) {
         actualizacion.addAll({
           'onboardingBusinessNeedsReview': true,
@@ -277,9 +291,12 @@ class NegocioRepository
     'Bodega',
     'Restaurante',
     'Ropa',
+    'Accesorios y regalos',
+    'Belleza y cuidado personal',
+    'Otros',
+    // Los valores legacy siguen siendo válidos para leer cuentas existentes.
     'Farmacia',
     'Ferretería',
-    'Otros',
   }.contains(rubro.trim());
 
   bool _configuracionValida(
@@ -485,16 +502,7 @@ class NegocioRepository
       if (metodoMap.isNotEmpty) configPagosMap[config.metodoId] = metodoMap;
     }
 
-    final unidadesMap = unidadesMedida
-        .map(
-          (u) => {
-            'nombre': u.nombre,
-            'tipo': u.tipo == TipoUnidad.entera ? 'entera' : 'fraccionaria',
-            'fraccionesPermitidas': u.fraccionesPermitidas,
-            'esOpcional': u.esOpcional,
-          },
-        )
-        .toList();
+    final unidadesMap = _serializarUnidades(unidadesMedida);
 
     final updateMap = <String, dynamic>{
       'rubro': rubro,
@@ -545,6 +553,23 @@ class NegocioRepository
         transaction.delete(publicoAnteriorRef);
       }
     });
+  }
+
+  List<Map<String, dynamic>> _serializarUnidades(
+    Iterable<UnidadInfo> unidades,
+  ) {
+    return unidades
+        .map(
+          (unidad) => <String, dynamic>{
+            'nombre': unidad.nombre,
+            'tipo': unidad.tipo == TipoUnidad.entera
+                ? 'entera'
+                : 'fraccionaria',
+            'fraccionesPermitidas': unidad.fraccionesPermitidas,
+            'esOpcional': unidad.esOpcional,
+          },
+        )
+        .toList();
   }
 
   /// Guarda solo el id corto del molde web seleccionado.

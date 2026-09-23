@@ -993,12 +993,84 @@ void main() {
     );
     expect(negocios.docs.single.data(), containsPair('setupComplete', false));
     expect(negocios.docs.single.data(), containsPair('webActiva', false));
+    expect(negocios.docs.single.data()['categorias'], isNotEmpty);
+    expect(negocios.docs.single.data()['unidadesMedida'], isNotEmpty);
     expect(negocios.docs.single.data()['createdAt'], isA<Timestamp>());
     expect(
       negocios.docs.single.data()['onboardingRubroCompletedAt'],
       isA<Timestamp>(),
     );
+    expect(
+      (await negocios.docs.single.reference.collection('productos').get()).docs,
+      isEmpty,
+    );
+    expect(
+      (await negocios.docs.single.reference.collection('pedidos').get()).docs,
+      isEmpty,
+    );
+    expect(
+      (await firestore.collection('negocios_publicos').get()).docs,
+      isEmpty,
+    );
   });
+
+  test('cambiar rubro conserva la configuración existente', () async {
+    final negocioId = await _prepararNegocio(
+      firestore,
+      'usuario-1',
+      datos: {
+        'rubro': 'Bodega',
+        'nombreNegocio': 'Bodega Ana',
+        'categorias': ['Categoría propia'],
+        'unidadesMedida': [
+          {
+            'nombre': 'Presentación propia',
+            'tipo': 'entera',
+            'fraccionesPermitidas': <String>[],
+            'esOpcional': false,
+          },
+        ],
+        'webActiva': true,
+      },
+    );
+
+    await repository.guardarRubro('usuario-1', 'Ropa');
+
+    final datos = (await firestore.collection('negocios').doc(negocioId).get())
+        .data()!;
+    expect(datos['rubro'], 'Ropa');
+    expect(datos['categorias'], ['Categoría propia']);
+    expect(
+      (datos['unidadesMedida'] as List).single,
+      containsPair('nombre', 'Presentación propia'),
+    );
+    expect(datos['webActiva'], isTrue);
+    expect(datos['onboardingBusinessNeedsReview'], isTrue);
+    expect(
+      (await firestore.collection('negocios_publicos').get()).docs,
+      isEmpty,
+    );
+  });
+
+  for (final legacy in ['Farmacia', 'Ferretería']) {
+    test('$legacy sigue cargando sin reescribir el valor almacenado', () async {
+      final negocioId = await _prepararNegocio(
+        firestore,
+        'usuario-1',
+        datos: {'rubro': legacy},
+      );
+
+      final progreso = await repository.obtenerProgresoConfiguracion(
+        'usuario-1',
+      );
+      final datos =
+          (await firestore.collection('negocios').doc(negocioId).get()).data()!;
+
+      expect(progreso.rubroCompleto, isTrue);
+      expect(progreso.catalogo.rubro, legacy);
+      expect(datos['rubro'], legacy);
+    });
+  }
 
   test('dos intentos de guardarRubro reutilizan el mismo negocio', () async {
     await firestore.collection('users').doc('usuario-1').set({
