@@ -16,12 +16,10 @@ import 'features/negocio/data/negocio_repository.dart';
 import 'features/negocio/domain/models/progreso_configuracion.dart';
 import 'features/negocio/domain/models/seleccion_plantilla_info.dart';
 import 'features/negocio/presentation/providers/configuracion_negocio_provider.dart';
-import 'features/negocio/presentation/providers/seleccion_plantilla_provider.dart';
 import 'features/negocio/presentation/screens/configuracion_negocio_screen.dart';
 import 'features/negocio/presentation/screens/seleccion_negocio_screen.dart';
 import 'features/negocio/presentation/screens/seleccion_plantilla_screen.dart';
 import 'features/negocio/catalogo_negocio_dependencies.dart';
-import 'features/negocio/seleccion_plantilla_dependencies.dart';
 import 'features/productos/presentation/screens/productos_screen.dart';
 import 'features/productos/productos_dependencies.dart';
 import 'firebase_options.dart';
@@ -252,19 +250,25 @@ class _RutaConAcceso extends StatelessWidget {
           catalogoDependencies: catalogoDependencies,
         );
       case RutasAcceso.plantilla:
-        return ChangeNotifierProvider(
-          create: (_) => _crearSeleccionPlantillaProvider(
-            acceso.uid!,
-            progreso,
-            context.read<NegocioRepository>(),
+        return SeleccionPlantillaScreen(
+          uid: acceso.uid!,
+          rubro: progreso.catalogo.rubro,
+          seleccionInicial: SeleccionPlantillaInfo(
+            slug: progreso.slug,
+            plantillaGuardada: progreso.plantilla,
+            provieneDeCampoOficial: progreso.plantillaProvieneDeCampoOficial,
           ),
-          child: SeleccionPlantillaScreen(
-            rubro: progreso.catalogo.rubro,
-            onPlantillaSeleccionada: (_) async {
-              await acceso.recargar();
-              if (context.mounted) _irAlDashboard(context);
-            },
-          ),
+          onVolver: () {
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            } else {
+              _irAlDashboard(context);
+            }
+          },
+          onCompletado: (plantilla) async {
+            await acceso.recargar();
+            if (context.mounted) _irAlDashboard(context);
+          },
         );
       default:
         return const _RedireccionRuta(RutasAcceso.dashboard);
@@ -276,26 +280,6 @@ class _RutaConAcceso extends StatelessWidget {
       context,
     ).pushNamedAndRemoveUntil(RutasAcceso.dashboard, (route) => false);
   }
-}
-
-SeleccionPlantillaProvider _crearSeleccionPlantillaProvider(
-  String uid,
-  ProgresoConfiguracion progreso,
-  NegocioRepository repository,
-) {
-  final dependencies = SeleccionPlantillaDependencies.fromRepository(
-    repository,
-  );
-  return SeleccionPlantillaProvider(
-    uid: uid,
-    obtenerSeleccionPlantilla: dependencies.obtenerSeleccionPlantilla,
-    guardarPlantillaWeb: dependencies.guardarPlantillaWeb,
-    seleccionInicial: SeleccionPlantillaInfo(
-      slug: progreso.slug,
-      plantillaGuardada: progreso.plantilla,
-      provieneDeCampoOficial: progreso.plantillaProvieneDeCampoOficial,
-    ),
-  );
 }
 
 class _RedireccionRuta extends StatefulWidget {

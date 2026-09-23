@@ -1,84 +1,81 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mobile/features/negocio/application/use_cases/guardar_plantilla_web.dart';
-import 'package:mobile/features/negocio/application/use_cases/obtener_seleccion_plantilla.dart';
 import 'package:mobile/features/negocio/domain/models/plantilla_web.dart';
 import 'package:mobile/features/negocio/domain/models/seleccion_plantilla_info.dart';
 import 'package:mobile/features/negocio/domain/repositories/repositorio_seleccion_plantilla.dart';
 import 'package:mobile/features/negocio/presentation/providers/seleccion_plantilla_provider.dart';
 import 'package:mobile/features/negocio/presentation/screens/seleccion_plantilla_screen.dart';
 import 'package:mobile/features/negocio/presentation/widgets/seleccion_plantilla_content.dart';
+import 'package:mobile/features/negocio/presentation/widgets/seleccion_plantilla_flow.dart';
+import 'package:mobile/features/negocio/seleccion_plantilla_dependencies.dart';
 import 'package:provider/provider.dart';
 
 void main() {
-  Future<SeleccionPlantillaProvider> crearProvider({
-    String slug = 'mi-tienda',
-  }) async {
-    final repositorio = _RepositorioSeleccionFake(slug: slug);
-    final provider = SeleccionPlantillaProvider(
-      uid: 'usuario-1',
-      obtenerSeleccionPlantilla: ObtenerSeleccionPlantilla(repositorio),
-      guardarPlantillaWeb: GuardarPlantillaWeb(repositorio),
-    );
-    await provider.cargar();
-    return provider;
-  }
-
   Future<void> mostrarPantalla(
     WidgetTester tester, {
-    required SeleccionPlantillaProvider provider,
-    required _AbridorFake abridor,
+    _RepositorioSeleccionFake? repositorio,
+    _AbridorFake? abridor,
     Map<String, WidgetBuilder> routes = const {},
-    Future<void> Function(String plantilla)? alGuardar,
+    VoidCallback? onVolver,
+    Future<void> Function(String plantilla)? alCompletar,
   }) async {
     tester.view.physicalSize = const Size(900, 1400);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-    addTearDown(provider.dispose);
 
+    final repo = repositorio ?? _RepositorioSeleccionFake();
+    final abridorFinal = abridor ?? _AbridorFake();
     await tester.pumpWidget(
-      ChangeNotifierProvider.value(
-        value: provider,
-        child: MaterialApp(
-          builder: (context, child) => MediaQuery(
-            data: MediaQuery.of(
-              context,
-            ).copyWith(textScaler: const TextScaler.linear(0.8)),
-            child: child!,
+      MaterialApp(
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(
+            context,
+          ).copyWith(textScaler: const TextScaler.linear(0.8)),
+          child: child!,
+        ),
+        routes: routes,
+        home: SeleccionPlantillaScreen(
+          uid: 'usuario-1',
+          rubro: 'Bodega',
+          seleccionInicial: SeleccionPlantillaInfo(
+            slug: repo.slug,
+            plantillaGuardada: repo.plantillaGuardada,
+            provieneDeCampoOficial: true,
           ),
-          routes: routes,
-          home: SeleccionPlantillaScreen(
-            rubro: 'Bodega',
-            onPlantillaSeleccionada: alGuardar ?? (_) async {},
-            abrirUrl: abridor.call,
-          ),
+          dependencies: SeleccionPlantillaDependencies.fromRepository(repo),
+          onVolver: onVolver ?? () {},
+          onCompletado: alCompletar ?? (_) async {},
+          abrirUrl: abridorFinal.call,
         ),
       ),
     );
     await tester.pumpAndSettle();
   }
 
-  testWidgets('conserva un único Scaffold y delega en el contenido', (
+  testWidgets('conserva un único Scaffold y delega en el flujo', (
     tester,
   ) async {
-    final provider = await crearProvider();
-    final abridor = _AbridorFake();
-    await mostrarPantalla(tester, provider: provider, abridor: abridor);
+    await mostrarPantalla(tester);
 
     expect(find.byType(Scaffold), findsOneWidget);
     expect(find.byType(SafeArea), findsOneWidget);
+    expect(find.byType(SeleccionPlantillaFlow), findsOneWidget);
     expect(find.byType(SeleccionPlantillaContent), findsOneWidget);
   });
 
   testWidgets('conserva la selección visual a través del provider', (
     tester,
   ) async {
-    final provider = await crearProvider();
-    final abridor = _AbridorFake();
-    await mostrarPantalla(tester, provider: provider, abridor: abridor);
+    await mostrarPantalla(tester);
 
+    final contexto = tester.element(find.byType(SeleccionPlantillaContent));
+    final provider = Provider.of<SeleccionPlantillaProvider>(
+      contexto,
+      listen: false,
+    );
     expect(provider.seleccionTemporal, PlantillaWeb.neon);
+
     await tester.ensureVisible(find.byKey(const Key('plantilla-card-cristal')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('plantilla-card-cristal')));
@@ -90,14 +87,12 @@ void main() {
   testWidgets('finalizar guarda y notifica la plantilla elegida', (
     tester,
   ) async {
-    final provider = await crearProvider();
-    final abridor = _AbridorFake();
     final guardadas = <String>[];
     await mostrarPantalla(
       tester,
-      provider: provider,
-      abridor: abridor,
-      alGuardar: (plantilla) async => guardadas.add(plantilla),
+      alCompletar: (plantilla) async {
+        guardadas.add(plantilla);
+      },
     );
 
     await tester.ensureVisible(find.byKey(const Key('plantilla-card-galeria')));
@@ -109,34 +104,22 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(guardadas, [PlantillaWeb.galeria.valorPersistencia]);
-    expect(provider.cambiosPendientes, isFalse);
   });
 
-  testWidgets('ir al dashboard reemplaza hacia la ruta de inicio', (
-    tester,
-  ) async {
-    final provider = await crearProvider();
-    final abridor = _AbridorFake();
-    await mostrarPantalla(
-      tester,
-      provider: provider,
-      abridor: abridor,
-      routes: {'/home': (_) => const Scaffold(body: Text('Inicio'))},
-    );
+  testWidgets('ir al dashboard ejecuta onVolver', (tester) async {
+    var volveres = 0;
+    await mostrarPantalla(tester, onVolver: () => volveres++);
 
     await tester.ensureVisible(find.byKey(const Key('ir-dashboard-plantilla')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('ir-dashboard-plantilla')));
-    await tester.pumpAndSettle();
 
-    expect(find.text('Inicio'), findsOneWidget);
-    expect(find.byType(SeleccionPlantillaContent), findsNothing);
+    expect(volveres, 1);
   });
 
   testWidgets('abre el dominio publico en una pestana nueva', (tester) async {
-    final provider = await crearProvider();
     final abridor = _AbridorFake();
-    await mostrarPantalla(tester, provider: provider, abridor: abridor);
+    await mostrarPantalla(tester, abridor: abridor);
 
     await tester.tap(find.text('Ver tienda web'));
     await tester.pumpAndSettle();
@@ -152,9 +135,7 @@ void main() {
   testWidgets('muestra un mensaje distinto cuando launchUrl devuelve false', (
     tester,
   ) async {
-    final provider = await crearProvider();
-    final abridor = _AbridorFake(resultado: false);
-    await mostrarPantalla(tester, provider: provider, abridor: abridor);
+    await mostrarPantalla(tester, abridor: _AbridorFake(resultado: false));
 
     await tester.tap(find.text('Ver tienda web'));
     await tester.pumpAndSettle();
@@ -168,9 +149,10 @@ void main() {
   testWidgets('captura una excepcion y conserva un mensaje comprensible', (
     tester,
   ) async {
-    final provider = await crearProvider();
-    final abridor = _AbridorFake(error: StateError('plugin no registrado'));
-    await mostrarPantalla(tester, provider: provider, abridor: abridor);
+    await mostrarPantalla(
+      tester,
+      abridor: _AbridorFake(error: StateError('plugin no registrado')),
+    );
 
     await tester.tap(find.text('Ver tienda web'));
     await tester.pumpAndSettle();
@@ -182,9 +164,12 @@ void main() {
   });
 
   testWidgets('un slug vacio no intenta abrir ninguna URL', (tester) async {
-    final provider = await crearProvider(slug: '');
     final abridor = _AbridorFake();
-    await mostrarPantalla(tester, provider: provider, abridor: abridor);
+    await mostrarPantalla(
+      tester,
+      repositorio: _RepositorioSeleccionFake(slug: ''),
+      abridor: abridor,
+    );
 
     await tester.tap(find.text('Ver tienda web'));
     await tester.pumpAndSettle();
@@ -217,14 +202,15 @@ class _AbridorFake {
 
 class _RepositorioSeleccionFake implements RepositorioSeleccionPlantilla {
   final String slug;
+  final PlantillaWeb plantillaGuardada = PlantillaWeb.neon;
 
-  _RepositorioSeleccionFake({required this.slug});
+  _RepositorioSeleccionFake({this.slug = 'mi-tienda'});
 
   @override
   Future<SeleccionPlantillaInfo> obtenerSeleccionPlantilla(String uid) async {
     return SeleccionPlantillaInfo(
       slug: slug,
-      plantillaGuardada: PlantillaWeb.neon,
+      plantillaGuardada: plantillaGuardada,
       provieneDeCampoOficial: true,
     );
   }

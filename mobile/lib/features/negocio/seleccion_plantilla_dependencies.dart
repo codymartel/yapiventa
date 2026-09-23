@@ -1,6 +1,7 @@
 import 'application/use_cases/guardar_plantilla_web.dart';
 import 'application/use_cases/obtener_seleccion_plantilla.dart';
 import 'data/negocio_repository.dart';
+import 'domain/repositories/repositorio_seleccion_plantilla.dart';
 
 class SeleccionPlantillaDependencies {
   final ObtenerSeleccionPlantilla obtenerSeleccionPlantilla;
@@ -17,7 +18,7 @@ class SeleccionPlantillaDependencies {
   }
 
   factory SeleccionPlantillaDependencies.fromRepository(
-    NegocioRepository repositorio,
+    RepositorioSeleccionPlantilla repositorio,
   ) {
     return SeleccionPlantillaDependencies(
       obtenerSeleccionPlantilla: ObtenerSeleccionPlantilla(repositorio),
