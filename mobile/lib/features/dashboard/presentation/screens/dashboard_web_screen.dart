@@ -342,6 +342,7 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
       dependencies: widget.seleccionPlantillaDependencies,
       onVolver: _volverDesdePlantilla,
       onCompletado: _completarPlantilla,
+      recargarProgreso: widget.recargarProgreso,
       onVerTienda: (slug) => _abrirTiendaWeb(context, slug),
     );
   }
@@ -355,8 +356,7 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
     });
   }
 
-  Future<void> _completarPlantilla(String plantilla) async {
-    await widget.recargarProgreso?.call();
+  void _completarPlantilla() {
     if (!mounted) return;
     setState(() {
       _plantillaAbierta = false;

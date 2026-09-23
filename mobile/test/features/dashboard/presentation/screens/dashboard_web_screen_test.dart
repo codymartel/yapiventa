@@ -1614,7 +1614,7 @@ void main() {
   });
 
   testWidgets(
-    'guardar recarga el progreso y vuelve a Inicio sin desmontar el shell',
+    'Guardar recarga el progreso y Finalizar vuelve a Inicio sin desmontar',
     (tester) async {
       late void Function(ProgresoConfiguracion) actualizar;
       final escenario = await mostrarDashboardConProgresoActualizable(
@@ -1630,6 +1630,23 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('plantilla-card-galeria')));
       await tester.pumpAndSettle();
+
+      expect(find.byType(SeleccionPlantillaFlow), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('guardar-plantilla')));
+      await tester.pumpAndSettle();
+
+      expect(
+        verify(
+          () => escenario.dependenciasPlantilla.guardarPlantilla(
+            'usuario-1',
+            PlantillaWeb.galeria,
+          ),
+        ).callCount,
+        1,
+      );
+      expect(find.byType(SeleccionPlantillaFlow), findsOneWidget);
+
       await tester.tap(find.byKey(const Key('finalizar-plantilla')));
       await tester.pumpAndSettle();
 
@@ -1649,12 +1666,6 @@ void main() {
         find.byType(DashboardSidebar),
       );
       expect(sidebar.destinoActivo, DashboardDestination.inicio);
-      verify(
-        () => escenario.dependenciasPlantilla.guardarPlantilla(
-          'usuario-1',
-          PlantillaWeb.galeria,
-        ),
-      ).called(1);
     },
   );
 

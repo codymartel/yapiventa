@@ -24,7 +24,7 @@ class PlantillaContextualPanel extends StatelessWidget {
           titulo: 'Al elegir una plantilla',
           contenido:
               'Seleccionar una tarjeta solo marca tu elección. '
-              'La tienda no cambia hasta que guardas con Finalizar.',
+              'La tienda no cambia hasta que guardas.',
           movil: movil,
         ),
         const SizedBox(height: 12),
@@ -42,16 +42,26 @@ class PlantillaContextualPanel extends StatelessWidget {
           titulo: 'Cómo seleccionar',
           contenido:
               'Toca o haz clic en la tarjeta que prefieras '
-              '(también con Enter o Espacio). Finalizar se habilita al elegir.',
+              '(también con Enter o Espacio). El botón Guardar se habilita '
+              'al elegir.',
           movil: movil,
         ),
         const SizedBox(height: 12),
         _PlantillaCard(
           icono: Icons.save_outlined,
+          titulo: 'Guardar',
+          contenido:
+              'Guarda la plantilla elegida y refresca tu progreso. '
+              'Te quedas en esta sección.',
+          movil: movil,
+        ),
+        const SizedBox(height: 12),
+        _PlantillaCard(
+          icono: Icons.flag_outlined,
           titulo: 'Qué hace Finalizar',
           contenido:
-              'Guarda la plantilla elegida y marca la configuración como '
-              'completada. Al terminar regresas al inicio.',
+              'Cierra la selección y te regresa al inicio. Se habilita '
+              'cuando ya guardaste tu elección y no tienes cambios pendientes.',
           movil: movil,
         ),
         const SizedBox(height: 12),
@@ -69,8 +79,8 @@ class PlantillaContextualPanel extends StatelessWidget {
           titulo: 'Abrir la tienda',
           contenido:
               'El botón "Ver tienda web" abre tu tienda pública en una '
-              'pestaña nueva. Solo funciona si ya guardaste una plantilla y '
-              'tu negocio tiene dirección; si no, se muestra un aviso.',
+              'pestaña nueva con el enlace de tu tienda. Solo se habilita '
+              'cuando ya guardaste una plantilla.',
           movil: movil,
         ),
       ],

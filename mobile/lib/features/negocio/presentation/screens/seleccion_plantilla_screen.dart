@@ -36,8 +36,11 @@ class SeleccionPlantillaScreen extends StatelessWidget {
   /// Regresa a donde estaba el embebedor (botón "Ir al dashboard").
   final VoidCallback onVolver;
 
-  /// Guardado exitoso; recibe la plantilla persistida para recargar y salir.
-  final Future<void> Function(String plantilla) onCompletado;
+  /// "Finalizar": el flujo ya guardó y recargó; aquí solo se regresa al inicio.
+  final VoidCallback onCompletado;
+
+  /// Recarga el progreso de la sesión tras guardar (p. ej. acceso.recargar()).
+  final Future<void> Function()? recargarProgreso;
 
   final AbrirUrlTienda? abrirUrl;
 
@@ -49,6 +52,7 @@ class SeleccionPlantillaScreen extends StatelessWidget {
     this.dependencies,
     required this.onVolver,
     required this.onCompletado,
+    this.recargarProgreso,
     this.abrirUrl,
   });
 
@@ -93,6 +97,7 @@ class SeleccionPlantillaScreen extends StatelessWidget {
           dependencies: dependencies,
           onVolver: onVolver,
           onCompletado: onCompletado,
+          recargarProgreso: recargarProgreso,
           onVerTienda: (slug) => _verTiendaWeb(context, slug),
         ),
       ),

@@ -18,8 +18,10 @@ void main() {
     bool cargado = true,
     bool guardando = false,
     bool cambiosPendientes = false,
+    bool progresoRecargado = true,
     String? error,
     ValueChanged<PlantillaWeb>? onSeleccionar,
+    VoidCallback? onGuardar,
     VoidCallback? onFinalizar,
     VoidCallback? onVerTienda,
     VoidCallback? onIrDashboard,
@@ -45,8 +47,10 @@ void main() {
             cargado: cargado,
             guardando: guardando,
             cambiosPendientes: cambiosPendientes,
+            progresoRecargado: progresoRecargado,
             error: error,
             onSeleccionarPlantilla: onSeleccionar ?? (_) {},
+            onGuardar: onGuardar ?? () {},
             onFinalizar: onFinalizar ?? () {},
             onVerTienda: onVerTienda ?? () {},
             onIrDashboard: onIrDashboard ?? () {},
@@ -60,6 +64,7 @@ void main() {
   testWidgets('conserva selección y dispara los callbacks', (tester) async {
     final semantica = tester.ensureSemantics();
     final selecciones = <PlantillaWeb>[];
+    var guardados = 0;
     var finalizaciones = 0;
     var visitas = 0;
     var dashboards = 0;
@@ -68,6 +73,7 @@ void main() {
       seleccionada: PlantillaWeb.neon,
       plantillaGuardada: PlantillaWeb.neon,
       onSeleccionar: selecciones.add,
+      onGuardar: () => guardados++,
       onFinalizar: () => finalizaciones++,
       onVerTienda: () => visitas++,
       onIrDashboard: () => dashboards++,
@@ -85,6 +91,10 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('plantilla-card-cristal')));
 
+    await tester.ensureVisible(find.byKey(const Key('guardar-plantilla')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('guardar-plantilla')));
+
     await tester.ensureVisible(find.byKey(const Key('finalizar-plantilla')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('finalizar-plantilla')));
@@ -98,6 +108,7 @@ void main() {
     await tester.tap(find.byKey(const Key('ir-dashboard-plantilla')));
 
     expect(selecciones, [PlantillaWeb.cristal]);
+    expect(guardados, 1);
     expect(finalizaciones, 1);
     expect(visitas, 1);
     expect(dashboards, 1);
@@ -239,7 +250,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('deshabilita Finalizar e Ir al dashboard según estado', (
+  testWidgets('deshabilita los botones según el estado de guardado', (
     tester,
   ) async {
     await mostrarContenido(
@@ -248,21 +259,32 @@ void main() {
       seleccionada: PlantillaWeb.neon,
       plantillaGuardada: PlantillaWeb.neon,
       cambiosPendientes: true,
+      progresoRecargado: false,
     );
 
-await tester.ensureVisible(find.byKey(const Key('finalizar-plantilla')));
+    await tester.ensureVisible(find.byKey(const Key('guardar-plantilla')));
     await tester.pump();
+    expect(
+      tester
+          .widget<ElevatedButton>(find.byKey(const Key('guardar-plantilla')))
+          .onPressed,
+      isNull,
+    );
+    expect(find.text('Guardando...'), findsOneWidget);
+    expect(
+      tester
+          .widget<OutlinedButton>(find.byKey(const Key('ver-tienda-plantilla')))
+          .onPressed,
+      isNull,
+    );
     expect(
       tester
           .widget<ElevatedButton>(find.byKey(const Key('finalizar-plantilla')))
           .onPressed,
       isNull,
     );
-    expect(find.text('Guardando...'), findsOneWidget);
 
-    await tester.ensureVisible(
-      find.byKey(const Key('ir-dashboard-plantilla')),
-    );
+    await tester.ensureVisible(find.byKey(const Key('ir-dashboard-plantilla')));
     await tester.pump();
     expect(
       tester
@@ -284,8 +306,10 @@ await tester.ensureVisible(find.byKey(const Key('finalizar-plantilla')));
             cargado: true,
             guardando: false,
             cambiosPendientes: false,
+            progresoRecargado: true,
             error: null,
             onSeleccionarPlantilla: (_) {},
+            onGuardar: () {},
             onFinalizar: () {},
             onVerTienda: () {},
             onIrDashboard: () {},
@@ -294,6 +318,20 @@ await tester.ensureVisible(find.byKey(const Key('finalizar-plantilla')));
       ),
     );
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const Key('guardar-plantilla')));
+    await tester.pump();
+    expect(
+      tester
+          .widget<ElevatedButton>(find.byKey(const Key('guardar-plantilla')))
+          .onPressed,
+      isNotNull,
+    );
+    expect(
+      tester
+          .widget<OutlinedButton>(find.byKey(const Key('ver-tienda-plantilla')))
+          .onPressed,
+      isNotNull,
+    );
     await tester.ensureVisible(find.byKey(const Key('finalizar-plantilla')));
     await tester.pump();
     expect(
@@ -312,6 +350,65 @@ await tester.ensureVisible(find.byKey(const Key('finalizar-plantilla')));
     );
   });
 
+  testWidgets('Ver tienda se deshabilita sin plantilla guardada', (
+    tester,
+  ) async {
+    await mostrarContenido(
+      tester,
+      seleccionada: PlantillaWeb.cristal,
+      plantillaGuardada: null,
+    );
+
+    await tester.ensureVisible(find.byKey(const Key('ver-tienda-plantilla')));
+    await tester.pump();
+    expect(
+      tester
+          .widget<OutlinedButton>(find.byKey(const Key('ver-tienda-plantilla')))
+          .onPressed,
+      isNull,
+    );
+  });
+
+  testWidgets(
+    'Finalizar exige plantilla guardada, sin cambios y recarga lista',
+    (tester) async {
+      ElevatedButton finalizar(WidgetTester t) => t.widget<ElevatedButton>(
+        find.byKey(const Key('finalizar-plantilla')),
+      );
+
+      await mostrarContenido(
+        tester,
+        seleccionada: PlantillaWeb.cristal,
+        plantillaGuardada: null,
+      );
+      final botonSinGuardada = finalizar(tester);
+      expect(botonSinGuardada.onPressed, isNull);
+
+      await mostrarContenido(
+        tester,
+        seleccionada: PlantillaWeb.cristal,
+        plantillaGuardada: PlantillaWeb.cristal,
+        cambiosPendientes: true,
+      );
+      expect(finalizar(tester).onPressed, isNull);
+
+      await mostrarContenido(
+        tester,
+        seleccionada: PlantillaWeb.cristal,
+        plantillaGuardada: PlantillaWeb.cristal,
+        progresoRecargado: false,
+      );
+      expect(finalizar(tester).onPressed, isNull);
+
+      await mostrarContenido(
+        tester,
+        seleccionada: PlantillaWeb.cristal,
+        plantillaGuardada: PlantillaWeb.cristal,
+      );
+      expect(finalizar(tester).onPressed, isNotNull);
+    },
+  );
+
   for (final ancho in [320, 360, 500, 768, 1050, 1440]) {
     for (final escala in [1.0, 1.3, 2.0]) {
       testWidgets('no desborda en $ancho px con texto x$escala', (
@@ -326,6 +423,7 @@ await tester.ensureVisible(find.byKey(const Key('finalizar-plantilla')));
         );
 
         for (final key in const [
+          'guardar-plantilla',
           'finalizar-plantilla',
           'ver-tienda-plantilla',
           'ir-dashboard-plantilla',

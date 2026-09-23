@@ -27,7 +27,8 @@ void main() {
     SeleccionPlantillaInfo? seleccionInicial,
     bool conSeleccionInicial = true,
     VoidCallback? onVolver,
-    Future<void> Function(String plantilla)? onCompletado,
+    VoidCallback? onCompletado,
+    Future<void> Function()? recargarProgreso,
     Future<void> Function(String slug)? onVerTienda,
   }) async {
     tester.view.physicalSize = const Size(900, 1400);
@@ -47,7 +48,8 @@ void main() {
                 : null,
             dependencies: SeleccionPlantillaDependencies.fromRepository(repo),
             onVolver: onVolver ?? () {},
-            onCompletado: onCompletado ?? (_) async {},
+            onCompletado: onCompletado ?? () {},
+            recargarProgreso: recargarProgreso,
             onVerTienda: onVerTienda ?? (_) async {},
           ),
         ),
@@ -89,7 +91,7 @@ void main() {
             ),
             seleccionInicial: inicialDe(_RepositorioSeleccionFake()),
             onVolver: () {},
-            onCompletado: (_) async {},
+            onCompletado: () {},
             onVerTienda: (_) async {},
           ),
         ),
@@ -137,7 +139,7 @@ void main() {
             _RepositorioSeleccionFake(),
           ),
           onVolver: () {},
-          onCompletado: (_) async {},
+          onCompletado: () {},
         ),
       ),
     );
@@ -168,7 +170,7 @@ void main() {
             rubro: 'Bodega',
             dependencies: SeleccionPlantillaDependencies.fromRepository(repo),
             onVolver: () {},
-            onCompletado: (_) async {},
+            onCompletado: () {},
             onVerTienda: (_) async {},
           ),
         ),
@@ -212,7 +214,7 @@ void main() {
             seleccionInicial: inicialDe(repo),
             dependencies: SeleccionPlantillaDependencies.fromRepository(repo),
             onVolver: () {},
-            onCompletado: (_) async {},
+            onCompletado: () {},
             onVerTienda: (_) async {},
           ),
         ),
@@ -230,24 +232,58 @@ void main() {
     );
   });
 
-  testWidgets('guardado exitoso llama una sola vez a onCompletado', (
+  testWidgets('Guardar persiste, recarga y permanece en Plantilla', (
     tester,
   ) async {
     final repo = _RepositorioSeleccionFake();
     var completados = 0;
-    String? plantillaCompletada;
+    var recargas = 0;
     await montarFlujo(
       tester,
       repositorio: repo,
-      onCompletado: (plantilla) async {
-        completados++;
-        plantillaCompletada = plantilla;
-      },
+      recargarProgreso: () async => recargas++,
+      onCompletado: () => completados++,
     );
 
     await tester.ensureVisible(find.byKey(const Key('plantilla-card-sabroso')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('plantilla-card-sabroso')));
+    await tester.ensureVisible(find.byKey(const Key('guardar-plantilla')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('guardar-plantilla')));
+    await tester.pumpAndSettle();
+
+    expect(repo.guardados, 1);
+    expect(recargas, 1);
+    expect(completados, 0);
+    expect(find.byType(SeleccionPlantillaContent), findsOneWidget);
+    expect(
+      tester
+          .widget<ElevatedButton>(find.byKey(const Key('finalizar-plantilla')))
+          .onPressed,
+      isNotNull,
+    );
+  });
+
+  testWidgets('Finalizar no guarda y solo avisa al embebedor', (tester) async {
+    final repo = _RepositorioSeleccionFake();
+    var completados = 0;
+    await montarFlujo(
+      tester,
+      repositorio: repo,
+      onCompletado: () => completados++,
+    );
+
+    await tester.ensureVisible(find.byKey(const Key('plantilla-card-sabroso')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('plantilla-card-sabroso')));
+    await tester.ensureVisible(find.byKey(const Key('guardar-plantilla')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('guardar-plantilla')));
+    await tester.pumpAndSettle();
+
+    expect(repo.guardados, 1);
+
     await tester.ensureVisible(find.byKey(const Key('finalizar-plantilla')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('finalizar-plantilla')));
@@ -255,29 +291,102 @@ void main() {
 
     expect(repo.guardados, 1);
     expect(completados, 1);
-    expect(plantillaCompletada, PlantillaWeb.sabroso.valorPersistencia);
   });
 
-  testWidgets('doble clic en Finalizar no duplica el guardado', (tester) async {
+  testWidgets('con plantilla ya guardada Finalizar regresa sin guardar', (
+    tester,
+  ) async {
+    final repo = _RepositorioSeleccionFake();
+    var completados = 0;
+    await montarFlujo(
+      tester,
+      repositorio: repo,
+      onCompletado: () => completados++,
+    );
+
+    await tester.ensureVisible(find.byKey(const Key('finalizar-plantilla')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('finalizar-plantilla')));
+    await tester.pumpAndSettle();
+
+    expect(repo.guardados, 0);
+    expect(completados, 1);
+  });
+
+  testWidgets(
+    'cambiar la selección tras guardar deshabilita Finalizar hasta re-guardar',
+    (tester) async {
+      final repo = _RepositorioSeleccionFake();
+      await montarFlujo(tester, repositorio: repo);
+
+      await tester.ensureVisible(
+        find.byKey(const Key('plantilla-card-galeria')),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('plantilla-card-galeria')));
+      await tester.ensureVisible(find.byKey(const Key('guardar-plantilla')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('guardar-plantilla')));
+      await tester.pumpAndSettle();
+
+      expect(
+        tester
+            .widget<ElevatedButton>(
+              find.byKey(const Key('finalizar-plantilla')),
+            )
+            .onPressed,
+        isNotNull,
+      );
+
+      await tester.tap(find.byKey(const Key('plantilla-card-cristal')));
+      await tester.pumpAndSettle();
+
+      expect(
+        tester
+            .widget<ElevatedButton>(
+              find.byKey(const Key('finalizar-plantilla')),
+            )
+            .onPressed,
+        isNull,
+      );
+
+      await tester.ensureVisible(find.byKey(const Key('guardar-plantilla')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('guardar-plantilla')));
+      await tester.pumpAndSettle();
+
+      expect(
+        tester
+            .widget<ElevatedButton>(
+              find.byKey(const Key('finalizar-plantilla')),
+            )
+            .onPressed,
+        isNotNull,
+      );
+      expect(repo.guardados, 2);
+    },
+  );
+
+  testWidgets('doble clic en Guardar no duplica el guardado', (tester) async {
     final freno = Completer<void>();
     final repo = _RepositorioSeleccionFake(frenoGuardado: freno);
     var completados = 0;
     await montarFlujo(
       tester,
       repositorio: repo,
-      onCompletado: (_) async => completados++,
+      onCompletado: () => completados++,
     );
 
     await tester.ensureVisible(find.byKey(const Key('plantilla-card-sabroso')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('plantilla-card-sabroso')));
-    await tester.ensureVisible(find.byKey(const Key('finalizar-plantilla')));
+    await tester.ensureVisible(find.byKey(const Key('guardar-plantilla')));
     await tester.pump();
 
-    await tester.tap(find.byKey(const Key('finalizar-plantilla')));
+    await tester.tap(find.byKey(const Key('guardar-plantilla')));
     await tester.pump();
     await tester.tap(
-      find.byKey(const Key('finalizar-plantilla')),
+      find.byKey(const Key('guardar-plantilla')),
       warnIfMissed: false,
     );
     await tester.pump();
@@ -289,7 +398,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(repo.guardados, 1);
-    expect(completados, 1);
+    expect(completados, 0);
     expect(tester.widget<PopScope>(popScopeDelFlujo()).canPop, isTrue);
   });
 
@@ -301,15 +410,15 @@ void main() {
     await montarFlujo(
       tester,
       repositorio: repo,
-      onCompletado: (_) async => completados++,
+      onCompletado: () => completados++,
     );
 
     await tester.ensureVisible(find.byKey(const Key('plantilla-card-sabroso')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('plantilla-card-sabroso')));
-    await tester.ensureVisible(find.byKey(const Key('finalizar-plantilla')));
+    await tester.ensureVisible(find.byKey(const Key('guardar-plantilla')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('finalizar-plantilla')));
+    await tester.tap(find.byKey(const Key('guardar-plantilla')));
     await tester.pumpAndSettle();
 
     expect(repo.guardados, 0);
@@ -331,15 +440,15 @@ void main() {
       tester,
       repositorio: repo,
       onVolver: () => volveres++,
-      onCompletado: (_) async => completados++,
+      onCompletado: () => completados++,
     );
 
     await tester.ensureVisible(find.byKey(const Key('plantilla-card-sabroso')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('plantilla-card-sabroso')));
-    await tester.ensureVisible(find.byKey(const Key('finalizar-plantilla')));
+    await tester.ensureVisible(find.byKey(const Key('guardar-plantilla')));
     await tester.pump();
-    await tester.tap(find.byKey(const Key('finalizar-plantilla')));
+    await tester.tap(find.byKey(const Key('guardar-plantilla')));
     await tester.pump();
 
     expect(tester.widget<PopScope>(popScopeDelFlujo()).canPop, isFalse);
@@ -361,7 +470,8 @@ void main() {
     freno.complete();
     await tester.pumpAndSettle();
 
-    expect(completados, 1);
+    expect(completados, 0);
+    expect(repo.guardados, 1);
     expect(tester.widget<PopScope>(popScopeDelFlujo()).canPop, isTrue);
     expect(volveres, 0);
   });

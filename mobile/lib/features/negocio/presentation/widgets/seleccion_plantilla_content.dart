@@ -18,6 +18,7 @@ class SeleccionPlantillaContent extends StatelessWidget {
 
   static const _marinoCard = Color(0xFF0A1B2E);
   static const _azulAcento = Color(0xFF1E88E5);
+  static const _verdeGuardar = Color(0xFF2E9E5B);
   static const _marinoBorde = Color(0xFF1A3050);
   static const _blancoPuro = Color(0xFFFFFFFF);
   static const _grisTenue = Color(0xFF8FA8C0);
@@ -62,9 +63,14 @@ class SeleccionPlantillaContent extends StatelessWidget {
   final bool cambiosPendientes;
   final String? error;
   final ValueChanged<PlantillaWeb> onSeleccionarPlantilla;
+  final VoidCallback onGuardar;
   final VoidCallback onFinalizar;
   final VoidCallback onVerTienda;
   final VoidCallback onIrDashboard;
+
+  /// Marca que la última recarga del progreso tras guardar terminó bien.
+  /// Habilita "Finalizar" solo cuando la selección está guardada y al día.
+  final bool progresoRecargado;
 
   const SeleccionPlantillaContent({
     super.key,
@@ -75,8 +81,10 @@ class SeleccionPlantillaContent extends StatelessWidget {
     required this.cargado,
     required this.guardando,
     required this.cambiosPendientes,
+    required this.progresoRecargado,
     required this.error,
     required this.onSeleccionarPlantilla,
+    required this.onGuardar,
     required this.onFinalizar,
     required this.onVerTienda,
     required this.onIrDashboard,
@@ -100,8 +108,10 @@ class SeleccionPlantillaContent extends StatelessWidget {
         final anchoTarjeta =
             (anchoMaximoContenido - 48 - separacion * (columnas - 1)) /
             columnas;
-        final botonAncho = (anchoMaximoContenido - 48 - 12) / 2;
-        final apilarBotones = anchoDisponible < 560;
+        final apilarBotones = anchoDisponible < 1000;
+        final botonAncho = apilarBotones
+            ? double.infinity
+            : (anchoMaximoContenido - 48 - 24) / 3;
 
         return SingleChildScrollView(
           child: Center(
@@ -181,16 +191,17 @@ class SeleccionPlantillaContent extends StatelessWidget {
 
                     const SizedBox(height: 24),
 
+                    // ── Guardar plantilla ──
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
-                        key: const Key('finalizar-plantilla'),
+                        key: const Key('guardar-plantilla'),
                         onPressed:
                             !cargado ||
                                 plantillaSeleccionada == null ||
                                 guardando
                             ? null
-                            : onFinalizar,
+                            : onGuardar,
                         icon: guardando
                             ? const SizedBox.square(
                                 dimension: 18,
@@ -198,8 +209,21 @@ class SeleccionPlantillaContent extends StatelessWidget {
                                   strokeWidth: 2,
                                 ),
                               )
-                            : const Icon(Icons.arrow_forward),
-                        label: Text(guardando ? 'Guardando...' : 'Finalizar'),
+                            : const Icon(Icons.save_outlined, size: 18),
+                        label: Text(
+                          guardando ? 'Guardando...' : 'Guardar plantilla',
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _verdeGuardar,
+                          foregroundColor: _blancoPuro,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 16,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
                       ),
                     ),
 
@@ -214,7 +238,7 @@ class SeleccionPlantillaContent extends StatelessWidget {
 
                     const SizedBox(height: 16),
 
-                    // ── Botones: Ver tienda web + Ir al dashboard ──
+                    // ── Botones: Ver tienda + Finalizar + Ir al dashboard ──
                     Wrap(
                       spacing: 12,
                       runSpacing: 12,
@@ -223,7 +247,12 @@ class SeleccionPlantillaContent extends StatelessWidget {
                           width: apilarBotones ? double.infinity : botonAncho,
                           child: OutlinedButton.icon(
                             key: const Key('ver-tienda-plantilla'),
-                            onPressed: onVerTienda,
+                            onPressed:
+                                !cargado ||
+                                    plantillaGuardada == null ||
+                                    guardando
+                                ? null
+                                : onVerTienda,
                             icon: const Icon(Icons.open_in_new, size: 18),
                             label: const Text('Ver tienda web'),
                             style: OutlinedButton.styleFrom(
@@ -232,6 +261,37 @@ class SeleccionPlantillaContent extends StatelessWidget {
                                 color: _azulAcento,
                                 width: 1.5,
                               ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 16,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        SizedBox(
+                          width: apilarBotones ? double.infinity : botonAncho,
+                          child: ElevatedButton.icon(
+                            key: const Key('finalizar-plantilla'),
+                            onPressed:
+                                !cargado ||
+                                    plantillaGuardada == null ||
+                                    cambiosPendientes ||
+                                    !progresoRecargado ||
+                                    guardando
+                                ? null
+                                : onFinalizar,
+                            icon: const Icon(
+                              Icons.check_circle_outline,
+                              size: 18,
+                            ),
+                            label: const Text('Finalizar'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: _azulAcento,
+                              foregroundColor: _blancoPuro,
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 12,
                                 vertical: 16,

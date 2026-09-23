@@ -17,7 +17,8 @@ void main() {
     _AbridorFake? abridor,
     Map<String, WidgetBuilder> routes = const {},
     VoidCallback? onVolver,
-    Future<void> Function(String plantilla)? alCompletar,
+    VoidCallback? alCompletar,
+    Future<void> Function()? recargarProgreso,
   }) async {
     tester.view.physicalSize = const Size(900, 1400);
     tester.view.devicePixelRatio = 1;
@@ -45,7 +46,8 @@ void main() {
           ),
           dependencies: SeleccionPlantillaDependencies.fromRepository(repo),
           onVolver: onVolver ?? () {},
-          onCompletado: alCompletar ?? (_) async {},
+          onCompletado: alCompletar ?? () {},
+          recargarProgreso: recargarProgreso,
           abrirUrl: abridorFinal.call,
         ),
       ),
@@ -84,26 +86,36 @@ void main() {
     expect(provider.cambiosPendientes, isTrue);
   });
 
-  testWidgets('finalizar guarda y notifica la plantilla elegida', (
-    tester,
-  ) async {
-    final guardadas = <String>[];
+  testWidgets('guardar persiste y Finalizar solo completa', (tester) async {
+    final repo = _RepositorioSeleccionFake();
+    var recargas = 0;
+    var completados = 0;
     await mostrarPantalla(
       tester,
-      alCompletar: (plantilla) async {
-        guardadas.add(plantilla);
-      },
+      repositorio: repo,
+      recargarProgreso: () async => recargas++,
+      alCompletar: () => completados++,
     );
 
     await tester.ensureVisible(find.byKey(const Key('plantilla-card-galeria')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('plantilla-card-galeria')));
+    await tester.ensureVisible(find.byKey(const Key('guardar-plantilla')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('guardar-plantilla')));
+    await tester.pumpAndSettle();
+
+    expect(recargas, 1);
+    expect(completados, 0);
+    expect(find.byType(SeleccionPlantillaContent), findsOneWidget);
+
     await tester.ensureVisible(find.byKey(const Key('finalizar-plantilla')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('finalizar-plantilla')));
     await tester.pumpAndSettle();
 
-    expect(guardadas, [PlantillaWeb.galeria.valorPersistencia]);
+    expect(repo.guardados, 1);
+    expect(completados, 1);
   });
 
   testWidgets('ir al dashboard ejecuta onVolver', (tester) async {
@@ -203,6 +215,7 @@ class _AbridorFake {
 class _RepositorioSeleccionFake implements RepositorioSeleccionPlantilla {
   final String slug;
   final PlantillaWeb plantillaGuardada = PlantillaWeb.neon;
+  int guardados = 0;
 
   _RepositorioSeleccionFake({this.slug = 'mi-tienda'});
 
@@ -216,5 +229,7 @@ class _RepositorioSeleccionFake implements RepositorioSeleccionPlantilla {
   }
 
   @override
-  Future<void> guardarPlantillaWeb(String uid, PlantillaWeb plantilla) async {}
+  Future<void> guardarPlantillaWeb(String uid, PlantillaWeb plantilla) async {
+    guardados++;
+  }
 }

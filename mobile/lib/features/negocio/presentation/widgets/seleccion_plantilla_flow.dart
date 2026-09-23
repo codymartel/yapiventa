@@ -21,13 +21,18 @@ import 'seleccion_plantilla_content.dart';
 //   estable entre reconstrucciones) y lo libera en dispose.
 // - Dispara la carga inicial (cargar()); con [seleccionInicial] no relee el
 //   repositorio.
-// - Coordina la selección temporal, la finalización/guardado (guardar()), el
-//   bloqueo contra doble clic (guardando = _finalizando || provider.guardando)
-//   con AbsorbPointer, la navegación atrás bloqueada (PopScope) y el manejo
-//   de errores (mantiene al usuario en Plantilla).
-// - Decide cuándo invocar onVerTienda (solo si hay slug y plantilla guardada),
-//   onVolver (botón "Ir al dashboard" = volver sin guardar) y onCompletado
-//   (guardado exitoso).
+// - Coordina GUARDAR, VER TIENDA y FINALIZAR por separado:
+//    * Guardar: persiste la selección (provider.guardar()), recarga el
+//      progreso (recargarProgreso) y se queda en Plantilla. Solo Finalizar
+//      queda armado si esa recarga terminó correctamente.
+//    * Ver tienda: solo abre la tienda (onVerTienda) si ya hay una plantilla
+//      guardada y slug; no guarda.
+//    * Finalizar: NO guarda; solo avisa al embebedor (onCompletado) para
+//      volver al inicio. Se habilita cuando la selección coincide con la
+//      guardada, la recarga terminó bien y no hay cambios pendientes.
+// - Mantiene bloqueada toda la interacción (PopScope + AbsorbPointer) durante
+//   el guardado y la recarga (evita doble clic y retroceso a mitad).
+//   En caso de error de guardado o recarga, mantiene al usuario en Plantilla.
 //
 // QUÉ NO HACE:
 // - NO crea Scaffold, AppBar ni SafeArea (los provee quien lo embebe).
@@ -46,11 +51,17 @@ class SeleccionPlantillaFlow extends StatefulWidget {
   /// Regresa a donde estaba el embebedor (botón "Ir al dashboard").
   final VoidCallback onVolver;
 
-  /// Guardado exitoso; recibe la plantilla persistida (valor de persistencia).
-  final Future<void> Function(String plantilla) onCompletado;
+  /// Finalizar: se avisa al embebedor para volver al inicio. No recibe
+  /// plantilla: el guardado ya lo hizo el botón "Guardar" de este flujo.
+  final VoidCallback onCompletado;
 
   /// Abre la tienda pública del slug dado (lo hace el embebedor).
   final Future<void> Function(String slug) onVerTienda;
+
+  /// Recarga el progreso de la sesión tras un guardado exitoso (p. ej.
+  /// acceso.recargar()). Se espera con la interacción aún bloqueada; el
+  /// flujo se queda en Plantilla hasta que el usuario decida Finalizar.
+  final Future<void> Function()? recargarProgreso;
 
   const SeleccionPlantillaFlow({
     super.key,
@@ -61,6 +72,7 @@ class SeleccionPlantillaFlow extends StatefulWidget {
     required this.onVolver,
     required this.onCompletado,
     required this.onVerTienda,
+    this.recargarProgreso,
   });
 
   @override
@@ -69,7 +81,8 @@ class SeleccionPlantillaFlow extends StatefulWidget {
 
 class _SeleccionPlantillaFlowState extends State<SeleccionPlantillaFlow> {
   SeleccionPlantillaProvider? _provider;
-  bool _finalizando = false;
+  bool _operacionEnCurso = false;
+  bool _progresoRecargado = true;
 
   @override
   void initState() {
@@ -90,39 +103,59 @@ class _SeleccionPlantillaFlowState extends State<SeleccionPlantillaFlow> {
     super.dispose();
   }
 
-  Future<void> _finalizar() async {
-    if (_finalizando) return;
+  Future<void> _guardar() async {
+    if (_operacionEnCurso) return;
     final provider = _provider;
     if (provider == null) return;
 
-    setState(() => _finalizando = true);
-    var completado = false;
-    String? plantilla;
+    setState(() {
+      _operacionEnCurso = true;
+      _progresoRecargado = false;
+    });
+    var listo = false;
+    var guardoBien = false;
     try {
-      final exito = await provider.guardar();
-      if (exito) {
-        plantilla = provider.seleccionTemporal?.valorPersistencia;
-        completado = plantilla != null;
+      guardoBien = await provider.guardar();
+      if (guardoBien) {
+        final recarga = widget.recargarProgreso;
+        if (recarga != null) {
+          try {
+            await recarga();
+            listo = true;
+          } catch (_) {
+            listo = false;
+          }
+        } else {
+          listo = true;
+        }
       }
     } finally {
-      if (mounted) setState(() => _finalizando = false);
+      if (mounted) setState(() => _operacionEnCurso = false);
     }
 
-    if (mounted && !completado) {
-      _mostrarMensaje(
-        provider.errorMessage ??
-            'No se pudo guardar la plantilla web. Intenta de nuevo.',
-      );
+    if (!mounted) return;
+    if (listo) {
+      setState(() => _progresoRecargado = true);
       return;
     }
+    _mostrarMensaje(
+      guardoBien
+          ? 'Se guardó, pero no se pudo refrescar tu progreso. Intenta de nuevo.'
+          : provider.errorMessage ??
+                'No se pudo guardar la plantilla web. Intenta de nuevo.',
+    );
+  }
 
-    if (completado && mounted) {
-      try {
-        await widget.onCompletado(plantilla!);
-      } catch (_) {
-        // El embebedor decide cómo recuperarse; aquí solo se rearma la UI.
-      }
+  Future<void> _finalizar() async {
+    final provider = _provider;
+    if (provider == null || _operacionEnCurso) return;
+    if (!provider.cargado ||
+        provider.plantillaGuardada == null ||
+        provider.cambiosPendientes ||
+        !_progresoRecargado) {
+      return;
     }
+    widget.onCompletado();
   }
 
   Future<void> _verTienda() async {
@@ -153,7 +186,7 @@ class _SeleccionPlantillaFlowState extends State<SeleccionPlantillaFlow> {
       value: provider,
       child: Consumer<SeleccionPlantillaProvider>(
         builder: (context, p, _) {
-          final guardando = _finalizando || p.guardando;
+          final guardando = _operacionEnCurso || p.guardando;
           return PopScope(
             canPop: !guardando,
             child: AbsorbPointer(
@@ -166,8 +199,10 @@ class _SeleccionPlantillaFlowState extends State<SeleccionPlantillaFlow> {
                 cargado: p.cargado,
                 guardando: guardando,
                 cambiosPendientes: p.cambiosPendientes,
+                progresoRecargado: _progresoRecargado,
                 error: p.errorMessage,
                 onSeleccionarPlantilla: p.seleccionar,
+                onGuardar: _guardar,
                 onFinalizar: _finalizar,
                 onVerTienda: _verTienda,
                 onIrDashboard: widget.onVolver,

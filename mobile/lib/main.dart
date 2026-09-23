@@ -276,10 +276,10 @@ class _RutaConAcceso extends StatelessWidget {
               _irAlDashboard(context);
             }
           },
-          onCompletado: (plantilla) async {
-            await acceso.recargar();
+          onCompletado: () {
             if (context.mounted) _irAlDashboard(context);
           },
+          recargarProgreso: () => acceso.recargar(),
         );
       default:
         return const _RedireccionRuta(RutasAcceso.dashboard);
