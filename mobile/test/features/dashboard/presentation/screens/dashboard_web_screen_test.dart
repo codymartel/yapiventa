@@ -8,6 +8,7 @@ import 'package:mobile/features/dashboard/presentation/screens/dashboard_web_scr
 import 'package:mobile/features/dashboard/presentation/widgets/dashboard_attention_panel.dart';
 import 'package:mobile/features/dashboard/presentation/widgets/dashboard_sidebar.dart';
 import 'package:mobile/features/dashboard/presentation/widgets/dashboard_top_bar.dart';
+import 'package:mobile/features/dashboard/presentation/widgets/plantilla_contextual_panel.dart';
 import 'package:mobile/features/dashboard/presentation/widgets/rubro_contextual_panel.dart';
 import 'package:mobile/features/negocio/application/use_cases/obtener_catalogo_negocio.dart';
 import 'package:mobile/features/negocio/application/use_cases/guardar_plantilla_web.dart';
@@ -1708,7 +1709,288 @@ void main() {
       );
       expect(
         find.byKey(const Key('authenticated-shell-contextual-panel')),
-        findsNothing,
+        findsOneWidget,
+      );
+      expect(find.byType(PlantillaContextualPanel), findsOneWidget);
+      expect(find.byType(ProductosContextualPanel), findsNothing);
+      expect(find.byType(DashboardAttentionPanel), findsNothing);
+    },
+  );
+
+  testWidgets('Plantilla muestra su panel contextual y oculta el de Inicio', (
+    tester,
+  ) async {
+    await mostrarDashboard(tester);
+
+    expect(
+      find.byKey(const Key('authenticated-shell-contextual-panel')),
+      findsOneWidget,
+    );
+    expect(find.byType(PlantillaContextualPanel), findsNothing);
+    expect(find.byType(DashboardAttentionPanel), findsOneWidget);
+
+    await tester.tap(_textoSidebar('Plantilla web'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SeleccionPlantillaFlow), findsOneWidget);
+    expect(
+      find.byKey(const Key('authenticated-shell-contextual-panel')),
+      findsOneWidget,
+    );
+    expect(find.byType(PlantillaContextualPanel), findsOneWidget);
+    expect(find.byType(DashboardAttentionPanel), findsNothing);
+    expect(find.byType(ProductosContextualPanel), findsNothing);
+    expect(find.byType(RubroContextualPanel), findsNothing);
+    expect(find.text('Qué hace Finalizar'), findsOneWidget);
+    expect(find.text('Necesita tu atención'), findsNothing);
+  });
+
+  testWidgets('Plantilla no duplica la ayuda contextual en escritorio amplio', (
+    tester,
+  ) async {
+    await mostrarDashboard(tester, size: const Size(1720, 1000));
+
+    await tester.tap(_textoSidebar('Plantilla web'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SeleccionPlantillaFlow), findsOneWidget);
+    expect(find.byType(PlantillaContextualPanel), findsOneWidget);
+    expect(find.byType(ProductosContextualPanel), findsNothing);
+    expect(find.byType(RubroContextualPanel), findsNothing);
+    expect(find.byType(DashboardAttentionPanel), findsNothing);
+    expect(find.byKey(const Key('fases-negocio-panel')), findsNothing);
+    expect(find.text('¿Cómo funciona?'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets(
+    'volver desde Plantilla a Productos restaura el panel de Productos',
+    (tester) async {
+      await mostrarDashboard(tester, progreso: _progresoCompleto());
+
+      await tester.tap(find.text('Productos'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ProductosFlow), findsOneWidget);
+      expect(find.byType(ProductosContextualPanel), findsOneWidget);
+      expect(find.byType(PlantillaContextualPanel), findsNothing);
+
+      await tester.tap(_textoSidebar('Plantilla web'));
+      await tester.pumpAndSettle();
+      expect(find.byType(SeleccionPlantillaFlow), findsOneWidget);
+      expect(find.byType(PlantillaContextualPanel), findsOneWidget);
+      expect(find.byType(ProductosContextualPanel), findsNothing);
+
+      await tester.tap(find.byKey(const Key('ir-dashboard-plantilla')));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SeleccionPlantillaFlow), findsNothing);
+      expect(find.byType(ProductosFlow), findsOneWidget);
+      expect(find.byType(PlantillaContextualPanel), findsNothing);
+      expect(find.byType(ProductosContextualPanel), findsOneWidget);
+      expect(
+        find.byKey(const Key('authenticated-shell-contextual-panel')),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets('volver a Inicio desde Plantilla restaura el panel de atención', (
+    tester,
+  ) async {
+    await mostrarDashboard(tester);
+
+    await tester.tap(_textoSidebar('Plantilla web'));
+    await tester.pumpAndSettle();
+    expect(find.byType(PlantillaContextualPanel), findsOneWidget);
+    expect(find.byType(DashboardAttentionPanel), findsNothing);
+
+    await tester.tap(find.text('Inicio'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(SeleccionPlantillaFlow), findsNothing);
+    expect(find.byType(PlantillaContextualPanel), findsNothing);
+    expect(find.byType(DashboardAttentionPanel), findsOneWidget);
+    expect(
+      find.byKey(const Key('authenticated-shell-contextual-panel')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('la ayuda de Plantilla usa el panel derecho en escritorio', (
+    tester,
+  ) async {
+    for (final ancho in const [1050.0, 1440.0]) {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await mostrarDashboard(tester, size: Size(ancho, 1000));
+
+      await tester.tap(_textoSidebar('Plantilla web'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SeleccionPlantillaFlow), findsOneWidget);
+      expect(
+        find.byKey(const Key('authenticated-shell-contextual-panel')),
+        findsOneWidget,
+      );
+      expect(find.byType(PlantillaContextualPanel), findsOneWidget);
+      expect(find.text('Ayuda contextual'), findsNothing);
+    }
+  });
+
+  testWidgets(
+    'en compacto la ayuda de Plantilla es plegable y cerrada por defecto',
+    (tester) async {
+      for (final ancho in const [768.0, 1049.0]) {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await mostrarDashboard(tester, size: Size(ancho, 1000));
+
+        await tester.tap(find.byTooltip('Abrir menú'));
+        await tester.pumpAndSettle();
+        await tester.tap(_textoSidebar('Plantilla web'));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(SeleccionPlantillaFlow), findsOneWidget);
+        expect(
+          find.byKey(const Key('authenticated-shell-contextual-panel')),
+          findsNothing,
+        );
+        expect(
+          find.byKey(const Key('authenticated-shell-contextual-expansion')),
+          findsOneWidget,
+        );
+        expect(find.text('Ayuda contextual'), findsOneWidget);
+        expect(find.byType(PlantillaContextualPanel), findsNothing);
+
+        final tileFinder = find.byKey(
+          const Key('authenticated-shell-contextual-expansion'),
+        );
+        expect(tester.getRect(tileFinder).height, lessThan(160));
+
+        await tester.tap(find.text('Ayuda contextual'));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(PlantillaContextualPanel), findsOneWidget);
+        expect(find.text('Qué hace Finalizar').hitTestable(), findsOneWidget);
+        expect(tester.getRect(tileFinder).height, greaterThan(200));
+
+        await tester.tap(find.text('Ayuda contextual'));
+        await tester.pumpAndSettle();
+        expect(tester.getRect(tileFinder).height, lessThan(160));
+      }
+    },
+  );
+
+  testWidgets('en 360 px la ayuda de Plantilla es accesible sin overflow', (
+    tester,
+  ) async {
+    await mostrarDashboard(tester, size: const Size(360, 700));
+
+    await tester.tap(find.byTooltip('Abrir menú'));
+    await tester.pumpAndSettle();
+    await tester.tap(_textoSidebar('Plantilla web'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(DashboardSidebar), findsNothing);
+    expect(find.byType(SeleccionPlantillaFlow), findsOneWidget);
+    expect(
+      find.byKey(const Key('authenticated-shell-contextual-expansion')),
+      findsOneWidget,
+    );
+    expect(find.text('Ayuda contextual'), findsOneWidget);
+    expect(find.byType(Scaffold), findsOneWidget);
+    expect(find.byType(DashboardTopBar), findsOneWidget);
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.text('Ayuda contextual'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(PlantillaContextualPanel), findsOneWidget);
+    expect(find.text('Qué hace Finalizar'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('la ayuda de Plantilla soporta texto ampliado sin overflow', (
+    tester,
+  ) async {
+    for (final escala in const [
+      TextScaler.linear(1.3),
+      TextScaler.linear(2.0),
+    ]) {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await mostrarDashboard(
+        tester,
+        size: const Size(1050, 1000),
+        textScaler: escala,
+      );
+
+      await tester.tap(_textoSidebar('Plantilla web'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SeleccionPlantillaFlow), findsOneWidget);
+      expect(find.byType(PlantillaContextualPanel), findsOneWidget);
+      expect(
+        find.byKey(const Key('authenticated-shell-contextual-panel')),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    }
+  });
+
+  testWidgets(
+    'el panel de Plantilla se mantiene sin overflow a escala 1.3 y 2.0',
+    (tester) async {
+      for (final escala in const [
+        TextScaler.linear(1.3),
+        TextScaler.linear(2.0),
+      ]) {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Builder(
+              builder: (context) => MediaQuery(
+                data: MediaQuery.of(context).copyWith(textScaler: escala),
+                child: const Scaffold(
+                  body: SingleChildScrollView(
+                    child: SizedBox(
+                      width: AuthenticatedShell.contextualPanelWidth,
+                      child: PlantillaContextualPanel(),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byType(PlantillaContextualPanel), findsOneWidget);
+        expect(tester.takeException(), isNull);
+      }
+    },
+  );
+
+  testWidgets(
+    'Plantilla conserva Flow y provider sin recargar al alternar su panel',
+    (tester) async {
+      final escenario = await mostrarDashboard(tester);
+
+      await tester.tap(_textoSidebar('Plantilla web'));
+      await tester.pumpAndSettle();
+      expect(find.byType(SeleccionPlantillaFlow), findsOneWidget);
+      expect(find.byType(PlantillaContextualPanel), findsOneWidget);
+      final provider1 = _leerProveedorPlantilla(tester);
+
+      await tester.tap(find.text('Inicio'));
+      await tester.pumpAndSettle();
+      expect(find.byType(PlantillaContextualPanel), findsNothing);
+      expect(find.byType(DashboardAttentionPanel), findsOneWidget);
+
+      await tester.tap(_textoSidebar('Plantilla web'));
+      await tester.pumpAndSettle();
+      expect(find.byType(SeleccionPlantillaFlow), findsOneWidget);
+      expect(find.byType(PlantillaContextualPanel), findsOneWidget);
+      expect(identical(_leerProveedorPlantilla(tester), provider1), isTrue);
+      expect(_leerProveedorPlantilla(tester).cargado, isTrue);
+      verifyNever(
+        () => escenario.dependenciasPlantilla.obtenerSeleccion(any()),
       );
     },
   );

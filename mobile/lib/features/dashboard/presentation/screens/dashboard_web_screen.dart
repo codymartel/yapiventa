@@ -23,6 +23,7 @@ import '../widgets/rubro_contextual_panel.dart';
 import '../widgets/dashboard_home_content.dart';
 import '../widgets/dashboard_sidebar.dart';
 import '../widgets/dashboard_top_bar.dart';
+import '../widgets/plantilla_contextual_panel.dart';
 
 typedef AbrirUrlDashboard =
     Future<bool> Function(Uri url, {String? webOnlyWindowName});
@@ -134,8 +135,10 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
         email: widget.email,
         onCerrarSesion: widget.onCerrarSesion,
       ),
-      contextualPanel: (_configuracionAbierta || _plantillaAbierta)
+      contextualPanel: _configuracionAbierta
           ? null
+          : _plantillaAbierta
+          ? const PlantillaContextualPanel()
           : _productosAbierta
           ? const ProductosContextualPanel()
           : _rubroAbierta
