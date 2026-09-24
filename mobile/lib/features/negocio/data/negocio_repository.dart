@@ -111,8 +111,15 @@ class NegocioRepository
         .collection('negocios')
         .doc(negocioIdResuelto)
         .get();
-    return CatalogoVentaPersistido.desdeMapa(
-      documento.data()?['catalogoVenta'],
+    final datos = documento.data() ?? const <String, dynamic>{};
+
+    final guardado = datos['catalogoVenta'];
+    if (guardado != null) {
+      return CatalogoVentaPersistido.desdeMapa(guardado);
+    }
+
+    return CatalogoVentaPersistido.desdeUnidadesLegacy(
+      _leerUnidades(datos['unidadesMedida']),
     );
   }
 

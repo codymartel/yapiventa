@@ -371,8 +371,7 @@ void main() {
       await _guardarConfiguracionBasica(repository);
 
       final datos =
-          (await firestore.collection('negocios').doc(negocioId).get())
-              .data()!;
+          (await firestore.collection('negocios').doc(negocioId).get()).data()!;
       final catalogoVenta = datos['catalogoVenta'] as Map<String, dynamic>;
       expect(catalogoVenta['versionEsquema'], 1);
       expect(datos['unidadesMedida'], isNotEmpty);
@@ -389,8 +388,8 @@ void main() {
         'personalizada': false,
       });
 
-      final medidas =
-          (catalogoVenta['medidas'] as List).cast<Map<String, dynamic>>();
+      final medidas = (catalogoVenta['medidas'] as List)
+          .cast<Map<String, dynamic>>();
       final peso = medidas.firstWhere((medida) => medida['id'] == 'peso');
       expect(peso['familia'], 'peso');
       expect(peso['minimoBase'], isA<int>());
@@ -412,8 +411,7 @@ void main() {
       await _guardarConfiguracionBasica(repository, rubro: legacy);
 
       final datos =
-          (await firestore.collection('negocios').doc(negocioId).get())
-              .data()!;
+          (await firestore.collection('negocios').doc(negocioId).get()).data()!;
       expect(datos['rubro'], legacy);
       final catalogoVenta = datos['catalogoVenta'] as Map<String, dynamic>;
       final presentaciones = (catalogoVenta['presentaciones'] as List)
@@ -422,61 +420,57 @@ void main() {
           .toSet();
       expect(presentaciones, containsAll(['unidad', 'par', 'set', 'caja']));
       expect(presentaciones, isNot(contains('botella')));
-      final medidas =
-          (catalogoVenta['medidas'] as List).cast<Map<String, dynamic>>();
+      final medidas = (catalogoVenta['medidas'] as List)
+          .cast<Map<String, dynamic>>();
       expect(medidas, hasLength(4));
-      expect(
-        medidas.map((medida) => medida['id']).toSet(),
-        {'peso', 'volumen', 'longitud', 'area'},
-      );
+      expect(medidas.map((medida) => medida['id']).toSet(), {
+        'peso',
+        'volumen',
+        'longitud',
+        'area',
+      });
     });
   }
 
-  test(
-    'lee catalogoVenta tipado sin escribir ni releer users/{uid}',
-    () async {
-      final catalogoVenta = CatalogoVentaPersistido.desdePreset(
-        PresetsVenta.obtener('Bodega'),
-      ).toMap();
-      final negocioId = await _prepararNegocio(
-        firestore,
-        'usuario-1',
-        datos: {
-          'rubro': 'Bodega',
-          'catalogoVenta': catalogoVenta,
-          'plantillaWeb': 'neon',
-          'webActiva': true,
-        },
-      );
-      firestore.usersCollectionAccesses = 0;
+  test('lee catalogoVenta tipado sin escribir ni releer users/{uid}', () async {
+    final catalogoVenta = CatalogoVentaPersistido.desdePreset(
+      PresetsVenta.obtener('Bodega'),
+    ).toMap();
+    final negocioId = await _prepararNegocio(
+      firestore,
+      'usuario-1',
+      datos: {
+        'rubro': 'Bodega',
+        'catalogoVenta': catalogoVenta,
+        'plantillaWeb': 'neon',
+        'webActiva': true,
+      },
+    );
+    firestore.usersCollectionAccesses = 0;
 
-      final catalogo = await repository.obtenerCatalogoVenta(
-        'usuario-1',
-        negocioId: negocioId,
-      );
+    final catalogo = await repository.obtenerCatalogoVenta(
+      'usuario-1',
+      negocioId: negocioId,
+    );
 
-      expect(firestore.usersCollectionAccesses, 0);
-      expect(catalogo, isNotNull);
-      expect(catalogo!.version, CatalogoVentaPersistido.versionEsquema);
-      expect(catalogo.presentaciones, isNotEmpty);
-      expect(catalogo.medidas, isNotEmpty);
-      final peso = catalogo.medidas.firstWhere(
-        (medida) => medida.id == 'peso',
-      );
-      expect(peso.minimoBase, 100);
-      expect(peso.cantidadesRapidasBase, [250, 500, 750, 1000]);
+    expect(firestore.usersCollectionAccesses, 0);
+    expect(catalogo, isNotNull);
+    expect(catalogo!.version, CatalogoVentaPersistido.versionEsquema);
+    expect(catalogo.presentaciones, isNotEmpty);
+    expect(catalogo.medidas, isNotEmpty);
+    final peso = catalogo.medidas.firstWhere((medida) => medida.id == 'peso');
+    expect(peso.minimoBase, 100);
+    expect(peso.cantidadesRapidasBase, [250, 500, 750, 1000]);
 
-      final datos =
-          (await firestore.collection('negocios').doc(negocioId).get())
-              .data()!;
-      expect(datos['catalogoVenta'], catalogoVenta);
-      expect(datos['plantillaWeb'], 'neon');
-      expect(datos['webActiva'], isTrue);
-    },
-  );
+    final datos = (await firestore.collection('negocios').doc(negocioId).get())
+        .data()!;
+    expect(datos['catalogoVenta'], catalogoVenta);
+    expect(datos['plantillaWeb'], 'neon');
+    expect(datos['webActiva'], isTrue);
+  });
 
   test(
-    'sin catalogoVenta devuelve null y conserva las unidades legacy',
+    'sin catalogoVenta adapta unidadesMedida legacy sin escribir al leer',
     () async {
       final negocioId = await _prepararNegocio(
         firestore,
@@ -490,6 +484,12 @@ void main() {
               'fraccionesPermitidas': <String>[],
               'esOpcional': false,
             },
+            {
+              'nombre': 'kg',
+              'tipo': 'fraccionaria',
+              'fraccionesPermitidas': ['1'],
+              'esOpcional': false,
+            },
           ],
         },
       );
@@ -499,10 +499,14 @@ void main() {
         negocioId: negocioId,
       );
 
-      expect(catalogo, isNull);
+      expect(catalogo, isNotNull);
+      expect(catalogo!.presentaciones.any((p) => p.id == 'unidad'), isTrue);
+      final kg = catalogo.medidas.singleWhere((m) => m.nombre == 'kg');
+      expect(kg.familia?.name, 'peso');
+      expect(kg.requiereRevision, isFalse);
+
       final datos =
-          (await firestore.collection('negocios').doc(negocioId).get())
-              .data()!;
+          (await firestore.collection('negocios').doc(negocioId).get()).data()!;
       expect(datos.containsKey('catalogoVenta'), isFalse);
       expect(datos['rubro'], 'Bodega');
       expect(datos['unidadesMedida'], isNotEmpty);
@@ -510,23 +514,54 @@ void main() {
   );
 
   test(
-    'guardar persiste catalogoVenta sin releer users/{uid}',
+    'unidades legacy desconocidas se adaptan con requiereRevision sin escribir',
     () async {
-      final negocioId = _negocioIdDe('usuario-1');
-      await firestore.collection('negocios').doc(negocioId).set({
-        'propietarioUid': 'usuario-1',
-      });
-      firestore.usersCollectionAccesses = 0;
+      final negocioId = await _prepararNegocio(
+        firestore,
+        'usuario-1',
+        datos: {
+          'rubro': 'Bodega',
+          'unidadesMedida': [
+            {
+              'nombre': 'Docena',
+              'tipo': 'fraccionaria',
+              'fraccionesPermitidas': ['0.5', '1'],
+              'esOpcional': true,
+            },
+          ],
+        },
+      );
 
-      await _guardarConfiguracionBasica(repository, negocioId: negocioId);
+      final catalogo = await repository.obtenerCatalogoVenta(
+        'usuario-1',
+        negocioId: negocioId,
+      );
 
-      expect(firestore.usersCollectionAccesses, 0);
+      expect(catalogo, isNotNull);
+      expect(catalogo!.medidas.single.requiereRevision, isTrue);
+      expect(catalogo.medidas.single.familia, isNull);
+
       final datos =
-          (await firestore.collection('negocios').doc(negocioId).get())
-              .data()!;
-      expect(datos['catalogoVenta'], isNotNull);
+          (await firestore.collection('negocios').doc(negocioId).get()).data()!;
+      expect(datos.containsKey('catalogoVenta'), isFalse);
+      expect(datos['unidadesMedida'], isNotEmpty);
     },
   );
+
+  test('guardar persiste catalogoVenta sin releer users/{uid}', () async {
+    final negocioId = _negocioIdDe('usuario-1');
+    await firestore.collection('negocios').doc(negocioId).set({
+      'propietarioUid': 'usuario-1',
+    });
+    firestore.usersCollectionAccesses = 0;
+
+    await _guardarConfiguracionBasica(repository, negocioId: negocioId);
+
+    expect(firestore.usersCollectionAccesses, 0);
+    final datos = (await firestore.collection('negocios').doc(negocioId).get())
+        .data()!;
+    expect(datos['catalogoVenta'], isNotNull);
+  });
 
   test(
     'cambia el slug privado y publico y elimina la proyeccion anterior',

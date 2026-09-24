@@ -1,5 +1,7 @@
+import 'package:mobile/domain/models/tipo_unidad.dart';
 import 'package:mobile/features/productos/domain/models/familia_unidad.dart';
 
+import 'catalogo_venta_global.dart';
 import 'configuracion_medida.dart';
 import 'formato_presentacion.dart';
 import 'opcion_presentacion.dart';
@@ -29,13 +31,129 @@ class CatalogoVentaPersistido {
     );
   }
 
+  /// Adapta las [UnidadInfo] legacy de un negocio a este catálogo en memoria.
+  ///
+  /// Solo se traduce lo que el registro cerrado de unidades permite traducir
+  /// de forma segura (peso, volumen, longitud, área y el conteo "unidad" como
+  /// presentación). Lo demás nunca se inventa: llega como
+  /// [MedidaVentaPersistida.requiereRevision] con familia y unidades nulas.
+  /// Devuelve null únicamente cuando no hay nada que adaptar.
+  static CatalogoVentaPersistido? desdeUnidadesLegacy(
+    Iterable<UnidadInfo> unidades,
+  ) {
+    final lista = unidades.toList();
+    if (lista.isEmpty) return null;
+
+    final medidas = <MedidaVentaPersistida>[];
+    final presentaciones = <OpcionPresentacion>[];
+
+    for (final unidad in lista) {
+      final nombre = unidad.nombre.trim();
+      if (nombre.isEmpty) continue;
+
+      final mapeo = _unidadLegacyARegistro(nombre);
+      if (mapeo == null) {
+        medidas.add(_medidaRequiereRevision(unidad));
+        continue;
+      }
+
+      final familia = mapeo.familia;
+      if (familia == FamiliaUnidad.conteo) {
+        final existe = presentaciones.any(
+          (presentacion) => presentacion.id == 'unidad',
+        );
+        if (!existe) {
+          presentaciones.add(
+            OpcionPresentacion(
+              id: 'unidad',
+              nombre: 'Unidad',
+              formatos: [
+                FormatoPresentacion(
+                  valorBase: 1,
+                  familia: FamiliaUnidad.conteo,
+                  unidadVisible: RegistroUnidades.unidad,
+                ),
+              ],
+              activa: !unidad.esOpcional,
+              obligatoria: false,
+            ),
+          );
+        }
+        continue;
+      }
+
+      medidas.add(_medidaSegura(unidad, mapeo));
+    }
+
+    return CatalogoVentaPersistido(
+      presentaciones: presentaciones,
+      medidas: medidas,
+    );
+  }
+
+  static MedidaVentaPersistida _medidaSegura(
+    UnidadInfo unidad,
+    ({FamiliaUnidad familia, UnidadRegistrada unidad}) mapeo,
+  ) {
+    final porDefecto = CatalogoVentaGlobal.medidaPorDefecto(mapeo.familia);
+    return MedidaVentaPersistida(
+      id: mapeo.unidad.nombre,
+      nombre: unidad.nombre.trim(),
+      familia: mapeo.familia,
+      unidadBase: RegistroUnidades.baseDe(mapeo.familia),
+      unidadVisual: mapeo.unidad,
+      minimoBase: porDefecto.minimoBase,
+      incrementoBase: porDefecto.incrementoBase,
+      cantidadesRapidasBase: porDefecto.cantidadesRapidasBase,
+      permiteCantidad: porDefecto.permiteCantidad,
+      permiteMonto: porDefecto.permiteMonto,
+      activa: !unidad.esOpcional,
+      obligatoria: false,
+    );
+  }
+
+  static MedidaVentaPersistida _medidaRequiereRevision(UnidadInfo unidad) {
+    final nombre = unidad.nombre.trim();
+    return MedidaVentaPersistida(
+      id: nombre,
+      nombre: nombre,
+      familia: null,
+      unidadBase: null,
+      unidadVisual: null,
+      minimoBase: 0,
+      incrementoBase: 0,
+      cantidadesRapidasBase: const [],
+      permiteCantidad: true,
+      permiteMonto: false,
+      activa: false,
+      obligatoria: false,
+      requiereRevision: true,
+    );
+  }
+
+  /// Busca el nombre legacy en el registro cerrado de unidades comparando sin
+  /// distinguir mayúsculas ("Unidad" == "unidad", "L" == "l").
+  static ({FamiliaUnidad familia, UnidadRegistrada unidad})?
+  _unidadLegacyARegistro(String nombre) {
+    final normalizado = nombre.toLowerCase();
+    for (final familia in FamiliaUnidad.values) {
+      for (final unidad in RegistroUnidades.unidadesDe(familia)) {
+        if (unidad.nombre.toLowerCase() == normalizado) {
+          return (familia: familia, unidad: unidad);
+        }
+      }
+    }
+    return null;
+  }
+
   static CatalogoVentaPersistido? desdeMapa(Object? valor) {
     if (valor is! Map) return null;
     final datos = Map<String, dynamic>.from(valor);
 
     final version = datos['versionEsquema'];
-    final versionEfectivo =
-        version is int && version > 0 ? version : versionEsquema;
+    final versionEfectivo = version is int && version > 0
+        ? version
+        : versionEsquema;
 
     final presentaciones = <OpcionPresentacion>[];
     final presentacionesGuardadas = datos['presentaciones'];
@@ -63,10 +181,10 @@ class CatalogoVentaPersistido {
   }
 
   Map<String, dynamic> toMap() => {
-        'versionEsquema': version,
-        'presentaciones': presentaciones.map(_presentacionAMapa).toList(),
-        'medidas': medidas.map((medida) => medida.toMap()).toList(),
-      };
+    'versionEsquema': version,
+    'presentaciones': presentaciones.map(_presentacionAMapa).toList(),
+    'medidas': medidas.map((medida) => medida.toMap()).toList(),
+  };
 
   static Map<String, dynamic> _presentacionAMapa(
     OpcionPresentacion presentacion,
@@ -80,10 +198,10 @@ class CatalogoVentaPersistido {
   };
 
   static Map<String, dynamic> _formatoAMapa(FormatoPresentacion formato) => {
-        'valorBase': formato.valorBase,
-        'familia': formato.familia.name,
-        'unidadVisible': formato.unidadVisible.nombre,
-      };
+    'valorBase': formato.valorBase,
+    'familia': formato.familia.name,
+    'unidadVisible': formato.unidadVisible.nombre,
+  };
 
   static OpcionPresentacion? _presentacionDesdeMapa(Object? valor) {
     if (valor is! Map) return null;
@@ -160,9 +278,11 @@ class CatalogoVentaPersistido {
 class MedidaVentaPersistida {
   final String id;
   final String nombre;
-  final FamiliaUnidad familia;
-  final UnidadRegistrada unidadBase;
-  final UnidadRegistrada unidadVisual;
+
+  /// null cuando la unidad legacy no tuvo mapeo seguro (requiere revisión).
+  final FamiliaUnidad? familia;
+  final UnidadRegistrada? unidadBase;
+  final UnidadRegistrada? unidadVisual;
   final int minimoBase;
   final int incrementoBase;
   final List<int> cantidadesRapidasBase;
@@ -171,19 +291,23 @@ class MedidaVentaPersistida {
   final bool activa;
   final bool obligatoria;
 
+  /// true para unidades legacy sin mapeo seguro: no se inventó conversión.
+  final bool requiereRevision;
+
   MedidaVentaPersistida({
     required this.id,
     required this.nombre,
-    required this.familia,
-    required this.unidadBase,
-    required this.unidadVisual,
-    required this.minimoBase,
-    required this.incrementoBase,
-    required List<int> cantidadesRapidasBase,
-    required this.permiteCantidad,
-    required this.permiteMonto,
-    required this.activa,
-    required this.obligatoria,
+    this.familia,
+    this.unidadBase,
+    this.unidadVisual,
+    this.minimoBase = 0,
+    this.incrementoBase = 0,
+    List<int> cantidadesRapidasBase = const [],
+    this.permiteCantidad = true,
+    this.permiteMonto = false,
+    this.activa = false,
+    this.obligatoria = false,
+    this.requiereRevision = false,
   }) : cantidadesRapidasBase = List.unmodifiable(cantidadesRapidasBase);
 
   factory MedidaVentaPersistida.desdeConfiguracion(
@@ -210,11 +334,38 @@ class MedidaVentaPersistida {
     final datos = Map<String, dynamic>.from(valor);
     final id = _texto(datos['id']);
     final nombre = _texto(datos['nombre']);
+    if (id.isEmpty || nombre.isEmpty) return null;
+
+    final requiereRevision = datos['requiereRevision'] is bool
+        ? datos['requiereRevision'] as bool
+        : false;
     final familia = _familiaDesdeTexto(datos['familia']);
-    if (id.isEmpty || nombre.isEmpty || familia == null) {
-      return null;
+
+    if (requiereRevision) {
+      return MedidaVentaPersistida(
+        id: id,
+        nombre: nombre,
+        familia: familia,
+        unidadBase: null,
+        unidadVisual: null,
+        minimoBase: _enteroNoNegativo(datos['minimoBase']),
+        incrementoBase: _enteroNoNegativo(datos['incrementoBase']),
+        cantidadesRapidasBase: const [],
+        permiteCantidad: datos['permiteCantidad'] is bool
+            ? datos['permiteCantidad'] as bool
+            : true,
+        permiteMonto: datos['permiteMonto'] is bool
+            ? datos['permiteMonto'] as bool
+            : false,
+        activa: datos['activa'] is bool ? datos['activa'] as bool : false,
+        obligatoria: datos['obligatoria'] is bool
+            ? datos['obligatoria'] as bool
+            : false,
+        requiereRevision: true,
+      );
     }
-    if (familia == FamiliaUnidad.conteo) return null;
+
+    if (familia == null || familia == FamiliaUnidad.conteo) return null;
 
     final unidadBase = RegistroUnidades.baseDe(familia);
     final unidadVisual = _unidadDe(familia, _texto(datos['unidadVisual']));
@@ -257,20 +408,26 @@ class MedidaVentaPersistida {
     );
   }
 
-  Map<String, dynamic> toMap() => {
-        'id': id,
-        'nombre': nombre,
-        'familia': familia.name,
-        'unidadBase': unidadBase.nombre,
-        'unidadVisual': unidadVisual.nombre,
-        'minimoBase': minimoBase,
-        'incrementoBase': incrementoBase,
-        'cantidadesRapidasBase': cantidadesRapidasBase,
-        'permiteCantidad': permiteCantidad,
-        'permiteMonto': permiteMonto,
-        'activa': activa,
-        'obligatoria': obligatoria,
-      };
+  Map<String, dynamic> toMap() {
+    final mapa = <String, dynamic>{
+      'id': id,
+      'nombre': nombre,
+      'minimoBase': minimoBase,
+      'incrementoBase': incrementoBase,
+      'cantidadesRapidasBase': cantidadesRapidasBase,
+      'permiteCantidad': permiteCantidad,
+      'permiteMonto': permiteMonto,
+      'activa': activa,
+      'obligatoria': obligatoria,
+      'requiereRevision': requiereRevision,
+    };
+    if (familia != null) {
+      mapa['familia'] = familia!.name;
+      mapa['unidadBase'] = unidadBase!.nombre;
+      mapa['unidadVisual'] = unidadVisual!.nombre;
+    }
+    return mapa;
+  }
 
   static String _idDeFamilia(FamiliaUnidad familia) {
     switch (familia) {
@@ -312,6 +469,11 @@ class MedidaVentaPersistida {
 
   static int? _enteroPositivo(Object? valor) {
     if (valor is! int || valor <= 0) return null;
+    return valor;
+  }
+
+  static int _enteroNoNegativo(Object? valor) {
+    if (valor is! int || valor < 0) return 0;
     return valor;
   }
 
