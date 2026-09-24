@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/features/negocio/application/use_cases/obtener_catalogo_negocio.dart';
 import 'package:mobile/features/negocio/domain/models/catalogo_negocio.dart';
+import 'package:mobile/features/negocio/domain/models/catalogo_venta/catalogo_venta_persistido.dart';
 import 'package:mobile/features/negocio/domain/repositories/repositorio_catalogo_negocio.dart';
 
 void main() {
@@ -47,5 +48,13 @@ class _RepositorioCatalogoFake implements RepositorioCatalogoNegocio {
     ultimoUid = uid;
     if (error != null) throw error!;
     return respuesta!;
+  }
+
+  @override
+  Future<CatalogoVentaPersistido?> obtenerCatalogoVenta(
+    String uid, {
+    String? negocioId,
+  }) async {
+    return null;
   }
 }

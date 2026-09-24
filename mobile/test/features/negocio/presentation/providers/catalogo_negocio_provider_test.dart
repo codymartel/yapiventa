@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/domain/models/tipo_unidad.dart';
 import 'package:mobile/features/negocio/application/use_cases/obtener_catalogo_negocio.dart';
 import 'package:mobile/features/negocio/domain/models/catalogo_negocio.dart';
+import 'package:mobile/features/negocio/domain/models/catalogo_venta/catalogo_venta_persistido.dart';
 import 'package:mobile/features/negocio/domain/repositories/repositorio_catalogo_negocio.dart';
 import 'package:mobile/features/negocio/presentation/providers/catalogo_negocio_provider.dart';
 
@@ -108,5 +109,13 @@ class _RepositorioCatalogoFake implements RepositorioCatalogoNegocio {
     if (cargaPendiente != null) return cargaPendiente.future;
     if (error != null) return Future.error(error!);
     return Future.value(respuesta);
+  }
+
+  @override
+  Future<CatalogoVentaPersistido?> obtenerCatalogoVenta(
+    String uid, {
+    String? negocioId,
+  }) async {
+    return null;
   }
 }

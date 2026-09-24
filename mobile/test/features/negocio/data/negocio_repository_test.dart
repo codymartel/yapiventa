@@ -3,6 +3,8 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/domain/models/tipo_unidad.dart';
 import 'package:mobile/features/negocio/data/negocio_repository.dart';
+import 'package:mobile/features/negocio/domain/models/catalogo_venta/catalogo_venta_persistido.dart';
+import 'package:mobile/features/negocio/domain/models/catalogo_venta/preset_venta_rubro.dart';
 import 'package:mobile/features/negocio/domain/models/config_pago_metodo.dart';
 import 'package:mobile/features/negocio/domain/models/horario_dia.dart';
 import 'package:mobile/features/negocio/domain/models/metodo_pago_tipo.dart';
@@ -354,6 +356,175 @@ void main() {
           'valorDescuento': 10.0,
         },
       });
+      expect(datos['catalogoVenta'], isNotNull);
+      expect(datos['catalogoVenta']['versionEsquema'], 1);
+      expect(datos['catalogoVenta']['presentaciones'], isNotEmpty);
+      expect(datos['catalogoVenta']['medidas'], isNotEmpty);
+    },
+  );
+
+  test(
+    'guardar configuración persiste el catálogo maestro y las unidades legacy',
+    () async {
+      final negocioId = await _prepararNegocio(firestore, 'usuario-1');
+
+      await _guardarConfiguracionBasica(repository);
+
+      final datos =
+          (await firestore.collection('negocios').doc(negocioId).get())
+              .data()!;
+      final catalogoVenta = datos['catalogoVenta'] as Map<String, dynamic>;
+      expect(catalogoVenta['versionEsquema'], 1);
+      expect(datos['unidadesMedida'], isNotEmpty);
+
+      final presentaciones = catalogoVenta['presentaciones'] as List;
+      expect(presentaciones.first, {
+        'id': 'unidad',
+        'nombre': 'Unidad',
+        'formatos': [
+          {'valorBase': 1, 'familia': 'conteo', 'unidadVisible': 'unidad'},
+        ],
+        'activa': true,
+        'obligatoria': true,
+        'personalizada': false,
+      });
+
+      final medidas =
+          (catalogoVenta['medidas'] as List).cast<Map<String, dynamic>>();
+      final peso = medidas.firstWhere((medida) => medida['id'] == 'peso');
+      expect(peso['familia'], 'peso');
+      expect(peso['minimoBase'], isA<int>());
+      expect(peso['incrementoBase'], isA<int>());
+      expect(peso['cantidadesRapidasBase'], [250, 500, 750, 1000]);
+      expect(peso['permiteCantidad'], isTrue);
+      expect(peso['permiteMonto'], isTrue);
+      expect(peso['activa'], isTrue);
+      expect(peso['obligatoria'], isFalse);
+      expect(peso['unidadBase'], 'g');
+      expect(peso['unidadVisual'], 'kg');
+    },
+  );
+
+  for (final legacy in ['Farmacia', 'Ferretería']) {
+    test('$legacy persiste el catálogo maestro del preset "Otros"', () async {
+      final negocioId = await _prepararNegocio(firestore, 'usuario-1');
+
+      await _guardarConfiguracionBasica(repository, rubro: legacy);
+
+      final datos =
+          (await firestore.collection('negocios').doc(negocioId).get())
+              .data()!;
+      expect(datos['rubro'], legacy);
+      final catalogoVenta = datos['catalogoVenta'] as Map<String, dynamic>;
+      final presentaciones = (catalogoVenta['presentaciones'] as List)
+          .cast<Map<String, dynamic>>()
+          .map((presentacion) => presentacion['id'])
+          .toSet();
+      expect(presentaciones, containsAll(['unidad', 'par', 'set', 'caja']));
+      expect(presentaciones, isNot(contains('botella')));
+      final medidas =
+          (catalogoVenta['medidas'] as List).cast<Map<String, dynamic>>();
+      expect(medidas, hasLength(4));
+      expect(
+        medidas.map((medida) => medida['id']).toSet(),
+        {'peso', 'volumen', 'longitud', 'area'},
+      );
+    });
+  }
+
+  test(
+    'lee catalogoVenta tipado sin escribir ni releer users/{uid}',
+    () async {
+      final catalogoVenta = CatalogoVentaPersistido.desdePreset(
+        PresetsVenta.obtener('Bodega'),
+      ).toMap();
+      final negocioId = await _prepararNegocio(
+        firestore,
+        'usuario-1',
+        datos: {
+          'rubro': 'Bodega',
+          'catalogoVenta': catalogoVenta,
+          'plantillaWeb': 'neon',
+          'webActiva': true,
+        },
+      );
+      firestore.usersCollectionAccesses = 0;
+
+      final catalogo = await repository.obtenerCatalogoVenta(
+        'usuario-1',
+        negocioId: negocioId,
+      );
+
+      expect(firestore.usersCollectionAccesses, 0);
+      expect(catalogo, isNotNull);
+      expect(catalogo!.version, CatalogoVentaPersistido.versionEsquema);
+      expect(catalogo.presentaciones, isNotEmpty);
+      expect(catalogo.medidas, isNotEmpty);
+      final peso = catalogo.medidas.firstWhere(
+        (medida) => medida.id == 'peso',
+      );
+      expect(peso.minimoBase, 100);
+      expect(peso.cantidadesRapidasBase, [250, 500, 750, 1000]);
+
+      final datos =
+          (await firestore.collection('negocios').doc(negocioId).get())
+              .data()!;
+      expect(datos['catalogoVenta'], catalogoVenta);
+      expect(datos['plantillaWeb'], 'neon');
+      expect(datos['webActiva'], isTrue);
+    },
+  );
+
+  test(
+    'sin catalogoVenta devuelve null y conserva las unidades legacy',
+    () async {
+      final negocioId = await _prepararNegocio(
+        firestore,
+        'usuario-1',
+        datos: {
+          'rubro': 'Bodega',
+          'unidadesMedida': [
+            {
+              'nombre': 'Unidad',
+              'tipo': 'entera',
+              'fraccionesPermitidas': <String>[],
+              'esOpcional': false,
+            },
+          ],
+        },
+      );
+
+      final catalogo = await repository.obtenerCatalogoVenta(
+        'usuario-1',
+        negocioId: negocioId,
+      );
+
+      expect(catalogo, isNull);
+      final datos =
+          (await firestore.collection('negocios').doc(negocioId).get())
+              .data()!;
+      expect(datos.containsKey('catalogoVenta'), isFalse);
+      expect(datos['rubro'], 'Bodega');
+      expect(datos['unidadesMedida'], isNotEmpty);
+    },
+  );
+
+  test(
+    'guardar persiste catalogoVenta sin releer users/{uid}',
+    () async {
+      final negocioId = _negocioIdDe('usuario-1');
+      await firestore.collection('negocios').doc(negocioId).set({
+        'propietarioUid': 'usuario-1',
+      });
+      firestore.usersCollectionAccesses = 0;
+
+      await _guardarConfiguracionBasica(repository, negocioId: negocioId);
+
+      expect(firestore.usersCollectionAccesses, 0);
+      final datos =
+          (await firestore.collection('negocios').doc(negocioId).get())
+              .data()!;
+      expect(datos['catalogoVenta'], isNotNull);
     },
   );
 
@@ -1910,12 +2081,13 @@ Future<void> _guardarConfiguracionBasica(
   NegocioRepository repository, {
   String nombreNegocio = 'Bodega Ana',
   String slug = 'bodega-ana',
+  String rubro = 'Bodega',
   String? negocioId,
 }) {
   return repository.guardarConfiguracionNegocio(
     uid: 'usuario-1',
     negocioId: negocioId,
-    rubro: 'Bodega',
+    rubro: rubro,
     nombreNegocio: nombreNegocio,
     slug: slug,
     telefonoCompleto: '+51999999999',

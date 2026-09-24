@@ -3,6 +3,8 @@ import '../../../domain/models/categoria.dart';
 import '../../../domain/models/tipo_unidad.dart';
 import '../../../domain/models/unidad_medida.dart';
 import '../domain/models/catalogo_negocio.dart';
+import '../domain/models/catalogo_venta/catalogo_venta_persistido.dart';
+import '../domain/models/catalogo_venta/preset_venta_rubro.dart';
 import '../domain/models/zona_delivery.dart';
 import '../domain/models/horario_dia.dart';
 import '../domain/models/metodo_pago_tipo.dart';
@@ -96,6 +98,21 @@ class NegocioRepository
       categorias: _leerCategorias(datos['categorias']),
       unidadesMedida: _leerUnidades(datos['unidadesMedida']),
       configuracionInicial: datos,
+    );
+  }
+
+  @override
+  Future<CatalogoVentaPersistido?> obtenerCatalogoVenta(
+    String uid, {
+    String? negocioId,
+  }) async {
+    final negocioIdResuelto = await _resolverNegocioId(uid, negocioId);
+    final documento = await _firestore
+        .collection('negocios')
+        .doc(negocioIdResuelto)
+        .get();
+    return CatalogoVentaPersistido.desdeMapa(
+      documento.data()?['catalogoVenta'],
     );
   }
 
@@ -517,6 +534,9 @@ class NegocioRepository
       'youtube': youtube,
       'categorias': categorias,
       'unidadesMedida': unidadesMap,
+      'catalogoVenta': CatalogoVentaPersistido.desdePreset(
+        PresetsVenta.obtener(rubro),
+      ).toMap(),
       'delivery': tieneDelivery,
       'deliveryZonas': zonasMap,
       'horarios': horariosMap,
