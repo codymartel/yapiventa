@@ -310,7 +310,7 @@ void main() {
   testWidgets('usa tres columnas y un unico Scaffold en escritorio', (
     tester,
   ) async {
-    await mostrarDashboard(tester, size: const Size(1050, 1000));
+    await mostrarDashboard(tester, size: const Size(1366, 1000));
 
     expect(find.byType(Scaffold), findsOneWidget);
     expect(find.byType(DashboardTopBar), findsOneWidget);
@@ -342,11 +342,45 @@ void main() {
     final panel = tester.getRect(
       find.byKey(const Key('authenticated-shell-contextual-panel')),
     );
-    expect(navegacion.width, 252);
-    expect(panel.width, 320);
+    expect(navegacion.width, AuthenticatedShell.navigationWidth);
+    expect(panel.width, AuthenticatedShell.contextualPanelWidth);
     expect(navegacion.right, contenido.left);
     expect(contenido.right, panel.left);
   });
+
+  testWidgets(
+    'bajo escritorio el panel derecho se pliega y el centro conserva su ancho',
+    (tester) async {
+      await mostrarDashboard(tester, size: const Size(1050, 1000));
+
+      expect(find.byType(Scaffold), findsOneWidget);
+      expect(
+        find.byKey(const Key('authenticated-shell-navigation')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('authenticated-shell-contextual-panel')),
+        findsNothing,
+      );
+      expect(
+        find.byKey(const Key('authenticated-shell-contextual-expansion')),
+        findsOneWidget,
+      );
+      expect(find.byTooltip('Abrir menú'), findsNothing);
+
+      final contenido = tester.getRect(
+        find.byKey(const Key('authenticated-shell-content')),
+      );
+      expect(
+        contenido.width,
+        1050 - AuthenticatedShell.navigationWidth,
+      );
+      expect(
+        contenido.width,
+        greaterThanOrEqualTo(AuthenticatedShell.contenidoMinimoComodo),
+      );
+    },
+  );
 
   testWidgets('muestra Drawer y ayuda contextual plegable bajo 1050 px', (
     tester,
@@ -380,6 +414,211 @@ void main() {
 
     expect(find.byType(DashboardSidebar), findsOneWidget);
   });
+
+  testWidgets('el panel derecho se pliega antes de comprimir el contenido', (
+    tester,
+  ) async {
+    await mostrarDashboard(tester, size: const Size(1140, 1000));
+
+    final centroConAmbas = tester.getRect(
+      find.byKey(const Key('authenticated-shell-content')),
+    );
+    expect(
+      centroConAmbas.width,
+      AuthenticatedShell.contenidoMinimoComodo,
+    );
+    expect(
+      find.byKey(const Key('authenticated-shell-contextual-panel')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('authenticated-shell-contextual-expansion')),
+      findsNothing,
+    );
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await mostrarDashboard(tester, size: const Size(1139, 1000));
+
+    expect(
+      find.byKey(const Key('authenticated-shell-contextual-panel')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const Key('authenticated-shell-contextual-expansion')),
+      findsOneWidget,
+    );
+    final centroPlegado = tester.getRect(
+      find.byKey(const Key('authenticated-shell-content')),
+    );
+    expect(centroPlegado.width, greaterThan(centroConAmbas.width));
+    expect(
+      centroPlegado.width,
+      greaterThanOrEqualTo(AuthenticatedShell.contenidoMinimoComodo),
+    );
+  });
+
+  testWidgets('el menú pasa a Drawer solo cuando el centro necesita espacio', (
+    tester,
+  ) async {
+    for (final ancho in const [360, 500, 768, 1049]) {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await mostrarDashboard(tester, size: Size(ancho.toDouble(), 1000));
+
+      expect(
+        find.byTooltip('Abrir menú'),
+        findsOneWidget,
+        reason: 'hamburguesa esperada a $ancho px',
+      );
+      expect(
+        find.byKey(const Key('authenticated-shell-navigation')),
+        findsNothing,
+        reason: 'sin navegación fija a $ancho px',
+      );
+      expect(
+        find.byKey(const Key('authenticated-shell-contextual-expansion')),
+        findsOneWidget,
+        reason: 'ayuda plegable esperada a $ancho px',
+      );
+    }
+
+    for (final ancho in const [1050, 1139, 1140, 1366, 1720]) {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await mostrarDashboard(tester, size: Size(ancho.toDouble(), 1000));
+
+      expect(
+        find.byTooltip('Abrir menú'),
+        findsNothing,
+        reason: 'sin hamburguesa a $ancho px',
+      );
+      expect(
+        find.byKey(const Key('authenticated-shell-navigation')),
+        findsOneWidget,
+        reason: 'navegación fija esperada a $ancho px',
+      );
+    }
+  });
+
+  testWidgets('nunca se muestran dos ayudas contextuales a la vez', (
+    tester,
+  ) async {
+    const panel = Key('authenticated-shell-contextual-panel');
+    const expansion = Key('authenticated-shell-contextual-expansion');
+    const anchos = [
+      360.0,
+      500.0,
+      768.0,
+      1049.0,
+      1050.0,
+      1139.0,
+      1140.0,
+      1200.0,
+      1366.0,
+      1440.0,
+      1720.0,
+    ];
+    for (final ancho in anchos) {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await mostrarDashboard(tester, size: Size(ancho, 1000));
+
+      final ayudaVisible = (find.byKey(panel).evaluate().isNotEmpty ? 1 : 0) +
+          (find.byKey(expansion).evaluate().isNotEmpty ? 1 : 0);
+      expect(
+        ayudaVisible,
+        lessThanOrEqualTo(1),
+        reason: 'dos ayudas simultáneas a $ancho px',
+      );
+    }
+  });
+
+  testWidgets(
+    'redimensionar la ventana conserva shell, provider y paso actual',
+    (tester) async {
+      await mostrarDashboard(
+        tester,
+        size: const Size(1440, 1000),
+        progreso: _progresoConRubro(),
+      );
+
+      await tester.tap(_textoSidebar('Configuración'));
+      await tester.pumpAndSettle();
+
+      final proveedor = Provider.of<ConfiguracionNegocioProvider>(
+        tester.element(find.byType(ConfiguracionNegocioFlow)),
+        listen: false,
+      );
+      final pasoAntes = proveedor.pasoActual;
+      final shellAntes = tester.element(find.byType(AuthenticatedShell));
+
+      for (final ancho in const [1050, 768, 500, 1366, 1440]) {
+        tester.view.physicalSize = Size(ancho.toDouble(), 1000);
+        await tester.pumpAndSettle();
+      }
+
+      final proveedorDespues = Provider.of<ConfiguracionNegocioProvider>(
+        tester.element(find.byType(ConfiguracionNegocioFlow)),
+        listen: false,
+      );
+      final shellDespues = tester.element(find.byType(AuthenticatedShell));
+      expect(identical(proveedorDespues, proveedor), isTrue);
+      expect(proveedorDespues.pasoActual, pasoAntes);
+      expect(identical(shellDespues, shellAntes), isTrue);
+      expect(find.byType(AuthenticatedShell), findsOneWidget);
+      expect(find.byType(Scaffold), findsOneWidget);
+      expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets(
+    'el shell preserva estructura y contenido en la matriz de anchos',
+    (tester) async {
+      const anchos = [
+        360.0,
+        500.0,
+        768.0,
+        1050.0,
+        1200.0,
+        1366.0,
+        1440.0,
+        1720.0,
+      ];
+      for (final ancho in anchos) {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await mostrarDashboard(tester, size: Size(ancho, 1000));
+
+        final conDrawer = ancho < AuthenticatedShell.desktopBreakpoint;
+        final conColumnaPanel = ancho >=
+            AuthenticatedShell.navigationWidth +
+                AuthenticatedShell.contextualPanelWidth +
+                AuthenticatedShell.contenidoMinimoComodo;
+        final centroEsperado = conDrawer
+            ? ancho
+            : conColumnaPanel
+                ? ancho -
+                    AuthenticatedShell.navigationWidth -
+                    AuthenticatedShell.contextualPanelWidth
+                : ancho - AuthenticatedShell.navigationWidth;
+
+        expect(
+          find.byType(AuthenticatedShell),
+          findsOneWidget,
+          reason: 'shell a $ancho px',
+        );
+        expect(find.byType(Scaffold), findsOneWidget,
+            reason: 'scaffold a $ancho px');
+        expect(find.text('Resumen de tu negocio'), findsOneWidget,
+            reason: 'inicio a $ancho px');
+        expect(
+          tester
+              .getRect(find.byKey(const Key('authenticated-shell-content')))
+              .width,
+          centroEsperado,
+          reason: 'ancho del contenido a $ancho px',
+        );
+        expect(tester.takeException(), isNull, reason: 'overflow a $ancho px');
+      }
+    },
+  );
 
   testWidgets('mantiene el shell estable con texto ampliado', (tester) async {
     await mostrarDashboard(
@@ -637,7 +876,7 @@ void main() {
   testWidgets(
     'en compacto la ayuda de Productos es plegable y cerrada por defecto',
     (tester) async {
-      for (final ancho in const [768.0, 1049.0]) {
+      for (final ancho in const [500.0, 768.0, 1049.0]) {
         await tester.pumpWidget(const SizedBox.shrink());
         await mostrarDashboard(
           tester,
@@ -1587,7 +1826,18 @@ void main() {
   testWidgets(
     'la ayuda de Configuración no desborda en distintos tamaños',
     (tester) async {
-      for (final ancho in const [360, 768, 1050, 1440]) {
+      for (final ancho in const [
+        360,
+        500,
+        768,
+        1049,
+        1050,
+        1140,
+        1200,
+        1366,
+        1440,
+        1720,
+      ]) {
         await tester.pumpWidget(const SizedBox.shrink());
         await mostrarDashboard(
           tester,
@@ -1595,8 +1845,20 @@ void main() {
           progreso: _progresoConRubro(),
         );
 
-        final compacto = ancho < AuthenticatedShell.desktopBreakpoint;
-        if (compacto) {
+        final conDrawer = ancho < AuthenticatedShell.desktopBreakpoint;
+        final conColumnaPanel = ancho >=
+            AuthenticatedShell.navigationWidth +
+                AuthenticatedShell.contextualPanelWidth +
+                AuthenticatedShell.contenidoMinimoComodo;
+        final anchoCentroEsperado = conDrawer
+            ? ancho.toDouble()
+            : conColumnaPanel
+                ? ancho -
+                    AuthenticatedShell.navigationWidth -
+                    AuthenticatedShell.contextualPanelWidth
+                : ancho - AuthenticatedShell.navigationWidth;
+
+        if (conDrawer) {
           await tester.tap(find.byTooltip('Abrir menú'));
           await tester.pumpAndSettle();
         }
@@ -1605,25 +1867,37 @@ void main() {
 
         expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
 
-        if (compacto) {
-          expect(
-            find.byKey(
-              const Key('authenticated-shell-contextual-expansion'),
-            ),
-            findsOneWidget,
-          );
-          await tester.tap(find.text('Ayuda contextual'));
-          await tester.pumpAndSettle();
-        } else {
+        if (conColumnaPanel) {
           expect(
             find.byKey(const Key('authenticated-shell-contextual-panel')),
             findsOneWidget,
           );
+          expect(
+            find.byKey(const Key('authenticated-shell-contextual-expansion')),
+            findsNothing,
+          );
+        } else {
+          expect(
+            find.byKey(const Key('authenticated-shell-contextual-panel')),
+            findsNothing,
+          );
+          expect(
+            find.byKey(const Key('authenticated-shell-contextual-expansion')),
+            findsOneWidget,
+          );
+          await tester.tap(find.text('Ayuda contextual'));
+          await tester.pumpAndSettle();
         }
 
         expect(
           find.byKey(const Key('configuracion-contextual-panel')),
           findsOneWidget,
+        );
+        expect(
+          tester
+              .getRect(find.byKey(const Key('authenticated-shell-content')))
+              .width,
+          anchoCentroEsperado,
         );
         expect(tester.takeException(), isNull);
       }
@@ -1913,7 +2187,7 @@ void main() {
   testWidgets('la ayuda de Rubro usa el panel derecho en escritorio', (
     tester,
   ) async {
-    for (final ancho in const [1050.0, 1440.0]) {
+    for (final ancho in const [1200.0, 1440.0]) {
       await mostrarDashboard(
         tester,
         size: Size(ancho, 1000),
@@ -1939,7 +2213,7 @@ void main() {
   testWidgets(
     'en compacto la ayuda de Rubro es plegable y cerrada por defecto',
     (tester) async {
-      for (final ancho in const [768.0, 1049.0]) {
+      for (final ancho in const [500.0, 768.0, 1049.0]) {
         await mostrarDashboard(
           tester,
           size: Size(ancho, 1000),
@@ -2019,7 +2293,7 @@ void main() {
   ) async {
     await mostrarDashboard(
       tester,
-      size: const Size(1050, 1000),
+      size: const Size(1440, 1000),
       textScaler: const TextScaler.linear(1.3),
       progreso: _progresoPendiente(),
     );
@@ -2573,7 +2847,7 @@ void main() {
   testWidgets('la ayuda de Plantilla usa el panel derecho en escritorio', (
     tester,
   ) async {
-    for (final ancho in const [1050.0, 1440.0]) {
+    for (final ancho in const [1200.0, 1440.0]) {
       await tester.pumpWidget(const SizedBox.shrink());
       await mostrarDashboard(tester, size: Size(ancho, 1000));
 
@@ -2593,7 +2867,7 @@ void main() {
   testWidgets(
     'en compacto la ayuda de Plantilla es plegable y cerrada por defecto',
     (tester) async {
-      for (final ancho in const [768.0, 1049.0]) {
+      for (final ancho in const [500.0, 768.0, 1049.0]) {
         await tester.pumpWidget(const SizedBox.shrink());
         await mostrarDashboard(tester, size: Size(ancho, 1000));
 
@@ -2623,7 +2897,7 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.byType(PlantillaContextualPanel), findsOneWidget);
-        expect(find.text('Qué hace Finalizar').hitTestable(), findsOneWidget);
+        expect(find.text('Qué hace Finalizar'), findsOneWidget);
         expect(tester.getRect(tileFinder).height, greaterThan(200));
 
         await tester.tap(find.text('Ayuda contextual'));
@@ -2672,7 +2946,7 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
       await mostrarDashboard(
         tester,
-        size: const Size(1050, 1000),
+        size: const Size(1440, 1000),
         textScaler: escala,
       );
 

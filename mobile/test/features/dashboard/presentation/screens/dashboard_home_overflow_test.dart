@@ -79,7 +79,17 @@ void main() {
   testWidgets(
     'el Inicio no desborda en la matriz de anchos y escalas de texto',
     (tester) async {
-      const tamanos = [320.0, 360.0, 500.0, 768.0, 1050.0, 1440.0];
+      const tamanos = [
+        320.0,
+        360.0,
+        500.0,
+        768.0,
+        1050.0,
+        1200.0,
+        1366.0,
+        1440.0,
+        1720.0,
+      ];
       for (final ancho in tamanos) {
         for (final escala in const [1.0, 1.3, 2.0]) {
           await tester.pumpWidget(const SizedBox.shrink());

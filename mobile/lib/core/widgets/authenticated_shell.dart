@@ -7,10 +7,30 @@ typedef AuthenticatedNavigationBuilder =
 typedef AuthenticatedTopBarBuilder =
     Widget Function(BuildContext context, VoidCallback? openNavigation);
 
+/// Carcasa autenticada con un único [Scaffold] y distribución responsive.
+///
+/// Decide con [LayoutBuilder] según el ancho local disponible (no con el
+/// [MediaQuery] global) y prioriza siempre el contenido central:
+///
+///  - Escritorio ancho: navegación izquierda fija (≤ 220 px) y panel
+///    contextual derecho (≤ 280 px) dejan todo el resto al contenido.
+///  - Si ambos laterales no dejan un centro mínimo cómodo, primero se pliega
+///    el panel derecho como "Ayuda contextual" (colapsable) y la navegación
+///    sigue fija.
+///  - Si aún así no cabe, la navegación pasa a [Drawer] y el contenido ocupa
+///    una sola columna (tablet y móvil) sin scroll horizontal.
 class AuthenticatedShell extends StatelessWidget {
+  /// Desde este ancho la navegación puede mostrarse fija.
   static const desktopBreakpoint = 1050.0;
-  static const navigationWidth = 252.0;
-  static const contextualPanelWidth = 320.0;
+
+  /// Ancho máximo de la navegación izquierda fija.
+  static const navigationWidth = 220.0;
+
+  /// Ancho máximo del panel contextual derecho.
+  static const contextualPanelWidth = 280.0;
+
+  /// Centro mínimo cómodo cuando ambos laterales están visibles.
+  static const contenidoMinimoComodo = 640.0;
 
   final AuthenticatedNavigationBuilder navigationBuilder;
   final AuthenticatedTopBarBuilder topBarBuilder;
@@ -29,14 +49,18 @@ class AuthenticatedShell extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final esDesktop = constraints.maxWidth >= desktopBreakpoint;
+        final ancho = constraints.maxWidth;
+        final usarDrawer = ancho < desktopBreakpoint;
+        final usarColumnaPanel =
+            ancho >= navigationWidth + contextualPanelWidth +
+                contenidoMinimoComodo;
         return Scaffold(
           key: const Key('authenticated-shell'),
           backgroundColor: AppColors.fondo,
-          drawer: esDesktop ? null : _crearDrawer(),
+          drawer: usarDrawer ? _crearDrawer() : null,
           body: Row(
             children: [
-              if (esDesktop)
+              if (!usarDrawer)
                 SizedBox(
                   key: const Key('authenticated-shell-navigation'),
                   width: navigationWidth,
@@ -52,14 +76,15 @@ class AuthenticatedShell extends StatelessWidget {
                       child: Builder(
                         builder: (scaffoldContext) => topBarBuilder(
                           scaffoldContext,
-                          esDesktop
-                              ? null
-                              : () => Scaffold.of(scaffoldContext).openDrawer(),
+                          usarDrawer
+                              ? () =>
+                                  Scaffold.of(scaffoldContext).openDrawer()
+                              : null,
                         ),
                       ),
                     ),
                     Expanded(
-                      child: esDesktop
+                      child: usarColumnaPanel
                           ? _DesktopBody(
                               contextualPanel: contextualPanel,
                               child: child,
