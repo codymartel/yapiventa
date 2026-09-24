@@ -1063,6 +1063,137 @@ void main() {
   );
 
   testWidgets(
+    'agregar zona en Configuración/Logística conserva el flujo sin cerrar',
+    (tester) async {
+      await mostrarDashboard(tester, progreso: _progresoConNegocio());
+
+      await tester.tap(find.text('Configuración'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
+
+      final elemento = tester.element(find.byType(ConfiguracionNegocioFlow));
+      final provider = Provider.of<ConfiguracionNegocioProvider>(
+        elemento,
+        listen: false,
+      );
+      provider
+        ..tieneDelivery = true
+        ..irAPaso(2);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Zonas de delivery *'), findsOneWidget);
+      final barrerasBasales = find.byType(ModalBarrier).evaluate().length;
+
+      await tester.tap(find.text('Agregar zona de delivery'));
+      await tester.pumpAndSettle();
+      expect(find.text('Nueva zona'), findsOneWidget);
+
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Zona (Ej: Centro)'),
+        'Miraflores',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Costo S/'),
+        '10',
+      );
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Guardar'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Nueva zona'), findsNothing);
+      expect(
+        find.byType(ModalBarrier).evaluate().length,
+        barrerasBasales,
+      );
+      expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
+      expect(find.text('Zonas de delivery *'), findsOneWidget);
+      expect(find.text('¿Ofreces delivery?'), findsOneWidget);
+      expect(provider.zonasDelivery, hasLength(1));
+      expect(provider.zonasDelivery.single.zona, 'Miraflores');
+      expect(provider.zonasDelivery.single.costo, '10');
+      expect(find.text('Miraflores'), findsOneWidget);
+
+      await tester.tap(find.text('Agregar zona de delivery'));
+      await tester.pumpAndSettle();
+      expect(find.text('Nueva zona'), findsOneWidget);
+      await tester.tap(find.text('Cancelar'));
+      await tester.pumpAndSettle();
+      expect(find.text('Nueva zona'), findsNothing);
+      expect(
+        find.byType(ModalBarrier).evaluate().length,
+        barrerasBasales,
+      );
+      expect(provider.zonasDelivery, hasLength(1));
+      expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
+      expect(find.text('Zonas de delivery *'), findsOneWidget);
+
+      final sidebar = tester.widget<DashboardSidebar>(
+        find.byType(DashboardSidebar),
+      );
+      expect(sidebar.destinoActivo, DashboardDestination.configuracion);
+    },
+  );
+
+  testWidgets(
+    'agregar horario en Configuración/Logística conserva el flujo sin cerrar',
+    (tester) async {
+      await mostrarDashboard(tester, progreso: _progresoConNegocio());
+
+      await tester.tap(find.text('Configuración'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
+
+      final elemento = tester.element(find.byType(ConfiguracionNegocioFlow));
+      final provider = Provider.of<ConfiguracionNegocioProvider>(
+        elemento,
+        listen: false,
+      );
+      provider.irAPaso(2);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Horario de atención (opcional)'), findsOneWidget);
+      final barrerasBasales = find.byType(ModalBarrier).evaluate().length;
+
+      await tester.tap(find.text('Agregar horario'));
+      await tester.pumpAndSettle();
+      expect(find.text('Abierto este día'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Guardar'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Abierto este día'), findsNothing);
+      expect(
+        find.byType(ModalBarrier).evaluate().length,
+        barrerasBasales,
+      );
+      expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
+      expect(find.text('Horario de atención (opcional)'), findsOneWidget);
+      expect(provider.horarios, hasLength(1));
+      expect(provider.horarios.single.dia, 'Lunes');
+      expect(provider.horarios.single.activo, isTrue);
+      expect(find.text('Lunes'), findsOneWidget);
+
+      await tester.tap(find.text('Agregar horario'));
+      await tester.pumpAndSettle();
+      expect(find.text('Abierto este día'), findsOneWidget);
+      await tester.tap(find.text('Cancelar'));
+      await tester.pumpAndSettle();
+      expect(find.text('Abierto este día'), findsNothing);
+      expect(
+        find.byType(ModalBarrier).evaluate().length,
+        barrerasBasales,
+      );
+      expect(provider.horarios, hasLength(1));
+      expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
+      expect(find.text('Horario de atención (opcional)'), findsOneWidget);
+
+      final sidebar = tester.widget<DashboardSidebar>(
+        find.byType(DashboardSidebar),
+      );
+      expect(sidebar.destinoActivo, DashboardDestination.configuracion);
+    },
+  );
+
+  testWidgets(
     'guardar desde Configuración interna recarga el progreso y desbloquea Productos',
     (tester) async {
       final firestore = FakeFirebaseFirestore();

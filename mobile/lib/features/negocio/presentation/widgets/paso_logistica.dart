@@ -46,23 +46,25 @@ class PasoLogistica extends StatelessWidget {
                     style: TextStyle(color: AppColors.error, fontSize: 12, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 for (var i = 0; i < p.zonasDelivery.length; i++)
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    tileColor: AppColors.card,
-                    title: Text(p.zonasDelivery[i].zona,
-                        style: TextStyle(color: AppColors.texto)),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('S/ ${p.zonasDelivery[i].costo}',
-                            style: TextStyle(color: AppColors.blueLt)),
-                        IconButton(
-                          icon: Icon(Icons.delete_outline, color: AppColors.error, size: 18),
-                          onPressed: () => p.eliminarZona(i),
-                        ),
-                      ],
+                  Material(
+                    color: AppColors.card,
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(p.zonasDelivery[i].zona,
+                          style: TextStyle(color: AppColors.texto)),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('S/ ${p.zonasDelivery[i].costo}',
+                              style: TextStyle(color: AppColors.blueLt)),
+                          IconButton(
+                            icon: Icon(Icons.delete_outline, color: AppColors.error, size: 18),
+                            onPressed: () => p.eliminarZona(i),
+                          ),
+                        ],
+                      ),
+                      onTap: () => _dialogoZona(context, p, index: i),
                     ),
-                    onTap: () => _dialogoZona(context, p, index: i),
                   ),
                 OutlinedButton.icon(
                   onPressed: () => _dialogoZona(context, p),
@@ -118,7 +120,7 @@ class PasoLogistica extends StatelessWidget {
         TextEditingController(text: index != null ? p.zonasDelivery[index].costo : '');
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         backgroundColor: AppColors.superficie,
         title: Text(index == null ? 'Nueva zona' : 'Editar zona',
             style: TextStyle(color: AppColors.texto)),
@@ -140,7 +142,7 @@ class PasoLogistica extends StatelessWidget {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: Text('Cancelar', style: TextStyle(color: AppColors.muted)),
           ),
           ElevatedButton(
@@ -158,7 +160,7 @@ class PasoLogistica extends StatelessWidget {
               } else {
                 p.editarZona(index, zona);
               }
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
             },
             child: const Text('Guardar'),
           ),
@@ -176,7 +178,7 @@ class PasoLogistica extends StatelessWidget {
     showDialog(
       context: context,
       builder: (_) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
+        builder: (dialogContext, setState) => AlertDialog(
           backgroundColor: AppColors.superficie,
           title: Text(index == null ? 'Agregar horario' : 'Editar horario',
               style: TextStyle(color: AppColors.texto)),
@@ -214,7 +216,7 @@ class PasoLogistica extends StatelessWidget {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.pop(dialogContext),
               child: Text('Cancelar', style: TextStyle(color: AppColors.muted)),
             ),
             ElevatedButton(
@@ -230,7 +232,7 @@ class PasoLogistica extends StatelessWidget {
                 } else {
                   p.editarHorario(index, horario);
                 }
-                Navigator.pop(context);
+                Navigator.pop(dialogContext);
               },
               child: const Text('Guardar'),
             ),
