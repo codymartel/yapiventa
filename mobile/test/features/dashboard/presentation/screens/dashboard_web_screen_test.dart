@@ -1276,7 +1276,7 @@ void main() {
       provider.irAPaso(1);
       await tester.pumpAndSettle();
 
-      expect(find.text('Categorías de productos *'), findsOneWidget);
+      expect(find.text('Categorías de productos'), findsOneWidget);
       final barrerasIniciales = find.byType(ModalBarrier).evaluate().length;
 
       await tester.tap(find.byTooltip('Agregar categoría'));
@@ -1296,7 +1296,7 @@ void main() {
         barrerasIniciales,
       );
       expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
-      expect(find.text('Categorías de productos *'), findsOneWidget);
+      expect(find.text('Categorías de productos'), findsOneWidget);
       expect(provider.categorias, contains('Frutos secos'));
       expect(find.text('Frutos secos'), findsOneWidget);
 
@@ -1542,7 +1542,7 @@ void main() {
 
       provider.irAPaso(1);
       await tester.pumpAndSettle();
-      expect(find.text('Categorías de productos *'), findsOneWidget);
+      expect(find.text('Categorías de productos'), findsOneWidget);
       var sidebar = tester.widget<DashboardSidebar>(
         find.byType(DashboardSidebar),
       );

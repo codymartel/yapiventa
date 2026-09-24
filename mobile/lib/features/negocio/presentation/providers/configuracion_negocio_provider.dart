@@ -306,6 +306,28 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool categoriaActiva(String nombre) => _categorias.contains(nombre);
+
+  void desactivarCategoria(String nombre) {
+    if (_categorias.length <= 1) return;
+    _categorias.remove(nombre);
+    notifyListeners();
+  }
+
+  /// Consulta de solo lectura: dice si algún producto usa la categoría.
+  /// Con negocioId inyectado no necesita leer users/{uid}; si no hay
+  /// negocioId aún no puede haber productos asociados.
+  Future<bool> categoriaTieneProductos(String nombre) async {
+    final id = negocioId?.trim();
+    if (id == null || id.isEmpty) return false;
+    return _repository.existenProductosDependientes(
+      uid: '',
+      negocioId: id,
+      categorias: [nombre],
+      unidades: const [],
+    );
+  }
+
   late List<UnidadInfo> _unidadesMedida;
   List<UnidadInfo> get unidadesMedida => List.unmodifiable(_unidadesMedida);
   List<UnidadInfo> get unidadesPredefinidas =>
