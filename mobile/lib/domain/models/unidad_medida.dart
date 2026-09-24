@@ -3,6 +3,19 @@ import 'tipo_unidad.dart';
 // ═════════════════════════════════════════════════════════════════════════
 // UnidadesMedida
 // ═════════════════════════════════════════════════════════════════════════
+// COMPATIBILIDAD — NO USAR en código nuevo.
+//
+// Este dominio será reemplazado por ModoVenta / FamiliaUnidad /
+// CantidadBase / Dinero / ReglaVentaMedida (
+// features/productos/domain/models). Se conserva únicamente porque la UI
+// actual y la persistencia del catálogo aún lo consumen.
+//
+// USO PENDIENTE QUE IMPIDE BORRARLO:
+//   - lib/features/negocio/presentation/widgets/paso_catalogo.dart  (UI)
+//   - lib/features/negocio/presentation/providers/configuracion_negocio_provider.dart
+//   - lib/features/negocio/data/negocio_repository.dart (serialización
+//     Firestore de unitsMedida)
+//
 // Las cantidades comerciales se guardan en `fraccionesPermitidas` de una
 // unidad base. Por ejemplo, "500 g" es el valor 500 de la base "g", no una
 // unidad independiente.

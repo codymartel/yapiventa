@@ -1,6 +1,22 @@
 // ═════════════════════════════════════════════════════════════════════════
 // TipoUnidad + UnidadInfo
 // ═════════════════════════════════════════════════════════════════════════
+// COMPATIBILIDAD — NO USAR en código nuevo.
+//
+// Este dominio será reemplazado por ModoVenta / FamiliaUnidad /
+// CantidadBase / Dinero / ReglaVentaMedida (
+// features/productos/domain/models). Se conserva únicamente porque la UI
+// actual y la persistencia del catálogo aún lo consumen.
+//
+// USO PENDIENTE QUE IMPIDE BORRARLO:
+//   - lib/features/negocio/presentation/widgets/paso_catalogo.dart  (UI)
+//   - lib/features/productos/presentation/widgets/formulario_producto.dart
+//     (UI)
+//   - lib/features/negocio/presentation/providers/configuracion_negocio_provider.dart
+//   - lib/features/negocio/data/negocio_repository.dart (serialización
+//     Firestore de unitsMedida)
+//   - lib/features/negocio/domain/models/catalogo_negocio.dart
+//
 // Migración directa de tu Kotlin: enum TipoUnidad + data class UnidadInfo.
 // Sin cambios de lógica, solo sintaxis Dart.
 // ═════════════════════════════════════════════════════════════════════════
