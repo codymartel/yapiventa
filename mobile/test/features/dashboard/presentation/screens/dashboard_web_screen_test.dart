@@ -1015,6 +1015,54 @@ void main() {
   );
 
   testWidgets(
+    'agregar categoría en Configuración/Catálogo conserva el flujo sin cerrar',
+    (tester) async {
+      await mostrarDashboard(tester, progreso: _progresoConNegocio());
+
+      await tester.tap(find.text('Configuración'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
+
+      final elemento = tester.element(find.byType(ConfiguracionNegocioFlow));
+      final provider = Provider.of<ConfiguracionNegocioProvider>(
+        elemento,
+        listen: false,
+      );
+      provider.irAPaso(1);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Categorías de productos *'), findsOneWidget);
+      final barrerasIniciales = find.byType(ModalBarrier).evaluate().length;
+
+      await tester.tap(find.byTooltip('Agregar categoría'));
+      await tester.pumpAndSettle();
+      expect(find.text('Nueva categoría'), findsOneWidget);
+
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Nombre de la categoría'),
+        'Frutos secos',
+      );
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Guardar'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Nueva categoría'), findsNothing);
+      expect(
+        find.byType(ModalBarrier).evaluate().length,
+        barrerasIniciales,
+      );
+      expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
+      expect(find.text('Categorías de productos *'), findsOneWidget);
+      expect(provider.categorias, contains('Frutos secos'));
+      expect(find.text('Frutos secos'), findsOneWidget);
+
+      final sidebar = tester.widget<DashboardSidebar>(
+        find.byType(DashboardSidebar),
+      );
+      expect(sidebar.destinoActivo, DashboardDestination.configuracion);
+    },
+  );
+
+  testWidgets(
     'guardar desde Configuración interna recarga el progreso y desbloquea Productos',
     (tester) async {
       final firestore = FakeFirebaseFirestore();

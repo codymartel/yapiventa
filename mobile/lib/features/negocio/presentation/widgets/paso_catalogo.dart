@@ -165,7 +165,7 @@ class PasoCatalogo extends StatelessWidget {
     );
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         backgroundColor: AppColors.superficie,
         title: Text(
           index == null ? 'Nueva categoría' : 'Editar categoría',
@@ -180,7 +180,7 @@ class PasoCatalogo extends StatelessWidget {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: Text('Cancelar', style: TextStyle(color: AppColors.muted)),
           ),
           ElevatedButton(
@@ -192,7 +192,7 @@ class PasoCatalogo extends StatelessWidget {
               } else {
                 p.editarCategoria(index, texto);
               }
-              Navigator.pop(context);
+              Navigator.pop(dialogContext);
             },
             child: const Text('Guardar'),
           ),
