@@ -542,6 +542,8 @@ class _ObservadorRutasInternas extends NavigatorObserver {
 
   @override
   void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    final nombre = route.settings.name;
+    if (nombre != RutasAcceso.rubro && nombre != RutasAcceso.negocio) return;
     _alRegresar();
   }
 }

@@ -16,6 +16,7 @@ import 'package:mobile/features/negocio/application/use_cases/obtener_seleccion_
 import 'package:mobile/features/negocio/catalogo_negocio_dependencies.dart';
 import 'package:mobile/features/negocio/data/negocio_repository.dart';
 import 'package:mobile/features/negocio/domain/models/catalogo_negocio.dart';
+import 'package:mobile/features/negocio/domain/models/pais_telefono.dart';
 import 'package:mobile/features/negocio/domain/models/plantilla_web.dart';
 import 'package:mobile/features/negocio/domain/models/progreso_configuracion.dart';
 import 'package:mobile/features/negocio/domain/models/seleccion_plantilla_info.dart';
@@ -1190,6 +1191,196 @@ void main() {
         find.byType(DashboardSidebar),
       );
       expect(sidebar.destinoActivo, DashboardDestination.configuracion);
+    },
+  );
+
+  testWidgets(
+    'editar el nombre del negocio en Configuración conserva el destino activo',
+    (tester) async {
+      await mostrarDashboard(tester, progreso: _progresoConRubro());
+
+      await tester.tap(find.text('Configuración'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
+
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Nombre del negocio *'),
+        'Nuevo Nombre',
+      );
+      await tester.pumpAndSettle();
+
+      final sidebar = tester.widget<DashboardSidebar>(
+        find.byType(DashboardSidebar),
+      );
+      expect(sidebar.destinoActivo, DashboardDestination.configuracion);
+      expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
+      expect(find.byType(DashboardAttentionPanel), findsNothing);
+      expect(
+        find.byKey(const Key('authenticated-shell-contextual-panel')),
+        findsNothing,
+      );
+
+      final elemento = tester.element(find.byType(ConfiguracionNegocioFlow));
+      final provider = Provider.of<ConfiguracionNegocioProvider>(
+        elemento,
+        listen: false,
+      );
+      expect(provider.nombreNegocio, 'Nuevo Nombre');
+    },
+  );
+
+  testWidgets(
+    'cambiar el prefijo telefónico en Configuración conserva el destino activo',
+    (tester) async {
+      await mostrarDashboard(tester, progreso: _progresoConRubro());
+
+      await tester.tap(find.text('Configuración'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
+
+      await tester.tap(find.byType(DropdownButton<PaisTelefono>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('+503 El Salvador').last);
+      await tester.pumpAndSettle();
+
+      final elemento = tester.element(find.byType(ConfiguracionNegocioFlow));
+      final provider = Provider.of<ConfiguracionNegocioProvider>(
+        elemento,
+        listen: false,
+      );
+      expect(provider.paisTelefono.prefijo, '+503');
+
+      var sidebar = tester.widget<DashboardSidebar>(
+        find.byType(DashboardSidebar),
+      );
+      expect(sidebar.destinoActivo, DashboardDestination.configuracion);
+      expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
+      expect(find.byType(DashboardAttentionPanel), findsNothing);
+      expect(
+        find.byKey(const Key('authenticated-shell-contextual-panel')),
+        findsNothing,
+      );
+
+      await tester.tap(find.byType(DropdownButton<PaisTelefono>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('+51 Perú').last);
+      await tester.pumpAndSettle();
+
+      sidebar = tester.widget<DashboardSidebar>(find.byType(DashboardSidebar));
+      expect(sidebar.destinoActivo, DashboardDestination.configuracion);
+      expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
+      expect(find.byType(DashboardAttentionPanel), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'avanzar a Catálogo y Logística en Configuración conserva el destino activo',
+    (tester) async {
+      await mostrarDashboard(tester, progreso: _progresoConRubro());
+
+      await tester.tap(find.text('Configuración'));
+      await tester.pumpAndSettle();
+      expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
+
+      final elemento = tester.element(find.byType(ConfiguracionNegocioFlow));
+      final provider = Provider.of<ConfiguracionNegocioProvider>(
+        elemento,
+        listen: false,
+      );
+
+      provider.irAPaso(1);
+      await tester.pumpAndSettle();
+      expect(find.text('Categorías de productos *'), findsOneWidget);
+      var sidebar = tester.widget<DashboardSidebar>(
+        find.byType(DashboardSidebar),
+      );
+      expect(sidebar.destinoActivo, DashboardDestination.configuracion);
+      expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
+      expect(find.byType(DashboardAttentionPanel), findsNothing);
+
+      provider.tieneDelivery = true;
+      provider.irAPaso(2);
+      await tester.pumpAndSettle();
+      expect(find.text('Zonas de delivery *'), findsOneWidget);
+      sidebar = tester.widget<DashboardSidebar>(find.byType(DashboardSidebar));
+      expect(sidebar.destinoActivo, DashboardDestination.configuracion);
+      expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
+      expect(find.byType(DashboardAttentionPanel), findsNothing);
+      expect(
+        find.byKey(const Key('authenticated-shell-contextual-panel')),
+        findsNothing,
+      );
+    },
+  );
+
+  testWidgets(
+    'editar, cambiar prefijo y avanzar pasos no recrea shell, Navigator ni providers',
+    (tester) async {
+      final escenario = await mostrarDashboardConProgresoActualizable(
+        tester,
+        progreso: _progresoConRubro(),
+      );
+
+      final navegador = find.byKey(DashboardWebScreen.navegadorInicioClave);
+      final estadoNavigator = tester.state<NavigatorState>(navegador);
+      final shellElemento = tester.element(find.byType(AuthenticatedShell));
+
+      await tester.tap(find.text('Configuración'));
+      await tester.pumpAndSettle();
+
+      final elemento = tester.element(find.byType(ConfiguracionNegocioFlow));
+      final providerConfiguracion = Provider.of<ConfiguracionNegocioProvider>(
+        elemento,
+        listen: false,
+      );
+
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Nombre del negocio *'),
+        'Nuevo Nombre',
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(DropdownButton<PaisTelefono>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('+503 El Salvador').last);
+      await tester.pumpAndSettle();
+
+      providerConfiguracion.irAPaso(1);
+      await tester.pumpAndSettle();
+      providerConfiguracion.irAPaso(2);
+      await tester.pumpAndSettle();
+
+      expect(
+        identical(tester.state<NavigatorState>(navegador), estadoNavigator),
+        isTrue,
+      );
+      expect(
+        identical(
+          tester.element(find.byType(AuthenticatedShell)),
+          shellElemento,
+        ),
+        isTrue,
+      );
+      expect(find.byType(AuthenticatedShell), findsOneWidget);
+      expect(find.byType(Scaffold), findsOneWidget);
+
+      final elementoFinal = tester.element(find.byType(ConfiguracionNegocioFlow));
+      final providerFinal = Provider.of<ConfiguracionNegocioProvider>(
+        elementoFinal,
+        listen: false,
+      );
+      expect(identical(providerFinal, providerConfiguracion), isTrue);
+
+      final sidebar = tester.widget<DashboardSidebar>(
+        find.byType(DashboardSidebar),
+      );
+      final enArbol = Provider.of<DashboardProvider>(
+        tester.element(find.byType(DashboardSidebar)),
+        listen: false,
+      );
+      expect(sidebar.destinoActivo, DashboardDestination.configuracion);
+      expect(find.byType(DashboardAttentionPanel), findsNothing);
+      expect(identical(enArbol, escenario.provider), isTrue);
     },
   );
 
