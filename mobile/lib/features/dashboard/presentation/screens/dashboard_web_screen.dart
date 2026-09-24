@@ -20,6 +20,7 @@ import '../../../productos/productos_dependencies.dart';
 import '../providers/dashboard_provider.dart';
 import '../state/dashboard_ui_state.dart';
 import '../widgets/dashboard_attention_panel.dart';
+import '../widgets/configuracion_contextual_panel.dart';
 import '../widgets/rubro_contextual_panel.dart';
 import '../widgets/dashboard_home_content.dart';
 import '../widgets/dashboard_sidebar.dart';
@@ -145,8 +146,8 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
         email: widget.email,
         onCerrarSesion: widget.onCerrarSesion,
       ),
-      contextualPanel: _configuracionAbierta
-          ? null
+      contextualPanel: _configuracionAbierta && _providerConfiguracion != null
+          ? ConfiguracionContextualPanel(provider: _providerConfiguracion!)
           : _plantillaAbierta
           ? const PlantillaContextualPanel()
           : _productosAbierta

@@ -6,6 +6,7 @@ import 'package:mobile/features/auth/domain/politica_acceso.dart';
 import 'package:mobile/features/dashboard/presentation/providers/dashboard_provider.dart';
 import 'package:mobile/features/dashboard/presentation/screens/dashboard_web_screen.dart';
 import 'package:mobile/features/dashboard/presentation/widgets/dashboard_attention_panel.dart';
+import 'package:mobile/features/dashboard/presentation/widgets/configuracion_contextual_panel.dart';
 import 'package:mobile/features/dashboard/presentation/widgets/dashboard_sidebar.dart';
 import 'package:mobile/features/dashboard/presentation/widgets/dashboard_top_bar.dart';
 import 'package:mobile/features/dashboard/presentation/widgets/plantilla_contextual_panel.dart';
@@ -967,7 +968,7 @@ void main() {
   );
 
   testWidgets(
-    'Configuración interna oculta el panel contextual derecho y lo restaura',
+    'Configuración interna muestra su ayuda contextual y no el panel de Inicio',
     (tester) async {
       await mostrarDashboard(tester, progreso: _progresoConRubro());
 
@@ -976,13 +977,17 @@ void main() {
         findsOneWidget,
       );
 
-      await tester.tap(find.text('Configuración'));
+      await tester.tap(_textoSidebar('Configuración'));
       await tester.pumpAndSettle();
 
       expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
       expect(
         find.byKey(const Key('authenticated-shell-contextual-panel')),
-        findsNothing,
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('configuracion-contextual-panel')),
+        findsOneWidget,
       );
       expect(find.byType(DashboardAttentionPanel), findsNothing);
     },
@@ -1217,7 +1222,11 @@ void main() {
       expect(find.byType(DashboardAttentionPanel), findsNothing);
       expect(
         find.byKey(const Key('authenticated-shell-contextual-panel')),
-        findsNothing,
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('configuracion-contextual-panel')),
+        findsOneWidget,
       );
 
       final elemento = tester.element(find.byType(ConfiguracionNegocioFlow));
@@ -1258,7 +1267,11 @@ void main() {
       expect(find.byType(DashboardAttentionPanel), findsNothing);
       expect(
         find.byKey(const Key('authenticated-shell-contextual-panel')),
-        findsNothing,
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('configuracion-contextual-panel')),
+        findsOneWidget,
       );
 
       await tester.tap(find.byType(DropdownButton<PaisTelefono>));
@@ -1308,7 +1321,11 @@ void main() {
       expect(find.byType(DashboardAttentionPanel), findsNothing);
       expect(
         find.byKey(const Key('authenticated-shell-contextual-panel')),
-        findsNothing,
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('configuracion-contextual-panel')),
+        findsOneWidget,
       );
     },
   );
@@ -1381,6 +1398,324 @@ void main() {
       expect(sidebar.destinoActivo, DashboardDestination.configuracion);
       expect(find.byType(DashboardAttentionPanel), findsNothing);
       expect(identical(enArbol, escenario.provider), isTrue);
+    },
+  );
+
+  testWidgets('el panel de Configuración sigue cada paso y muestra su ayuda', (
+    tester,
+  ) async {
+    await mostrarDashboard(tester, progreso: _progresoConRubro());
+    await tester.tap(_textoSidebar('Configuración'));
+    await tester.pumpAndSettle();
+
+    final panel = find.byKey(const Key('configuracion-contextual-panel'));
+    expect(panel, findsOneWidget);
+    expect(
+      find.byKey(const Key('authenticated-shell-contextual-panel')),
+      findsOneWidget,
+    );
+
+    Finder enPanel(Finder interno) =>
+        find.descendant(of: panel, matching: interno);
+
+    expect(enPanel(find.text('Paso 1 de 4')), findsOneWidget);
+    expect(enPanel(find.text('Negocio')), findsOneWidget);
+    expect(
+      enPanel(find.textContaining('Nombre, WhatsApp y dirección')),
+      findsOneWidget,
+    );
+    expect(
+      enPanel(find.textContaining('El prefijo solo indica el país del número')),
+      findsOneWidget,
+    );
+
+    final elemento = tester.element(find.byType(ConfiguracionNegocioFlow));
+    final provider = Provider.of<ConfiguracionNegocioProvider>(
+      elemento,
+      listen: false,
+    );
+
+    provider.irAPaso(1);
+    await tester.pumpAndSettle();
+    expect(panel, findsOneWidget);
+    expect(enPanel(find.text('Paso 2 de 4')), findsOneWidget);
+    expect(enPanel(find.text('Catálogo')), findsOneWidget);
+    expect(
+      enPanel(find.textContaining('Las categorías organizan tus productos')),
+      findsOneWidget,
+    );
+    expect(
+      enPanel(
+        find.textContaining('serán las opciones disponibles al crear productos'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      enPanel(find.textContaining('no se calculan fracciones')),
+      findsOneWidget,
+    );
+
+    provider.irAPaso(2);
+    await tester.pumpAndSettle();
+    expect(panel, findsOneWidget);
+    expect(enPanel(find.text('Paso 3 de 4')), findsOneWidget);
+    expect(enPanel(find.text('Logística')), findsOneWidget);
+    expect(
+      enPanel(find.textContaining('Delivery, zonas, costo fijo y horarios')),
+      findsOneWidget,
+    );
+    expect(
+      enPanel(find.textContaining('no calcula distancias ni usa GPS')),
+      findsOneWidget,
+    );
+
+    provider.irAPaso(3);
+    await tester.pumpAndSettle();
+    expect(panel, findsOneWidget);
+    expect(enPanel(find.text('Paso 4 de 4')), findsOneWidget);
+    expect(enPanel(find.text('Pagos')), findsOneWidget);
+    expect(
+      enPanel(find.textContaining('métodos que el negocio acepta')),
+      findsOneWidget,
+    );
+    expect(
+      enPanel(find.textContaining('no verifica depósitos automáticamente')),
+      findsOneWidget,
+    );
+
+    expect(find.byType(DashboardAttentionPanel), findsNothing);
+  });
+
+  testWidgets(
+    'editar campos y cambiar el prefijo conserva la ayuda del paso',
+    (tester) async {
+      await mostrarDashboard(tester, progreso: _progresoConRubro());
+      await tester.tap(_textoSidebar('Configuración'));
+      await tester.pumpAndSettle();
+
+      final panel = find.byKey(const Key('configuracion-contextual-panel'));
+      Finder enPanel(Finder interno) =>
+          find.descendant(of: panel, matching: interno);
+
+      expect(enPanel(find.text('Negocio')), findsOneWidget);
+      expect(
+        enPanel(find.textContaining('El prefijo solo indica el país del número')),
+        findsOneWidget,
+      );
+
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Nombre del negocio *'),
+        'Mi Negocio',
+      );
+      await tester.pumpAndSettle();
+
+      expect(enPanel(find.text('Paso 1 de 4')), findsOneWidget);
+      expect(enPanel(find.text('Qué registras')), findsOneWidget);
+      expect(
+        enPanel(find.textContaining('Nombre, WhatsApp y dirección')),
+        findsOneWidget,
+      );
+      expect(find.byType(DashboardAttentionPanel), findsNothing);
+
+      await tester.tap(find.byType(DropdownButton<PaisTelefono>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('+503 El Salvador').last);
+      await tester.pumpAndSettle();
+
+      expect(enPanel(find.text('Paso 1 de 4')), findsOneWidget);
+      expect(enPanel(find.text('Qué registras')), findsOneWidget);
+      expect(
+        enPanel(find.textContaining('El prefijo solo indica el país del número')),
+        findsOneWidget,
+      );
+
+      final elemento = tester.element(find.byType(ConfiguracionNegocioFlow));
+      final provider = Provider.of<ConfiguracionNegocioProvider>(
+        elemento,
+        listen: false,
+      );
+      expect(provider.nombreNegocio, 'Mi Negocio');
+      expect(provider.paisTelefono.prefijo, '+503');
+
+      provider.irAPaso(1);
+      await tester.pumpAndSettle();
+      expect(panel, findsOneWidget);
+      expect(enPanel(find.text('Catálogo')), findsOneWidget);
+      expect(
+        enPanel(
+          find.textContaining('serán las opciones disponibles al crear productos'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.byType(DashboardAttentionPanel), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'no aparecen a la vez el panel de Configuración y el de atención',
+    (tester) async {
+      await mostrarDashboard(tester, progreso: _progresoConRubro());
+
+      expect(find.byType(DashboardAttentionPanel), findsOneWidget);
+      expect(find.byType(ConfiguracionContextualPanel), findsNothing);
+
+      await tester.tap(_textoSidebar('Configuración'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
+      expect(find.byType(ConfiguracionContextualPanel), findsOneWidget);
+      expect(find.byType(DashboardAttentionPanel), findsNothing);
+
+      final elemento = tester.element(find.byType(ConfiguracionNegocioFlow));
+      final provider = Provider.of<ConfiguracionNegocioProvider>(
+        elemento,
+        listen: false,
+      );
+      provider.irAPaso(3);
+      await tester.pumpAndSettle();
+      expect(find.byType(ConfiguracionContextualPanel), findsOneWidget);
+      expect(find.byType(DashboardAttentionPanel), findsNothing);
+
+      await tester.tap(find.byTooltip('Cambiar rubro'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ConfiguracionContextualPanel), findsNothing);
+      expect(find.byType(DashboardAttentionPanel), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'la ayuda de Configuración no desborda en distintos tamaños',
+    (tester) async {
+      for (final ancho in const [360, 768, 1050, 1440]) {
+        await tester.pumpWidget(const SizedBox.shrink());
+        await mostrarDashboard(
+          tester,
+          size: Size(ancho.toDouble(), 1000),
+          progreso: _progresoConRubro(),
+        );
+
+        final compacto = ancho < AuthenticatedShell.desktopBreakpoint;
+        if (compacto) {
+          await tester.tap(find.byTooltip('Abrir menú'));
+          await tester.pumpAndSettle();
+        }
+        await tester.tap(_textoSidebar('Configuración'));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
+
+        if (compacto) {
+          expect(
+            find.byKey(
+              const Key('authenticated-shell-contextual-expansion'),
+            ),
+            findsOneWidget,
+          );
+          await tester.tap(find.text('Ayuda contextual'));
+          await tester.pumpAndSettle();
+        } else {
+          expect(
+            find.byKey(const Key('authenticated-shell-contextual-panel')),
+            findsOneWidget,
+          );
+        }
+
+        expect(
+          find.byKey(const Key('configuracion-contextual-panel')),
+          findsOneWidget,
+        );
+        expect(tester.takeException(), isNull);
+      }
+    },
+  );
+
+  testWidgets(
+    'la ayuda de Configuración conserva su contenido con texto ampliado',
+    (tester) async {
+      for (final escala in const [
+        TextScaler.linear(1.0),
+        TextScaler.linear(1.3),
+        TextScaler.linear(2.0),
+      ]) {
+        final repositorio = NegocioRepository(firestore: FakeFirebaseFirestore());
+        final provider = ConfiguracionNegocioProvider(
+          rubro: 'Bodega',
+          repository: repositorio,
+        );
+        addTearDown(provider.dispose);
+
+        await tester.pumpWidget(
+          Provider<NegocioRepository>.value(
+            value: repositorio,
+            child: MaterialApp(
+              builder: (context, child) => MediaQuery(
+                data: MediaQuery.of(context).copyWith(textScaler: escala),
+                child: child!,
+              ),
+              home: Scaffold(
+                body: SingleChildScrollView(
+                  child: SizedBox(
+                    width: AuthenticatedShell.contextualPanelWidth,
+                    child: ConfiguracionContextualPanel(provider: provider),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final panel = find.byKey(
+          const Key('configuracion-contextual-panel'),
+        );
+        final contenidoPorPaso = <int, List<String>>{
+          0: [
+            'Paso 1 de 4',
+            'Negocio',
+            'Nombre, WhatsApp y dirección',
+            'El prefijo solo indica el país del número',
+          ],
+          1: [
+            'Paso 2 de 4',
+            'Catálogo',
+            'Las categorías organizan tus productos',
+            'serán las opciones disponibles al crear productos',
+            'no se calculan fracciones',
+          ],
+          2: [
+            'Paso 3 de 4',
+            'Logística',
+            'Delivery, zonas, costo fijo y horarios',
+            'no calcula distancias ni usa GPS',
+          ],
+          3: [
+            'Paso 4 de 4',
+            'Pagos',
+            'métodos que el negocio acepta',
+            'no verifica depósitos automáticamente',
+          ],
+        };
+        for (final paso in contenidoPorPaso.keys) {
+          provider.irAPaso(paso);
+          await tester.pumpAndSettle();
+          for (final texto in contenidoPorPaso[paso]!) {
+            expect(
+              find.descendant(
+                of: panel,
+                matching: find.textContaining(texto),
+              ),
+              findsOneWidget,
+              reason: 'escala=${escala.scale(10.0)} paso=$paso texto="$texto"',
+            );
+          }
+          expect(
+            tester.takeException(),
+            isNull,
+            reason: 'escala=${escala.scale(10.0)} paso=$paso',
+          );
+        }
+      }
     },
   );
 
