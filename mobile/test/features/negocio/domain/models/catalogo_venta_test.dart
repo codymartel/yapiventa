@@ -372,10 +372,40 @@ void main() {
           minimoBase: 50,
           incrementoBase: 10,
           permiteCantidad: false,
-          permiteMonto: false,
+          monto: EstadoMonto.inactivo,
         ),
         throwsArgumentError,
       );
+    });
+
+    test('el monto puede ser activo, opcional o inactivo', () {
+      final activo = ConfiguracionMedida(
+        familia: FamiliaUnidad.peso,
+        unidadVisual: RegistroUnidades.kg,
+        minimoBase: 50,
+        incrementoBase: 10,
+        monto: EstadoMonto.activo,
+      );
+      final opcional = ConfiguracionMedida(
+        familia: FamiliaUnidad.peso,
+        unidadVisual: RegistroUnidades.kg,
+        minimoBase: 50,
+        incrementoBase: 10,
+        monto: EstadoMonto.opcional,
+      );
+      final inactivo = ConfiguracionMedida(
+        familia: FamiliaUnidad.peso,
+        unidadVisual: RegistroUnidades.kg,
+        minimoBase: 50,
+        incrementoBase: 10,
+        monto: EstadoMonto.inactivo,
+      );
+      expect(activo.permiteMonto, isTrue);
+      expect(activo.montoActivo, isTrue);
+      expect(opcional.permiteMonto, isTrue);
+      expect(opcional.montoActivo, isFalse);
+      expect(inactivo.permiteMonto, isFalse);
+      expect(inactivo.montoActivo, isFalse);
     });
   });
 

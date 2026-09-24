@@ -18,7 +18,11 @@ import 'unidad_registrada.dart';
 //   - Las cantidades rápidas respetan mínimo e incremento:
 //       cantidad >= minimo && (cantidad - minimo) % incremento == 0
 //   - Se permite vender por cantidad y/o por monto (al menos uno).
+//   - El monto puede estar activo (venta por monto encendida), opcional
+//     (disponible en el rubro pero apagada por defecto) o inactivo.
 // ═════════════════════════════════════════════════════════════════════════
+enum EstadoMonto { inactivo, opcional, activo }
+
 class ConfiguracionMedida {
   final FamiliaUnidad familia;
   final UnidadRegistrada unidadBase;
@@ -27,7 +31,7 @@ class ConfiguracionMedida {
   final int incrementoBase;
   final List<int> cantidadesRapidasBase;
   final bool permiteCantidad;
-  final bool permiteMonto;
+  final EstadoMonto monto;
   final bool activa;
 
   ConfiguracionMedida._({
@@ -38,9 +42,15 @@ class ConfiguracionMedida {
     required this.incrementoBase,
     required List<int> cantidadesRapidasBase,
     required this.permiteCantidad,
-    required this.permiteMonto,
+    required this.monto,
     required this.activa,
   }) : cantidadesRapidasBase = List.unmodifiable(cantidadesRapidasBase);
+
+  /// El negocio puede vender por monto (activo u opcional).
+  bool get permiteMonto => monto != EstadoMonto.inactivo;
+
+  /// La venta por monto está encendida por defecto en este rubro.
+  bool get montoActivo => monto == EstadoMonto.activo;
 
   /// Valida y construye la configuración. Lanza [ArgumentError] si es inválida.
   factory ConfiguracionMedida({
@@ -50,7 +60,7 @@ class ConfiguracionMedida {
     required int incrementoBase,
     List<int> cantidadesRapidasBase = const [],
     bool permiteCantidad = true,
-    bool permiteMonto = true,
+    EstadoMonto monto = EstadoMonto.activo,
     bool activa = true,
   }) {
     final error = validar(
@@ -60,7 +70,7 @@ class ConfiguracionMedida {
       incrementoBase: incrementoBase,
       cantidadesRapidasBase: cantidadesRapidasBase,
       permiteCantidad: permiteCantidad,
-      permiteMonto: permiteMonto,
+      monto: monto,
     );
     if (error != null) {
       throw ArgumentError.value(familia, 'familia', error);
@@ -73,7 +83,7 @@ class ConfiguracionMedida {
       incrementoBase: incrementoBase,
       cantidadesRapidasBase: cantidadesRapidasBase,
       permiteCantidad: permiteCantidad,
-      permiteMonto: permiteMonto,
+      monto: monto,
       activa: activa,
     );
   }
@@ -86,7 +96,7 @@ class ConfiguracionMedida {
     required int incrementoBase,
     required List<int> cantidadesRapidasBase,
     required bool permiteCantidad,
-    required bool permiteMonto,
+    required EstadoMonto monto,
   }) {
     if (familia == FamiliaUnidad.conteo) {
       return 'La venta por medida no aplica a la familia de conteo.';
@@ -100,7 +110,7 @@ class ConfiguracionMedida {
     if (incrementoBase <= 0) {
       return 'El incremento debe ser un entero positivo.';
     }
-    if (!permiteCantidad && !permiteMonto) {
+    if (!permiteCantidad && monto == EstadoMonto.inactivo) {
       return 'Debe permitir venta por cantidad o por monto (o ambas).';
     }
 
