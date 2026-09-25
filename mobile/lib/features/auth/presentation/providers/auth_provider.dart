@@ -154,7 +154,12 @@ class AuthProvider extends ChangeNotifier {
         }
       } else {
         if (esModoRegistro) {
-          await _aprovisionarPerfil(user);
+          // Si el perfil no se crea, la cuenta de Firebase queda viva sin
+          // users/{uid}. Para un usuario de Google eso no tiene arreglo
+          // desde el login, porque el login con Google NO crea perfiles:
+          // volvería a caer siempre en "No se encontró un perfil
+          // registrado". Se revierte la sesión en vez de dejarla colgada.
+          if (!await _aprovisionarYRevierteSiFalla(user)) return;
           _status = AuthStatus.success;
         } else {
           // LOGIN con cuenta NO registrada: Google ya abrió sesión, así que
@@ -287,6 +292,47 @@ class AuthProvider extends ChangeNotifier {
       limiteProductos: 20,
       minimoProductos: 1,
     );
+  }
+
+  /// Aprovisiona el perfil de una cuenta NUEVA de Google. Si Firestore
+  /// falla, deshace la sesión que Google acaba de abrir —Firebase y Google—
+  /// y deja [_errorMessage] con el fallo ORIGINAL de creación del perfil, en
+  /// vez de dejar que el `catch` genérico de [autenticarConGoogle] lo
+  /// reemplace por "No se pudo completar el acceso con Google".
+  ///
+  /// Devuelve `true` si el perfil quedó escrito y el flujo puede seguir.
+  ///
+  /// La limpieza es "best effort": si tampoco se logra cerrar Firebase, el
+  /// error que hay que reportar sigue siendo el del perfil, así que nunca
+  /// se deja escapar desde acá.
+  Future<bool> _aprovisionarYRevierteSiFalla(User user) async {
+    try {
+      await _aprovisionarPerfil(user);
+      return true;
+    } catch (e) {
+      try {
+        await _repository.cerrarSesion();
+      } catch (_) {
+        // Intentarlo es lo que importa; si falla, el error a reportar
+        // continúa siendo el del perfil y no el de la limpieza.
+      }
+      await _limpiarSesionGoogle();
+      _errorMessage = _mensajeDeFalloDePerfil(e);
+      _status = AuthStatus.error;
+      return false;
+    }
+  }
+
+  /// Conserva el fallo real de la creación del perfil en vez de taparlo con
+  /// un mensaje genérico de Google, que sería engañoso: la autenticación sí
+  /// funcionó, lo que falló fue escribir `users/{uid}`.
+  String _mensajeDeFalloDePerfil(Object e) {
+    if (e is FirebaseAuthException) return _mensajeDeError(e);
+    final detalle = e.toString().trim();
+    if (detalle.isEmpty) {
+      return 'No se pudo crear el perfil de esta cuenta de Google.';
+    }
+    return 'No se pudo crear el perfil de esta cuenta de Google: $detalle';
   }
 
   void _notificar() {

@@ -129,6 +129,150 @@ void main() {
     verifyNever(() => userRepository.existePerfil(any()));
   });
 
+  group('registro con Google', () {
+    test('crea el perfil y deja la sesión abierta', () async {
+      final usuario = _UserMock();
+      when(() => usuario.uid).thenReturn('usuario-1');
+      when(() => usuario.email).thenReturn('nuevo@example.com');
+      when(
+        () => authRepository.autenticarConGoogle('id', 'access'),
+      ).thenAnswer((_) async => usuario);
+      when(
+        () => authRepository.emailEstaVerificado(),
+      ).thenAnswer((_) async => true);
+      when(
+        () => userRepository.existePerfil('usuario-1'),
+      ).thenAnswer((_) async => false);
+      when(
+        () => userRepository.asegurarPerfilYPlan(
+          uid: 'usuario-1',
+          email: 'nuevo@example.com',
+          limiteProductos: 20,
+          minimoProductos: 1,
+        ),
+      ).thenAnswer((_) async => (existiaPerfil: false, negocioId: null));
+
+      await provider.autenticarConGoogle(
+        'id',
+        'access',
+        esModoRegistro: true,
+      );
+
+      expect(provider.status, AuthStatus.success);
+      expect(provider.errorMessage, isNull);
+      // El camino feliz NO cierra sesión: nada revierte lo que se logró.
+      verifyNever(() => authRepository.cerrarSesion());
+      verifyNever(() => googleSignInService.cerrarSesionGoogle());
+    });
+
+    test('si falla el perfil, cierra Firebase y limpia Google', () async {
+      final usuario = _UserMock();
+      when(() => usuario.uid).thenReturn('usuario-1');
+      when(() => usuario.email).thenReturn('nuevo@example.com');
+      when(
+        () => authRepository.autenticarConGoogle('id', 'access'),
+      ).thenAnswer((_) async => usuario);
+      when(
+        () => authRepository.emailEstaVerificado(),
+      ).thenAnswer((_) async => true);
+      when(
+        () => userRepository.existePerfil('usuario-1'),
+      ).thenAnswer((_) async => false);
+      when(
+        () => userRepository.asegurarPerfilYPlan(
+          uid: any(named: 'uid'),
+          email: any(named: 'email'),
+          limiteProductos: any(named: 'limiteProductos'),
+          minimoProductos: any(named: 'minimoProductos'),
+        ),
+      ).thenThrow(Exception('Firestore no disponible'));
+      when(() => authRepository.cerrarSesion()).thenAnswer((_) async {});
+
+      await provider.autenticarConGoogle(
+        'id',
+        'access',
+        esModoRegistro: true,
+      );
+
+      // Sin esto quedaría una sesión de Firebase viva sin users/{uid}.
+      verify(() => authRepository.cerrarSesion()).called(1);
+      verify(() => googleSignInService.cerrarSesionGoogle()).called(1);
+      expect(provider.status, AuthStatus.error);
+      expect(provider.isLoading, isFalse);
+    });
+
+    test('el error reportado es el del perfil, no el genérico de Google', () async {
+      final usuario = _UserMock();
+      when(() => usuario.uid).thenReturn('usuario-1');
+      when(() => usuario.email).thenReturn('nuevo@example.com');
+      when(
+        () => authRepository.autenticarConGoogle('id', 'access'),
+      ).thenAnswer((_) async => usuario);
+      when(
+        () => authRepository.emailEstaVerificado(),
+      ).thenAnswer((_) async => true);
+      when(
+        () => userRepository.existePerfil('usuario-1'),
+      ).thenAnswer((_) async => false);
+      when(
+        () => userRepository.asegurarPerfilYPlan(
+          uid: any(named: 'uid'),
+          email: any(named: 'email'),
+          limiteProductos: any(named: 'limiteProductos'),
+          minimoProductos: any(named: 'minimoProductos'),
+        ),
+      ).thenThrow(Exception('Firestore no disponible'));
+      when(() => authRepository.cerrarSesion()).thenAnswer((_) async {});
+
+      await provider.autenticarConGoogle(
+        'id',
+        'access',
+        esModoRegistro: true,
+      );
+
+      expect(provider.errorMessage, contains('Firestore no disponible'));
+      expect(
+        provider.errorMessage,
+        isNot(contains('No se pudo completar el acceso con Google')),
+      );
+    });
+
+    test('reporta el fallo del perfil aunque la limpieza también falle', () async {
+      final usuario = _UserMock();
+      when(() => usuario.uid).thenReturn('usuario-1');
+      when(() => usuario.email).thenReturn('nuevo@example.com');
+      when(
+        () => authRepository.autenticarConGoogle('id', 'access'),
+      ).thenAnswer((_) async => usuario);
+      when(
+        () => authRepository.emailEstaVerificado(),
+      ).thenAnswer((_) async => true);
+      when(
+        () => userRepository.existePerfil('usuario-1'),
+      ).thenAnswer((_) async => false);
+      when(
+        () => userRepository.asegurarPerfilYPlan(
+          uid: any(named: 'uid'),
+          email: any(named: 'email'),
+          limiteProductos: any(named: 'limiteProductos'),
+          minimoProductos: any(named: 'minimoProductos'),
+        ),
+      ).thenThrow(Exception('Firestore no disponible'));
+      when(
+        () => authRepository.cerrarSesion(),
+      ).thenThrow(Exception('Firebase tampoco responde'));
+
+      await provider.autenticarConGoogle(
+        'id',
+        'access',
+        esModoRegistro: true,
+      );
+
+      expect(provider.status, AuthStatus.error);
+      expect(provider.errorMessage, contains('Firestore no disponible'));
+    });
+  });
+
   group('login con Google', () {
     test('cuenta ya registrada entra sin escribir nada', () async {
       final usuario = _UserMock();
