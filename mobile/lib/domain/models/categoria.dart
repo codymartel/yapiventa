@@ -12,10 +12,9 @@ class Categorias {
     'Bodega': [
       'Abarrotes',
       'Bebidas',
-      'Lácteos',
-      'Limpieza',
       'Snacks',
-      'Panadería',
+      'Limpieza',
+      'Cuidado personal',
     ],
     'Restaurante': [
       'Entradas',

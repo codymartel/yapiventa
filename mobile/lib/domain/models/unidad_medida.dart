@@ -32,14 +32,34 @@ class UnidadesMedida {
         fraccionesPermitidas: ['1'],
       ),
       UnidadInfo(
-        nombre: 'Docena',
-        tipo: TipoUnidad.fraccionaria,
-        fraccionesPermitidas: ['0.5', '1'],
+        nombre: 'Botella',
+        tipo: TipoUnidad.entera,
+        fraccionesPermitidas: ['250', '500', '625', '650', '1000', '1500', '2000', '2500', '3000'],
+      ),
+      UnidadInfo(
+        nombre: 'Lata',
+        tipo: TipoUnidad.entera,
+        fraccionesPermitidas: ['170', '355', '400'],
+      ),
+      UnidadInfo(
+        nombre: 'Bolsa',
+        tipo: TipoUnidad.entera,
+        fraccionesPermitidas: ['1'],
+      ),
+      UnidadInfo(
+        nombre: 'Caja',
+        tipo: TipoUnidad.entera,
+        fraccionesPermitidas: ['6', '12', '24'],
+      ),
+      UnidadInfo(
+        nombre: 'Paquete',
+        tipo: TipoUnidad.entera,
+        fraccionesPermitidas: ['6', '12', '24'],
       ),
       UnidadInfo(
         nombre: 'g',
         tipo: TipoUnidad.fraccionaria,
-        fraccionesPermitidas: ['100', '250', '500', '750'],
+        fraccionesPermitidas: ['100', '250', '500', '750', '1000'],
       ),
       UnidadInfo(
         nombre: 'kg',
@@ -49,24 +69,13 @@ class UnidadesMedida {
       UnidadInfo(
         nombre: 'ml',
         tipo: TipoUnidad.fraccionaria,
-        fraccionesPermitidas: ['250', '500', '750'],
+        fraccionesPermitidas: ['250', '500', '625', '650', '750', '1000', '1500', '2000', '2500', '3000'],
       ),
       UnidadInfo(
         nombre: 'L',
         tipo: TipoUnidad.fraccionaria,
         fraccionesPermitidas: ['1', '1.5', '2', '2.5', '3', '5', '20'],
       ),
-      UnidadInfo(nombre: 'Bolsa', tipo: TipoUnidad.entera),
-      UnidadInfo(nombre: 'Botella', tipo: TipoUnidad.entera),
-      UnidadInfo(nombre: 'Lata', tipo: TipoUnidad.entera),
-      UnidadInfo(nombre: 'Caja', tipo: TipoUnidad.entera),
-      UnidadInfo(nombre: 'Paquete', tipo: TipoUnidad.entera),
-      UnidadInfo(nombre: 'Bandeja', tipo: TipoUnidad.entera),
-      UnidadInfo(nombre: 'Saco', tipo: TipoUnidad.entera),
-      UnidadInfo(nombre: 'Bidón', tipo: TipoUnidad.entera),
-      UnidadInfo(nombre: 'Pote', tipo: TipoUnidad.entera),
-      UnidadInfo(nombre: 'Frasco', tipo: TipoUnidad.entera),
-      UnidadInfo(nombre: 'Rollo', tipo: TipoUnidad.entera),
     ],
 
     'Restaurante': [

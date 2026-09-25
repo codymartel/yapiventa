@@ -24,27 +24,42 @@ void main() {
 
     expect(_nombres(unidades), [
       'Unidad',
-      'Docena',
+      'Botella',
+      'Lata',
+      'Bolsa',
+      'Caja',
+      'Paquete',
       'g',
       'kg',
       'ml',
       'L',
-      'Bolsa',
-      'Botella',
-      'Lata',
-      'Caja',
-      'Paquete',
-      'Bandeja',
-      'Saco',
-      'Bidón',
-      'Pote',
-      'Frasco',
-      'Rollo',
     ]);
-    expect(_fracciones(unidades, 'Docena'), ['0.5', '1']);
-    expect(_fracciones(unidades, 'g'), ['100', '250', '500', '750']);
+    expect(_fracciones(unidades, 'Botella'), [
+      '250',
+      '500',
+      '625',
+      '650',
+      '1000',
+      '1500',
+      '2000',
+      '2500',
+      '3000',
+    ]);
+    expect(_fracciones(unidades, 'Caja'), ['6', '12', '24']);
+    expect(_fracciones(unidades, 'g'), ['100', '250', '500', '750', '1000']);
     expect(_fracciones(unidades, 'kg'), ['1', '1.5', '2', '5']);
-    expect(_fracciones(unidades, 'ml'), ['250', '500', '750']);
+    expect(_fracciones(unidades, 'ml'), [
+      '250',
+      '500',
+      '625',
+      '650',
+      '750',
+      '1000',
+      '1500',
+      '2000',
+      '2500',
+      '3000',
+    ]);
     expect(_fracciones(unidades, 'L'), [
       '1',
       '1.5',
