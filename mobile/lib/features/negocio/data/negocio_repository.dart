@@ -272,19 +272,27 @@ class NegocioRepository
         'rubro': rubroLimpio,
         'onboardingRubroCompletedAt': FieldValue.serverTimestamp(),
       };
-      if (datos['categorias'] is! List) {
-        actualizacion['categorias'] = Categorias.obtener(rubroLimpio);
-      }
-      if (datos['unidadesMedida'] is! List) {
-        actualizacion['unidadesMedida'] = _serializarUnidades(
-          UnidadesMedida.obtener(rubroLimpio),
-        );
-      }
       if (cambioConConfiguracion) {
         actualizacion.addAll({
           'onboardingBusinessNeedsReview': true,
           'setupComplete': false,
         });
+      }
+      if (rubroAnterior != rubroLimpio) {
+        actualizacion.addAll({
+          'catalogoVenta': FieldValue.delete(),
+          'categorias': FieldValue.delete(),
+          'unidadesMedida': FieldValue.delete(),
+        });
+      } else {
+        if (datos['categorias'] is! List) {
+          actualizacion['categorias'] = Categorias.obtener(rubroLimpio);
+        }
+        if (datos['unidadesMedida'] is! List) {
+          actualizacion['unidadesMedida'] = _serializarUnidades(
+            UnidadesMedida.obtener(rubroLimpio),
+          );
+        }
       }
       transaction.set(referencia, actualizacion, SetOptions(merge: true));
     });

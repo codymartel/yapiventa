@@ -4,7 +4,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/domain/models/tipo_unidad.dart';
 import 'package:mobile/features/negocio/data/negocio_repository.dart';
 import 'package:mobile/features/negocio/domain/models/catalogo_venta/catalogo_venta_persistido.dart';
+import 'package:mobile/features/negocio/domain/models/catalogo_venta/formato_presentacion.dart';
+import 'package:mobile/features/negocio/domain/models/catalogo_venta/opcion_presentacion.dart';
 import 'package:mobile/features/negocio/domain/models/catalogo_venta/preset_venta_rubro.dart';
+import 'package:mobile/features/negocio/domain/models/catalogo_venta/unidad_registrada.dart';
+import 'package:mobile/features/productos/domain/models/familia_unidad.dart';
 import 'package:mobile/features/negocio/domain/models/config_pago_metodo.dart';
 import 'package:mobile/features/negocio/domain/models/horario_dia.dart';
 import 'package:mobile/features/negocio/domain/models/metodo_pago_tipo.dart';
@@ -428,9 +432,167 @@ void main() {
         'volumen',
         'longitud',
         'area',
-      });
     });
-  }
+   });
+
+   // ═══════════════════════════════════════════════════════════════
+   // Regresión de catálogo al cambiar rubro
+   // ═══════════════════════════════════════════════════════════════
+
+group('guardarRubro con cambio de rubro: regresión de catálogo', () {
+      test(
+        'Restaurante → Accesorios y regalos: catalogoVenta, categorias y unidadesMedida eliminados',
+        () async {
+          // 1. Crear negocio con rubro Restaurante
+          final negocioId = await _prepararNegocio(
+            firestore,
+            'usuario-1',
+            datos: {
+              'rubro': 'Restaurante',
+              'nombreNegocio': 'Restaurante Test',
+              'categorias': ['Entradas', 'Platos principales', 'Bebidas'],
+              'unidadesMedida': [
+                {
+                  'nombre': 'Unidad',
+                  'tipo': 'entera',
+                  'fraccionesPermitidas': <String>[],
+                  'esOpcional': false,
+                },
+              ],
+              'webActiva': true,
+            },
+          );
+
+          // 2. Persistir un catalogoVenta de Restaurante
+          final catalogoRestaurante = CatalogoVentaPersistido.desdePreset(
+            PresetsVenta.obtener('Restaurante'),
+          );
+          await firestore
+              .collection('negocios')
+              .doc(negocioId)
+              .set({'catalogoVenta': catalogoRestaurante.toMap()},
+                  SetOptions(merge: true));
+
+          // 3. Ejecutar guardarRubro("Accesorios y regalos")
+          await repository.guardarRubro('usuario-1', 'Accesorios y regalos');
+
+          // 4. Leer el documento resultante
+          final datos =
+              (await firestore.collection('negocios').doc(negocioId).get())
+                  .data()!;
+
+          // catalogoVenta debe ser eliminado
+          expect(datos['catalogoVenta'], isNull);
+          expect(datos['rubro'], 'Accesorios y regalos');
+          // categorias y unidadesMedida también deben ser eliminados
+          expect(datos['categorias'], isNull);
+          expect(datos['unidadesMedida'], isNull);
+        },
+      );
+
+      test(
+        'Bodega → Ropa: catalogoVenta, categorias y unidadesMedida eliminados',
+        () async {
+          final negocioId = await _prepararNegocio(
+            firestore,
+            'usuario-1',
+            datos: {
+              'rubro': 'Bodega',
+              'nombreNegocio': 'Bodega Test',
+              'categorias': ['Abarrotes', 'Bebidas'],
+              'webActiva': true,
+            },
+          );
+
+          final catalogoBodega = CatalogoVentaPersistido.desdePreset(
+            PresetsVenta.obtener('Bodega'),
+          );
+          await firestore
+              .collection('negocios')
+              .doc(negocioId)
+              .set({'catalogoVenta': catalogoBodega.toMap()},
+                  SetOptions(merge: true));
+
+          await repository.guardarRubro('usuario-1', 'Ropa');
+
+          final datos =
+              (await firestore.collection('negocios').doc(negocioId).get())
+                  .data()!;
+
+          expect(datos['catalogoVenta'], isNull);
+          expect(datos['rubro'], 'Ropa');
+          expect(datos['categorias'], isNull);
+          expect(datos['unidadesMedida'], isNull);
+        },
+      );
+
+      test(
+        'Bodega → Bodega (mismo rubro): catalogoVenta, categorias y unidadesMedida se conservan',
+        () async {
+          final negocioId = await _prepararNegocio(
+            firestore,
+            'usuario-1',
+            datos: {
+              'rubro': 'Bodega',
+              'nombreNegocio': 'Bodega Test',
+              'categorias': ['Abarrotes', 'Bebidas'],
+              'unidadesMedida': [
+                {'nombre': 'Unidad', 'tipo': 'entera', 'fraccionesPermitidas': <String>[], 'esOpcional': false},
+              ],
+              'webActiva': true,
+            },
+          );
+
+          final catalogoBodega = CatalogoVentaPersistido.desdePreset(
+            PresetsVenta.obtener('Bodega'),
+          );
+          await firestore
+              .collection('negocios')
+              .doc(negocioId)
+              .set({'catalogoVenta': catalogoBodega.toMap()}, SetOptions(merge: true));
+
+          await repository.guardarRubro('usuario-1', 'Bodega');
+
+          final datos =
+              (await firestore.collection('negocios').doc(negocioId).get())
+                  .data()!;
+
+          // Todo debe conservarse
+          expect(datos['catalogoVenta'], isNotNull);
+          expect(datos['rubro'], 'Bodega');
+          expect(datos['categorias'], ['Abarrotes', 'Bebidas']);
+          expect((datos['unidadesMedida'] as List).length, 1);
+        },
+      );
+
+      test(
+        'Al cambiar de rubro, el documento no contiene datos del rubro anterior',
+        () async {
+          final negocioId = await _prepararNegocio(
+            firestore,
+            'usuario-1',
+            datos: {
+              'rubro': 'Restaurante',
+              'categorias': ['Entradas', 'Platos principales'],
+              'unidadesMedida': [
+                {'nombre': 'Presentación propia', 'tipo': 'entera', 'fraccionesPermitidas': <String>[], 'esOpcional': false},
+              ],
+            },
+          );
+
+          await repository.guardarRubro('usuario-1', 'Accesorios y regalos');
+
+          final datos =
+              (await firestore.collection('negocios').doc(negocioId).get())
+                  .data()!;
+
+          expect(datos['categorias'], isNull);
+          expect(datos['unidadesMedida'], isNull);
+        },
+      );
+    });
+ }
+
 
   test('lee catalogoVenta tipado sin escribir ni releer users/{uid}', () async {
     final catalogoVenta = CatalogoVentaPersistido.desdePreset(
@@ -1220,43 +1382,81 @@ void main() {
     );
   });
 
-  test('cambiar rubro conserva la configuración existente', () async {
-    final negocioId = await _prepararNegocio(
-      firestore,
-      'usuario-1',
-      datos: {
-        'rubro': 'Bodega',
-        'nombreNegocio': 'Bodega Ana',
-        'categorias': ['Categoría propia'],
-        'unidadesMedida': [
-          {
-            'nombre': 'Presentación propia',
-            'tipo': 'entera',
-            'fraccionesPermitidas': <String>[],
-            'esOpcional': false,
-          },
-        ],
-        'webActiva': true,
-      },
-    );
+test('cambiar rubro conserva la configuración existente', () async {
+     final negocioId = await _prepararNegocio(
+       firestore,
+       'usuario-1',
+       datos: {
+         'rubro': 'Bodega',
+         'nombreNegocio': 'Bodega Ana',
+         'categorias': ['Categoría propia'],
+         'unidadesMedida': [
+           {
+             'nombre': 'Presentación propia',
+             'tipo': 'entera',
+             'fraccionesPermitidas': <String>[],
+             'esOpcional': false,
+           },
+         ],
+         'webActiva': true,
+       },
+     );
 
-    await repository.guardarRubro('usuario-1', 'Ropa');
+     await repository.guardarRubro('usuario-1', 'Ropa');
 
-    final datos = (await firestore.collection('negocios').doc(negocioId).get())
-        .data()!;
-    expect(datos['rubro'], 'Ropa');
-    expect(datos['categorias'], ['Categoría propia']);
-    expect(
-      (datos['unidadesMedida'] as List).single,
-      containsPair('nombre', 'Presentación propia'),
-    );
-    expect(datos['webActiva'], isTrue);
-    expect(datos['onboardingBusinessNeedsReview'], isTrue);
-    expect(
-      (await firestore.collection('negocios_publicos').get()).docs,
-      isEmpty,
-    );
-  });
+     final datos = (await firestore.collection('negocios').doc(negocioId).get())
+         .data()!;
+      expect(datos['rubro'], 'Ropa');
+      expect(datos['categorias'], isNull);
+      expect(datos['unidadesMedida'], isNull);
+      expect(datos['webActiva'], isTrue);
+      expect(datos['onboardingBusinessNeedsReview'], isTrue);
+      expect(
+        (await firestore.collection('negocios_publicos').get()).docs,
+        isEmpty,
+      );
+    });
+
+   test('cambiar rubro elimina catalogoVenta anterior para evitar mezcla', () async {
+     final catalogoVenta = CatalogoVentaPersistido(
+       presentaciones: [
+         OpcionPresentacion(
+           id: 'unidad',
+           nombre: 'Unidad',
+           formatos: [FormatoPresentacion(valorBase: 1, familia: FamiliaUnidad.conteo, unidadVisible: RegistroUnidades.unidad)],
+           activa: true,
+           obligatoria: false,
+         ),
+       ],
+       medidas: [],
+     );
+
+     final negocioId = await _prepararNegocio(
+       firestore,
+       'usuario-1',
+       datos: {
+         'rubro': 'Bodega',
+         'nombreNegocio': 'Bodega Ana',
+         'catalogoVenta': catalogoVenta.toMap(),
+         'categorias': ['Categoría propia'],
+         'unidadesMedida': [
+           {'nombre': 'Presentación propia', 'tipo': 'entera', 'fraccionesPermitidas': <String>[], 'esOpcional': false},
+         ],
+         'webActiva': true,
+       },
+     );
+
+     await repository.guardarRubro('usuario-1', 'Ropa');
+
+ final datos = (await firestore.collection('negocios').doc(negocioId).get())
+          .data()!;
+     expect(datos['rubro'], 'Ropa');
+     expect(datos['catalogoVenta'], isNull);
+     expect(datos['categorias'], isNull);
+     expect(datos['unidadesMedida'], isNull);
+     expect(datos['webActiva'], isTrue);
+     expect(datos['onboardingBusinessNeedsReview'], isTrue);
+   });
 
   for (final legacy in ['Farmacia', 'Ferretería']) {
     test('$legacy sigue cargando sin reescribir el valor almacenado', () async {

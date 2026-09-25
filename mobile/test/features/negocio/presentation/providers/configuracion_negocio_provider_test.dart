@@ -1,7 +1,9 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/features/negocio/data/negocio_repository.dart';
 import 'package:mobile/features/negocio/domain/models/catalogo_venta/catalogo_venta_global.dart';
+import 'package:mobile/features/negocio/domain/models/catalogo_venta/catalogo_venta_persistido.dart';
 import 'package:mobile/features/negocio/domain/models/catalogo_venta/formato_presentacion.dart';
 import 'package:mobile/features/negocio/domain/models/catalogo_venta/preset_venta_rubro.dart';
 import 'package:mobile/features/negocio/domain/models/catalogo_venta/unidad_registrada.dart';
@@ -975,5 +977,349 @@ void main() {
         );
       },
     );
-  });
-}
+   });
+
+    // ═════════════════════════════════════════════════════════
+    // Regresión: cambio de rubro en el provider
+    // ═════════════════════════════════════════════════════════
+
+    group('cambio de rubro: regresión en el provider', () {
+      test(
+        'Restaurante → Accesorios y regalos: catálogo final solo tiene '
+        'presentaciones del preset Accesorios',
+        () async {
+          final firestore = FakeFirebaseFirestore();
+          final repository = NegocioRepository(firestore: firestore);
+
+          // 1. Crear negocio con rubro Restaurante
+          await firestore.collection('users').doc('usuario-1').set({
+            'email': 'test@example.com',
+            'negocioId': 'negocio-1',
+          });
+          await firestore.collection('negocios').doc('negocio-1').set({
+            'propietarioUid': 'usuario-1',
+            'rubro': 'Restaurante',
+            'nombreNegocio': 'Restaurante Test',
+            'categorias': ['Entradas', 'Platos principales', 'Bebidas'],
+            'unidadesMedida': [
+              {'nombre': 'Unidad', 'tipo': 'entera', 'fraccionesPermitidas': <String>[], 'esOpcional': false},
+            ],
+            'catalogoVenta': CatalogoVentaPersistido.desdePreset(
+              PresetsVenta.obtener('Restaurante'),
+            ).toMap(),
+            'webActiva': true,
+            'delivery': false,
+            'telefono': '+51999999999',
+            'direccion': 'Av. Lima 123',
+            'slug': 'restaurante-test',
+          });
+
+          // 2. Ejecutar guardarRubro("Accesorios y regalos")
+          await repository.guardarRubro('usuario-1', 'Accesorios y regalos');
+
+          // 3. Leer el documento resultante
+          final datos =
+              (await firestore.collection('negocios').doc('negocio-1').get())
+                  .data()!;
+
+          // 4. Construir ConfiguracionNegocioProvider con el documento
+          final provider = ConfiguracionNegocioProvider(
+            rubro: 'Accesorios y regalos',
+            configuracionInicial: datos,
+            repository: repository,
+          );
+
+          // 5. Verificar el catálogo FINAL del provider
+          final idsPresentaciones =
+              provider.catalogoVenta.presentaciones.map((p) => p.id).toSet();
+
+          // Par → existe, Set → existe, Juego → existe
+          expect(idsPresentaciones, contains('par'));
+          expect(idsPresentaciones, contains('set'));
+          expect(idsPresentaciones, contains('juego'));
+
+          // Porción, Plato, Combo → NO existen
+          expect(idsPresentaciones, isNot(contains('porcion')));
+          expect(idsPresentaciones, isNot(contains('plato')));
+          expect(idsPresentaciones, isNot(contains('combo')));
+
+          // Las medidas deben coincidir con el preset actual de Accesorios
+          final preset = PresetsVenta.obtener('Accesorios y regalos');
+          expect(provider.medidas, hasLength(preset.medidas.length));
+        },
+      );
+
+      test(
+        'Bodega → Ropa: catálogo final únicamente el de Ropa',
+        () async {
+          final firestore = FakeFirebaseFirestore();
+          final repository = NegocioRepository(firestore: firestore);
+
+          await firestore.collection('users').doc('usuario-1').set({
+            'email': 'test@example.com',
+            'negocioId': 'negocio-1',
+          });
+          await firestore.collection('negocios').doc('negocio-1').set({
+            'propietarioUid': 'usuario-1',
+            'rubro': 'Bodega',
+            'nombreNegocio': 'Bodega Test',
+            'categorias': ['Abarrotes', 'Bebidas'],
+            'unidadesMedida': [
+              {'nombre': 'Unidad', 'tipo': 'entera', 'fraccionesPermitidas': <String>[], 'esOpcional': false},
+            ],
+            'catalogoVenta': CatalogoVentaPersistido.desdePreset(
+              PresetsVenta.obtener('Bodega'),
+            ).toMap(),
+            'webActiva': true,
+            'delivery': false,
+            'telefono': '+51999999999',
+            'direccion': 'Av. Lima 123',
+            'slug': 'bodega-test',
+          });
+
+          // Cambiar rubro a Ropa
+          await repository.guardarRubro('usuario-1', 'Ropa');
+
+          final datos =
+              (await firestore.collection('negocios').doc('negocio-1').get())
+                  .data()!;
+
+          final provider = ConfiguracionNegocioProvider(
+            rubro: 'Ropa',
+            configuracionInicial: datos,
+            repository: repository,
+          );
+
+          final idsPresentaciones =
+              provider.catalogoVenta.presentaciones.map((p) => p.id).toSet();
+
+          // Solo presentaciones de Ropa
+          expect(idsPresentaciones, contains('unidad'));
+          expect(idsPresentaciones, contains('par'));
+          expect(idsPresentaciones, contains('conjunto'));
+          expect(idsPresentaciones, contains('caja'));
+          expect(idsPresentaciones, contains('paquete'));
+          expect(idsPresentaciones, contains('bolsa'));
+
+          // NO debe tener presentaciones de Bodega ni Restaurante
+          expect(idsPresentaciones, isNot(contains('botella')));
+          expect(idsPresentaciones, isNot(contains('lata')));
+          expect(idsPresentaciones, isNot(contains('porcion')));
+          expect(idsPresentaciones, isNot(contains('plato')));
+          expect(idsPresentaciones, isNot(contains('combo')));
+
+          // Solo Ropa: longitud medida (inactiva)
+          final preset = PresetsVenta.obtener('Ropa');
+          expect(provider.medidas, hasLength(preset.medidas.length));
+        },
+      );
+
+      test(
+        'Bodega → Bodega (mismo rubro): catalogoVenta se conserva en el provider',
+        () async {
+          final firestore = FakeFirebaseFirestore();
+          final repository = NegocioRepository(firestore: firestore);
+
+          await firestore.collection('users').doc('usuario-1').set({
+            'email': 'test@example.com',
+            'negocioId': 'negocio-1',
+          });
+
+          final catalogoOriginal = CatalogoVentaPersistido.desdePreset(
+            PresetsVenta.obtener('Bodega'),
+          );
+          await firestore.collection('negocios').doc('negocio-1').set({
+            'propietarioUid': 'usuario-1',
+            'rubro': 'Bodega',
+            'catalogoVenta': catalogoOriginal.toMap(),
+          });
+
+          // rubro NO cambia
+          await repository.guardarRubro('usuario-1', 'Bodega');
+
+          final datos =
+              (await firestore.collection('negocios').doc('negocio-1').get())
+                  .data()!;
+
+          final provider = ConfiguracionNegocioProvider(
+            rubro: 'Bodega',
+            configuracionInicial: datos,
+            repository: repository,
+          );
+
+          // catalogoVenta debe conservarse
+          expect(provider.catalogoVenta.presentaciones, isNotEmpty);
+        },
+      );
+
+      test(
+        'Al cambiar rubro, el provider reconstruye todo desde el nuevo preset',
+        () async {
+          final firestore = FakeFirebaseFirestore();
+          final repository = NegocioRepository(firestore: firestore);
+
+          await firestore.collection('users').doc('usuario-1').set({
+            'email': 'test@example.com',
+            'negocioId': 'negocio-1',
+          });
+          await firestore.collection('negocios').doc('negocio-1').set({
+            'propietarioUid': 'usuario-1',
+            'rubro': 'Restaurante',
+            'categorias': ['Entradas', 'Platos principales', 'Bebidas'],
+            'unidadesMedida': [
+              {'nombre': 'Presentación propia', 'tipo': 'entera', 'fraccionesPermitidas': <String>[], 'esOpcional': false},
+            ],
+            'catalogoVenta': CatalogoVentaPersistido.desdePreset(
+              PresetsVenta.obtener('Restaurante'),
+            ).toMap(),
+            'delivery': false,
+            'telefono': '+51999999999',
+            'direccion': 'Av. Lima 123',
+            'slug': 'test',
+          });
+
+          // Cambiar rubro con repository.guardarRubro
+          await repository.guardarRubro('usuario-1', 'Accesorios y regalos');
+
+          final datos =
+              (await firestore.collection('negocios').doc('negocio-1').get())
+                  .data()!;
+
+          // Verificar que el documento no contiene datos del rubro anterior
+          expect(datos['categorias'], isNull);
+          expect(datos['unidadesMedida'], isNull);
+
+          final provider = ConfiguracionNegocioProvider(
+            rubro: 'Accesorios y regalos',
+            configuracionInicial: datos,
+            repository: repository,
+          );
+
+          // El provider usa el preset de Accesorios y regalos
+          final preset = PresetsVenta.obtener('Accesorios y regalos');
+          expect(provider.categorias, preset.categorias);
+          expect(provider.medidas, hasLength(preset.medidas.length));
+
+          // No contiene categorías de Restaurante
+          expect(provider.categorias, isNot(contains('Entradas')));
+          expect(provider.categorias, isNot(contains('Platos principales')));
+          expect(provider.categorias, isNot(contains('Bebidas')));
+        },
+      );
+
+      test(
+        'Bodega → Ropa: provider usa exclusivamente el preset de Ropa',
+        () async {
+          final firestore = FakeFirebaseFirestore();
+          final repository = NegocioRepository(firestore: firestore);
+
+          await firestore.collection('users').doc('usuario-1').set({
+            'email': 'test@example.com',
+            'negocioId': 'negocio-1',
+          });
+          await firestore.collection('negocios').doc('negocio-1').set({
+            'propietarioUid': 'usuario-1',
+            'rubro': 'Bodega',
+            'nombreNegocio': 'Bodega Test',
+            'categorias': ['Abarrotes', 'Bebidas'],
+            'unidadesMedida': [
+              {'nombre': 'Unidad', 'tipo': 'entera', 'fraccionesPermitidas': <String>[], 'esOpcional': false},
+            ],
+            'catalogoVenta': CatalogoVentaPersistido.desdePreset(
+              PresetsVenta.obtener('Bodega'),
+            ).toMap(),
+            'webActiva': true,
+            'delivery': false,
+            'telefono': '+51999999999',
+            'direccion': 'Av. Lima 123',
+            'slug': 'bodega-test',
+          });
+
+          await repository.guardarRubro('usuario-1', 'Ropa');
+
+          final datos =
+              (await firestore.collection('negocios').doc('negocio-1').get())
+                  .data()!;
+
+          expect(datos['categorias'], isNull);
+          expect(datos['unidadesMedida'], isNull);
+
+          final provider = ConfiguracionNegocioProvider(
+            rubro: 'Ropa',
+            configuracionInicial: datos,
+            repository: repository,
+          );
+
+          final preset = PresetsVenta.obtener('Ropa');
+          expect(provider.categorias, preset.categorias);
+          expect(provider.medidas, hasLength(preset.medidas.length));
+
+          // Solo presentaciones de Ropa
+          final idsPresentaciones =
+              provider.catalogoVenta.presentaciones.map((p) => p.id).toSet();
+          expect(idsPresentaciones, contains('unidad'));
+          expect(idsPresentaciones, contains('par'));
+          expect(idsPresentaciones, contains('conjunto'));
+          expect(idsPresentaciones, contains('caja'));
+          expect(idsPresentaciones, contains('paquete'));
+          expect(idsPresentaciones, contains('bolsa'));
+
+          // Nada de Bodega
+          expect(idsPresentaciones, isNot(contains('botella')));
+          expect(idsPresentaciones, isNot(contains('lata')));
+          expect(idsPresentaciones, isNot(contains('porcion')));
+        },
+      );
+
+      test(
+        'Mismo rubro: provider conserva categorias y unidadesMedida del documento',
+        () async {
+          final firestore = FakeFirebaseFirestore();
+          final repository = NegocioRepository(firestore: firestore);
+
+          await firestore.collection('users').doc('usuario-1').set({
+            'email': 'test@example.com',
+            'negocioId': 'negocio-1',
+          });
+          await firestore.collection('negocios').doc('negocio-1').set({
+            'propietarioUid': 'usuario-1',
+            'rubro': 'Bodega',
+            'categorias': ['Mis Abarrotes', 'Mis Bebidas'],
+            'unidadesMedida': [
+              {'nombre': 'MiUnidad', 'tipo': 'entera', 'fraccionesPermitidas': <String>[], 'esOpcional': false},
+            ],
+            'catalogoVenta': CatalogoVentaPersistido.desdePreset(
+              PresetsVenta.obtener('Bodega'),
+            ).toMap(),
+            // Ya completado: guardarRubro con el mismo rubro es un no-op
+            // (early return) y no debe invalidar nada.
+            'onboardingRubroCompletedAt': Timestamp.fromDate(
+              DateTime(2024),
+            ),
+          });
+
+          // rubro NO cambia
+          await repository.guardarRubro('usuario-1', 'Bodega');
+
+          final datos =
+              (await firestore.collection('negocios').doc('negocio-1').get())
+                  .data()!;
+
+          expect(datos['categorias'], ['Mis Abarrotes', 'Mis Bebidas']);
+          expect(datos['unidadesMedida'], isNotNull);
+
+          final provider = ConfiguracionNegocioProvider(
+            rubro: 'Bodega',
+            configuracionInicial: datos,
+            repository: repository,
+          );
+
+          // Personalizaciones del usuario se conservan
+          expect(provider.categorias, ['Mis Abarrotes', 'Mis Bebidas']);
+          expect(provider.unidadesMedida.map((u) => u.nombre), contains('MiUnidad'));
+        },
+      );
+    });
+  }
+
+
