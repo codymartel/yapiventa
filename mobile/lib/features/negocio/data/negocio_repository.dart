@@ -434,13 +434,20 @@ class NegocioRepository
         datos['rubro'] is String ? (datos['rubro'] as String).trim() : '';
     if (rubroAnterior.isEmpty || rubroAnterior == rubroNuevo) return;
 
+    // La comparación se hace contra el preset del rubro nuevo, que es lo que
+    // el provider sembrará al releer el negocio (ver _unidadesEspejoDelPreset).
+    // Los mapas legacy Categorias / UnidadesMedida NO se usan aquí: para varios
+    // rubros no coinciden con el preset y producirían falsos bloqueos.
+    final presetNuevo = PresetsVenta.obtener(rubroNuevo);
     final categoriasQueDesaparecen = _leerCategorias(
       datos['categorias'],
-    ).toSet().difference(Categorias.obtener(rubroNuevo).toSet()).toList();
+    ).toSet().difference(presetNuevo.categorias.toSet()).toList();
     final unidadesQueDesaparecen = _leerUnidades(
       datos['unidadesMedida'],
     ).map((unidad) => unidad.nombre).toSet().difference(
-      UnidadesMedida.obtener(rubroNuevo).map((unidad) => unidad.nombre).toSet(),
+      CatalogoVentaPersistido.unidadesEspejoDelPreset(
+        presetNuevo,
+      ).map((unidad) => unidad.nombre).toSet(),
     ).toList();
     if (categoriasQueDesaparecen.isEmpty && unidadesQueDesaparecen.isEmpty) {
       return;

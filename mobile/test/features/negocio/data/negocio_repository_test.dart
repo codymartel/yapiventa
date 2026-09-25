@@ -1695,6 +1695,132 @@ test('cambiar rubro conserva la configuración existente', () async {
       expect(datos['categorias'], isNull);
     });
 
+    // ── La comparación debe hacerse contra el PRESET del rubro nuevo ──
+    // Los mapas legacy Categorias/UnidadesMedida coinciden con el preset solo
+    // en Bodega y Ropa. Estos tests fijan que la validación NO los use.
+
+    test(
+      'bloquea Otros → Belleza si un producto usa "General", que el mapa '
+      'legacy da por válida pero el preset de Belleza no tiene',
+      () async {
+        final negocioId = await _prepararNegocio(
+          firestore,
+          'usuario-1',
+          datos: {
+            'rubro': 'Otros',
+            'nombreNegocio': 'Tienda Ana',
+            // Semilla del mapa legacy Categorias para 'Otros'.
+            'categorias': ['General'],
+            'unidadesMedida': [
+              {
+                'nombre': 'Unidad',
+                'tipo': 'entera',
+                'fraccionesPermitidas': <String>[],
+                'esOpcional': false,
+              },
+            ],
+          },
+        );
+        await _guardarProductoCon(
+          firestore,
+          negocioId,
+          'producto-1',
+          categoria: 'General',
+          unidadMedidaNombre: 'Unidad',
+        );
+
+        // Categorias.obtener('Belleza y cuidado personal') = ['General']:
+        // el mapa legacy lo daría por sobreviviente y dejaría el producto
+        // apuntando a una categoría que el preset de Belleza no tiene.
+        await expectLater(
+          repository.guardarRubro('usuario-1', 'Belleza y cuidado personal'),
+          throwsA(isA<ProductosDependientesDeRubroException>()),
+        );
+      },
+    );
+
+    test(
+      'bloquea Bodega → Restaurante si un producto usa "Lata", que el mapa '
+      'legacy da por válida pero el preset de Restaurante no tiene',
+      () async {
+        final negocioId = await _prepararNegocio(
+          firestore,
+          'usuario-1',
+          datos: {
+            'rubro': 'Bodega',
+            'nombreNegocio': 'Bodega Ana',
+            'categorias': ['Bebidas'],
+            'unidadesMedida': [
+              {
+                'nombre': 'Lata',
+                'tipo': 'entera',
+                'fraccionesPermitidas': <String>[],
+                'esOpcional': false,
+              },
+            ],
+          },
+        );
+        await _guardarProductoCon(
+          firestore,
+          negocioId,
+          'producto-1',
+          categoria: 'Bebidas',
+          unidadMedidaNombre: 'Lata',
+        );
+
+        // UnidadesMedida.obtener('Restaurante') incluye 'Lata', pero el preset
+        // de Restaurante no tiene la presentación 'lata': sin esta corrección
+        // el cambio pasaba y el producto quedaba huérfano.
+        await expectLater(
+          repository.guardarRubro('usuario-1', 'Restaurante'),
+          throwsA(
+            isA<ProductosDependientesDeRubroException>().having(
+              (e) => e.unidades,
+              'unidades',
+              contains('Lata'),
+            ),
+          ),
+        );
+      },
+    );
+
+    test(
+      'permite Bodega → Ropa si el producto solo usa "Unidad" y "Hombre", '
+      'que sí existen en ambos catálogos',
+      () async {
+        final negocioId = await _prepararNegocio(
+          firestore,
+          'usuario-1',
+          datos: {
+            'rubro': 'Bodega',
+            'nombreNegocio': 'Bodega Ana',
+            'categorias': ['Hombre', 'Abarrotes'],
+            'unidadesMedida': [
+              {
+                'nombre': 'Unidad',
+                'tipo': 'entera',
+                'fraccionesPermitidas': <String>[],
+                'esOpcional': false,
+              },
+            ],
+          },
+        );
+        await _guardarProductoCon(
+          firestore,
+          negocioId,
+          'producto-1',
+          categoria: 'Hombre',
+          unidadMedidaNombre: 'Unidad',
+        );
+
+        await repository.guardarRubro('usuario-1', 'Ropa');
+
+        final datos =
+            (await firestore.collection('negocios').doc(negocioId).get()).data()!;
+        expect(datos['rubro'], 'Ropa');
+      },
+    );
+
     test('no bloquea cuando se reintenta el mismo rubro', () async {
       final negocioId = await _prepararNegocio(
         firestore,

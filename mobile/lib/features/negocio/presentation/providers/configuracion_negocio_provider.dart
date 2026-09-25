@@ -83,33 +83,13 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
 
   /// Espejo del preset en el formato legacy de [UnidadInfo].
   ///
-  /// Única semilla de [_unidadesMedida] para un negocio NUEVO: reúne las
-  /// presentaciones de conteo del preset y las unidades registradas de sus
-  /// medidas, sin tocar los mapas legacy (ni "Docena", "Rollo", "Par" ni
-  /// "Paquete" fantasma por rubro). El campo `unidadesMedida` de Firestore
-  /// se sigue escribiendo para que el flujo de productos y la compatibilidad
-  /// de lectura sigan funcionando.
-  static List<UnidadInfo> _unidadesEspejoDelPreset(PresetVentaRubro preset) {
-    final unidades = List.of(
-      preset.presentaciones.map(
-        (presentacion) => UnidadInfo(
-          nombre: presentacion.nombre,
-          tipo: TipoUnidad.entera,
-          esOpcional: !presentacion.activa,
-        ),
-      ),
-    );
-    final nombres = unidades.map((unidad) => unidad.nombre).toSet();
-    for (final medida in preset.medidas) {
-      for (final unidad in RegistroUnidades.unidadesDe(medida.familia)) {
-        if (!nombres.add(unidad.nombre)) continue;
-        unidades.add(
-          UnidadInfo(nombre: unidad.nombre, tipo: TipoUnidad.entera),
-        );
-      }
-    }
-    return unidades;
-  }
+  /// Única semilla de [_unidadesMedida] para un negocio NUEVO: delegates en
+  /// [CatalogoVentaPersistido.unidadesEspejoDelPreset] para que la validación
+  /// de dependencias de la capa de datos use exactamente el mismo conjunto de
+  /// nombres. El campo `unidadesMedida` de Firestore se sigue escribiendo para
+  /// que el flujo de productos y la compatibilidad de lectura sigan funcionando.
+  static List<UnidadInfo> _unidadesEspejoDelPreset(PresetVentaRubro preset) =>
+      CatalogoVentaPersistido.unidadesEspejoDelPreset(preset);
 
   void _restaurarConfiguracion(Map<String, dynamic> datos) {
     _nombreNegocio = datos['nombreNegocio'] as String? ?? '';

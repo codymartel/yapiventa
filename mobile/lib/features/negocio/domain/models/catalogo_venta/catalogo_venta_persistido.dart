@@ -31,6 +31,35 @@ class CatalogoVentaPersistido {
     );
   }
 
+  /// Espejo del preset en el formato legacy de [UnidadInfo].
+  ///
+  /// Es la semilla de `unidadesMedida` que el provider escribe en Firestore, y
+  /// por tanto el conjunto de nombres válidos para `unidadMedidaNombre` de un
+  /// producto en ese rubro. Vive aquí para que la capa de datos valide contra
+  /// la MISMA fuente que usa la presentación, en vez de duplicar la regla o
+  /// recurrir a los mapas legacy `UnidadesMedida`, que no coinciden con el preset.
+  static List<UnidadInfo> unidadesEspejoDelPreset(PresetVentaRubro preset) {
+    final unidades = List.of(
+      preset.presentaciones.map(
+        (presentacion) => UnidadInfo(
+          nombre: presentacion.nombre,
+          tipo: TipoUnidad.entera,
+          esOpcional: !presentacion.activa,
+        ),
+      ),
+    );
+    final nombres = unidades.map((unidad) => unidad.nombre).toSet();
+    for (final medida in preset.medidas) {
+      for (final unidad in RegistroUnidades.unidadesDe(medida.familia)) {
+        if (!nombres.add(unidad.nombre)) continue;
+        unidades.add(
+          UnidadInfo(nombre: unidad.nombre, tipo: TipoUnidad.entera),
+        );
+      }
+    }
+    return unidades;
+  }
+
   /// Adapta las [UnidadInfo] legacy de un negocio a este catálogo en memoria.
   ///
   /// Solo se traduce lo que el registro cerrado de unidades permite traducir
