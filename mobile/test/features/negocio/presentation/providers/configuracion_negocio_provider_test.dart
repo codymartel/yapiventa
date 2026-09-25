@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/features/negocio/data/negocio_repository.dart';
 import 'package:mobile/features/negocio/domain/models/catalogo_venta/catalogo_venta_global.dart';
 import 'package:mobile/features/negocio/domain/models/catalogo_venta/formato_presentacion.dart';
+import 'package:mobile/features/negocio/domain/models/catalogo_venta/preset_venta_rubro.dart';
 import 'package:mobile/features/negocio/domain/models/catalogo_venta/unidad_registrada.dart';
 import 'package:mobile/features/negocio/domain/models/pais_telefono.dart';
 import 'package:mobile/domain/models/tipo_unidad.dart';
@@ -758,5 +759,95 @@ void main() {
       expect(pesoGuardado['minimoBase'], 300);
       expect(pesoGuardado['cantidadesRapidasBase'], [300, 400, 600]);
     });
+
+    test('bloquea guardar si quedan medidas pendientes de revisión', () async {
+      final firestore = FakeFirebaseFirestore();
+      final provider = ConfiguracionNegocioProvider(
+        rubro: 'Bodega',
+        negocioId: 'negocio-1',
+        configuracionInicial: {
+          'nombreNegocio': 'Bodega Ana',
+          'telefono': '+51999999999',
+          'direccion': 'Av. Lima 123 (Ref: Frente al parque)',
+          'catalogoVenta': {
+            'versionEsquema': 1,
+            'presentaciones': <Map<String, dynamic>>[],
+            'medidas': [
+              {
+                'id': 'docena',
+                'nombre': 'Docena',
+                'minimoBase': 0,
+                'incrementoBase': 0,
+                'cantidadesRapidasBase': <int>[],
+                'permiteCantidad': true,
+                'permiteMonto': false,
+                'activa': false,
+                'obligatoria': false,
+                'requiereRevision': true,
+              },
+            ],
+          },
+          'delivery': false,
+        },
+        repository: NegocioRepository(firestore: firestore),
+      );
+
+      final guardado = await provider.guardar('usuario-sin-perfil');
+
+      expect(guardado, isFalse);
+      expect(provider.guardando, isFalse);
+      expect(provider.errorValidacion, isNotNull);
+      expect(provider.errorValidacion, contains('Docena'));
+      final datos =
+          (await firestore.collection('negocios').doc('negocio-1').get())
+              .data();
+      expect(datos, isNull);
+    });
+
+    test(
+      'round-trip: una segunda lectura refleja la edición guardada, no el preset',
+      () async {
+        final firestore = FakeFirebaseFirestore();
+        final primer = ConfiguracionNegocioProvider(
+          rubro: 'Bodega',
+          negocioId: 'negocio-1',
+          repository: NegocioRepository(firestore: firestore),
+        );
+        primer.nombreNegocio = 'Bodega Ana';
+        primer.telefono = '999999999';
+        primer.direccion = 'Av. Lima 123';
+        primer.referencia = 'Frente al parque';
+        primer
+          ..editarCantidadesRapidasBase(FamiliaUnidad.peso, [300, 400, 600])
+          ..editarMinimoBase(FamiliaUnidad.peso, 300)
+          ..editarIncrementoBase(FamiliaUnidad.peso, 100);
+
+        expect(await primer.guardar('usuario-sin-perfil'), isTrue);
+
+        final datos =
+            (await firestore.collection('negocios').doc('negocio-1').get())
+                .data()!;
+        final releido = ConfiguracionNegocioProvider(
+          rubro: 'Bodega',
+          negocioId: 'negocio-1',
+          configuracionInicial: datos,
+          repository: NegocioRepository(firestore: firestore),
+        );
+        final pesoReleido = releido.medidaDe(FamiliaUnidad.peso)!;
+        expect(pesoReleido.minimoBase, 300);
+        expect(pesoReleido.incrementoBase, 100);
+        expect(pesoReleido.cantidadesRapidasBase, [300, 400, 600]);
+
+        final presetPeso = PresetsVenta.obtener(
+          'Bodega',
+        ).medidaDe(FamiliaUnidad.peso)!;
+        expect(pesoReleido.minimoBase, isNot(presetPeso.minimoBase));
+        expect(pesoReleido.incrementoBase, isNot(presetPeso.incrementoBase));
+        expect(
+          pesoReleido.cantidadesRapidasBase,
+          isNot(presetPeso.cantidadesRapidasBase),
+        );
+      },
+    );
   });
 }

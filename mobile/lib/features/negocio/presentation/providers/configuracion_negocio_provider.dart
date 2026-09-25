@@ -1077,6 +1077,17 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      final medidasPendientes = _catalogoVenta.medidas
+          .where((medida) => medida.requiereRevision)
+          .map((medida) => medida.nombre)
+          .toList();
+      if (medidasPendientes.isNotEmpty) {
+        _errorValidacion =
+            'El catálogo tiene medidas pendientes de revisión '
+            '(${medidasPendientes.join(', ')}): revísalas antes de guardar.';
+        return false;
+      }
+
       final categoriasEliminadas = _categoriasIniciales
           .difference(_categorias.toSet())
           .toList();
