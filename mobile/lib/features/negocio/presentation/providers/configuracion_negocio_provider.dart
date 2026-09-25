@@ -73,7 +73,7 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
     _catalogoVenta = CatalogoVentaPersistido.desdePreset(
       PresetsVenta.obtener(rubro),
     );
-    if (configuracionInicial != null) {
+    if (configuracionInicial != null && configuracionInicial.isNotEmpty) {
       _restaurarConfiguracion(configuracionInicial);
     }
     _categoriasIniciales = _categorias.toSet();
@@ -210,6 +210,20 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
 
   void atras() {
     if (_pasoActual > 0) _pasoActual--;
+    notifyListeners();
+  }
+
+  // ── Pestaña activa del paso Catálogo ──────────────────────────────────
+  // El shell del dashboard la lee para mostrar la ayuda contextual de la
+  // pestaña actual (0 Categorías, 1 Unidades de venta, 2 Medidas). Solo
+  // guarda un índice: no escribe Firestore ni altera el borrador.
+  int _catalogoPestana = 0;
+  int get catalogoPestana => _catalogoPestana;
+
+  void cambiarCatalogoPestana(int indice) {
+    final acotado = indice.clamp(0, 2).toInt();
+    if (acotado == _catalogoPestana) return;
+    _catalogoPestana = acotado;
     notifyListeners();
   }
 
@@ -476,6 +490,28 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
 
   /// Borrador completo (presentaciones + medidas).
   CatalogoVentaPersistido get catalogoVenta => _catalogoVenta;
+
+  // ── Resumen del catálogo para la integración visual final ─────────────
+  // Cantidades de solo lectura que alimentan el resumen "antes de avanzar"
+  // del paso Catálogo y sus pruebas de integración.
+  int get categoriasActivas => _categorias.length;
+  int get presentacionesActivas => _catalogoVenta.presentaciones
+      .where((presentacion) => presentacion.activa)
+      .length;
+  int get medidasActivas => _catalogoVenta.medidas
+      .where((medida) => medida.activa)
+      .length;
+  int get totalFormatos => _catalogoVenta.presentaciones
+      .fold(0, (total, presentacion) => total + presentacion.formatos.length);
+  int get totalCantidadesRapidas => _catalogoVenta.medidas
+      .fold(0, (total, medida) => total + medida.cantidadesRapidasBase.length);
+
+  /// Nombres de las medidas que quedaron pendientes de revisión (bloquean
+  /// el guardado). El resumen las muestra como errores pendientes.
+  List<String> get medidasPendientesRevision => _catalogoVenta.medidas
+      .where((medida) => medida.requiereRevision)
+      .map((medida) => medida.nombre)
+      .toList();
 
   OpcionPresentacion? presentacionPorId(String id) {
     for (final presentacion in _catalogoVenta.presentaciones) {

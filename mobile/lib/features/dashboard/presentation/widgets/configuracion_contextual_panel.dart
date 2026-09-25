@@ -25,6 +25,7 @@ class ConfiguracionContextualPanel extends StatelessWidget {
         final movil = MediaQuery.sizeOf(context).width < 600;
         return _ContenidoPaso(
           paso: provider.pasoActual,
+          catalogoPestana: provider.catalogoPestana,
           movil: movil,
         );
       },
@@ -34,13 +35,20 @@ class ConfiguracionContextualPanel extends StatelessWidget {
 
 class _ContenidoPaso extends StatelessWidget {
   final int paso;
+  final int catalogoPestana;
   final bool movil;
 
-  const _ContenidoPaso({required this.paso, required this.movil});
+  const _ContenidoPaso({
+    required this.paso,
+    required this.catalogoPestana,
+    required this.movil,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final datos = _datosDelPaso(paso);
+    final datos = paso == 1
+        ? _datosDeCatalogo(catalogoPestana)
+        : _datosDelPaso(paso);
     return Column(
       key: const Key('configuracion-contextual-panel'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -63,6 +71,36 @@ class _ContenidoPaso extends StatelessWidget {
         ],
       ],
     );
+  }
+
+  // Ayuda del paso Catálogo según la pestaña interna activa: cada pestaña
+  // explica su propia área del catálogo seguro (presentaciones + medidas).
+  (String, String, List<(IconData, String, String)>) _datosDeCatalogo(
+    int pestana,
+  ) {
+    final tarjeta = switch (pestana) {
+      1 => (
+        Icons.inventory_2_outlined,
+        'Presentaciones',
+        'La presentación es el envase o la pieza completa que vendes: '
+            'el formato describe su contenido. "Botella 650 ml" descuenta '
+            'una botella de 650 ml en el futuro.',
+      ),
+      2 => (
+        Icons.square_foot_outlined,
+        'Medidas',
+        'Vender por medida entrega partes de un stock mayor: defines un '
+            'mínimo, un incremento y si se pide por cantidad o por soles. '
+            '"600 ml a granel" son exactamente 600 ml.',
+      ),
+      _ => (
+        Icons.category_outlined,
+        'Categorías',
+        'Las categorías organizan tus productos y agrupan '
+            'lo que verán tus clientes.',
+      ),
+    };
+    return ('Catálogo', 'Cómo se organizan tus productos.', [tarjeta]);
   }
 
   (String, String, List<(IconData, String, String)>) _datosDelPaso(int paso) {

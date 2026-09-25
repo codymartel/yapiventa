@@ -9,6 +9,7 @@ import '../../domain/models/catalogo_venta/opcion_presentacion.dart';
 import '../../domain/models/catalogo_venta/unidad_registrada.dart';
 import '../providers/configuracion_negocio_provider.dart';
 import 'seccion_medidas.dart';
+import 'seccion_resumen_catalogo.dart';
 
 // ═════════════════════════════════════════════════════════════════════════
 // PasoCatalogo — Paso 2 del wizard: "Catálogo"
@@ -30,32 +31,28 @@ import 'seccion_medidas.dart';
 // desactivarCategoria y categoriaTieneProductos).
 // ═════════════════════════════════════════════════════════════════════════
 
-class PasoCatalogo extends StatefulWidget {
+class PasoCatalogo extends StatelessWidget {
   const PasoCatalogo({super.key});
 
   @override
-  State<PasoCatalogo> createState() => _PasoCatalogoState();
-}
-
-class _PasoCatalogoState extends State<PasoCatalogo> {
-  int _pestanasActiva = 0; // 0 Categorías, 1 Unidades de venta, 2 Medidas.
-
-  @override
   Widget build(BuildContext context) {
+    final p = context.watch<ConfiguracionNegocioProvider>();
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
         _SelectorPestanas(
-          activa: _pestanasActiva,
-          onCambiar: (indice) => setState(() => _pestanasActiva = indice),
+          activa: p.catalogoPestana,
+          onCambiar: p.cambiarCatalogoPestana,
         ),
         const SizedBox(height: 20),
-        if (_pestanasActiva == 1)
+        if (p.catalogoPestana == 1)
           const SeccionPresentaciones()
-        else if (_pestanasActiva == 2)
+        else if (p.catalogoPestana == 2)
           const SeccionMedidas()
         else
           const _PanelCategorias(),
+        const SizedBox(height: 24),
+        const SeccionResumenCatalogo(),
       ],
     );
   }
@@ -593,16 +590,25 @@ Future<void> _dialogoGuardarCategoria(
   required bool nuevo,
   String? nombreActual,
 }) async {
+  final p = context.read<ConfiguracionNegocioProvider>();
   await showDialog<void>(
     context: context,
-    builder: (_) =>
-        _DialogoGuardarCategoria(nuevo: nuevo, nombreActual: nombreActual),
+    builder: (_) => _DialogoGuardarCategoria(
+      provider: p,
+      nuevo: nuevo,
+      nombreActual: nombreActual,
+    ),
   );
 }
 
 class _DialogoGuardarCategoria extends StatefulWidget {
-  const _DialogoGuardarCategoria({required this.nuevo, this.nombreActual});
+  const _DialogoGuardarCategoria({
+    required this.provider,
+    required this.nuevo,
+    this.nombreActual,
+  });
 
+  final ConfiguracionNegocioProvider provider;
   final bool nuevo;
   final String? nombreActual;
 
@@ -654,7 +660,7 @@ class _DialogoGuardarCategoriaState extends State<_DialogoGuardarCategoria> {
         ),
         ElevatedButton(
           onPressed: () {
-            final p = context.read<ConfiguracionNegocioProvider>();
+            final p = widget.provider;
             final mensajeError = _validarNombreCategoria(
               p,
               _controller.text,

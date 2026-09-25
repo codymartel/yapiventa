@@ -1679,20 +1679,47 @@ void main() {
     expect(panel, findsOneWidget);
     expect(enPanel(find.text('Paso 2 de 4')), findsOneWidget);
     expect(enPanel(find.text('Catálogo')), findsOneWidget);
+
+    // Catálogo: el panel sigue la pestaña interna activa del paso.
+    expect(provider.catalogoPestana, 0);
     expect(
       enPanel(find.textContaining('Las categorías organizan tus productos')),
       findsOneWidget,
     );
+    expect(enPanel(find.text('Presentaciones')), findsNothing);
+
+    provider.cambiarCatalogoPestana(1);
+    await tester.pumpAndSettle();
     expect(
-      enPanel(
-        find.textContaining('serán las opciones disponibles al crear productos'),
-      ),
+      enPanel(find.textContaining('el formato describe su contenido')),
       findsOneWidget,
     );
     expect(
-      enPanel(find.textContaining('no se calculan fracciones')),
+      enPanel(find.textContaining('una botella de 650 ml')),
       findsOneWidget,
     );
+    expect(enPanel(find.text('Categorías')), findsNothing);
+
+    provider.cambiarCatalogoPestana(2);
+    await tester.pumpAndSettle();
+    expect(
+      enPanel(find.textContaining('partes de un stock mayor')),
+      findsOneWidget,
+    );
+    expect(
+      enPanel(find.textContaining('por cantidad o por soles')),
+      findsOneWidget,
+    );
+    expect(enPanel(find.text('Categorías')), findsNothing);
+
+    // Cambiar de pestaña no desmonta el flujo ni reemplaza el provider.
+    expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
+    final elementoActual = tester.element(find.byType(ConfiguracionNegocioFlow));
+    final providerActual = Provider.of<ConfiguracionNegocioProvider>(
+      elementoActual,
+      listen: false,
+    );
+    expect(identical(providerActual, provider), isTrue);
 
     provider.irAPaso(2);
     await tester.pumpAndSettle();
@@ -1782,7 +1809,7 @@ void main() {
       expect(enPanel(find.text('Catálogo')), findsOneWidget);
       expect(
         enPanel(
-          find.textContaining('serán las opciones disponibles al crear productos'),
+          find.textContaining('Las categorías organizan tus productos'),
         ),
         findsOneWidget,
       );
@@ -1954,8 +1981,6 @@ void main() {
             'Paso 2 de 4',
             'Catálogo',
             'Las categorías organizan tus productos',
-            'serán las opciones disponibles al crear productos',
-            'no se calculan fracciones',
           ],
           2: [
             'Paso 3 de 4',
@@ -1987,6 +2012,33 @@ void main() {
             tester.takeException(),
             isNull,
             reason: 'escala=${escala.scale(10.0)} paso=$paso',
+          );
+        }
+
+        // Catálogo: cada pestaña del paso muestra su propia tarjeta.
+        provider.irAPaso(1);
+        await tester.pumpAndSettle();
+        final pestanas = <int, String>{
+          0: 'Las categorías organizan tus productos',
+          1: 'el formato describe su contenido',
+          2: 'partes de un stock mayor',
+        };
+        for (final entry in pestanas.entries) {
+          provider.cambiarCatalogoPestana(entry.key);
+          await tester.pumpAndSettle();
+          expect(
+            find.descendant(
+              of: panel,
+              matching: find.textContaining(entry.value),
+            ),
+            findsOneWidget,
+            reason: 'escala=${escala.scale(10.0)} pestana=${entry.key} '
+                'texto="${entry.value}"',
+          );
+          expect(
+            tester.takeException(),
+            isNull,
+            reason: 'escala=${escala.scale(10.0)} pestana=${entry.key}',
           );
         }
       }
