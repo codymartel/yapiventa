@@ -129,6 +129,46 @@ void main() {
       expect(renombrada.clave, 'temporal');
     });
 
+    test('renombrar cambia SOLO el nombre', () {
+      const categoria = CategoriaPersonalizada(
+        clave: 'mascotas',
+        nombre: 'Mascotas',
+        activa: false,
+      );
+
+      final renombrada = categoria.renombrar('Animales');
+
+      expect(renombrada.nombre, 'Animales');
+      expect(renombrada.clave, 'mascotas');
+      expect(renombrada.activa, isFalse);
+    });
+
+    test('renombrar una categoría activa la deja activa', () {
+      const categoria = CategoriaPersonalizada(
+        clave: 'mascotas',
+        nombre: 'Mascotas',
+      );
+
+      final renombrada = categoria.renombrar('Animales');
+
+      expect(renombrada.activa, isTrue);
+      expect(renombrada.clave, 'mascotas');
+      expect(renombrada.nombre, 'Animales');
+    });
+
+    test('renombrar no reactiva una categoría desactivada', () {
+      // Regresión: renombrar reconstruía la categoría y, al no pasar
+      // `activa`, volvía al default true.
+      final desactivada = CategoriaPersonalizada.crear(
+        'Mascotas',
+      ).copyWith(activa: false);
+
+      final renombrada = desactivada.renombrar('Animales');
+
+      expect(renombrada.activa, isFalse);
+      expect(renombrada, isNot(desactivada));
+    });
+
     test('desactivar no es eliminar: conserva la identidad', () {
       final categoria = CategoriaPersonalizada.crear('Temporal');
       final desactivada = categoria.copyWith(activa: false);

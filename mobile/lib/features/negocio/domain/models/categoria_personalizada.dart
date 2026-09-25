@@ -66,8 +66,10 @@ class CategoriaPersonalizada {
   /// Devuelve una copia con la misma clave y el nuevo nombre visible.
   ///
   /// Es el renombrado correcto: la identidad no cambia, la etiqueta sí.
+  /// `activa` tampoco cambia —sin esto, renombrar una categoría desactivada la
+  /// reactivaba en silencio, porque el constructor por defecto es `true`—.
   CategoriaPersonalizada renombrar(String nombreNuevo) =>
-      CategoriaPersonalizada(clave: clave, nombre: nombreNuevo.trim());
+      copyWith(nombre: nombreNuevo.trim());
 
   /// true si el nombre en minúsculas estorba: la clave no puede estar vacía
   /// porque no habría forma de identificar la categoría.
