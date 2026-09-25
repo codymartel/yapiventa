@@ -498,7 +498,17 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
   ///
   /// El nombre nuevo sí tiene que ser legítimo: no vacío, y no puede
   /// canon coincidir con otra personalizada, porque dos categorías con la misma
-  /// clave serían la misma categoría con dos etiquetas.
+  /// clave serían la misma categoría con dos etiquetas. Esas dos comprobaciones
+  /// son puras y van primero, para rechazar un nombre inválido sin gastar una
+  /// lectura de Firestore.
+  ///
+  /// Después se comprueba que la categoría no tenga productos, igual que en
+  /// [eliminarCategoriaPersonalizada]: los productos guardan el NOMBRE de la
+  /// categoría, así que renombrarla los dejaría apuntando a una categoría que
+  /// ya no se llama así. Con productos se bloquea el renombrado —no se
+  /// persiste, no se notifica y el nombre sigue como estaba— y el motivo
+  /// queda en [errorCatalogo]. Esta versión no reasigna los productos: esa
+  /// migración llega después.
   Future<bool> renombrarCategoriaPersonalizada(
     String uid,
     String clave,
@@ -519,6 +529,14 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
     );
     if (colisiona) {
       _errorCatalogo = 'Ya existe una categoría con ese nombre.';
+      return false;
+    }
+
+    final nombreActual = _categoriasPersonalizadas[indice].nombre;
+    if (await categoriaTieneProductos(nombreActual)) {
+      _errorCatalogo =
+          'Hay productos que usan la categoría "$nombreActual". '
+          'Reasígnalos antes de renombrarla.';
       return false;
     }
 

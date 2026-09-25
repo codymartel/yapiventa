@@ -1859,6 +1859,125 @@ void main() {
     });
   });
 
+  group('categorías personalizadas: renombrar con productos', () {
+    Future<FirebaseFirestore> firestoreConProductos(
+      List<Map<String, dynamic>> productos,
+    ) async {
+      final firestore = FakeFirebaseFirestore();
+      for (final (indice, producto) in productos.indexed) {
+        await firestore
+            .collection('negocios')
+            .doc('negocio-1')
+            .collection('productos')
+            .doc('producto-$indice')
+            .set(producto);
+      }
+      return firestore;
+    }
+
+    ConfiguracionNegocioProvider crearProvider(
+      FirebaseFirestore firestore, {
+      bool activa = true,
+    }) => ConfiguracionNegocioProvider(
+      rubro: 'Bodega',
+      negocioId: 'negocio-1',
+      configuracionInicial: {
+        'categoriasPersonalizadas': [
+          {'clave': 'mascotas', 'nombre': 'Mascotas', 'activa': activa},
+        ],
+      },
+      repository: NegocioRepository(firestore: firestore),
+    );
+
+    test('bloquea el renombrado si un producto usa la categoría', () async {
+      final firestore = await firestoreConProductos([
+        {'nombre': 'Arena para gato', 'categoria': 'Mascotas'},
+      ]);
+      final provider = crearProvider(firestore);
+      var notificaciones = 0;
+      provider.addListener(() => notificaciones++);
+
+      final renombrada = await provider.renombrarCategoriaPersonalizada(
+        'usuario-1',
+        'mascotas',
+        'Animales',
+      );
+
+      expect(renombrada, isFalse);
+      expect(provider.errorCatalogo, contains('Hay productos'));
+      expect(provider.errorCatalogo, contains('Mascotas'));
+      // Sigue llamándose Mascotas, con su clave intacta.
+      expect(provider.categoriasPersonalizadas.single.nombre, 'Mascotas');
+      expect(provider.categoriasPersonalizadas.single.clave, 'mascotas');
+    });
+
+    test('al bloquear no persiste ni notifica', () async {
+      final firestore = await firestoreConProductos([
+        {'nombre': 'Arena para gato', 'categoria': 'Mascotas'},
+      ]);
+      final provider = crearProvider(firestore);
+      var notificaciones = 0;
+      provider.addListener(() => notificaciones++);
+
+      await provider.renombrarCategoriaPersonalizada(
+        'usuario-1',
+        'mascotas',
+        'Animales',
+      );
+
+      expect(notificaciones, 0);
+      // No se escribió categoriasPersonalizadas y el producto quedó intacto.
+      final documento = await firestore
+          .collection('negocios')
+          .doc('negocio-1')
+          .get();
+      expect(documento.data()?['categoriasPersonalizadas'], isNull);
+      final productos = await firestore
+          .collection('negocios')
+          .doc('negocio-1')
+          .collection('productos')
+          .get();
+      expect(productos.docs.single.data(), {
+        'nombre': 'Arena para gato',
+        'categoria': 'Mascotas',
+      });
+    });
+
+    test('sin productos dependientes renombra conservando clave y activa', () async {
+      // Hay productos, pero de otra categoría: la comprobación es por
+      // categoría, no "si el negocio tiene productos".
+      final firestore = await firestoreConProductos([
+        {'nombre': 'Leche', 'categoria': 'Importados'},
+      ]);
+      final provider = crearProvider(firestore, activa: false);
+      var notificaciones = 0;
+      provider.addListener(() => notificaciones++);
+
+      final renombrada = await provider.renombrarCategoriaPersonalizada(
+        'usuario-1',
+        'mascotas',
+        'Animales',
+      );
+
+      expect(renombrada, isTrue);
+      expect(provider.errorCatalogo, isNull);
+      expect(notificaciones, 1);
+      expect(provider.categoriasPersonalizadas, [
+        const CategoriaPersonalizada(
+          clave: 'mascotas',
+          nombre: 'Animales',
+          activa: false,
+        ),
+      ]);
+      final datos =
+          (await firestore.collection('negocios').doc('negocio-1').get())
+              .data()!;
+      expect(datos['categoriasPersonalizadas'], [
+        {'clave': 'mascotas', 'nombre': 'Animales', 'activa': false},
+      ]);
+    });
+  });
+
   group('categorías personalizadas: eliminar', () {
     test('elimina solo esa categoría y persiste', () async {
       final firestore = FakeFirebaseFirestore();
