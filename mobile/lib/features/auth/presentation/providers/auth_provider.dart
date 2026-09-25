@@ -141,6 +141,9 @@ class AuthProvider extends ChangeNotifier {
               'Esta cuenta de Google ya está registrada. Inicia sesión.';
           _status = AuthStatus.error;
         } else {
+          // LOGIN con cuenta ya registrada: no se escribe nada. El
+          // AccesoProvider es quien lee users/{uid}.negocioId y carga el
+          // progreso para decidir la ruta.
           _status = AuthStatus.success;
         }
       } else {
@@ -148,8 +151,13 @@ class AuthProvider extends ChangeNotifier {
           await _aprovisionarPerfil(user);
           _status = AuthStatus.success;
         } else {
+          // LOGIN con cuenta NO registrada: Google ya abrió sesión, así que
+          // hay que cerrarla para no dejar una sesión sin perfil. No se crea
+          // perfil, plan ni negocio — el registro es solo desde
+          // RegisterScreen, y desde ahí el mensaje es el inverso.
           await _repository.cerrarSesion();
-          _errorMessage = 'Cuenta no registrada. Por favor, regístrate.';
+          _errorMessage =
+              'Esta cuenta aún no está registrada. Regístrate para crear tu negocio.';
           _status = AuthStatus.error;
         }
       }

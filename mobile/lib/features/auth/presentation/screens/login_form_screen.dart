@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../data/google_sign_in_service.dart';
 import '../providers/auth_provider.dart';
 
 /// Migración de tu @Composable LoginScreenForm.
@@ -9,8 +10,19 @@ import '../providers/auth_provider.dart';
 /// AuthProvider (isLoading, errorMessage, status) para saber qué mostrar,
 /// y LLAMAR a sus métodos cuando el usuario aprieta "Ingresar". Pero la
 /// UI en sí sigue sin saber nada de Firebase — eso lo resuelve el provider.
+///
+/// El botón "Continuar con Google" usa el MISMO camino que el registro:
+/// pide los tokens a GoogleSignInService y se los pasa a
+/// `autenticarConGoogle(..., esModoRegistro: false)`. Con `false` el
+/// provider NO aprovisiona nada: si `users/{uid}` existe deja entrar, y
+/// si no existe cierra la sesión que Google acaba de abrir y avisa que
+/// esa cuenta todavía no está registrada. Registrar cuentas nuevas sigue
+/// siendo responsabilidad exclusiva de RegisterScreen.
 class LoginFormScreen extends StatefulWidget {
-  const LoginFormScreen({super.key});
+  /// Solo para tests: en producción se crea una instancia propia.
+  final GoogleSignInService? googleSignInService;
+
+  const LoginFormScreen({super.key, this.googleSignInService});
 
   @override
   State<LoginFormScreen> createState() => _LoginFormScreenState();
@@ -20,6 +32,9 @@ class _LoginFormScreenState extends State<LoginFormScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _passwordVisible = false;
+
+  late final GoogleSignInService _googleSignInService =
+      widget.googleSignInService ?? GoogleSignInService();
 
   final _emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
@@ -40,6 +55,21 @@ class _LoginFormScreenState extends State<LoginFormScreen> {
     await authProvider.iniciarSesion(
       _emailController.text.trim(),
       _passwordController.text,
+    );
+  }
+
+  /// Obtiene los tokens de Google y se los pasa al provider en modo LOGIN.
+  /// Si el usuario cierra el selector sin elegir cuenta no se hace nada:
+  /// cancelar no es un error.
+  Future<void> _manejarGoogle(AuthProvider authProvider) async {
+    final tokens = await _googleSignInService.iniciarSesionConGoogle();
+    if (tokens == null) return;
+    if (!mounted) return;
+
+    await authProvider.autenticarConGoogle(
+      tokens.idToken,
+      tokens.accessToken,
+      esModoRegistro: false,
     );
   }
 
@@ -276,6 +306,68 @@ class _LoginFormScreenState extends State<LoginFormScreen> {
                                       fontSize: 15,
                                     ),
                                   ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 18),
+                        Row(
+                          children: [
+                            Expanded(child: Divider(color: AppColors.border)),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                              ),
+                              child: Text(
+                                'o continúa con',
+                                style: TextStyle(
+                                  color: AppColors.dim,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ),
+                            Expanded(child: Divider(color: AppColors.border)),
+                          ],
+                        ),
+                        const SizedBox(height: 18),
+                        SizedBox(
+                          height: 50,
+                          child: ElevatedButton(
+                            onPressed: authProvider.isLoading
+                                ? null
+                                : () => _manejarGoogle(authProvider),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              disabledBackgroundColor: AppColors.superficie,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  'G',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF4285F4),
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                SizedBox(width: 8),
+                                Flexible(
+                                  child: Text(
+                                    'Continuar con Google',
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: Color(0xFF1C2A3A),
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
 

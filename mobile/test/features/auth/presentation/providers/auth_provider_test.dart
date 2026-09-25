@@ -120,6 +120,82 @@ void main() {
     verifyNever(() => userRepository.existePerfil(any()));
   });
 
+  group('login con Google', () {
+    test('cuenta ya registrada entra sin escribir nada', () async {
+      final usuario = _UserMock();
+      when(() => usuario.uid).thenReturn('usuario-1');
+      when(
+        () => authRepository.autenticarConGoogle('id', 'access'),
+      ).thenAnswer((_) async => usuario);
+      when(
+        () => authRepository.emailEstaVerificado(),
+      ).thenAnswer((_) async => true);
+      when(
+        () => userRepository.existePerfil('usuario-1'),
+      ).thenAnswer((_) async => true);
+
+      await provider.autenticarConGoogle(
+        'id',
+        'access',
+        esModoRegistro: false,
+      );
+
+      expect(provider.status, AuthStatus.success);
+      expect(provider.errorMessage, isNull);
+      // LOGIN nunca aprovisiona: ni perfil, ni plan, ni cierre de sesión.
+      verifyNever(() => userRepository.asegurarPerfilYPlan(
+        uid: any(named: 'uid'),
+        email: any(named: 'email'),
+        limiteProductos: any(named: 'limiteProductos'),
+        minimoProductos: any(named: 'minimoProductos'),
+        crearPerfilSiNoExiste: any(named: 'crearPerfilSiNoExiste'),
+      ));
+      verifyNever(() => authRepository.cerrarSesion());
+    });
+
+    test('cuenta no registrada cierra sesión y no crea nada', () async {
+      final usuario = _UserMock();
+      when(() => usuario.uid).thenReturn('desconocido');
+      when(
+        () => authRepository.autenticarConGoogle('id', 'access'),
+      ).thenAnswer((_) async => usuario);
+      when(
+        () => authRepository.emailEstaVerificado(),
+      ).thenAnswer((_) async => true);
+      when(
+        () => userRepository.existePerfil('desconocido'),
+      ).thenAnswer((_) async => false);
+      when(() => authRepository.cerrarSesion()).thenAnswer((_) async {});
+
+      await provider.autenticarConGoogle(
+        'id',
+        'access',
+        esModoRegistro: false,
+      );
+
+      expect(provider.status, AuthStatus.error);
+      expect(
+        provider.errorMessage,
+        'Esta cuenta aún no está registrada. Regístrate para crear tu negocio.',
+      );
+      expect(provider.isLoading, isFalse);
+      // Se cierra la sesión que Google abrió, pero NO se escribe nada.
+      verify(() => authRepository.cerrarSesion()).called(1);
+      verifyNever(() => userRepository.asegurarPerfilYPlan(
+        uid: any(named: 'uid'),
+        email: any(named: 'email'),
+        limiteProductos: any(named: 'limiteProductos'),
+        minimoProductos: any(named: 'minimoProductos'),
+        crearPerfilSiNoExiste: any(named: 'crearPerfilSiNoExiste'),
+      ));
+      verifyNever(() => userRepository.guardarPlanFree(
+        uid: any(named: 'uid'),
+        limiteProductos: any(named: 'limiteProductos'),
+        minimoProductos: any(named: 'minimoProductos'),
+      ));
+    });
+  });
+
   test(
     'negocioYaConfigurado delega en setupCompleto del repositorio',
     () async {
