@@ -1697,6 +1697,167 @@ void main() {
       expect(provider.categoriasPersonalizadas.single.activa, isFalse);
     });
   });
+
+  group('categorías personalizadas: renombrar', () {
+    test('renombra conservando clave y estado, y persiste', () async {
+      final firestore = FakeFirebaseFirestore();
+      final provider = ConfiguracionNegocioProvider(
+        rubro: 'Bodega',
+        negocioId: 'negocio-1',
+        configuracionInicial: {
+          'categoriasPersonalizadas': [
+            {'clave': 'dulces', 'nombre': 'Dulces', 'activa': false},
+            {'clave': 'salas', 'nombre': 'Salas', 'activa': true},
+          ],
+        },
+        repository: NegocioRepository(firestore: firestore),
+      );
+      var notificaciones = 0;
+      provider.addListener(() => notificaciones++);
+
+      final renombrada = await provider.renombrarCategoriaPersonalizada(
+        'usuario-1',
+        'dulces',
+        '  Golosinas  ',
+      );
+
+      expect(renombrada, isTrue);
+      expect(provider.errorCatalogo, isNull);
+      expect(notificaciones, 1);
+      // La etiqueta cambia; la identidad y el estado no. Renombrar una
+      // categoría desactivada no la reactiva.
+      expect(provider.categoriasPersonalizadas, [
+        const CategoriaPersonalizada(
+          clave: 'dulces',
+          nombre: 'Golosinas',
+          activa: false,
+        ),
+        const CategoriaPersonalizada(clave: 'salas', nombre: 'Salas'),
+      ]);
+
+      final datos =
+          (await firestore.collection('negocios').doc('negocio-1').get())
+              .data()!;
+      expect(datos['categoriasPersonalizadas'], [
+        {'clave': 'dulces', 'nombre': 'Golosinas', 'activa': false},
+        {'clave': 'salas', 'nombre': 'Salas', 'activa': true},
+      ]);
+    });
+
+    test('rechaza un nombre vacío', () async {
+      final provider = ConfiguracionNegocioProvider(
+        rubro: 'Bodega',
+        negocioId: 'negocio-1',
+        configuracionInicial: {
+          'categoriasPersonalizadas': [
+            {'clave': 'dulces', 'nombre': 'Dulces', 'activa': true},
+          ],
+        },
+        repository: NegocioRepository(firestore: FakeFirebaseFirestore()),
+      );
+      var notificaciones = 0;
+      provider.addListener(() => notificaciones++);
+
+      final renombrada = await provider.renombrarCategoriaPersonalizada(
+        'usuario-1',
+        'dulces',
+        '   ',
+      );
+
+      expect(renombrada, isFalse);
+      expect(provider.errorCatalogo, contains('no puede estar vacío'));
+      expect(provider.categoriasPersonalizadas.single.nombre, 'Dulces');
+      expect(notificaciones, 0);
+    });
+
+    test('rechaza un nombre que colisiona con otra categoría', () async {
+      final provider = ConfiguracionNegocioProvider(
+        rubro: 'Bodega',
+        negocioId: 'negocio-1',
+        configuracionInicial: {
+          'categoriasPersonalizadas': [
+            {'clave': 'dulces', 'nombre': 'Dulces', 'activa': true},
+            {'clave': 'salas', 'nombre': 'Salas', 'activa': true},
+          ],
+        },
+        repository: NegocioRepository(firestore: FakeFirebaseFirestore()),
+      );
+      var notificaciones = 0;
+      provider.addListener(() => notificaciones++);
+
+      // Canónicamente igual a "salas" aunque se escriba distinto.
+      final renombrada = await provider.renombrarCategoriaPersonalizada(
+        'usuario-1',
+        'dulces',
+        '  SALAS ',
+      );
+
+      expect(renombrada, isFalse);
+      expect(provider.errorCatalogo, contains('Ya existe'));
+      expect(
+        provider.categoriasPersonalizadas.map((c) => c.nombre),
+        ['Dulces', 'Salas'],
+      );
+      expect(notificaciones, 0);
+    });
+
+    test('una categoría inexistente no cambia nada', () async {
+      final firestore = FakeFirebaseFirestore();
+      final provider = ConfiguracionNegocioProvider(
+        rubro: 'Bodega',
+        negocioId: 'negocio-1',
+        configuracionInicial: {
+          'categoriasPersonalizadas': [
+            {'clave': 'dulces', 'nombre': 'Dulces', 'activa': true},
+          ],
+        },
+        repository: NegocioRepository(firestore: firestore),
+      );
+      var notificaciones = 0;
+      provider.addListener(() => notificaciones++);
+
+      final renombrada = await provider.renombrarCategoriaPersonalizada(
+        'usuario-1',
+        'inexistente',
+        'Otro nombre',
+      );
+
+      expect(renombrada, isFalse);
+      expect(notificaciones, 0);
+      expect(provider.categoriasPersonalizadas.single.nombre, 'Dulces');
+      final documento = await firestore
+          .collection('negocios')
+          .doc('negocio-1')
+          .get();
+      expect(documento.exists, isFalse);
+    });
+
+    test('un fallo de persistencia conserva el nombre anterior', () async {
+      final provider = ConfiguracionNegocioProvider(
+        rubro: 'Bodega',
+        negocioId: 'negocio-1',
+        configuracionInicial: {
+          'categoriasPersonalizadas': [
+            {'clave': 'dulces', 'nombre': 'Dulces', 'activa': true},
+          ],
+        },
+        repository: RepositoryQueFalla(FakeFirebaseFirestore()),
+      );
+      var notificaciones = 0;
+      provider.addListener(() => notificaciones++);
+
+      final renombrada = await provider.renombrarCategoriaPersonalizada(
+        'usuario-1',
+        'dulces',
+        'Golosinas',
+      );
+
+      expect(renombrada, isFalse);
+      expect(provider.errorCatalogo, contains('No se pudo renombrar'));
+      expect(notificaciones, 0);
+      expect(provider.categoriasPersonalizadas.single.nombre, 'Dulces');
+    });
+  });
 }
 
 

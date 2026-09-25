@@ -490,6 +490,51 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
         (categoria) => categoria.clave == clave,
       );
 
+  /// Renombra una categoría personalizada conservando su identidad.
+  ///
+  /// La clave NO se recalcula: los productos la referencian, y rederivarla
+  /// dejaría la categoría apuntando a un lado viejo. Renombrar es cambiar la
+  /// etiqueta, nunca cambiar quién es. Por eso tampoco se toca `activa`.
+  ///
+  /// El nombre nuevo sí tiene que ser legítimo: no vacío, y no puede
+  /// canon coincidir con otra personalizada, porque dos categorías con la misma
+  /// clave serían la misma categoría con dos etiquetas.
+  Future<bool> renombrarCategoriaPersonalizada(
+    String uid,
+    String clave,
+    String nombreNuevo,
+  ) async {
+    final indice = _indiceCategoriaPersonalizada(clave);
+    if (indice == -1) return false;
+
+    final nombreLimpio = nombreNuevo.trim();
+    if (canonicalizarCategoria(nombreLimpio).isEmpty) {
+      _errorCatalogo = 'El nombre de la categoría no puede estar vacío.';
+      return false;
+    }
+    final colisiona = _categoriasPersonalizadas.any(
+      (categoria) =>
+          categoria.clave != clave &&
+          categoria.clave == canonicalizarCategoria(nombreLimpio),
+    );
+    if (colisiona) {
+      _errorCatalogo = 'Ya existe una categoría con ese nombre.';
+      return false;
+    }
+
+    // copyWith y no CategoriaPersonalizada.renombrar: aquel reconstruye la
+    // categoría y revierte `activa` a true, lo que reactivaría en silencio
+    // una categoría que el negocio tenía desactivada.
+    final actualizada = [..._categoriasPersonalizadas];
+    actualizada[indice] = actualizada[indice].copyWith(nombre: nombreLimpio);
+
+    return _persistirCategoriasPersonalizadas(
+      uid,
+      actualizada,
+      'No se pudo renombrar la categoría. Revisa tu conexión.',
+    );
+  }
+
   void agregarCategoria(String nombre) {
     if (_esCategoriaDuplicada(nombre)) return;
     _categorias.add(nombre);
