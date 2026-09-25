@@ -501,7 +501,7 @@ class NegocioRepository
         .doc(negocioIdResuelto)
         .get();
     final datos = documento.data();
-    return _leerCategoriasPersonalizadas(
+    return CategoriaPersonalizada.listaDesde(
       datos == null ? null : datos['categoriasPersonalizadas'],
     );
   }
@@ -518,42 +518,6 @@ class NegocioRepository
           },
         )
         .toList();
-  }
-
-  /// Lectura tolerante: un documento sucio no puede romper la carga.
-  ///
-  /// Descarta lo que no sea un mapa, deriva la clave del nombre cuando falta y
-  /// deduplica por clave (la identidad del modelo), conservando el primero.
-  List<CategoriaPersonalizada> _leerCategoriasPersonalizadas(Object? valor) {
-    if (valor is! List) return const [];
-
-    final categorias = <CategoriaPersonalizada>[];
-    final claves = <String>{};
-    for (final elemento in valor) {
-      if (elemento is! Map) continue;
-      final datos = Map<String, dynamic>.from(elemento);
-
-      final nombreBruto = datos['nombre'];
-      final nombre = nombreBruto is String ? nombreBruto.trim() : '';
-      if (nombre.isEmpty) continue;
-
-      final claveBruta = datos['clave'];
-      final claveGuardada = claveBruta is String ? claveBruta.trim() : '';
-      final clave = claveGuardada.isEmpty
-          ? canonicalizarCategoria(nombre)
-          : claveGuardada;
-      if (clave.isEmpty || !claves.add(clave)) continue;
-
-      final activaBruto = datos['activa'];
-      categorias.add(
-        CategoriaPersonalizada(
-          clave: clave,
-          nombre: nombre,
-          activa: activaBruto is bool ? activaBruto : true,
-        ),
-      );
-    }
-    return categorias;
   }
 
   List<String> _leerCategorias(Object? valor) {

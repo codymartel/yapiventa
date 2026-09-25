@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:mobile/features/productos/domain/models/familia_unidad.dart';
 import '../../data/negocio_repository.dart';
 import '../../domain/models/zona_delivery.dart';
+import '../../domain/models/categoria_personalizada.dart';
 import '../../domain/models/horario_dia.dart';
 import '../../domain/models/metodo_pago_tipo.dart';
 import '../../domain/models/config_pago_metodo.dart';
@@ -72,6 +73,7 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
     // "Rollo" o "Par" que el mapa legacy no distingue por rubro).
     final preset = PresetsVenta.obtener(rubro);
     _categorias = List.of(preset.categorias);
+    _categoriasPersonalizadas = const [];
     _unidadesMedida = _unidadesEspejoDelPreset(preset);
     _catalogoVenta = CatalogoVentaPersistido.desdePreset(preset);
     if (configuracionInicial != null && configuracionInicial.isNotEmpty) {
@@ -123,6 +125,10 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
 
     final categoriasGuardadas = (datos['categorias'] as List?)?.cast<String>();
     if (categoriasGuardadas != null) _categorias = categoriasGuardadas;
+
+    _categoriasPersonalizadas = CategoriaPersonalizada.listaDesde(
+      datos['categoriasPersonalizadas'],
+    );
 
     final unidadesGuardadas = (datos['unidadesMedida'] as List?)
         ?.whereType<Map>()
@@ -357,6 +363,13 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
   // ── PASO 2: Catálogo (categorías + unidades) ────────────────────────
   late List<String> _categorias;
   List<String> get categorias => List.unmodifiable(_categorias);
+
+  /// Categorías creadas por el usuario, cargadas desde
+  /// `categoriasPersonalizadas`. Solo lectura: por ahora no se crean, editan
+  /// ni eliminan; la UI y la escritura llegan en etapas posteriores.
+  late List<CategoriaPersonalizada> _categoriasPersonalizadas;
+  List<CategoriaPersonalizada> get categoriasPersonalizadas =>
+      List.unmodifiable(_categoriasPersonalizadas);
 
   void agregarCategoria(String nombre) {
     if (_esCategoriaDuplicada(nombre)) return;

@@ -7,6 +7,7 @@ import 'package:mobile/features/negocio/domain/models/catalogo_venta/catalogo_ve
 import 'package:mobile/features/negocio/domain/models/catalogo_venta/formato_presentacion.dart';
 import 'package:mobile/features/negocio/domain/models/catalogo_venta/preset_venta_rubro.dart';
 import 'package:mobile/features/negocio/domain/models/catalogo_venta/unidad_registrada.dart';
+import 'package:mobile/features/negocio/domain/models/categoria_personalizada.dart';
 import 'package:mobile/features/negocio/domain/models/pais_telefono.dart';
 import 'package:mobile/domain/models/tipo_unidad.dart';
 import 'package:mobile/features/negocio/presentation/providers/configuracion_negocio_provider.dart';
@@ -1320,6 +1321,69 @@ void main() {
         },
       );
     });
-  }
+
+  group('categorías personalizadas: carga de solo lectura', () {
+
+    test('carga las personalizadas guardadas en la configuración', () {
+      final provider = crearProvider(
+        configuracionInicial: {
+          'categoriasPersonalizadas': [
+            {'clave': 'bebidas caseras', 'nombre': 'Bebidas Caseras', 'activa': true},
+            {'clave': 'dulces', 'nombre': 'Dulces', 'activa': false},
+          ],
+        },
+      );
+
+      expect(provider.categoriasPersonalizadas, [
+        const CategoriaPersonalizada(
+          clave: 'bebidas caseras',
+          nombre: 'Bebidas Caseras',
+        ),
+        const CategoriaPersonalizada(
+          clave: 'dulces',
+          nombre: 'Dulces',
+          activa: false,
+        ),
+      ]);
+    });
+
+    test('sin datos guardados la lista queda vacía', () {
+      final sinCampo = crearProvider(
+        configuracionInicial: {'nombreNegocio': 'Bodega Ana'},
+      );
+      final conCampoVacio = crearProvider(
+        configuracionInicial: {'categoriasPersonalizadas': null},
+      );
+      final nuevo = crearProvider();
+
+      expect(sinCampo.categoriasPersonalizadas, isEmpty);
+      expect(conCampoVacio.categoriasPersonalizadas, isEmpty);
+      expect(nuevo.categoriasPersonalizadas, isEmpty);
+    });
+
+    test('el getter no permite modificar el estado interno', () {
+      final provider = crearProvider(
+        configuracionInicial: {
+          'categoriasPersonalizadas': [
+            {'clave': 'dulces', 'nombre': 'Dulces', 'activa': true},
+          ],
+        },
+      );
+
+      expect(
+        () => provider.categoriasPersonalizadas.add(
+          const CategoriaPersonalizada(clave: 'salas', nombre: 'Salas'),
+        ),
+        throwsUnsupportedError,
+      );
+      expect(
+        () => provider.categoriasPersonalizadas.clear(),
+        throwsUnsupportedError,
+      );
+
+      expect(provider.categoriasPersonalizadas.map((c) => c.clave), ['dulces']);
+    });
+  });
+}
 
 
