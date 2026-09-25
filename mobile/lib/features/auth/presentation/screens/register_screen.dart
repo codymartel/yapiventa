@@ -12,7 +12,10 @@ import '../providers/auth_provider.dart';
 /// GoogleSignInService solo para OBTENER los tokens, y se los pasa al
 /// provider, que es quien decide qué hacer con ellos.
 class RegisterScreen extends StatefulWidget {
-  const RegisterScreen({super.key});
+  /// Solo para tests: en producción se crea una instancia propia.
+  final GoogleSignInService? googleSignInService;
+
+  const RegisterScreen({super.key, this.googleSignInService});
 
   @override
   State<RegisterScreen> createState() => _RegisterScreenState();
@@ -24,9 +27,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   bool _passwordVisible = false;
   bool _aceptoTerminos = false;
 
-  // NUEVO — el servicio que obtiene los tokens de Google. Se crea una
-  // sola vez por pantalla, no en cada build.
-  final _googleSignInService = GoogleSignInService();
+  // El servicio que obtiene los tokens de Google. Se crea una sola vez por
+  // pantalla, no en cada build.
+  late final GoogleSignInService _googleSignInService =
+      widget.googleSignInService ?? GoogleSignInService();
 
   final _emailRegex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
 
@@ -109,6 +113,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
         _aceptoTerminos &&
         !authProvider.isLoading;
 
+    // Google crea la cuenta igual que el correo, así que exige lo mismo: los
+    // términos aceptados. Sin este gate, el aprovisionamiento escribía
+    // `terminosAceptados: true` en users/{uid} para alguien que nunca había
+    // visto el diálogo.
+    final googleHabilitado = _aceptoTerminos && !authProvider.isLoading;
+
     return Scaffold(
       backgroundColor: AppColors.fondo,
       body: SafeArea(
@@ -168,11 +178,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         SizedBox(
                           height: 50,
                           child: ElevatedButton(
-                            onPressed: authProvider.isLoading
-                                ? null
-                                : _registrarseConGoogle,
+                            onPressed: googleHabilitado
+                                ? _registrarseConGoogle
+                                : null,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.white,
+                              disabledBackgroundColor: AppColors.superficie,
                               elevation: 0,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -190,12 +201,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                   ),
                                 ),
                                 const SizedBox(width: 8),
-                                Text(
-                                  'Continuar con Google',
-                                  style: TextStyle(
-                                    color: const Color(0xFF1C2A3A),
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 14,
+                                Flexible(
+                                  child: Text(
+                                    'Continuar con Google',
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: const Color(0xFF1C2A3A),
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -204,10 +218,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          '🔒 Recomendado · más seguro y rápido',
+                          googleHabilitado
+                              ? '🔒 Recomendado · más seguro y rápido'
+                              : '🔒 Acepta los términos para continuar',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: AppColors.blueLt,
+                            color: _aceptoTerminos
+                                ? AppColors.blueLt
+                                : AppColors.dim,
                             fontSize: 11,
                           ),
                         ),
