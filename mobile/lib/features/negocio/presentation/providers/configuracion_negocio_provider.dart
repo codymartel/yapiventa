@@ -415,6 +415,49 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
     return true;
   }
 
+  /// Desactiva una categoría personalizada conservándola.
+  ///
+  /// Desactivar NO es eliminar: la categoría sigue en la lista con
+  /// `activa: false` y por eso se sigue persistiendo. Es el espejo de
+  /// [agregarCategoriaPersonalizada] en su orden de escritura —primero
+  /// Firestore, después la memoria— para que un fallo de red no desactive en
+  /// pantalla algo que en la base sigue activa. Reactivar, renombrar y
+  /// eliminar llegan en etapas posteriores.
+  ///
+  /// Una clave que no existe no es un error del usuario sino una operación
+  /// imposible: devuelve `false` sin escribir, sin tocar el estado y sin
+  /// notificar.
+  Future<bool> desactivarCategoriaPersonalizada(
+    String uid,
+    String clave,
+  ) async {
+    final indice = _categoriasPersonalizadas.indexWhere(
+      (categoria) => categoria.clave == clave,
+    );
+    if (indice == -1) return false;
+
+    final actualizada = [..._categoriasPersonalizadas];
+    // copyWith y no una construcción nueva: la clave es la identidad y el
+    // nombre es la etiqueta; esta operación no puede tocarlos.
+    actualizada[indice] = actualizada[indice].copyWith(activa: false);
+
+    try {
+      await _repository.guardarCategoriasPersonalizadas(
+        uid,
+        actualizada,
+        negocioId: negocioId,
+      );
+    } catch (_) {
+      _errorCatalogo = 'No se pudo desactivar la categoría. Revisa tu conexión.';
+      return false;
+    }
+
+    _categoriasPersonalizadas = actualizada;
+    _errorCatalogo = null;
+    notifyListeners();
+    return true;
+  }
+
   void agregarCategoria(String nombre) {
     if (_esCategoriaDuplicada(nombre)) return;
     _categorias.add(nombre);

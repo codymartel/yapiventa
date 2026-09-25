@@ -13,6 +13,21 @@ import 'package:mobile/domain/models/tipo_unidad.dart';
 import 'package:mobile/features/negocio/presentation/providers/configuracion_negocio_provider.dart';
 import 'package:mobile/features/productos/domain/models/familia_unidad.dart';
 
+/// Repository que falla al escribir, para comprobar que un error de red no
+/// llega a la memoria del provider.
+class RepositoryQueFalla extends NegocioRepository {
+  RepositoryQueFalla(FirebaseFirestore instancia) : super(firestore: instancia);
+
+  @override
+  Future<void> guardarCategoriasPersonalizadas(
+    String uid,
+    List<CategoriaPersonalizada> categorias, {
+    String? negocioId,
+  }) async {
+    throw StateError('sin conexión');
+  }
+}
+
 void main() {
   test('limita el telefono al maximo de digitos del pais seleccionado', () {
     final provider = ConfiguracionNegocioProvider(
@@ -1482,6 +1497,107 @@ void main() {
         {'clave': 'dulces', 'nombre': 'Dulces', 'activa': true},
         {'clave': 'salas', 'nombre': 'Salas', 'activa': true},
       ]);
+    });
+  });
+
+  group('categorías personalizadas: desactivar', () {
+    test('desactiva conservando clave y nombre, y persiste', () async {
+      final firestore = FakeFirebaseFirestore();
+      final provider = ConfiguracionNegocioProvider(
+        rubro: 'Bodega',
+        negocioId: 'negocio-1',
+        configuracionInicial: {
+          'categoriasPersonalizadas': [
+            {'clave': 'dulces', 'nombre': 'Dulces', 'activa': true},
+            {'clave': 'salas', 'nombre': 'Salas', 'activa': true},
+          ],
+        },
+        repository: NegocioRepository(firestore: firestore),
+      );
+      var notificaciones = 0;
+      provider.addListener(() => notificaciones++);
+
+      final desactivada = await provider.desactivarCategoriaPersonalizada(
+        'usuario-1',
+        'dulces',
+      );
+
+      expect(desactivada, isTrue);
+      expect(provider.errorCatalogo, isNull);
+      expect(notificaciones, 1);
+      // Sigue en la lista: desactivar oculta, no elimina.
+      expect(provider.categoriasPersonalizadas, [
+        const CategoriaPersonalizada(
+          clave: 'dulces',
+          nombre: 'Dulces',
+          activa: false,
+        ),
+        const CategoriaPersonalizada(clave: 'salas', nombre: 'Salas'),
+      ]);
+
+      final datos =
+          (await firestore.collection('negocios').doc('negocio-1').get())
+              .data()!;
+      expect(datos['categoriasPersonalizadas'], [
+        {'clave': 'dulces', 'nombre': 'Dulces', 'activa': false},
+        {'clave': 'salas', 'nombre': 'Salas', 'activa': true},
+      ]);
+    });
+
+    test('una categoría inexistente no cambia nada', () async {
+      final firestore = FakeFirebaseFirestore();
+      final provider = ConfiguracionNegocioProvider(
+        rubro: 'Bodega',
+        negocioId: 'negocio-1',
+        configuracionInicial: {
+          'categoriasPersonalizadas': [
+            {'clave': 'dulces', 'nombre': 'Dulces', 'activa': true},
+          ],
+        },
+        repository: NegocioRepository(firestore: firestore),
+      );
+      var notificaciones = 0;
+      provider.addListener(() => notificaciones++);
+
+      final desactivada = await provider.desactivarCategoriaPersonalizada(
+        'usuario-1',
+        'inexistente',
+      );
+
+      expect(desactivada, isFalse);
+      expect(notificaciones, 0);
+      expect(provider.categoriasPersonalizadas.map((c) => c.activa), [true]);
+      // Tampoco escribe: el documento no se crea por un intento imposible.
+      final documento = await firestore
+          .collection('negocios')
+          .doc('negocio-1')
+          .get();
+      expect(documento.exists, isFalse);
+    });
+
+    test('un fallo de persistencia conserva el estado anterior', () async {
+      final provider = ConfiguracionNegocioProvider(
+        rubro: 'Bodega',
+        negocioId: 'negocio-1',
+        configuracionInicial: {
+          'categoriasPersonalizadas': [
+            {'clave': 'dulces', 'nombre': 'Dulces', 'activa': true},
+          ],
+        },
+        repository: RepositoryQueFalla(FakeFirebaseFirestore()),
+      );
+      var notificaciones = 0;
+      provider.addListener(() => notificaciones++);
+
+      final desactivada = await provider.desactivarCategoriaPersonalizada(
+        'usuario-1',
+        'dulces',
+      );
+
+      expect(desactivada, isFalse);
+      expect(provider.errorCatalogo, contains('No se pudo desactivar'));
+      expect(notificaciones, 0);
+      expect(provider.categoriasPersonalizadas.single.activa, isTrue);
     });
   });
 }
