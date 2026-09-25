@@ -63,7 +63,7 @@ class AuthProvider extends ChangeNotifier {
       );
       // El negocio se crea recién cuando el usuario guarda su rubro.
       if (usuario != null) {
-        await _aprovisionarPerfil(usuario);
+        await _aprovisionarPerfil(usuario, terminosAceptados: true);
       }
       _status = AuthStatus.emailNotVerified;
       iniciarRelojBloqueo();
@@ -86,6 +86,10 @@ class AuthProvider extends ChangeNotifier {
       final verificado = await _repository.emailEstaVerificado();
 
       if (verificado) {
+        // Confirmar el correo NO es aceptar los términos: esta pantalla se
+        // abre igual tras un login, y ahí nadie marcó la casilla. El
+        // registro ya dejó la aceptación escrita; aquí solo se aseguran
+        // perfil y plan.
         await _aprovisionarPerfil(user);
         _status = AuthStatus.success;
       } else {
@@ -285,12 +289,21 @@ class AuthProvider extends ChangeNotifier {
     return true;
   }
 
-  Future<void> _aprovisionarPerfil(User user) {
+  /// Aprovisiona el perfil de un usuario recién REGISTRADO (correo o Google).
+  ///
+  /// [terminosAceptados] solo se afirma desde el registro, y únicamente
+  /// porque las dos pantallas de registro mantienen sus botones bloqueados
+  /// hasta que la casilla está marcada. Se deja en `null` —y entonces el
+  /// repositorio no escribe el campo— en cualquier otro momento, en
+  /// particular al confirmar el correo: esa pantalla es alcanzable también
+  /// desde un login, y ahí nadie vio el diálogo de términos.
+  Future<void> _aprovisionarPerfil(User user, {bool? terminosAceptados}) {
     return _userRepository.asegurarPerfilYPlan(
       uid: user.uid,
       email: user.email ?? '',
       limiteProductos: 20,
       minimoProductos: 1,
+      terminosAceptados: terminosAceptados,
     );
   }
 
@@ -307,7 +320,7 @@ class AuthProvider extends ChangeNotifier {
   /// se deja escapar desde acá.
   Future<bool> _aprovisionarYRevierteSiFalla(User user) async {
     try {
-      await _aprovisionarPerfil(user);
+      await _aprovisionarPerfil(user, terminosAceptados: true);
       return true;
     } catch (e) {
       try {

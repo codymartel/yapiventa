@@ -114,6 +114,47 @@ void main() {
     },
   );
 
+  test('verificar el correo no acepta los términos', () async {
+    // Esta pantalla se abre igual tras un login de una cuenta sin
+    // verificar, y ahí nadie vio el diálogo. Confirmar el correo tiene que
+    // asegurar perfil y plan sin afirmar una aceptación.
+    final usuario = _UserMock();
+    when(() => usuario.uid).thenReturn('usuario-1');
+    when(() => usuario.email).thenReturn('ana@example.com');
+    when(() => authRepository.usuarioActual).thenReturn(usuario);
+    when(
+      () => authRepository.emailEstaVerificado(),
+    ).thenAnswer((_) async => true);
+    when(
+      () => userRepository.asegurarPerfilYPlan(
+        uid: any(named: 'uid'),
+        email: any(named: 'email'),
+        limiteProductos: any(named: 'limiteProductos'),
+        minimoProductos: any(named: 'minimoProductos'),
+      ),
+    ).thenAnswer((_) async => (existiaPerfil: true, negocioId: null));
+
+    await provider.revisarSiYaVerificoEmail();
+
+    verifyNever(
+      () => userRepository.asegurarPerfilYPlan(
+        uid: any(named: 'uid'),
+        email: any(named: 'email'),
+        limiteProductos: any(named: 'limiteProductos'),
+        minimoProductos: any(named: 'minimoProductos'),
+        terminosAceptados: true,
+      ),
+    );
+    verify(
+      () => userRepository.asegurarPerfilYPlan(
+        uid: any(named: 'uid'),
+        email: any(named: 'email'),
+        limiteProductos: any(named: 'limiteProductos'),
+        minimoProductos: any(named: 'minimoProductos'),
+      ),
+    ).called(1);
+  });
+
   test('no asume que Google esté verificado por el proveedor', () async {
     final usuario = _UserMock();
     when(
@@ -149,6 +190,7 @@ void main() {
           email: 'nuevo@example.com',
           limiteProductos: 20,
           minimoProductos: 1,
+          terminosAceptados: any(named: 'terminosAceptados'),
         ),
       ).thenAnswer((_) async => (existiaPerfil: false, negocioId: null));
 
@@ -184,6 +226,7 @@ void main() {
           email: any(named: 'email'),
           limiteProductos: any(named: 'limiteProductos'),
           minimoProductos: any(named: 'minimoProductos'),
+          terminosAceptados: any(named: 'terminosAceptados'),
         ),
       ).thenThrow(Exception('Firestore no disponible'));
       when(() => authRepository.cerrarSesion()).thenAnswer((_) async {});
@@ -220,6 +263,7 @@ void main() {
           email: any(named: 'email'),
           limiteProductos: any(named: 'limiteProductos'),
           minimoProductos: any(named: 'minimoProductos'),
+          terminosAceptados: any(named: 'terminosAceptados'),
         ),
       ).thenThrow(Exception('Firestore no disponible'));
       when(() => authRepository.cerrarSesion()).thenAnswer((_) async {});
@@ -256,6 +300,7 @@ void main() {
           email: any(named: 'email'),
           limiteProductos: any(named: 'limiteProductos'),
           minimoProductos: any(named: 'minimoProductos'),
+          terminosAceptados: any(named: 'terminosAceptados'),
         ),
       ).thenThrow(Exception('Firestore no disponible'));
       when(
@@ -301,6 +346,7 @@ void main() {
         email: any(named: 'email'),
         limiteProductos: any(named: 'limiteProductos'),
         minimoProductos: any(named: 'minimoProductos'),
+        terminosAceptados: any(named: 'terminosAceptados'),
         crearPerfilSiNoExiste: any(named: 'crearPerfilSiNoExiste'),
       ));
       verifyNever(() => authRepository.cerrarSesion());
@@ -339,6 +385,7 @@ void main() {
         email: any(named: 'email'),
         limiteProductos: any(named: 'limiteProductos'),
         minimoProductos: any(named: 'minimoProductos'),
+        terminosAceptados: any(named: 'terminosAceptados'),
         crearPerfilSiNoExiste: any(named: 'crearPerfilSiNoExiste'),
       ));
       verifyNever(() => userRepository.guardarPlanFree(
@@ -387,6 +434,7 @@ when(
           email: 'nuevo@example.com',
           limiteProductos: 20,
           minimoProductos: 1,
+          terminosAceptados: any(named: 'terminosAceptados'),
         ),
       ).thenAnswer((_) async => (existiaPerfil: false, negocioId: null));
 
@@ -399,6 +447,7 @@ when(
         email: 'nuevo@example.com',
         limiteProductos: 20,
         minimoProductos: 1,
+        terminosAceptados: any(named: 'terminosAceptados'),
       ),
     ).called(1);
   });
@@ -421,6 +470,7 @@ when(
           email: any(named: 'email'),
           limiteProductos: any(named: 'limiteProductos'),
           minimoProductos: any(named: 'minimoProductos'),
+          terminosAceptados: any(named: 'terminosAceptados'),
         ),
       ).thenThrow(Exception('Firestore no disponible'));
 

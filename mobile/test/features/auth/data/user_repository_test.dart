@@ -89,6 +89,7 @@ void main() {
       email: 'nuevo@example.com',
       limiteProductos: 20,
       minimoProductos: 1,
+      terminosAceptados: true,
     );
 
     final perfil =
@@ -110,6 +111,79 @@ void main() {
     expect(plan, containsPair('tipo', 'free'));
     expect(plan, containsPair('limiteProductos', 20));
     expect((await firestore.collection('negocios').get()).docs, isEmpty);
+  });
+
+  test('sin decisión no escribe terminosAceptados al crear el perfil', () async {
+    await repository.asegurarPerfilYPlan(
+      uid: 'usuario-nuevo',
+      email: 'nuevo@example.com',
+      limiteProductos: 20,
+      minimoProductos: 1,
+    );
+
+    final perfil =
+        (await firestore.collection('users').doc('usuario-nuevo').get())
+            .data()!;
+    expect(perfil, {'email': 'nuevo@example.com', 'createdAt': isA<Timestamp>()});
+    expect(perfil.containsKey('terminosAceptados'), isFalse);
+  });
+
+  test('un login no convierte en true un campo ausente', () async {
+    // Perfil antiguo: existe, pero nunca registró el campo.
+    await firestore.collection('users').doc('usuario-1').set({
+      'email': 'anterior@example.com',
+      'createdAt': Timestamp.now(),
+    });
+
+    await repository.asegurarPerfilYPlan(
+      uid: 'usuario-1',
+      email: 'ana@example.com',
+      limiteProductos: 20,
+      minimoProductos: 1,
+    );
+
+    final perfil = (await firestore.collection('users').doc('usuario-1').get())
+        .data()!;
+    expect(perfil['email'], 'ana@example.com');
+    expect(perfil.containsKey('terminosAceptados'), isFalse);
+  });
+
+  test('un login tampoco pisa una aceptación previa', () async {
+    await firestore.collection('users').doc('usuario-1').set({
+      'email': 'anterior@example.com',
+      'terminosAceptados': true,
+      'createdAt': Timestamp.now(),
+    });
+
+    await repository.asegurarPerfilYPlan(
+      uid: 'usuario-1',
+      email: 'ana@example.com',
+      limiteProductos: 20,
+      minimoProductos: 1,
+    );
+
+    final perfil = (await firestore.collection('users').doc('usuario-1').get())
+        .data()!;
+    expect(perfil['terminosAceptados'], isTrue);
+  });
+
+  test('el registro sí registra la aceptación sobre un perfil existente', () async {
+    await firestore.collection('users').doc('usuario-1').set({
+      'email': 'anterior@example.com',
+      'createdAt': Timestamp.now(),
+    });
+
+    await repository.asegurarPerfilYPlan(
+      uid: 'usuario-1',
+      email: 'ana@example.com',
+      limiteProductos: 20,
+      minimoProductos: 1,
+      terminosAceptados: true,
+    );
+
+    final perfil = (await firestore.collection('users').doc('usuario-1').get())
+        .data()!;
+    expect(perfil['terminosAceptados'], isTrue);
   });
 
   test('repara perfil y plan de forma idempotente sin crear negocio', () async {
@@ -147,7 +221,9 @@ void main() {
         .get();
     expect(perfil['email'], 'ana@example.com');
     expect(perfil['negocioId'], isNull);
-    expect(perfil.keys.toSet(), {'email', 'terminosAceptados', 'createdAt'});
+    // El perfil de arranque no traía `terminosAceptados` y esta es una
+    // reparación tipo login: el campo se deja como estaba, ausente.
+    expect(perfil.keys.toSet(), {'email', 'createdAt'});
     expect(planFinal.data(), planInicial.data());
     expect(planFinal.data()?['limiteProductos'], 20);
     expect((await firestore.collection('negocios').get()).docs, isEmpty);

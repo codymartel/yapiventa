@@ -32,12 +32,23 @@ class UserRepository {
     await referencia.set(actualizacion, SetOptions(merge: true));
   }
 
+  /// Asegura que exista `users/{uid}` y su plan free.
+  ///
+  /// [terminosAceptados] es una DECISIÓN del usuario, no un valor que este
+  /// método pueda deducir. Por eso va en `null` por defecto: cuando no se
+  /// pasa, el campo no se escribe nunca — ni al crear el perfil ni al
+  /// reparar uno antiguo que lo tenga ausente. Un login, por ejemplo,
+  /// aprovisiona un perfil de recuperación y no debe inventar una
+  /// aceptación que nadie realizó. Solo el flujo de registro pasa `true`,
+  /// y lo hace porque sus botones ya están bloqueados hasta marcar la
+  /// casilla.
   Future<PerfilAsegurado> asegurarPerfilYPlan({
     required String uid,
     required String email,
     required int limiteProductos,
     required int minimoProductos,
     bool crearPerfilSiNoExiste = true,
+    bool? terminosAceptados,
   }) async {
     final perfilRef = _firestore.collection('users').doc(uid);
     return _firestore.runTransaction((transaction) async {
@@ -60,15 +71,18 @@ class UserRepository {
       final plan = await transaction.get(planRef);
 
       if (!existiaPerfil) {
-        transaction.set(perfilRef, {
+        final perfilNuevo = <String, dynamic>{
           'email': email,
-          'terminosAceptados': true,
           'createdAt': FieldValue.serverTimestamp(),
-        });
+        };
+        if (terminosAceptados != null) {
+          perfilNuevo['terminosAceptados'] = terminosAceptados;
+        }
+        transaction.set(perfilRef, perfilNuevo);
       } else {
         final actualizacion = <String, dynamic>{'email': email};
-        if (datosPerfil?.containsKey('terminosAceptados') != true) {
-          actualizacion['terminosAceptados'] = true;
+        if (terminosAceptados != null) {
+          actualizacion['terminosAceptados'] = terminosAceptados;
         }
         transaction.update(perfilRef, actualizacion);
       }

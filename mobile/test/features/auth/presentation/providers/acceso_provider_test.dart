@@ -195,6 +195,53 @@ void main() {
     ).called(1);
   });
 
+  test('el login nunca afirma la aceptación de términos', () async {
+    // El camino de login recupera perfiles, no registra personas: no debe
+    // pasar `terminosAceptados`, porque esa decisión solo existe en el
+    // flujo de registro.
+    final usuario = _usuario(uid: 'usuario-1', email: 'ana@example.com');
+    final proveedor = _MockUserInfo();
+    when(() => proveedor.providerId).thenReturn(EmailAuthProvider.PROVIDER_ID);
+    when(() => usuario.providerData).thenReturn([proveedor]);
+    when(
+      () => progresoRepository.obtenerProgresoConfiguracion(
+        'usuario-1',
+        negocioId: any(named: 'negocioId'),
+      ),
+    ).thenAnswer((_) async => _progreso(slug: ''));
+    when(
+      () => userRepository.asegurarPerfilYPlan(
+        uid: any(named: 'uid'),
+        email: any(named: 'email'),
+        limiteProductos: any(named: 'limiteProductos'),
+        minimoProductos: any(named: 'minimoProductos'),
+        crearPerfilSiNoExiste: any(named: 'crearPerfilSiNoExiste'),
+        terminosAceptados: any(named: 'terminosAceptados'),
+      ),
+    ).thenAnswer((_) async => (existiaPerfil: true, negocioId: null));
+    provider = AccesoProvider(
+      authRepository: authRepository,
+      authProvider: authProvider,
+      userRepository: userRepository,
+      progresoRepository: progresoRepository,
+    );
+
+    cambiosDeAuth.add(usuario);
+    await pumpEventQueue();
+
+    expect(provider!.estado, EstadoAcceso.listo);
+    verify(
+      () => userRepository.asegurarPerfilYPlan(
+        uid: 'usuario-1',
+        email: 'ana@example.com',
+        limiteProductos: 20,
+        minimoProductos: 1,
+        crearPerfilSiNoExiste: true,
+        terminosAceptados: null,
+      ),
+    ).called(1);
+  });
+
   test('no autoriza una cuenta social sin perfil registrado', () async {
     final usuario = _usuario(uid: 'usuario-1', email: 'ana@example.com');
     final proveedor = _MockUserInfo();
