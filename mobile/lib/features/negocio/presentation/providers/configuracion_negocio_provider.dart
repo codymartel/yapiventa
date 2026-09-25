@@ -178,12 +178,11 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
     );
     if (catalogoGuardado != null) {
       _catalogoVenta = catalogoGuardado;
-    } else {
-      final adaptado = CatalogoVentaPersistido.desdeUnidadesLegacy(
-        _unidadesMedida,
-      );
-      if (adaptado != null) _catalogoVenta = adaptado;
     }
+    // Si catalogoGuardado es null, _catalogoVenta se queda tal como el
+    // constructor lo calculó desde el preset (CatalogoVentaPersistido.desdePreset).
+    // No reconstruir desde legacy aquí — eso es lo que rompía unidades como
+    // "Par", "Docena", "Paquete", que no matchean el registro nuevo por nombre.
 
     _tieneDelivery = datos['delivery'] as bool? ?? false;
     _zonasDelivery

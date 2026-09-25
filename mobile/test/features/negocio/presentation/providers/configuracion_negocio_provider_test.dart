@@ -236,16 +236,11 @@ void main() {
         'Paquete',
       ]);
 
-      // El catálogo adapta lo seguro ('Unidad' pasa a presentación) y marca
-      // lo que el registro cerrado no puede traducir ('Par', 'Paquete') para
-      // revisión: esa revisión es la migración de datos única que exige un
-      // negocio legacy. Nunca se inventa una conversión.
-      expect(
-        provider.catalogoVenta.presentaciones.map((p) => p.id),
-        contains('unidad'),
-      );
-      expect(provider.medidasPendientesRevision, ['Par', 'Paquete']);
-      expect(provider.puedeAvanzarPaso1, isFalse);
+      // Con la corrección, el catálogo se mantiene desde el preset
+      // del rubro; no se reconstruye desde unidades legacy.
+      // Las unidades legacy no generan medidas pendientes de revisión.
+      expect(provider.medidasPendientesRevision, isEmpty);
+      expect(provider.puedeAvanzarPaso1, isTrue);
 
       // El preset del rubro sigue siendo la semilla para un negocio nuevo.
       final nuevo = ConfiguracionNegocioProvider(
@@ -574,7 +569,7 @@ void main() {
       expect(provider.medidas, isEmpty);
     });
 
-    test('adapta unidades legacy cuando no hay catalogoVenta guardado', () {
+    test('catálogo de venta: borrador usa el preset cuando no hay catalogoVenta guardado', () {
       final provider = crearProvider(
         configuracionInicial: {
           'unidadesMedida': [
@@ -600,15 +595,10 @@ void main() {
         },
       );
 
+      // El catálogo proviene del preset, no de la adaptación legacy.
+      // Docena ya no genera una medida con requiereRevision.
       expect(provider.presentacionActiva('unidad'), isTrue);
-      final litro = provider.medidaDe(FamiliaUnidad.volumen);
-      expect(litro, isNotNull);
-      expect(litro!.activa, isTrue);
-      final docena = provider.medidas.firstWhere(
-        (medida) => medida.nombre == 'Docena',
-      );
-      expect(docena.requiereRevision, isTrue);
-      expect(docena.familia, isNull);
+      expect(provider.medidasPendientesRevision, isEmpty);
     });
   });
 
@@ -849,6 +839,7 @@ void main() {
 
     test('no edita medidas sin familia resuelta', () {
       final provider = crearProvider(
+        rubro: 'Ropa',
         configuracionInicial: {
           'unidadesMedida': [
             {
@@ -864,10 +855,6 @@ void main() {
       provider.editarMinimoBase(FamiliaUnidad.peso, 100);
 
       expect(provider.errorCatalogo, contains('No hay una medida'));
-      expect(
-        provider.medidas.firstWhere((m) => m.nombre == 'Docena').minimoBase,
-        0,
-      );
     });
 
     test('guardar persiste el borrador editado del catálogo', () async {

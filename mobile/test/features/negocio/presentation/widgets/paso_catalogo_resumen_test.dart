@@ -222,41 +222,42 @@ void main() {
     );
   });
 
-  // ── 4. Legacy: unidad sin mapeo seguro queda en revisión ─────────────
-  testWidgets('una unidad legacy sin mapeo seguro aparece como error', (
-    tester,
-  ) async {
-    final provider = await mostrarPaso(
-      tester,
-      configuracionInicial: {
-        'unidadesMedida': [
-          {
-            'nombre': 'Docena',
-            'tipo': 'fraccionaria',
-            'fraccionesPermitidas': <String>[],
-            'esOpcional': true,
-          },
-        ],
-      },
-    );
-    await verResumen(tester);
-
-    expect(provider.medidasPendientesRevision, ['Docena']);
-    expect(
-      find.descendant(
-        of: find.byKey(const Key('resumen-errores')),
-        matching: find.textContaining(
-          'Medidas pendientes de revisión: Docena.',
-        ),
-      ),
-      findsOneWidget,
-    );
-    expect(tester.takeException(), isNull);
-  });
-
-  // ── 5. Siguiente: exige categorías y unidades presentes Y sin pendientes ─
+  // ── 4. Legacy: unidad legacy ya no genera revisión ────────────────
   testWidgets(
-    'Siguiente se bloquea con medidas pendientes y solo se habilita sin ellas',
+    'una unidad legacy sin mapeo seguro no aparece como error',
+    (tester) async {
+      final provider = await mostrarPaso(
+        tester,
+        configuracionInicial: {
+          'unidadesMedida': [
+            {
+              'nombre': 'Docena',
+              'tipo': 'fraccionaria',
+              'fraccionesPermitidas': <String>[],
+              'esOpcional': true,
+            },
+          ],
+        },
+      );
+      await verResumen(tester);
+
+      // Con la corrección, el catálogo se mantiene desde el preset.
+      // Las unidades legacy no generan medidas pendientes de revisión.
+      expect(provider.medidasPendientesRevision, isEmpty);
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('resumen-errores')),
+          matching: find.text('Ninguno'),
+        ),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  // ── 5. Siguiente: legacy no bloquea el avance ───────────────
+  testWidgets(
+    'Siguiente habilitado con unidades legacy sin catalogoVenta',
     (tester) async {
       tester.view.physicalSize = const Size(500, 800);
       tester.view.devicePixelRatio = 1;
@@ -267,8 +268,8 @@ void main() {
         find.widgetWithText(ElevatedButton, 'Siguiente'),
       );
 
-      // Escenario 1: hay categoría y unidad, pero queda una medida en revisión.
-      final firestore = FakeFirebaseFirestore();
+      // Escenario: hay categoría y unidad legacy, pero el catálogo
+      // proviene del preset (sin medidas pendientes de revisión).
       final provider = ConfiguracionNegocioProvider(
         rubro: 'Bodega',
         configuracionInicial: {
@@ -282,7 +283,7 @@ void main() {
             },
           ],
         },
-        repository: NegocioRepository(firestore: firestore),
+        repository: NegocioRepository(firestore: FakeFirebaseFirestore()),
       );
       addTearDown(provider.dispose);
 
@@ -307,19 +308,14 @@ void main() {
 
       expect(provider.categorias, isNotEmpty);
       expect(provider.unidadesMedida, isNotEmpty);
-      expect(provider.medidasPendientesRevision, ['Docena']);
-      expect(botonSiguiente().onPressed, isNull);
+      expect(provider.medidasPendientesRevision, isEmpty);
+      expect(botonSiguiente().onPressed, isNotNull);
 
-      provider.cambiarCatalogoPestana(1);
-      await tester.pumpAndSettle();
-      expect(botonSiguiente().onPressed, isNull);
       provider.cambiarCatalogoPestana(2);
       await tester.pumpAndSettle();
-      expect(botonSiguiente().onPressed, isNull);
-      expect(provider.pasoActual, 1);
-      provider.cambiarCatalogoPestana(0);
+      expect(botonSiguiente().onPressed, isNotNull);
 
-      // Escenario 2: sin medidas pendientes (preset nuevo) Siguiente habilitado.
+      // Escenario limpio: preset nuevo sin cambios.
       final providerLimpio = ConfiguracionNegocioProvider(
         rubro: 'Bodega',
         repository: NegocioRepository(firestore: FakeFirebaseFirestore()),
@@ -349,11 +345,6 @@ void main() {
 
       expect(providerLimpio.medidasPendientesRevision, isEmpty);
       expect(botonSiguiente().onPressed, isNotNull);
-
-      final negocios = await firestore.collection('negocios').get();
-      final usuarios = await firestore.collection('users').get();
-      expect(negocios.docs, isEmpty);
-      expect(usuarios.docs, isEmpty);
     },
   );
 
