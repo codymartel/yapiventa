@@ -153,6 +153,34 @@ void main() {
     expect(botella.formatos.length, 10);
   });
 
+  // ── 4b. Ejemplo literal del prompt: Botella 650 ml ─────────────────────
+  testWidgets('la previsualización muestra el literal "Botella 650 ml"', (
+    tester,
+  ) async {
+    final provider = await mostrarPaso(tester);
+    await irAUnidades(tester);
+
+    await tester.tap(find.byKey(const Key('editar-presentacion-botella')));
+    await tester.pumpAndSettle();
+    expect(editor(), findsOneWidget);
+    expect(find.text('Botella 3 L'), findsOneWidget);
+
+    for (final etiqueta in ['3 L', '2 1/2 L', '2 L', '1 1/2 L', '1 L']) {
+      await tester.tap(find.byKey(Key('eliminar-formato-$etiqueta')));
+      await tester.pumpAndSettle();
+    }
+
+    expect(find.byKey(const Key('formato-existente-650 ml')), findsOneWidget);
+    expect(find.byKey(const Key('formato-existente-1 L')), findsNothing);
+    expect(find.text('Botella 650 ml'), findsOneWidget);
+    expect(find.text('Se vende completa.'), findsOneWidget);
+    expect(find.text('El contenido no se descontará en ml.'), findsOneWidget);
+    expect(provider.presentacionPorId('botella')!.formatos.length, 9);
+
+    await tester.tap(find.text('Cancelar'));
+    await tester.pumpAndSettle();
+  });
+
   // ── 5-7. Validaciones del valor ────────────────────────────────────────
   testWidgets('bloquea agregar formato con valor vacío', (tester) async {
     await mostrarPaso(tester);
