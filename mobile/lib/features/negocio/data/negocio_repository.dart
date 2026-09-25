@@ -12,6 +12,7 @@ import '../domain/models/config_pago_metodo.dart';
 import '../domain/models/plantilla_web.dart';
 import '../domain/models/progreso_configuracion.dart';
 import '../domain/models/seleccion_plantilla_info.dart';
+import '../domain/errors/productos_dependientes_rubro_exception.dart';
 import '../domain/repositories/repositorio_catalogo_negocio.dart';
 import '../domain/repositories/repositorio_progreso_configuracion.dart';
 import '../domain/repositories/repositorio_seleccion_plantilla.dart';
@@ -223,6 +224,8 @@ class NegocioRepository
       throw ArgumentError.value(rubro, 'rubro', 'El rubro no es válido.');
     }
 
+    await _bloquearSiHayProductosDependientes(uid, rubroLimpio);
+
     final perfilRef = _firestore.collection('users').doc(uid);
     await _firestore.runTransaction((transaction) async {
       final perfil = await transaction.get(perfilRef);
@@ -408,6 +411,53 @@ class NegocioRepository
       if (resultado.docs.isNotEmpty) return true;
     }
     return false;
+  }
+
+  /// Impide el cambio de rubro si algún producto apunta a una categoría o
+  /// unidad del catálogo actual que el preset del rubro nuevo no tiene.
+  ///
+  /// La comprobación va fuera de la transacción a propósito: [existenProductosDependientes]
+  /// consulta la subcolección `productos`, que Firestore no permite leer dentro de
+  /// una transacción. El trade-off es una ventana de carrera entre esta lectura y
+  /// la escritura; un producto creado en esa ventana quedaría huérfano.
+  Future<void> _bloquearSiHayProductosDependientes(
+    String uid,
+    String rubroNuevo,
+  ) async {
+    final negocioId = await _obtenerNegocioIdOpcional(uid);
+    if (negocioId == null) return; // Negocio nuevo: todavía no hay productos.
+
+    final datos =
+        (await _firestore.collection('negocios').doc(negocioId).get()).data() ??
+        const <String, dynamic>{};
+    final rubroAnterior =
+        datos['rubro'] is String ? (datos['rubro'] as String).trim() : '';
+    if (rubroAnterior.isEmpty || rubroAnterior == rubroNuevo) return;
+
+    final categoriasQueDesaparecen = _leerCategorias(
+      datos['categorias'],
+    ).toSet().difference(Categorias.obtener(rubroNuevo).toSet()).toList();
+    final unidadesQueDesaparecen = _leerUnidades(
+      datos['unidadesMedida'],
+    ).map((unidad) => unidad.nombre).toSet().difference(
+      UnidadesMedida.obtener(rubroNuevo).map((unidad) => unidad.nombre).toSet(),
+    ).toList();
+    if (categoriasQueDesaparecen.isEmpty && unidadesQueDesaparecen.isEmpty) {
+      return;
+    }
+
+    final hayDependencias = await existenProductosDependientes(
+      uid: uid,
+      negocioId: negocioId,
+      categorias: categoriasQueDesaparecen,
+      unidades: unidadesQueDesaparecen,
+    );
+    if (hayDependencias) {
+      throw ProductosDependientesDeRubroException(
+        categorias: categoriasQueDesaparecen,
+        unidades: unidadesQueDesaparecen,
+      );
+    }
   }
 
   List<String> _leerCategorias(Object? valor) {

@@ -3,6 +3,7 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/domain/models/tipo_unidad.dart';
 import 'package:mobile/features/negocio/data/negocio_repository.dart';
+import 'package:mobile/features/negocio/domain/errors/productos_dependientes_rubro_exception.dart';
 import 'package:mobile/features/negocio/domain/models/catalogo_venta/catalogo_venta_persistido.dart';
 import 'package:mobile/features/negocio/domain/models/catalogo_venta/formato_presentacion.dart';
 import 'package:mobile/features/negocio/domain/models/catalogo_venta/opcion_presentacion.dart';
@@ -1478,6 +1479,258 @@ test('cambiar rubro conserva la configuración existente', () async {
     });
   }
 
+  // ═══════════════════════════════════════════════════════════════
+  // Protección de productos al cambiar de rubro
+  // ═══════════════════════════════════════════════════════════════
+
+  group('guardarRubro con productos dependientes', () {
+    test(
+      'bloquea el cambio si un producto usa una categoría que desaparecería',
+      () async {
+        final negocioId = await _prepararNegocio(
+          firestore,
+          'usuario-1',
+          datos: {
+            'rubro': 'Bodega',
+            'nombreNegocio': 'Bodega Ana',
+            // 'Platos principales' no existe en el preset de 'Ropa'.
+            'categorias': ['Bebidas', 'Platos principales'],
+            'unidadesMedida': [
+              {
+                'nombre': 'Unidad',
+                'tipo': 'entera',
+                'fraccionesPermitidas': <String>[],
+                'esOpcional': false,
+              },
+            ],
+          },
+        );
+        await _guardarProductoCon(
+          firestore,
+          negocioId,
+          'producto-1',
+          categoria: 'Platos principales',
+          unidadMedidaNombre: 'Unidad',
+        );
+
+        await expectLater(
+          repository.guardarRubro('usuario-1', 'Ropa'),
+          throwsA(isA<ProductosDependientesDeRubroException>()),
+        );
+      },
+    );
+
+    test(
+      'bloquea el cambio si un producto usa una unidad que desaparecería',
+      () async {
+        final negocioId = await _prepararNegocio(
+          firestore,
+          'usuario-1',
+          datos: {
+            'rubro': 'Bodega',
+            'nombreNegocio': 'Bodega Ana',
+            'categorias': ['Bebidas'],
+            'unidadesMedida': [
+              {
+                'nombre': 'Botella',
+                'tipo': 'fraccionaria',
+                'fraccionesPermitidas': <String>['500'],
+                'esOpcional': false,
+              },
+            ],
+          },
+        );
+        await _guardarProductoCon(
+          firestore,
+          negocioId,
+          'producto-1',
+          categoria: 'Bebidas',
+          // 'Botella' no existe en el preset de 'Ropa'.
+          unidadMedidaNombre: 'Botella',
+        );
+
+        await expectLater(
+          repository.guardarRubro('usuario-1', 'Ropa'),
+          throwsA(isA<ProductosDependientesDeRubroException>()),
+        );
+      },
+    );
+
+    test('no toca Firestore cuando bloquea el cambio de rubro', () async {
+      final catalogoVenta = CatalogoVentaPersistido.desdePreset(
+        PresetsVenta.obtener('Bodega'),
+      );
+      final negocioId = await _prepararNegocio(
+        firestore,
+        'usuario-1',
+        datos: {
+          'rubro': 'Bodega',
+          'nombreNegocio': 'Bodega Ana',
+          'categorias': ['Bebidas', 'Platos principales'],
+          'unidadesMedida': [
+            {
+              'nombre': 'Unidad',
+              'tipo': 'entera',
+              'fraccionesPermitidas': <String>[],
+              'esOpcional': false,
+            },
+          ],
+          'catalogoVenta': catalogoVenta.toMap(),
+          'webActiva': true,
+        },
+      );
+      await _guardarProductoCon(
+        firestore,
+        negocioId,
+        'producto-1',
+        categoria: 'Platos principales',
+        unidadMedidaNombre: 'Unidad',
+      );
+
+      final negocioAntes =
+          (await firestore.collection('negocios').doc(negocioId).get()).data();
+      final perfilAntes =
+          (await firestore.collection('users').doc('usuario-1').get()).data();
+      final productoAntes = (await firestore
+              .collection('negocios')
+              .doc(negocioId)
+              .collection('productos')
+              .doc('producto-1')
+              .get())
+          .data();
+
+      await expectLater(
+        repository.guardarRubro('usuario-1', 'Ropa'),
+        throwsA(isA<ProductosDependientesDeRubroException>()),
+      );
+
+      final negocioDespues =
+          (await firestore.collection('negocios').doc(negocioId).get()).data();
+      final perfilDespues =
+          (await firestore.collection('users').doc('usuario-1').get()).data();
+      final productoDespues = (await firestore
+              .collection('negocios')
+              .doc(negocioId)
+              .collection('productos')
+              .doc('producto-1')
+              .get())
+          .data();
+
+      // El rubro no cambia y el catálogo heredado no se borra.
+      expect(negocioDespues, equals(negocioAntes));
+      expect(negocioDespues!['rubro'], 'Bodega');
+      expect(negocioDespues['categorias'], contains('Platos principales'));
+      expect(negocioDespues['unidadesMedida'], isNotNull);
+      expect(negocioDespues['catalogoVenta'], isNotNull);
+      // No se marcó el negocio para revisión ni se tocó el perfil o el producto.
+      expect(negocioDespues['onboardingBusinessNeedsReview'], isNull);
+      expect(negocioDespues['setupComplete'], isNull);
+      expect(perfilDespues, equals(perfilAntes));
+      expect(productoDespues, equals(productoAntes));
+    });
+
+    test('permite el cambio si ningún producto depende de lo que desaparece', () async {
+      final negocioId = await _prepararNegocio(
+        firestore,
+        'usuario-1',
+        datos: {
+          'rubro': 'Restaurante',
+          'nombreNegocio': 'Restaurante Ana',
+          // 'Entradas' y 'Platos principales' desaparecen en Bodega, pero
+          // ningún producto los usa. 'Bebidas' y 'Unidad' sobreviven.
+          'categorias': ['Entradas', 'Platos principales', 'Bebidas'],
+          'unidadesMedida': [
+            {
+              'nombre': 'Unidad',
+              'tipo': 'entera',
+              'fraccionesPermitidas': <String>[],
+              'esOpcional': false,
+            },
+          ],
+          'webActiva': true,
+        },
+      );
+      await _guardarProductoCon(
+        firestore,
+        negocioId,
+        'producto-1',
+        categoria: 'Bebidas',
+        unidadMedidaNombre: 'Unidad',
+      );
+
+      await repository.guardarRubro('usuario-1', 'Bodega');
+
+      final datos =
+          (await firestore.collection('negocios').doc(negocioId).get()).data()!;
+      expect(datos['rubro'], 'Bodega');
+      expect(datos['categorias'], isNull);
+      expect(datos['unidadesMedida'], isNull);
+      expect(datos['onboardingBusinessNeedsReview'], isTrue);
+    });
+
+    test('permite el cambio cuando el negocio no tiene productos', () async {
+      final negocioId = await _prepararNegocio(
+        firestore,
+        'usuario-1',
+        datos: {
+          'rubro': 'Bodega',
+          'nombreNegocio': 'Bodega Ana',
+          'categorias': ['Bebidas', 'Platos principales'],
+          'unidadesMedida': [
+            {
+              'nombre': 'Unidad',
+              'tipo': 'entera',
+              'fraccionesPermitidas': <String>[],
+              'esOpcional': false,
+            },
+          ],
+        },
+      );
+
+      await repository.guardarRubro('usuario-1', 'Ropa');
+
+      final datos =
+          (await firestore.collection('negocios').doc(negocioId).get()).data()!;
+      expect(datos['rubro'], 'Ropa');
+      expect(datos['categorias'], isNull);
+    });
+
+    test('no bloquea cuando se reintenta el mismo rubro', () async {
+      final negocioId = await _prepararNegocio(
+        firestore,
+        'usuario-1',
+        datos: {
+          'rubro': 'Bodega',
+          'nombreNegocio': 'Bodega Ana',
+          'categorias': ['Bebidas', 'Platos principales'],
+          'unidadesMedida': [
+            {
+              'nombre': 'Unidad',
+              'tipo': 'entera',
+              'fraccionesPermitidas': <String>[],
+              'esOpcional': false,
+            },
+          ],
+          'onboardingRubroCompletedAt': Timestamp.fromDate(DateTime(2024)),
+        },
+      );
+      await _guardarProductoCon(
+        firestore,
+        negocioId,
+        'producto-1',
+        categoria: 'Platos principales',
+        unidadMedidaNombre: 'Unidad',
+      );
+
+      await repository.guardarRubro('usuario-1', 'Bodega');
+
+      final datos =
+          (await firestore.collection('negocios').doc(negocioId).get()).data()!;
+      expect(datos['rubro'], 'Bodega');
+      expect(datos['categorias'], contains('Platos principales'));
+    });
+  });
+
   test('dos intentos de guardarRubro reutilizan el mismo negocio', () async {
     await firestore.collection('users').doc('usuario-1').set({
       'email': 'ana@example.com',
@@ -2234,6 +2487,29 @@ test('cambiar rubro conserva la configuración existente', () async {
       );
     });
   });
+}
+
+Future<void> _guardarProductoCon(
+  FakeFirebaseFirestore firestore,
+  String negocioId,
+  String productoId, {
+  required String categoria,
+  required String unidadMedidaNombre,
+}) {
+  return firestore
+      .collection('negocios')
+      .doc(negocioId)
+      .collection('productos')
+      .doc(productoId)
+      .set({
+        'negocioId': negocioId,
+        'nombre': 'Producto de prueba',
+        'precio': 10.0,
+        'stock': 5,
+        'categoria': categoria,
+        'unidadMedidaNombre': unidadMedidaNombre,
+        'fechaCreacion': Timestamp.now(),
+      });
 }
 
 Future<void> _guardarPerfilConNegocioId(

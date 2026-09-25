@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../../negocio/domain/errors/productos_dependientes_rubro_exception.dart';
 import '../../../negocio/domain/models/progreso_configuracion.dart';
 import '../../../negocio/domain/repositories/repositorio_progreso_configuracion.dart';
 import '../../data/auth_repository.dart';
@@ -195,6 +196,10 @@ class AccesoProvider extends ChangeNotifier {
       if (_uid != uid) return false;
       await recargar();
       return _uid == uid && _estado == EstadoAcceso.listo;
+    } on ProductosDependientesDeRubroException catch (e) {
+      _errorMessage = e.mensaje;
+      _notificar();
+      return false;
     } catch (_) {
       _errorMessage = 'No se pudo guardar el rubro. Intenta de nuevo.';
       _notificar();
