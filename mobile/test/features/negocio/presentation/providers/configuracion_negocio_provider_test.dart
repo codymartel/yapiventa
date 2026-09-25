@@ -1858,6 +1858,140 @@ void main() {
       expect(provider.categoriasPersonalizadas.single.nombre, 'Dulces');
     });
   });
+
+  group('categorías personalizadas: eliminar', () {
+    test('elimina solo esa categoría y persiste', () async {
+      final firestore = FakeFirebaseFirestore();
+      final provider = ConfiguracionNegocioProvider(
+        rubro: 'Bodega',
+        negocioId: 'negocio-1',
+        configuracionInicial: {
+          'categoriasPersonalizadas': [
+            {'clave': 'mascotas', 'nombre': 'Mascotas', 'activa': true},
+            {'clave': 'importados', 'nombre': 'Importados', 'activa': true},
+          ],
+        },
+        repository: NegocioRepository(firestore: firestore),
+      );
+      var notificaciones = 0;
+      provider.addListener(() => notificaciones++);
+      final categoriasDelPreset = provider.categorias;
+
+      final eliminada = await provider.eliminarCategoriaPersonalizada(
+        'usuario-1',
+        'mascotas',
+      );
+
+      expect(eliminada, isTrue);
+      expect(provider.errorCatalogo, isNull);
+      expect(notificaciones, 1);
+      expect(provider.categoriasPersonalizadas.map((c) => c.clave), [
+        'importados',
+      ]);
+
+      final datos =
+          (await firestore.collection('negocios').doc('negocio-1').get())
+              .data()!;
+      expect(datos['categoriasPersonalizadas'], [
+        {'clave': 'importados', 'nombre': 'Importados', 'activa': true},
+      ]);
+      // Las categorías del preset no se tocan.
+      expect(provider.categorias, categoriasDelPreset);
+    });
+
+    test('elimina también una categoría inactiva', () async {
+      final firestore = FakeFirebaseFirestore();
+      final provider = ConfiguracionNegocioProvider(
+        rubro: 'Bodega',
+        negocioId: 'negocio-1',
+        configuracionInicial: {
+          'categoriasPersonalizadas': [
+            {'clave': 'mascotas', 'nombre': 'Mascotas', 'activa': false},
+            {'clave': 'importados', 'nombre': 'Importados', 'activa': true},
+          ],
+        },
+        repository: NegocioRepository(firestore: firestore),
+      );
+
+      final eliminada = await provider.eliminarCategoriaPersonalizada(
+        'usuario-1',
+        'mascotas',
+      );
+
+      // Desactivar no blindaba contra eliminar: son operaciones distintas.
+      expect(eliminada, isTrue);
+      expect(provider.categoriasPersonalizadas.map((c) => c.clave), [
+        'importados',
+      ]);
+      final datos =
+          (await firestore.collection('negocios').doc('negocio-1').get())
+              .data()!;
+      expect(datos['categoriasPersonalizadas'], [
+        {'clave': 'importados', 'nombre': 'Importados', 'activa': true},
+      ]);
+    });
+
+    test('una categoría inexistente no cambia nada', () async {
+      final firestore = FakeFirebaseFirestore();
+      final provider = ConfiguracionNegocioProvider(
+        rubro: 'Bodega',
+        negocioId: 'negocio-1',
+        configuracionInicial: {
+          'categoriasPersonalizadas': [
+            {'clave': 'mascotas', 'nombre': 'Mascotas', 'activa': true},
+          ],
+        },
+        repository: NegocioRepository(firestore: firestore),
+      );
+      var notificaciones = 0;
+      provider.addListener(() => notificaciones++);
+
+      final eliminada = await provider.eliminarCategoriaPersonalizada(
+        'usuario-1',
+        'inexistente',
+      );
+
+      expect(eliminada, isFalse);
+      expect(notificaciones, 0);
+      expect(provider.categoriasPersonalizadas.map((c) => c.clave), [
+        'mascotas',
+      ]);
+      final documento = await firestore
+          .collection('negocios')
+          .doc('negocio-1')
+          .get();
+      expect(documento.exists, isFalse);
+    });
+
+    test('un fallo de persistencia conserva la categoría', () async {
+      final provider = ConfiguracionNegocioProvider(
+        rubro: 'Bodega',
+        negocioId: 'negocio-1',
+        configuracionInicial: {
+          'categoriasPersonalizadas': [
+            {'clave': 'mascotas', 'nombre': 'Mascotas', 'activa': true},
+            {'clave': 'importados', 'nombre': 'Importados', 'activa': true},
+          ],
+        },
+        repository: RepositoryQueFalla(FakeFirebaseFirestore()),
+      );
+      var notificaciones = 0;
+      provider.addListener(() => notificaciones++);
+
+      final eliminada = await provider.eliminarCategoriaPersonalizada(
+        'usuario-1',
+        'mascotas',
+      );
+
+      expect(eliminada, isFalse);
+      expect(provider.errorCatalogo, contains('No se pudo eliminar'));
+      expect(notificaciones, 0);
+      expect(provider.categoriasPersonalizadas.map((c) => c.clave), [
+        'mascotas',
+        'importados',
+      ]);
+    });
+  });
 }
 
 

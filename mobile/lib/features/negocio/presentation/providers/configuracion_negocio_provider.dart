@@ -522,9 +522,8 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
       return false;
     }
 
-    // copyWith y no CategoriaPersonalizada.renombrar: aquel reconstruye la
-    // categoría y revierte `activa` a true, lo que reactivaría en silencio
-    // una categoría que el negocio tenía desactivada.
+    // El nombre ya viene recortado de arriba; copyWith deja intactos la clave
+    // y `activa`, que es exactamente lo que un renombrado no puede tocar.
     final actualizada = [..._categoriasPersonalizadas];
     actualizada[indice] = actualizada[indice].copyWith(nombre: nombreLimpio);
 
@@ -532,6 +531,34 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
       uid,
       actualizada,
       'No se pudo renombrar la categoría. Revisa tu conexión.',
+    );
+  }
+
+  /// Elimina una categoría personalizada de la lista.
+  ///
+  /// A diferencia de [desactivarCategoriaPersonalizada], aquí la categoría
+  /// desaparece: desactivar la esconde y se puede volver atrás, eliminar la
+  /// borra su registro. Por eso es la operación que más caro sale equivocarse
+  /// —los productos la referencian por nombre—, y por eso comparte el mismo
+  /// orden de escritura que el resto: primero Firestore, después la memoria.
+  ///
+  /// Solo toca `categoriasPersonalizadas`. Las categorías del preset viven en
+  /// `_categorias` y no se ven afectadas, y los productos que usen la
+  /// categoría eliminada todavía no se detectan como conflicto: eso llega en
+  /// una etapa posterior.
+  ///
+  /// Una clave que no existe devuelve `false` sin escribir, sin tocar el
+  /// estado y sin notificar.
+  Future<bool> eliminarCategoriaPersonalizada(String uid, String clave) async {
+    final indice = _indiceCategoriaPersonalizada(clave);
+    if (indice == -1) return false;
+
+    final actualizada = [..._categoriasPersonalizadas]..removeAt(indice);
+
+    return _persistirCategoriasPersonalizadas(
+      uid,
+      actualizada,
+      'No se pudo eliminar la categoría. Revisa tu conexión.',
     );
   }
 
