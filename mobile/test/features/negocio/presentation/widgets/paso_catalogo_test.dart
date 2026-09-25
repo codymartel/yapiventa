@@ -113,7 +113,7 @@ void main() {
     await tester.pump();
 
     await irAUnidades(tester);
-    expect(find.text('Unidades de medida'), findsOneWidget);
+    expect(find.text('Unidad o presentación'), findsOneWidget);
     expect(find.text('Categorías de productos'), findsNothing);
 
     await irACategorias(tester);
@@ -432,46 +432,6 @@ void main() {
     expect(provider.categorias, categoriasIniciales);
   });
 
-  // ── Contenido anterior de Unidades ─────────────────────────────────────
-  testWidgets('muestra cantidades comerciales sin decimales técnicos', (
-    tester,
-  ) async {
-    await mostrarPaso(tester);
-    await irAUnidades(tester);
-
-    expect(find.textContaining('Media docena'), findsOneWidget);
-    expect(find.textContaining('250 g'), findsOneWidget);
-    expect(find.textContaining('1½ kg'), findsOneWidget);
-    expect(find.textContaining('500 ml'), findsOneWidget);
-    expect(find.textContaining('1½ L'), findsOneWidget);
-    expect(find.text('0.25'), findsNothing);
-    expect(find.text('0.5'), findsNothing);
-    expect(find.text('1.5'), findsNothing);
-  });
-
-  testWidgets('permite desactivar y reactivar un preset del sistema', (
-    tester,
-  ) async {
-    final provider = await mostrarPaso(tester);
-    await irAUnidades(tester);
-
-    final tarjeta = find.byKey(const Key('unidad-predefinida-Botella'));
-    final switchFinder = find.descendant(
-      of: tarjeta,
-      matching: find.byType(Switch),
-    );
-
-    expect(provider.unidadPredefinidaActiva('Botella'), isTrue);
-    await tester.tap(switchFinder);
-    await tester.pump();
-    expect(provider.unidadPredefinidaActiva('Botella'), isFalse);
-    expect(tarjeta, findsOneWidget);
-
-    await tester.tap(switchFinder);
-    await tester.pump();
-    expect(provider.unidadPredefinidaActiva('Botella'), isTrue);
-  });
-
   // ── Validaciones extra del diálogo ─────────────────────────────────────
   testWidgets('rechaza nombres de menos de 2 caracteres', (tester) async {
     await mostrarPaso(tester);
@@ -516,7 +476,16 @@ void main() {
   });
 
   // ── Matriz responsive: sin overflow, botón visible, tabs conservan ─────
-  for (final ancho in [360.0, 500.0, 768.0, 1050.0, 1440.0]) {
+  for (final ancho in [
+    320.0,
+    360.0,
+    500.0,
+    768.0,
+    1050.0,
+    1140.0,
+    1366.0,
+    1720.0,
+  ]) {
     for (final escala in [1.0, 1.3, 2.0]) {
       testWidgets('sin overflow a ${ancho}px con texto $escala', (
         tester,
