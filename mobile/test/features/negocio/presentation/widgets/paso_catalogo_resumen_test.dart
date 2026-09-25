@@ -77,10 +77,8 @@ void main() {
       PresetsVenta.obtener('Bodega'),
     );
 
-    Finder enFila(String fila, String texto) => find.descendant(
-      of: find.byKey(Key(fila)),
-      matching: find.text(texto),
-    );
+    Finder enFila(String fila, String texto) =>
+        find.descendant(of: find.byKey(Key(fila)), matching: find.text(texto));
 
     expect(
       enFila('resumen-categorias', '${Categorias.obtener('Bodega').length}'),
@@ -144,7 +142,9 @@ void main() {
   });
 
   // ── 2. Reactividad del resumen ───────────────────────────────────────
-  testWidgets('el resumen reacciona a los cambios del borrador', (tester) async {
+  testWidgets('el resumen reacciona a los cambios del borrador', (
+    tester,
+  ) async {
     final provider = await mostrarPaso(tester);
     await verResumen(tester);
 
@@ -202,7 +202,9 @@ void main() {
     expect(
       find.descendant(
         of: find.byKey(const Key('resumen-errores')),
-        matching: find.textContaining('Medidas pendientes de revisión: Docena.'),
+        matching: find.textContaining(
+          'Medidas pendientes de revisión: Docena.',
+        ),
       ),
       findsOneWidget,
     );
@@ -238,73 +240,117 @@ void main() {
     expect(
       find.descendant(
         of: find.byKey(const Key('resumen-errores')),
-        matching: find.textContaining('Medidas pendientes de revisión: Docena.'),
+        matching: find.textContaining(
+          'Medidas pendientes de revisión: Docena.',
+        ),
       ),
       findsOneWidget,
     );
     expect(tester.takeException(), isNull);
   });
 
-  // ── 5. Siguiente: habilitado solo sin errores y sin escrituras ───────
-  testWidgets('Siguiente solo se habilita sin errores y no escribe al cambiar pestaña', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(500, 800);
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    final firestore = FakeFirebaseFirestore();
-    final provider = ConfiguracionNegocioProvider(
-      rubro: 'Bodega',
-      configuracionInicial: {'categorias': <String>[]},
-      repository: NegocioRepository(firestore: firestore),
-    );
-    addTearDown(provider.dispose);
+  // ── 5. Siguiente: exige categorías y unidades presentes Y sin pendientes ─
+  testWidgets(
+    'Siguiente se bloquea con medidas pendientes y solo se habilita sin ellas',
+    (tester) async {
+      tester.view.physicalSize = const Size(500, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(
-      ChangeNotifierProvider<ConfiguracionNegocioProvider>.value(
-        value: provider,
-        child: MaterialApp(
-          home: Material(
-            color: AppColors.fondo,
-            child: ConfiguracionNegocioContent(
-              rubro: 'Bodega',
-              onVolver: () {},
-              onFinalizar: () {},
+      ElevatedButton botonSiguiente() => tester.widget<ElevatedButton>(
+        find.widgetWithText(ElevatedButton, 'Siguiente'),
+      );
+
+      // Escenario 1: hay categoría y unidad, pero queda una medida en revisión.
+      final firestore = FakeFirebaseFirestore();
+      final provider = ConfiguracionNegocioProvider(
+        rubro: 'Bodega',
+        configuracionInicial: {
+          'categorias': ['Bebidas'],
+          'unidadesMedida': [
+            {
+              'nombre': 'Docena',
+              'tipo': 'fraccionaria',
+              'fraccionesPermitidas': <String>[],
+              'esOpcional': true,
+            },
+          ],
+        },
+        repository: NegocioRepository(firestore: firestore),
+      );
+      addTearDown(provider.dispose);
+
+      await tester.pumpWidget(
+        ChangeNotifierProvider<ConfiguracionNegocioProvider>.value(
+          value: provider,
+          child: MaterialApp(
+            home: Material(
+              color: AppColors.fondo,
+              child: ConfiguracionNegocioContent(
+                rubro: 'Bodega',
+                onVolver: () {},
+                onFinalizar: () {},
+              ),
             ),
           ),
         ),
-      ),
-    );
-    await tester.pump();
-    provider.irAPaso(1);
-    await tester.pumpAndSettle();
+      );
+      await tester.pump();
+      provider.irAPaso(1);
+      await tester.pumpAndSettle();
 
-    ElevatedButton botonSiguiente() =>
-        tester.widget<ElevatedButton>(
-          find.widgetWithText(ElevatedButton, 'Siguiente'),
-        );
+      expect(provider.categorias, isNotEmpty);
+      expect(provider.unidadesMedida, isNotEmpty);
+      expect(provider.medidasPendientesRevision, ['Docena']);
+      expect(botonSiguiente().onPressed, isNull);
 
-    expect(botonSiguiente().onPressed, isNull);
+      provider.cambiarCatalogoPestana(1);
+      await tester.pumpAndSettle();
+      expect(botonSiguiente().onPressed, isNull);
+      provider.cambiarCatalogoPestana(2);
+      await tester.pumpAndSettle();
+      expect(botonSiguiente().onPressed, isNull);
+      expect(provider.pasoActual, 1);
+      provider.cambiarCatalogoPestana(0);
 
-    provider.cambiarCatalogoPestana(1);
-    await tester.pumpAndSettle();
-    expect(botonSiguiente().onPressed, isNull);
-    provider.cambiarCatalogoPestana(2);
-    await tester.pumpAndSettle();
-    expect(botonSiguiente().onPressed, isNull);
-    expect(provider.pasoActual, 1);
-    provider.cambiarCatalogoPestana(0);
+      // Escenario 2: sin medidas pendientes (preset nuevo) Siguiente habilitado.
+      final providerLimpio = ConfiguracionNegocioProvider(
+        rubro: 'Bodega',
+        repository: NegocioRepository(firestore: FakeFirebaseFirestore()),
+      );
+      addTearDown(providerLimpio.dispose);
+      providerLimpio.agregarCategoria('Snacks');
+      expect(providerLimpio.medidasPendientesRevision, isEmpty);
 
-    provider.agregarCategoria('Snacks');
-    await tester.pumpAndSettle();
-    expect(botonSiguiente().onPressed, isNotNull);
+      await tester.pumpWidget(
+        ChangeNotifierProvider<ConfiguracionNegocioProvider>.value(
+          value: providerLimpio,
+          child: MaterialApp(
+            home: Material(
+              color: AppColors.fondo,
+              child: ConfiguracionNegocioContent(
+                rubro: 'Bodega',
+                onVolver: () {},
+                onFinalizar: () {},
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      providerLimpio.irAPaso(1);
+      await tester.pumpAndSettle();
 
-    final negocios = await firestore.collection('negocios').get();
-    final usuarios = await firestore.collection('users').get();
-    expect(negocios.docs, isEmpty);
-    expect(usuarios.docs, isEmpty);
-  });
+      expect(providerLimpio.medidasPendientesRevision, isEmpty);
+      expect(botonSiguiente().onPressed, isNotNull);
+
+      final negocios = await firestore.collection('negocios').get();
+      final usuarios = await firestore.collection('users').get();
+      expect(negocios.docs, isEmpty);
+      expect(usuarios.docs, isEmpty);
+    },
+  );
 
   // ── 6. Seis rubros: resumen consistente con cada preset ──────────────
   const seisRubros = [
@@ -341,10 +387,7 @@ void main() {
       );
       expect(
         provider.totalCantidadesRapidas,
-        catalogo.medidas.fold(
-          0,
-          (n, m) => n + m.cantidadesRapidasBase.length,
-        ),
+        catalogo.medidas.fold(0, (n, m) => n + m.cantidadesRapidasBase.length),
       );
       expect(provider.medidasPendientesRevision, isEmpty);
       expect(provider.puedeAvanzarPaso1, isTrue);

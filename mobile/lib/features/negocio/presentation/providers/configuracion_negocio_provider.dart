@@ -498,13 +498,16 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
   int get presentacionesActivas => _catalogoVenta.presentaciones
       .where((presentacion) => presentacion.activa)
       .length;
-  int get medidasActivas => _catalogoVenta.medidas
-      .where((medida) => medida.activa)
-      .length;
-  int get totalFormatos => _catalogoVenta.presentaciones
-      .fold(0, (total, presentacion) => total + presentacion.formatos.length);
-  int get totalCantidadesRapidas => _catalogoVenta.medidas
-      .fold(0, (total, medida) => total + medida.cantidadesRapidasBase.length);
+  int get medidasActivas =>
+      _catalogoVenta.medidas.where((medida) => medida.activa).length;
+  int get totalFormatos => _catalogoVenta.presentaciones.fold(
+    0,
+    (total, presentacion) => total + presentacion.formatos.length,
+  );
+  int get totalCantidadesRapidas => _catalogoVenta.medidas.fold(
+    0,
+    (total, medida) => total + medida.cantidadesRapidasBase.length,
+  );
 
   /// Nombres de las medidas que quedaron pendientes de revisión (bloquean
   /// el guardado). El resumen las muestra como errores pendientes.
@@ -1027,7 +1030,8 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
       !faltaDireccion &&
       !faltaReferencia &&
       !linksMalos;
-  bool get puedeAvanzarPaso1 => !faltaCategoria && !faltaUnidad;
+  bool get puedeAvanzarPaso1 =>
+      !faltaCategoria && !faltaUnidad && medidasPendientesRevision.isEmpty;
   bool get puedeAvanzarPaso2 => !faltaZonas;
   bool get puedeAvanzarPaso3 =>
       true; // pagos son opcionales, igual que en Kotlin
@@ -1066,6 +1070,19 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
   /// peruano (ya no aplica) ni el "+51" fijo — usa el país seleccionado.
   Future<bool> guardar(String uid) async {
     if (_guardando) return false;
+
+    final medidasPendientes = _catalogoVenta.medidas
+        .where((medida) => medida.requiereRevision)
+        .map((medida) => medida.nombre)
+        .toList();
+    if (medidasPendientes.isNotEmpty) {
+      _errorValidacion =
+          'El catálogo tiene medidas pendientes de revisión '
+          '(${medidasPendientes.join(', ')}): revísalas antes de guardar.';
+      notifyListeners();
+      return false;
+    }
+
     if (uid.trim().isEmpty || !camposCompletos) {
       _errorValidacion =
           'Completa los datos obligatorios antes de guardar la configuración.';
@@ -1125,17 +1142,6 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final medidasPendientes = _catalogoVenta.medidas
-          .where((medida) => medida.requiereRevision)
-          .map((medida) => medida.nombre)
-          .toList();
-      if (medidasPendientes.isNotEmpty) {
-        _errorValidacion =
-            'El catálogo tiene medidas pendientes de revisión '
-            '(${medidasPendientes.join(', ')}): revísalas antes de guardar.';
-        return false;
-      }
-
       final categoriasEliminadas = _categoriasIniciales
           .difference(_categorias.toSet())
           .toList();
