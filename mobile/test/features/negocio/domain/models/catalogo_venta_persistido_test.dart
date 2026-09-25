@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/domain/models/tipo_unidad.dart';
 import 'package:mobile/features/negocio/domain/models/catalogo_venta/catalogo_venta_persistido.dart';
+import 'package:mobile/features/negocio/domain/models/catalogo_venta/configuracion_medida.dart';
 import 'package:mobile/features/negocio/domain/models/catalogo_venta/preset_venta_rubro.dart';
 import 'package:mobile/features/negocio/domain/models/catalogo_venta/unidad_registrada.dart';
 import 'package:mobile/features/productos/domain/models/familia_unidad.dart';
@@ -291,5 +292,45 @@ void main() {
     expect(catalogo!.version, CatalogoVentaPersistido.versionEsquema);
     expect(catalogo.presentaciones, isEmpty);
     expect(catalogo.medidas, isEmpty);
+  });
+
+  test(
+    'toConfiguracion reconstruye la ConfiguracionMedida de una medida segura',
+    () {
+      final configuracion = ConfiguracionMedida(
+        familia: FamiliaUnidad.peso,
+        unidadVisual: RegistroUnidades.kg,
+        minimoBase: 300,
+        incrementoBase: 50,
+        cantidadesRapidasBase: const [300, 400],
+        permiteCantidad: true,
+        monto: EstadoMonto.activo,
+        activa: true,
+      );
+      final medida = MedidaVentaPersistida.desdeConfiguracion(configuracion);
+
+      final releida = medida.toConfiguracion();
+
+      expect(releida, isNotNull);
+      expect(releida!.familia, FamiliaUnidad.peso);
+      expect(releida.unidadBase, RegistroUnidades.g);
+      expect(releida.unidadVisual, RegistroUnidades.kg);
+      expect(releida.minimoBase, 300);
+      expect(releida.incrementoBase, 50);
+      expect(releida.cantidadesRapidasBase, [300, 400]);
+      expect(releida.permiteCantidad, isTrue);
+      expect(releida.monto, EstadoMonto.activo);
+      expect(releida.activa, isTrue);
+    },
+  );
+
+  test('toConfiguracion devuelve null en medidas que requieren revisión', () {
+    final medida = MedidaVentaPersistida(
+      id: 'Docena',
+      nombre: 'Docena',
+      requiereRevision: true,
+    );
+
+    expect(medida.toConfiguracion(), isNull);
   });
 }

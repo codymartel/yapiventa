@@ -476,6 +476,7 @@ class NegocioRepository
     required String youtube,
     required List<String> categorias,
     required List<UnidadInfo> unidadesMedida,
+    CatalogoVentaPersistido? catalogoVenta,
     required bool tieneDelivery,
     required List<ZonaDelivery> zonasDelivery,
     required List<HorarioDia> horarios,
@@ -541,9 +542,12 @@ class NegocioRepository
       'youtube': youtube,
       'categorias': categorias,
       'unidadesMedida': unidadesMap,
-      'catalogoVenta': CatalogoVentaPersistido.desdePreset(
-        PresetsVenta.obtener(rubro),
-      ).toMap(),
+      'catalogoVenta':
+          (catalogoVenta ??
+                  CatalogoVentaPersistido.desdePreset(
+                    PresetsVenta.obtener(rubro),
+                  ))
+              .toMap(),
       'delivery': tieneDelivery,
       'deliveryZonas': zonasMap,
       'horarios': horariosMap,

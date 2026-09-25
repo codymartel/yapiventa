@@ -1,10 +1,17 @@
 import 'package:flutter/foundation.dart';
+import 'package:mobile/features/productos/domain/models/familia_unidad.dart';
 import '../../data/negocio_repository.dart';
 import '../../domain/models/zona_delivery.dart';
 import '../../domain/models/horario_dia.dart';
 import '../../domain/models/metodo_pago_tipo.dart';
 import '../../domain/models/config_pago_metodo.dart';
 import '../../domain/models/pais_telefono.dart';
+import '../../domain/models/catalogo_venta/catalogo_venta_global.dart';
+import '../../domain/models/catalogo_venta/catalogo_venta_persistido.dart';
+import '../../domain/models/catalogo_venta/configuracion_medida.dart';
+import '../../domain/models/catalogo_venta/formato_presentacion.dart';
+import '../../domain/models/catalogo_venta/opcion_presentacion.dart';
+import '../../domain/models/catalogo_venta/preset_venta_rubro.dart';
 import '../../../../domain/models/categoria.dart';
 import '../../../../domain/models/unidad_medida.dart';
 import '../../../../domain/models/tipo_unidad.dart';
@@ -43,6 +50,15 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
   late final Set<String> _unidadesIniciales;
   bool _disposed = false;
 
+  /// Borrador en memoria del catálogo de venta (presentaciones + medidas).
+  /// Se siembra con el preset del rubro y se reemplaza si la configuración
+  /// guardada trae un [CatalogoVentaPersistido] (o se adapta desde unidades
+  /// legacy). No se escribe en Firestore hasta `guardar()`.
+  late CatalogoVentaPersistido _catalogoVenta;
+
+  String? _errorCatalogo;
+  String? get errorCatalogo => _errorCatalogo;
+
   ConfiguracionNegocioProvider({
     required this.rubro,
     this.negocioId,
@@ -53,6 +69,9 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
     // según el rubro elegido en la pantalla anterior.
     _categorias = List.of(Categorias.obtener(rubro));
     _unidadesMedida = List.of(UnidadesMedida.obtener(rubro));
+    _catalogoVenta = CatalogoVentaPersistido.desdePreset(
+      PresetsVenta.obtener(rubro),
+    );
     if (configuracionInicial != null) {
       _restaurarConfiguracion(configuracionInicial);
     }
@@ -110,6 +129,22 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
         .where((unidad) => unidad.nombre.isNotEmpty)
         .toList();
     if (unidadesGuardadas != null) _unidadesMedida = unidadesGuardadas;
+
+    // Borrador de catálogo de venta: primero el guardado con esquema nuevo;
+    // si no existe, se adapta lo que haya en unidadesMedida legacy (mismo
+    // criterio que obtenerCatalogoVenta); si no hay nada que adaptar, queda
+    // el preset del rubro sembrado en el constructor.
+    final catalogoGuardado = CatalogoVentaPersistido.desdeMapa(
+      datos['catalogoVenta'],
+    );
+    if (catalogoGuardado != null) {
+      _catalogoVenta = catalogoGuardado;
+    } else {
+      final adaptado = CatalogoVentaPersistido.desdeUnidadesLegacy(
+        _unidadesMedida,
+      );
+      if (adaptado != null) _catalogoVenta = adaptado;
+    }
 
     _tieneDelivery = datos['delivery'] as bool? ?? false;
     _zonasDelivery
@@ -292,11 +327,13 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
   List<String> get categorias => List.unmodifiable(_categorias);
 
   void agregarCategoria(String nombre) {
+    if (_esCategoriaDuplicada(nombre)) return;
     _categorias.add(nombre);
     notifyListeners();
   }
 
   void editarCategoria(int index, String nuevoNombre) {
+    if (_esCategoriaDuplicada(nuevoNombre, exceptoIndex: index)) return;
     _categorias[index] = nuevoNombre;
     notifyListeners();
   }
@@ -304,6 +341,20 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
   void eliminarCategoria(int index) {
     _categorias.removeAt(index);
     notifyListeners();
+  }
+
+  /// Detección de duplicados por nombre normalizado (trim + minúsculas);
+  /// [exceptoIndex] ignora la propia categoría al renombrar.
+  bool _esCategoriaDuplicada(String nombre, {int? exceptoIndex}) {
+    final normalizado = nombre.trim().toLowerCase();
+    if (normalizado.isEmpty) return false;
+    for (var i = 0; i < _categorias.length; i++) {
+      if (i != exceptoIndex &&
+          _categorias[i].trim().toLowerCase() == normalizado) {
+        return true;
+      }
+    }
+    return false;
   }
 
   bool categoriaActiva(String nombre) => _categorias.contains(nombre);
@@ -409,6 +460,448 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
     if (unidadPredefinida(unidad) || unidadBaseProtegida(unidad.nombre)) return;
     _unidadesMedida.removeAt(index);
     notifyListeners();
+  }
+
+  // ── PASO 2b: Catálogo de venta (presentaciones + medidas) ────────────
+  // Borrador en memoria (CatalogoVentaPersistido) con reglas de edición.
+  // Las presentaciones del catálogo global tienen NOMBRE e ID estables
+  // (solo cambian activa/formatos); las personalizadas se crean y renombran.
+  // Los formatos se comparan normalizados (1000 ml y 1 L son el mismo).
+  // Las medidas viven en unidad base y sus ediciones se validan con
+  // ConfiguracionMedida.validar antes de aplicarse.
+
+  List<OpcionPresentacion> get presentaciones => _catalogoVenta.presentaciones;
+  List<MedidaVentaPersistida> get medidas => _catalogoVenta.medidas;
+
+  /// Borrador completo (presentaciones + medidas).
+  CatalogoVentaPersistido get catalogoVenta => _catalogoVenta;
+
+  OpcionPresentacion? presentacionPorId(String id) {
+    for (final presentacion in _catalogoVenta.presentaciones) {
+      if (presentacion.id == id) return presentacion;
+    }
+    return null;
+  }
+
+  bool presentacionActiva(String id) => presentacionPorId(id)?.activa ?? false;
+  bool presentacionObligatoria(String id) =>
+      presentacionPorId(id)?.obligatoria ?? false;
+  bool presentacionEsPersonalizada(String id) =>
+      presentacionPorId(id)?.personalizada ?? false;
+
+  /// Solo el rubro "Otros" admite presentaciones personalizadas.
+  bool get puedeCrearPresentacionesPersonalizadas =>
+      PresetsVenta.obtener(rubro).permitePersonalizadas;
+
+  MedidaVentaPersistida? medidaDe(FamiliaUnidad familia) {
+    for (final medida in _catalogoVenta.medidas) {
+      if (medida.familia == familia) return medida;
+    }
+    return null;
+  }
+
+  bool medidaActiva(FamiliaUnidad familia) =>
+      medidaDe(familia)?.activa ?? false;
+
+  void limpiarErrorCatalogo() {
+    if (_errorCatalogo == null) return;
+    _errorCatalogo = null;
+    notifyListeners();
+  }
+
+  void _rechazarCatalogo(String mensaje) {
+    _errorCatalogo = mensaje;
+    notifyListeners();
+  }
+
+  void _reemplazarCatalogo(CatalogoVentaPersistido nuevo) {
+    _catalogoVenta = nuevo;
+    _errorCatalogo = null;
+    notifyListeners();
+  }
+
+  void _reemplazarPresentacion(int index, OpcionPresentacion nueva) {
+    final presentaciones = [..._catalogoVenta.presentaciones];
+    presentaciones[index] = nueva;
+    _reemplazarCatalogo(
+      CatalogoVentaPersistido(
+        version: _catalogoVenta.version,
+        presentaciones: presentaciones,
+        medidas: _catalogoVenta.medidas,
+      ),
+    );
+  }
+
+  void _reemplazarMedida(int index, MedidaVentaPersistida nueva) {
+    final medidas = [..._catalogoVenta.medidas];
+    medidas[index] = nueva;
+    _reemplazarCatalogo(
+      CatalogoVentaPersistido(
+        version: _catalogoVenta.version,
+        presentaciones: _catalogoVenta.presentaciones,
+        medidas: medidas,
+      ),
+    );
+  }
+
+  int _indicePresentacion(String id) =>
+      _catalogoVenta.presentaciones.indexWhere((p) => p.id == id);
+
+  bool _tituloPresentacionOcupado(String nombre, {String? exceptoId}) {
+    final normalizado = nombre.trim().toLowerCase();
+    return _catalogoVenta.presentaciones.any(
+      (p) => p.id != exceptoId && p.nombre.trim().toLowerCase() == normalizado,
+    );
+  }
+
+  String _siguienteIdPersonalizado() {
+    final usados = _catalogoVenta.presentaciones.map((p) => p.id).toSet();
+    var i = 1;
+    while (usados.contains('personalizada-$i')) {
+      i++;
+    }
+    return 'personalizada-$i';
+  }
+
+  /// Activa o desactiva una presentación. Las obligatorias no se desactivan.
+  void establecerPresentacionActiva(String id, {required bool activa}) {
+    final index = _indicePresentacion(id);
+    if (index == -1) {
+      _rechazarCatalogo('La presentación no existe en el catálogo.');
+      return;
+    }
+    final actual = _catalogoVenta.presentaciones[index];
+    if (!activa && actual.obligatoria) {
+      _rechazarCatalogo(
+        'No puedes desactivar ${actual.nombre}: es obligatoria para $rubro.',
+      );
+      return;
+    }
+    if (actual.activa == activa) return;
+    _reemplazarPresentacion(
+      index,
+      OpcionPresentacion(
+        id: actual.id,
+        nombre: actual.nombre,
+        formatos: actual.formatos,
+        activa: activa,
+        obligatoria: actual.obligatoria,
+        personalizada: actual.personalizada,
+      ),
+    );
+  }
+
+  /// Agrega una presentación personalizada con sus formatos. Solo en rubros
+  /// que permiten personalizadas ("Otros"). Rechaza nombres ya usados y
+  /// formatos duplicados normalizados.
+  void agregarPresentacionPersonalizada({
+    required String nombre,
+    required List<FormatoPresentacion> formatos,
+  }) {
+    if (!puedeCrearPresentacionesPersonalizadas) {
+      _rechazarCatalogo('$rubro no admite presentaciones personalizadas.');
+      return;
+    }
+    final titulo = nombre.trim();
+    if (titulo.isEmpty) {
+      _rechazarCatalogo('El nombre de la presentación no puede estar vacío.');
+      return;
+    }
+    if (formatos.isEmpty) {
+      _rechazarCatalogo('La presentación debe tener al menos un formato.');
+      return;
+    }
+    if (_tituloPresentacionOcupado(titulo)) {
+      _rechazarCatalogo('Ya existe una presentación con ese nombre.');
+      return;
+    }
+    final opcion = OpcionPresentacion(
+      id: _siguienteIdPersonalizado(),
+      nombre: titulo,
+      formatos: formatos,
+      activa: true,
+      personalizada: true,
+    );
+    final error = opcion.validar();
+    if (error != null) {
+      _rechazarCatalogo(error);
+      return;
+    }
+    _reemplazarCatalogo(
+      CatalogoVentaPersistido(
+        version: _catalogoVenta.version,
+        presentaciones: [..._catalogoVenta.presentaciones, opcion],
+        medidas: _catalogoVenta.medidas,
+      ),
+    );
+  }
+
+  /// Renombra solo presentaciones personalizadas (las del catálogo global
+  /// tienen nombre fijo). Rechaza nombres ya usados.
+  void renombrarPresentacion(String id, String nuevoNombre) {
+    final index = _indicePresentacion(id);
+    if (index == -1) {
+      _rechazarCatalogo('La presentación no existe en el catálogo.');
+      return;
+    }
+    final actual = _catalogoVenta.presentaciones[index];
+    if (!actual.personalizada) {
+      _rechazarCatalogo('Solo las presentaciones personalizadas se renombran.');
+      return;
+    }
+    final titulo = nuevoNombre.trim();
+    if (titulo.isEmpty) {
+      _rechazarCatalogo('El nombre de la presentación no puede estar vacío.');
+      return;
+    }
+    if (_tituloPresentacionOcupado(titulo, exceptoId: id)) {
+      _rechazarCatalogo('Ya existe una presentación con ese nombre.');
+      return;
+    }
+    _reemplazarPresentacion(
+      index,
+      OpcionPresentacion(
+        id: actual.id,
+        nombre: titulo,
+        formatos: actual.formatos,
+        activa: actual.activa,
+        obligatoria: actual.obligatoria,
+        personalizada: actual.personalizada,
+      ),
+    );
+  }
+
+  /// Elimina una presentación que no sea obligatoria (global opcional o
+  /// personalizada).
+  void eliminarPresentacion(String id) {
+    final index = _indicePresentacion(id);
+    if (index == -1) {
+      _rechazarCatalogo('La presentación no existe en el catálogo.');
+      return;
+    }
+    final actual = _catalogoVenta.presentaciones[index];
+    if (actual.obligatoria) {
+      _rechazarCatalogo(
+        'No puedes eliminar ${actual.nombre}: es obligatoria para $rubro.',
+      );
+      return;
+    }
+    final presentaciones = [..._catalogoVenta.presentaciones]..removeAt(index);
+    _reemplazarCatalogo(
+      CatalogoVentaPersistido(
+        version: _catalogoVenta.version,
+        presentaciones: presentaciones,
+        medidas: _catalogoVenta.medidas,
+      ),
+    );
+  }
+
+  /// Agrega un formato a una presentación. Para las del catálogo global solo
+  /// admite formatos permitidos; rechaza duplicados equivalentes (la misma
+  /// cantidad normalizada, p. ej. 1000 ml y 1 L).
+  void agregarFormato(String id, FormatoPresentacion formato) {
+    final index = _indicePresentacion(id);
+    if (index == -1) {
+      _rechazarCatalogo('La presentación no existe en el catálogo.');
+      return;
+    }
+    final actual = _catalogoVenta.presentaciones[index];
+    if (!actual.personalizada &&
+        !CatalogoVentaGlobal.esFormatoPermitido(id, formato)) {
+      _rechazarCatalogo(
+        'El formato ${formato.etiqueta} no está permitido para '
+        '${actual.nombre}.',
+      );
+      return;
+    }
+    if (actual.formatos.any(
+      (formatoActual) => formatoActual.esMismoFormato(formato),
+    )) {
+      _rechazarCatalogo(
+        '${formato.etiqueta} ya es un formato de ${actual.nombre}.',
+      );
+      return;
+    }
+    _reemplazarPresentacion(
+      index,
+      OpcionPresentacion(
+        id: actual.id,
+        nombre: actual.nombre,
+        formatos: [...actual.formatos, formato],
+        activa: actual.activa,
+        obligatoria: actual.obligatoria,
+        personalizada: actual.personalizada,
+      ),
+    );
+  }
+
+  /// Elimina un formato por cantidad normalizada. Nunca deja una
+  /// presentación sin formatos.
+  void eliminarFormato(String id, FormatoPresentacion formato) {
+    final index = _indicePresentacion(id);
+    if (index == -1) {
+      _rechazarCatalogo('La presentación no existe en el catálogo.');
+      return;
+    }
+    final actual = _catalogoVenta.presentaciones[index];
+    final indiceFormato = actual.formatos.indexWhere(
+      (formatoActual) => formatoActual.esMismoFormato(formato),
+    );
+    if (indiceFormato == -1) {
+      _rechazarCatalogo(
+        '${formato.etiqueta} no es un formato de ${actual.nombre}.',
+      );
+      return;
+    }
+    if (actual.formatos.length <= 1) {
+      _rechazarCatalogo(
+        'No puedes quitar el único formato de ${actual.nombre}.',
+      );
+      return;
+    }
+    final formatos = [...actual.formatos]..removeAt(indiceFormato);
+    _reemplazarPresentacion(
+      index,
+      OpcionPresentacion(
+        id: actual.id,
+        nombre: actual.nombre,
+        formatos: formatos,
+        activa: actual.activa,
+        obligatoria: actual.obligatoria,
+        personalizada: actual.personalizada,
+      ),
+    );
+  }
+
+  /// Activa o desactiva una medida (venta por peso, volumen...).
+  void establecerMedidaActiva(FamiliaUnidad familia, {required bool activa}) {
+    final index = _indiceMedida(familia);
+    if (index == -1) {
+      _rechazarCatalogo('No hay una medida configurada para $familia.');
+      return;
+    }
+    final actual = _catalogoVenta.medidas[index];
+    if (actual.activa == activa) return;
+    _reemplazarMedida(index, _medidaEditada(actual, activa: activa));
+  }
+
+  /// Edita el mínimo de venta (en la unidad base de la familia).
+  void editarMinimoBase(FamiliaUnidad familia, int minimoBase) {
+    _editarMedidaValidando(familia, minimo: minimoBase);
+  }
+
+  /// Edita el incremento de venta (en la unidad base de la familia).
+  void editarIncrementoBase(FamiliaUnidad familia, int incrementoBase) {
+    _editarMedidaValidando(familia, incremento: incrementoBase);
+  }
+
+  /// Reemplaza las cantidades rápidas de la medida (en unidad base).
+  void editarCantidadesRapidasBase(
+    FamiliaUnidad familia,
+    List<int> cantidades,
+  ) {
+    _editarMedidaValidando(familia, rapidas: cantidades);
+  }
+
+  /// Activa/desactiva la venta por cantidad en esa medida.
+  void establecerPermiteCantidad(
+    FamiliaUnidad familia, {
+    required bool permite,
+  }) {
+    _editarMedidaValidando(familia, permiteCantidad: permite);
+  }
+
+  /// Activa/desactiva la venta por monto en esa medida.
+  void establecerPermiteMonto(FamiliaUnidad familia, {required bool permite}) {
+    _editarMedidaValidando(familia, permiteMonto: permite);
+  }
+
+  int _indiceMedida(FamiliaUnidad familia) =>
+      _catalogoVenta.medidas.indexWhere((medida) => medida.familia == familia);
+
+  /// Valida la edición contra [ConfiguracionMedida.validar] y reemplaza la
+  /// medida si todo es consistente (mínimo/incremento positivos, rápidas
+  /// fieles al mínimo+incremento, y al menos venta por cantidad o por monto).
+  void _editarMedidaValidando(
+    FamiliaUnidad familia, {
+    int? minimo,
+    int? incremento,
+    List<int>? rapidas,
+    bool? permiteCantidad,
+    bool? permiteMonto,
+  }) {
+    final index = _indiceMedida(familia);
+    if (index == -1) {
+      _rechazarCatalogo('No hay una medida configurada para $familia.');
+      return;
+    }
+    final actual = _catalogoVenta.medidas[index];
+    if (actual.familia == null ||
+        actual.unidadBase == null ||
+        actual.unidadVisual == null) {
+      _rechazarCatalogo(
+        '${actual.nombre} requiere revisión: primero resuélvela para '
+        'poder editarla.',
+      );
+      return;
+    }
+    final minimoFinal = minimo ?? actual.minimoBase;
+    final incrementoFinal = incremento ?? actual.incrementoBase;
+    final rapidasFinales = rapidas ?? actual.cantidadesRapidasBase;
+    final permiteCantidadFinal = permiteCantidad ?? actual.permiteCantidad;
+    final permiteMontoFinal = permiteMonto ?? actual.permiteMonto;
+
+    final error = ConfiguracionMedida.validar(
+      familia: actual.familia!,
+      unidadVisual: actual.unidadVisual!,
+      minimoBase: minimoFinal,
+      incrementoBase: incrementoFinal,
+      cantidadesRapidasBase: rapidasFinales,
+      permiteCantidad: permiteCantidadFinal,
+      monto: permiteMontoFinal ? EstadoMonto.activo : EstadoMonto.inactivo,
+    );
+    if (error != null) {
+      _rechazarCatalogo(error);
+      return;
+    }
+    _reemplazarMedida(
+      index,
+      _medidaEditada(
+        actual,
+        minimo: minimoFinal,
+        incremento: incrementoFinal,
+        rapidas: rapidasFinales,
+        permiteCantidad: permiteCantidadFinal,
+        permiteMonto: permiteMontoFinal,
+      ),
+    );
+  }
+
+  /// Reconstruye una [MedidaVentaPersistida] reemplazando los campos dados.
+  MedidaVentaPersistida _medidaEditada(
+    MedidaVentaPersistida actual, {
+    bool? activa,
+    int? minimo,
+    int? incremento,
+    List<int>? rapidas,
+    bool? permiteCantidad,
+    bool? permiteMonto,
+  }) {
+    return MedidaVentaPersistida(
+      id: actual.id,
+      nombre: actual.nombre,
+      familia: actual.familia,
+      unidadBase: actual.unidadBase,
+      unidadVisual: actual.unidadVisual,
+      minimoBase: minimo ?? actual.minimoBase,
+      incrementoBase: incremento ?? actual.incrementoBase,
+      cantidadesRapidasBase: rapidas ?? actual.cantidadesRapidasBase,
+      permiteCantidad: permiteCantidad ?? actual.permiteCantidad,
+      permiteMonto: permiteMonto ?? actual.permiteMonto,
+      activa: activa ?? actual.activa,
+      obligatoria: actual.obligatoria,
+      requiereRevision: actual.requiereRevision,
+    );
   }
 
   // ── PASO 3: Logística (delivery + horarios) ─────────────────────────
@@ -619,6 +1112,7 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
         youtube: _linkYoutube,
         categorias: _categorias,
         unidadesMedida: _unidadesMedida,
+        catalogoVenta: _catalogoVenta,
         tieneDelivery: _tieneDelivery,
         zonasDelivery: _zonasDelivery,
         horarios: _horarios,

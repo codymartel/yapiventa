@@ -329,6 +329,36 @@ class MedidaVentaPersistida {
     );
   }
 
+  /// Inverso de [desdeConfiguracion]: reconstruye una [ConfiguracionMedida]
+  /// para validar o editar la medida en memoria.
+  ///
+  /// Devuelve null si la medida no es edificable (familia o unidad visual
+  /// ausentes, o conteo), lo que ocurre con las legacy sin mapeo seguro
+  /// ([requiereRevision] == true).
+  ///
+  /// El modelo persistido solo guarda [permiteMonto] como bool, así que el
+  /// estado trivalente de [EstadoMonto] se simplifica: permite → activo,
+  /// no permite → inactivo. La distinción "opcional" es solo de preset y
+  /// queda embebida en [ConfiguracionMedida.monto] al re-guardar.
+  ConfiguracionMedida? toConfiguracion() {
+    if (familia == null ||
+        familia == FamiliaUnidad.conteo ||
+        unidadBase == null ||
+        unidadVisual == null) {
+      return null;
+    }
+    return ConfiguracionMedida(
+      familia: familia!,
+      unidadVisual: unidadVisual!,
+      minimoBase: minimoBase,
+      incrementoBase: incrementoBase,
+      cantidadesRapidasBase: cantidadesRapidasBase,
+      permiteCantidad: permiteCantidad,
+      monto: permiteMonto ? EstadoMonto.activo : EstadoMonto.inactivo,
+      activa: activa,
+    );
+  }
+
   static MedidaVentaPersistida? desdeMapa(Object? valor) {
     if (valor is! Map) return null;
     final datos = Map<String, dynamic>.from(valor);
