@@ -1600,6 +1600,103 @@ void main() {
       expect(provider.categoriasPersonalizadas.single.activa, isTrue);
     });
   });
+
+  group('categorías personalizadas: reactivar', () {
+    test('reactiva conservando clave y nombre, y persiste', () async {
+      final firestore = FakeFirebaseFirestore();
+      final provider = ConfiguracionNegocioProvider(
+        rubro: 'Bodega',
+        negocioId: 'negocio-1',
+        configuracionInicial: {
+          'categoriasPersonalizadas': [
+            {'clave': 'dulces', 'nombre': 'Dulces', 'activa': false},
+            {'clave': 'salas', 'nombre': 'Salas', 'activa': true},
+          ],
+        },
+        repository: NegocioRepository(firestore: firestore),
+      );
+      var notificaciones = 0;
+      provider.addListener(() => notificaciones++);
+
+      final reactivada = await provider.reactivarCategoriaPersonalizada(
+        'usuario-1',
+        'dulces',
+      );
+
+      expect(reactivada, isTrue);
+      expect(provider.errorCatalogo, isNull);
+      expect(notificaciones, 1);
+      // Reactivar no renombra ni resucita: solo cambia `activa`.
+      expect(provider.categoriasPersonalizadas, [
+        const CategoriaPersonalizada(clave: 'dulces', nombre: 'Dulces'),
+        const CategoriaPersonalizada(clave: 'salas', nombre: 'Salas'),
+      ]);
+
+      final datos =
+          (await firestore.collection('negocios').doc('negocio-1').get())
+              .data()!;
+      expect(datos['categoriasPersonalizadas'], [
+        {'clave': 'dulces', 'nombre': 'Dulces', 'activa': true},
+        {'clave': 'salas', 'nombre': 'Salas', 'activa': true},
+      ]);
+    });
+
+    test('una categoría inexistente no cambia nada', () async {
+      final firestore = FakeFirebaseFirestore();
+      final provider = ConfiguracionNegocioProvider(
+        rubro: 'Bodega',
+        negocioId: 'negocio-1',
+        configuracionInicial: {
+          'categoriasPersonalizadas': [
+            {'clave': 'dulces', 'nombre': 'Dulces', 'activa': false},
+          ],
+        },
+        repository: NegocioRepository(firestore: firestore),
+      );
+      var notificaciones = 0;
+      provider.addListener(() => notificaciones++);
+
+      final reactivada = await provider.reactivarCategoriaPersonalizada(
+        'usuario-1',
+        'inexistente',
+      );
+
+      expect(reactivada, isFalse);
+      expect(notificaciones, 0);
+      expect(provider.categoriasPersonalizadas.single.activa, isFalse);
+      // Tampoco escribe: el documento no se crea por un intento imposible.
+      final documento = await firestore
+          .collection('negocios')
+          .doc('negocio-1')
+          .get();
+      expect(documento.exists, isFalse);
+    });
+
+    test('un fallo de persistencia conserva activa: false', () async {
+      final provider = ConfiguracionNegocioProvider(
+        rubro: 'Bodega',
+        negocioId: 'negocio-1',
+        configuracionInicial: {
+          'categoriasPersonalizadas': [
+            {'clave': 'dulces', 'nombre': 'Dulces', 'activa': false},
+          ],
+        },
+        repository: RepositoryQueFalla(FakeFirebaseFirestore()),
+      );
+      var notificaciones = 0;
+      provider.addListener(() => notificaciones++);
+
+      final reactivada = await provider.reactivarCategoriaPersonalizada(
+        'usuario-1',
+        'dulces',
+      );
+
+      expect(reactivada, isFalse);
+      expect(provider.errorCatalogo, contains('No se pudo reactivar'));
+      expect(notificaciones, 0);
+      expect(provider.categoriasPersonalizadas.single.activa, isFalse);
+    });
+  });
 }
 
 

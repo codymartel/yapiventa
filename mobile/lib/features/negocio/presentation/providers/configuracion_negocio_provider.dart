@@ -365,21 +365,48 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
   List<String> get categorias => List.unmodifiable(_categorias);
 
   /// Categorías creadas por el usuario, cargadas desde
-  /// `categoriasPersonalizadas`. Editar, eliminar y desactivar llegan en
-  /// etapas posteriores; aquí solo se crean.
+  /// `categoriasPersonalizadas`. Editar y eliminar llegan en etapas
+  /// posteriores.
   late List<CategoriaPersonalizada> _categoriasPersonalizadas;
   List<CategoriaPersonalizada> get categoriasPersonalizadas =>
       List.unmodifiable(_categoriasPersonalizadas);
+
+  /// Escribe la lista COMPLETA de personalizadas y solo entonces la aplica en
+  /// memoria.
+  ///
+  /// El orden importa: primero Firestore, después el estado. Si fuera al revés,
+  /// un fallo de red dejaría en pantalla una categoría que en la base no
+  /// existe, y al recargar desaparecería sola. Por eso esta ruta notifica
+  /// exactamente una vez y solo en el camino exitoso; los rechazos y el error
+  /// de escritura dejan el estado intacto y reportan el motivo en
+  /// [errorCatalogo].
+  Future<bool> _persistirCategoriasPersonalizadas(
+    String uid,
+    List<CategoriaPersonalizada> actualizadas,
+    String mensajeError,
+  ) async {
+    try {
+      await _repository.guardarCategoriasPersonalizadas(
+        uid,
+        actualizadas,
+        negocioId: negocioId,
+      );
+    } catch (_) {
+      _errorCatalogo = mensajeError;
+      return false;
+    }
+
+    _categoriasPersonalizadas = actualizadas;
+    _errorCatalogo = null;
+    notifyListeners();
+    return true;
+  }
 
   /// Crea una categoría personalizada y la persiste.
   ///
   /// La identidad es la clave canónica del nombre ([canonicalizarCategoria]),
   /// no el texto: escribir "  Dulces  " y "dulces" es la misma categoría y la
-  /// segunda se rechaza. La escritura va primero; el estado en memoria solo
-  /// cambia si Firestore confirma, así un fallo de red no deja una categoría
-  /// que se pierde al recargar. Por eso este método notifica exactamente una
-  /// vez, y solo en el camino exitoso: los rechazos y el error de guardado
-  /// dejan el estado intacto y reportan el motivo en [errorCatalogo].
+  /// segunda se rechaza.
   Future<bool> agregarCategoriaPersonalizada(String uid, String nombre) async {
     final nombreLimpio = nombre.trim();
     final clave = canonicalizarCategoria(nombreLimpio);
@@ -397,32 +424,18 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
       nombre: nombreLimpio,
       activa: true,
     );
-    final actualizadas = [..._categoriasPersonalizadas, nueva];
-    try {
-      await _repository.guardarCategoriasPersonalizadas(
-        uid,
-        actualizadas,
-        negocioId: negocioId,
-      );
-    } catch (_) {
-      _errorCatalogo = 'No se pudo guardar la categoría. Revisa tu conexión.';
-      return false;
-    }
-
-    _categoriasPersonalizadas = actualizadas;
-    _errorCatalogo = null;
-    notifyListeners();
-    return true;
+    return _persistirCategoriasPersonalizadas(
+      uid,
+      [..._categoriasPersonalizadas, nueva],
+      'No se pudo guardar la categoría. Revisa tu conexión.',
+    );
   }
 
   /// Desactiva una categoría personalizada conservándola.
   ///
   /// Desactivar NO es eliminar: la categoría sigue en la lista con
-  /// `activa: false` y por eso se sigue persistiendo. Es el espejo de
-  /// [agregarCategoriaPersonalizada] en su orden de escritura —primero
-  /// Firestore, después la memoria— para que un fallo de red no desactive en
-  /// pantalla algo que en la base sigue activa. Reactivar, renombrar y
-  /// eliminar llegan en etapas posteriores.
+  /// `activa: false` y por eso se sigue persistiendo. Renombrar y eliminar
+  /// llegan en etapas posteriores.
   ///
   /// Una clave que no existe no es un error del usuario sino una operación
   /// imposible: devuelve `false` sin escribir, sin tocar el estado y sin
@@ -431,9 +444,7 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
     String uid,
     String clave,
   ) async {
-    final indice = _categoriasPersonalizadas.indexWhere(
-      (categoria) => categoria.clave == clave,
-    );
+    final indice = _indiceCategoriaPersonalizada(clave);
     if (indice == -1) return false;
 
     final actualizada = [..._categoriasPersonalizadas];
@@ -441,22 +452,43 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
     // nombre es la etiqueta; esta operación no puede tocarlos.
     actualizada[indice] = actualizada[indice].copyWith(activa: false);
 
-    try {
-      await _repository.guardarCategoriasPersonalizadas(
-        uid,
-        actualizada,
-        negocioId: negocioId,
-      );
-    } catch (_) {
-      _errorCatalogo = 'No se pudo desactivar la categoría. Revisa tu conexión.';
-      return false;
-    }
-
-    _categoriasPersonalizadas = actualizada;
-    _errorCatalogo = null;
-    notifyListeners();
-    return true;
+    return _persistirCategoriasPersonalizadas(
+      uid,
+      actualizada,
+      'No se pudo desactivar la categoría. Revisa tu conexión.',
+    );
   }
+
+  /// Reactiva una categoría personalizada previamente desactivada.
+  ///
+  /// Es el inverso exacto de [desactivarCategoriaPersonalizada] y comparte su
+  /// contrato: se busca por clave, la lista completa se persiste, y la
+  /// memoria cambia y notifica solo si la escritura funcionó. Una clave
+  /// inexistente devuelve `false` sin escribir nada.
+  Future<bool> reactivarCategoriaPersonalizada(
+    String uid,
+    String clave,
+  ) async {
+    final indice = _indiceCategoriaPersonalizada(clave);
+    if (indice == -1) return false;
+
+    final actualizada = [..._categoriasPersonalizadas];
+    actualizada[indice] = actualizada[indice].copyWith(activa: true);
+
+    return _persistirCategoriasPersonalizadas(
+      uid,
+      actualizada,
+      'No se pudo reactivar la categoría. Revisa tu conexión.',
+    );
+  }
+
+  /// Índice de una personalizada por su clave canónica, o -1 si no existe.
+  /// La clave es la identidad: buscar por nombre haría que un cambio de
+  /// etiqueta cambiara a qué categoría apunta una operación.
+  int _indiceCategoriaPersonalizada(String clave) =>
+      _categoriasPersonalizadas.indexWhere(
+        (categoria) => categoria.clave == clave,
+      );
 
   void agregarCategoria(String nombre) {
     if (_esCategoriaDuplicada(nombre)) return;
