@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/domain/models/tipo_unidad.dart';
 import 'package:mobile/features/negocio/data/negocio_repository.dart';
 import 'package:mobile/features/negocio/domain/errors/productos_dependientes_rubro_exception.dart';
+import 'package:mobile/features/negocio/domain/models/categoria_personalizada.dart';
 import 'package:mobile/features/negocio/domain/models/catalogo_venta/catalogo_venta_persistido.dart';
 import 'package:mobile/features/negocio/domain/models/catalogo_venta/formato_presentacion.dart';
 import 'package:mobile/features/negocio/domain/models/catalogo_venta/opcion_presentacion.dart';
@@ -1478,6 +1479,142 @@ test('cambiar rubro conserva la configuración existente', () async {
       expect(datos['rubro'], legacy);
     });
   }
+
+  // ═══════════════════════════════════════════════════════════════
+  // Persistencia de categoriasPersonalizadas
+  // ═══════════════════════════════════════════════════════════════
+
+  group('categoriasPersonalizadas', () {
+    test('guarda la lista como mapas {clave, nombre, activa}', () async {
+      final negocioId = await _prepararNegocio(
+        firestore,
+        'usuario-1',
+        datos: {'rubro': 'Bodega'},
+      );
+
+      await repository.guardarCategoriasPersonalizadas('usuario-1', [
+        CategoriaPersonalizada.crear('Cuidado Personal'),
+        CategoriaPersonalizada.crear('Mascotas', activa: false),
+      ]);
+
+      final datos =
+          (await firestore.collection('negocios').doc(negocioId).get()).data()!;
+      expect(datos['categoriasPersonalizadas'], [
+        {
+          'clave': 'cuidado personal',
+          'nombre': 'Cuidado Personal',
+          'activa': true,
+        },
+        {'clave': 'mascotas', 'nombre': 'Mascotas', 'activa': false},
+      ]);
+    });
+
+    test('relee la lista guardada', () async {
+      await _prepararNegocio(
+        firestore,
+        'usuario-1',
+        datos: {'rubro': 'Bodega'},
+      );
+      final guardadas = [
+        CategoriaPersonalizada.crear('Cuidado Personal'),
+        CategoriaPersonalizada.crear('Mascotas', activa: false),
+      ];
+
+      await repository.guardarCategoriasPersonalizadas('usuario-1', guardadas);
+      final leidas = await repository.obtenerCategoriasPersonalizadas(
+        'usuario-1',
+      );
+
+      expect(leidas, guardadas);
+      expect(leidas.first.clave, 'cuidado personal');
+      expect(leidas.last.activa, isFalse);
+    });
+
+    test('devuelve lista vacía si el campo no existe', () async {
+      await _prepararNegocio(
+        firestore,
+        'usuario-1',
+        datos: {'rubro': 'Bodega'},
+      );
+
+      final leidas = await repository.obtenerCategoriasPersonalizadas(
+        'usuario-1',
+      );
+
+      expect(leidas, isEmpty);
+    });
+
+    test('no rompe la lectura con datos inválidos', () async {
+      final negocioId = await _prepararNegocio(
+        firestore,
+        'usuario-1',
+        datos: {'rubro': 'Bodega'},
+      );
+      await firestore.collection('negocios').doc(negocioId).set({
+        'categoriasPersonalizadas': [
+          'esto no es un mapa',
+          42,
+          null,
+          {'nombre': '   '},
+          {'nombre': 99},
+          {'nombre': 'Sin clave guardada'},
+          {'clave': 'duplicada', 'nombre': 'Primera'},
+          {'clave': 'duplicada', 'nombre': 'Segunda'},
+          {'clave': 'inactiva', 'nombre': 'Oculta', 'activa': false},
+          {'clave': 'extra', 'nombre': 'Normal', 'activa': 'no soy bool'},
+        ],
+      });
+
+      final leidas = await repository.obtenerCategoriasPersonalizadas(
+        'usuario-1',
+      );
+
+      // Se descartan los no-mapa, los de nombre vacío o no String, y el
+      // duplicado por clave.
+      expect(leidas.map((c) => c.clave), [
+        'sin clave guardada',
+        'duplicada',
+        'inactiva',
+        'extra',
+      ]);
+      expect(leidas.first.clave, canonicalizarCategoria('Sin clave guardada'));
+      expect(leidas[1].nombre, 'Primera');
+      expect(leidas[2].activa, isFalse);
+      // 'activa' ilegible cae al default en vez de romper.
+      expect(leidas[3].activa, isTrue);
+    });
+
+    test('sobrevive a un campo que no es una lista', () async {
+      final negocioId = await _prepararNegocio(
+        firestore,
+        'usuario-1',
+        datos: {'rubro': 'Bodega'},
+      );
+      await firestore.collection('negocios').doc(negocioId).set({
+        'categoriasPersonalizadas': 'no soy una lista',
+      });
+
+      final leidas = await repository.obtenerCategoriasPersonalizadas(
+        'usuario-1',
+      );
+
+      expect(leidas, isEmpty);
+    });
+
+    test('guardar lista vacía la deja vacía, no nula', () async {
+      final negocioId = await _prepararNegocio(
+        firestore,
+        'usuario-1',
+        datos: {'rubro': 'Bodega'},
+      );
+
+      await repository.guardarCategoriasPersonalizadas('usuario-1', []);
+
+      final datos =
+          (await firestore.collection('negocios').doc(negocioId).get()).data()!;
+      expect(datos['categoriasPersonalizadas'], isEmpty);
+    });
+  });
 
   // ═══════════════════════════════════════════════════════════════
   // Protección de productos al cambiar de rubro

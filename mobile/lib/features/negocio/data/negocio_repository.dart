@@ -3,6 +3,7 @@ import '../../../domain/models/categoria.dart';
 import '../../../domain/models/tipo_unidad.dart';
 import '../../../domain/models/unidad_medida.dart';
 import '../domain/models/catalogo_negocio.dart';
+import '../domain/models/categoria_personalizada.dart';
 import '../domain/models/catalogo_venta/catalogo_venta_persistido.dart';
 import '../domain/models/catalogo_venta/preset_venta_rubro.dart';
 import '../domain/models/zona_delivery.dart';
@@ -465,6 +466,94 @@ class NegocioRepository
         unidades: unidadesQueDesaparecen,
       );
     }
+  }
+
+  /// Guarda la lista de categorías creadas por el usuario.
+  ///
+  /// Escribe `categoriasPersonalizadas` como lista de mapas
+  /// `{clave, nombre, activa}` en `negocios/{negocioId}`. NO se proyecta al
+  /// documento público ni participa del cambio de rubro: eso llega después.
+  Future<void> guardarCategoriasPersonalizadas(
+    String uid,
+    List<CategoriaPersonalizada> categorias, {
+    String? negocioId,
+  }) async {
+    final negocioIdResuelto = await _resolverNegocioId(uid, negocioId);
+    await _firestore
+        .collection('negocios')
+        .doc(negocioIdResuelto)
+        .set({
+          'categoriasPersonalizadas': _serializarCategoriasPersonalizadas(
+            categorias,
+          ),
+        }, SetOptions(merge: true));
+  }
+
+  /// Lee las categorías creadas por el usuario. Si el campo no existe,
+  /// devuelve una lista vacía.
+  Future<List<CategoriaPersonalizada>> obtenerCategoriasPersonalizadas(
+    String uid, {
+    String? negocioId,
+  }) async {
+    final negocioIdResuelto = await _resolverNegocioId(uid, negocioId);
+    final documento = await _firestore
+        .collection('negocios')
+        .doc(negocioIdResuelto)
+        .get();
+    final datos = documento.data();
+    return _leerCategoriasPersonalizadas(
+      datos == null ? null : datos['categoriasPersonalizadas'],
+    );
+  }
+
+  List<Map<String, dynamic>> _serializarCategoriasPersonalizadas(
+    Iterable<CategoriaPersonalizada> categorias,
+  ) {
+    return categorias
+        .map(
+          (categoria) => <String, dynamic>{
+            'clave': categoria.clave,
+            'nombre': categoria.nombre,
+            'activa': categoria.activa,
+          },
+        )
+        .toList();
+  }
+
+  /// Lectura tolerante: un documento sucio no puede romper la carga.
+  ///
+  /// Descarta lo que no sea un mapa, deriva la clave del nombre cuando falta y
+  /// deduplica por clave (la identidad del modelo), conservando el primero.
+  List<CategoriaPersonalizada> _leerCategoriasPersonalizadas(Object? valor) {
+    if (valor is! List) return const [];
+
+    final categorias = <CategoriaPersonalizada>[];
+    final claves = <String>{};
+    for (final elemento in valor) {
+      if (elemento is! Map) continue;
+      final datos = Map<String, dynamic>.from(elemento);
+
+      final nombreBruto = datos['nombre'];
+      final nombre = nombreBruto is String ? nombreBruto.trim() : '';
+      if (nombre.isEmpty) continue;
+
+      final claveBruta = datos['clave'];
+      final claveGuardada = claveBruta is String ? claveBruta.trim() : '';
+      final clave = claveGuardada.isEmpty
+          ? canonicalizarCategoria(nombre)
+          : claveGuardada;
+      if (clave.isEmpty || !claves.add(clave)) continue;
+
+      final activaBruto = datos['activa'];
+      categorias.add(
+        CategoriaPersonalizada(
+          clave: clave,
+          nombre: nombre,
+          activa: activaBruto is bool ? activaBruto : true,
+        ),
+      );
+    }
+    return categorias;
   }
 
   List<String> _leerCategorias(Object? valor) {
