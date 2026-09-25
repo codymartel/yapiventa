@@ -1992,6 +1992,95 @@ void main() {
       ]);
     });
   });
+
+  group('categorías personalizadas: eliminar con productos', () {
+    Future<FirebaseFirestore> firestoreConProductos({
+      required List<Map<String, dynamic>> productos,
+    }) async {
+      final firestore = FakeFirebaseFirestore();
+      for (final (indice, producto) in productos.indexed) {
+        await firestore
+            .collection('negocios')
+            .doc('negocio-1')
+            .collection('productos')
+            .doc('producto-$indice')
+            .set(producto);
+      }
+      return firestore;
+    }
+
+    ConfiguracionNegocioProvider crearProvider(FirebaseFirestore firestore) =>
+        ConfiguracionNegocioProvider(
+          rubro: 'Bodega',
+          negocioId: 'negocio-1',
+          configuracionInicial: {
+            'categoriasPersonalizadas': [
+              {'clave': 'mascotas', 'nombre': 'Mascotas', 'activa': true},
+              {'clave': 'importados', 'nombre': 'Importados', 'activa': true},
+            ],
+          },
+          repository: NegocioRepository(firestore: firestore),
+        );
+
+    test('bloquea si un producto usa la categoría', () async {
+      final firestore = await firestoreConProductos(productos: [
+        {'nombre': 'Arena para gato', 'categoria': 'Mascotas'},
+      ]);
+      final provider = crearProvider(firestore);
+      var notificaciones = 0;
+      provider.addListener(() => notificaciones++);
+
+      final eliminada = await provider.eliminarCategoriaPersonalizada(
+        'usuario-1',
+        'mascotas',
+      );
+
+      expect(eliminada, isFalse);
+      expect(provider.errorCatalogo, contains('Hay productos'));
+      expect(provider.errorCatalogo, contains('Mascotas'));
+      // Ni notifica, ni elimina, ni escribe.
+      expect(notificaciones, 0);
+      expect(provider.categoriasPersonalizadas.map((c) => c.clave), [
+        'mascotas',
+        'importados',
+      ]);
+      final documento = await firestore
+          .collection('negocios')
+          .doc('negocio-1')
+          .get();
+      expect(documento.data()?['categoriasPersonalizadas'], isNull);
+    });
+
+    test('elimina si ningún producto usa la categoría', () async {
+      // Hay productos, pero de otra categoría: la comprobación es por
+      // categoría, no "si el negocio tiene productos".
+      final firestore = await firestoreConProductos(productos: [
+        {'nombre': 'Leche', 'categoria': 'Importados'},
+        {'nombre': 'Atún', 'categoria': 'Abarrotes'},
+      ]);
+      final provider = crearProvider(firestore);
+      var notificaciones = 0;
+      provider.addListener(() => notificaciones++);
+
+      final eliminada = await provider.eliminarCategoriaPersonalizada(
+        'usuario-1',
+        'mascotas',
+      );
+
+      expect(eliminada, isTrue);
+      expect(provider.errorCatalogo, isNull);
+      expect(notificaciones, 1);
+      expect(provider.categoriasPersonalizadas.map((c) => c.clave), [
+        'importados',
+      ]);
+      final datos =
+          (await firestore.collection('negocios').doc('negocio-1').get())
+              .data()!;
+      expect(datos['categoriasPersonalizadas'], [
+        {'clave': 'importados', 'nombre': 'Importados', 'activa': true},
+      ]);
+    });
+  });
 }
 
 

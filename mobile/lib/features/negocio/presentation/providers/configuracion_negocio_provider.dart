@@ -538,20 +538,36 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
   ///
   /// A diferencia de [desactivarCategoriaPersonalizada], aquí la categoría
   /// desaparece: desactivar la esconde y se puede volver atrás, eliminar la
-  /// borra su registro. Por eso es la operación que más caro sale equivocarse
-  /// —los productos la referencian por nombre—, y por eso comparte el mismo
-  /// orden de escritura que el resto: primero Firestore, después la memoria.
+  /// borra su registro. Por eso es la operación que más caro sale equivocarse,
+  /// y por eso va en dos pasos: primero se comprueba que ningún producto la
+  /// use, y solo después se escribe.
+  ///
+  /// La comprobación se hace por el NOMBRE visible, no por la clave, porque
+  /// así es como los productos la referencian (`productos.categoria`). Por
+  /// eso renombrar sin reasignar los productos también queda cubierto: se
+  /// busca con el nombre actual, que es el que los productos tienen guardado.
+  ///
+  /// Si hay productos dependientes se bloquea: no se persiste, no se elimina
+  /// y no se notifica, y el motivo queda en [errorCatalogo] para que la UI
+  /// pueda explicarlo. Borrar la categoría dejaría esos productos apuntando a
+  /// una categoría que ya no existe.
   ///
   /// Solo toca `categoriasPersonalizadas`. Las categorías del preset viven en
-  /// `_categorias` y no se ven afectadas, y los productos que usen la
-  /// categoría eliminada todavía no se detectan como conflicto: eso llega en
-  /// una etapa posterior.
+  /// `_categorias` y no se ven afectadas.
   ///
-  /// Una clave que no existe devuelve `false` sin escribir, sin tocar el
-  /// estado y sin notificar.
+  /// Una clave que no existe devuelve `false` sin escribir, sin comprobar
+  /// dependencias y sin notificar.
   Future<bool> eliminarCategoriaPersonalizada(String uid, String clave) async {
     final indice = _indiceCategoriaPersonalizada(clave);
     if (indice == -1) return false;
+
+    final nombre = _categoriasPersonalizadas[indice].nombre;
+    if (await categoriaTieneProductos(nombre)) {
+      _errorCatalogo =
+          'Hay productos que usan la categoría "$nombre". '
+          'Revísalos primero; no se borró ningún dato.';
+      return false;
+    }
 
     final actualizada = [..._categoriasPersonalizadas]..removeAt(indice);
 
