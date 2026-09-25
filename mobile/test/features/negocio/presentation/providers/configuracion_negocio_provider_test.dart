@@ -147,6 +147,116 @@ void main() {
     });
   }
 
+  test(
+    'un negocio nuevo se siembra con el preset como única fuente, sin mapas legacy',
+    () {
+      final preset = PresetsVenta.obtener('Bodega');
+      final provider = ConfiguracionNegocioProvider(
+        rubro: 'Bodega',
+        repository: NegocioRepository(firestore: FakeFirebaseFirestore()),
+      );
+
+      // Categorías: las del preset, no las de Categorias.porRubro.
+      expect(provider.categorias, preset.categorias);
+      expect(provider.categorias, isNot(containsAll(['Lácteos', 'Panadería'])));
+
+      // Presentaciones y medidas del catálogo: las del preset.
+      expect(
+        provider.catalogoVenta.presentaciones.map((p) => p.id),
+        preset.presentaciones.map((p) => p.id),
+      );
+      expect(
+        provider.catalogoVenta.medidas.map(
+          (medida) => (medida.familia, medida.activa),
+        ),
+        preset.medidas.map(
+          (configuracion) => (configuracion.familia, configuracion.activa),
+        ),
+      );
+      expect(provider.medidasPendientesRevision, isEmpty);
+
+      // El espejo legacy de unidades no arrastra las fantasma del mapa legacy.
+      const unidadesFantasma = [
+        'Docena',
+        'Bandeja',
+        'Saco',
+        'Bidón',
+        'Pote',
+        'Frasco',
+        'Rollo',
+      ];
+      final nombresUnidades = provider.unidadesMedida.map((u) => u.nombre);
+      for (final fantasma in unidadesFantasma) {
+        expect(nombresUnidades, isNot(contains(fantasma)));
+      }
+      expect(provider.faltaCategoria, isFalse);
+      expect(provider.faltaUnidad, isFalse);
+      expect(provider.puedeAvanzarPaso1, isTrue);
+    },
+  );
+
+  test(
+    "caso legacy 'dasdsad': el documento heredado se lee sin inventar conversiones",
+    () {
+      final provider = ConfiguracionNegocioProvider(
+        rubro: 'Ropa',
+        configuracionInicial: {
+          'nombreNegocio': 'dasdsad',
+          'categorias': ['Hombre', 'Mujer', 'Niños'],
+          'unidadesMedida': [
+            {
+              'nombre': 'Unidad',
+              'tipo': 'entera',
+              'fraccionesPermitidas': <String>[],
+              'esOpcional': false,
+            },
+            {
+              'nombre': 'Par',
+              'tipo': 'entera',
+              'fraccionesPermitidas': <String>[],
+              'esOpcional': false,
+            },
+            {
+              'nombre': 'Paquete',
+              'tipo': 'entera',
+              'fraccionesPermitidas': <String>[],
+              'esOpcional': false,
+            },
+          ],
+          'delivery': false,
+        },
+        repository: NegocioRepository(firestore: FakeFirebaseFirestore()),
+      );
+
+      // Las unidades del documento legacy se conservan tal cual (solo lectura).
+      expect(provider.categorias, ['Hombre', 'Mujer', 'Niños']);
+      expect(provider.unidadesMedida.map((u) => u.nombre), [
+        'Unidad',
+        'Par',
+        'Paquete',
+      ]);
+
+      // El catálogo adapta lo seguro ('Unidad' pasa a presentación) y marca
+      // lo que el registro cerrado no puede traducir ('Par', 'Paquete') para
+      // revisión: esa revisión es la migración de datos única que exige un
+      // negocio legacy. Nunca se inventa una conversión.
+      expect(
+        provider.catalogoVenta.presentaciones.map((p) => p.id),
+        contains('unidad'),
+      );
+      expect(provider.medidasPendientesRevision, ['Par', 'Paquete']);
+      expect(provider.puedeAvanzarPaso1, isFalse);
+
+      // El preset del rubro sigue siendo la semilla para un negocio nuevo.
+      final nuevo = ConfiguracionNegocioProvider(
+        rubro: 'Ropa',
+        repository: NegocioRepository(firestore: FakeFirebaseFirestore()),
+      );
+      expect(nuevo.medidasPendientesRevision, isEmpty);
+      expect(nuevo.categorias, PresetsVenta.obtener('Ropa').categorias);
+    },
+  );
+
   test('bloquea un segundo guardado concurrente', () async {
     final firestore = FakeFirebaseFirestore();
     await firestore.collection('users').doc('usuario-1').set({

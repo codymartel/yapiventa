@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/core/theme/app_colors.dart';
 import 'package:mobile/features/negocio/data/negocio_repository.dart';
+import 'package:mobile/features/negocio/domain/models/catalogo_venta/preset_venta_rubro.dart';
 import 'package:mobile/features/negocio/presentation/providers/configuracion_negocio_provider.dart';
 import 'package:mobile/features/negocio/presentation/widgets/configuracion_negocio_content.dart';
 import 'package:mobile/features/negocio/presentation/widgets/paso_catalogo.dart';
@@ -283,9 +284,10 @@ void main() {
     await mostrarPaso(tester);
 
     final tarjeta = find.byKey(const Key('categoria-card-Abarrotes'));
-    expect(find.text('Sugerida para Bodega'), findsNWidgets(6));
+    final sugeridas = PresetsVenta.obtener('Bodega').categorias.length;
+    expect(find.text('Sugerida para Bodega'), findsNWidgets(sugeridas));
     expect(accionTarjeta('Desactivar', 'Abarrotes'), findsOneWidget);
-    expect(find.text('Activa'), findsNWidgets(6));
+    expect(find.text('Activa'), findsNWidgets(sugeridas));
     expect(
       find.descendant(of: tarjeta, matching: find.text('Editar')),
       findsNothing,

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../domain/models/categoria.dart';
 import '../../../productos/domain/models/familia_unidad.dart';
 import '../../domain/models/catalogo_venta/catalogo_venta_global.dart';
 import '../../domain/models/catalogo_venta/formato_presentacion.dart';
 import '../../domain/models/catalogo_venta/opcion_presentacion.dart';
+import '../../domain/models/catalogo_venta/preset_venta_rubro.dart';
 import '../../domain/models/catalogo_venta/unidad_registrada.dart';
 import '../providers/configuracion_negocio_provider.dart';
 import 'seccion_medidas.dart';
@@ -181,7 +181,7 @@ class _PanelCategorias extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final p = context.watch<ConfiguracionNegocioProvider>();
-    final presets = Categorias.obtener(p.rubro);
+    final presets = PresetsVenta.obtener(p.rubro).categorias;
     final personalizadas = p.categorias
         .where((nombre) => !presets.contains(nombre))
         .toList();
@@ -699,7 +699,10 @@ String? _validarNombreCategoria(
     return 'El nombre debe incluir letras o números.';
   }
   final objetivo = _normalizarNombreCategoria(texto);
-  final existentes = <String>{...p.categorias, ...Categorias.obtener(p.rubro)};
+  final existentes = <String>{
+    ...p.categorias,
+    ...PresetsVenta.obtener(p.rubro).categorias,
+  };
   for (final existente in existentes) {
     if (nombreActual != null && existente == nombreActual) continue;
     if (_normalizarNombreCategoria(existente) == objetivo) {

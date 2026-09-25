@@ -13,7 +13,6 @@ import '../../domain/models/catalogo_venta/formato_presentacion.dart';
 import '../../domain/models/catalogo_venta/opcion_presentacion.dart';
 import '../../domain/models/catalogo_venta/unidad_registrada.dart';
 import '../../domain/models/catalogo_venta/preset_venta_rubro.dart';
-import '../../../../domain/models/categoria.dart';
 import '../../../../domain/models/unidad_medida.dart';
 import '../../../../domain/models/tipo_unidad.dart';
 
@@ -66,18 +65,50 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
     Map<String, dynamic>? configuracionInicial,
     NegocioRepository? repository,
   }) : _repository = repository ?? NegocioRepository() {
-    // Igual que tu Kotlin: las categorías y unidades iniciales se cargan
-    // según el rubro elegido en la pantalla anterior.
-    _categorias = List.of(Categorias.obtener(rubro));
-    _unidadesMedida = List.of(UnidadesMedida.obtener(rubro));
-    _catalogoVenta = CatalogoVentaPersistido.desdePreset(
-      PresetsVenta.obtener(rubro),
-    );
+    // Las categorías, presentaciones y medidas del borrador se siembran con
+    // el preset del rubro (PresetsVenta) como ÚNICA fuente: los mapas legacy
+    // Categorias.porRubro / UnidadesMedida.porRubro ya no participan en el
+    // poblado inicial (evita categorías y unidades fantasma como "Docena",
+    // "Rollo" o "Par" que el mapa legacy no distingue por rubro).
+    final preset = PresetsVenta.obtener(rubro);
+    _categorias = List.of(preset.categorias);
+    _unidadesMedida = _unidadesEspejoDelPreset(preset);
+    _catalogoVenta = CatalogoVentaPersistido.desdePreset(preset);
     if (configuracionInicial != null && configuracionInicial.isNotEmpty) {
       _restaurarConfiguracion(configuracionInicial);
     }
     _categoriasIniciales = _categorias.toSet();
     _unidadesIniciales = _unidadesMedida.map((u) => u.nombre).toSet();
+  }
+
+  /// Espejo del preset en el formato legacy de [UnidadInfo].
+  ///
+  /// Única semilla de [_unidadesMedida] para un negocio NUEVO: reúne las
+  /// presentaciones de conteo del preset y las unidades registradas de sus
+  /// medidas, sin tocar los mapas legacy (ni "Docena", "Rollo", "Par" ni
+  /// "Paquete" fantasma por rubro). El campo `unidadesMedida` de Firestore
+  /// se sigue escribiendo para que el flujo de productos y la compatibilidad
+  /// de lectura sigan funcionando.
+  static List<UnidadInfo> _unidadesEspejoDelPreset(PresetVentaRubro preset) {
+    final unidades = List.of(
+      preset.presentaciones.map(
+        (presentacion) => UnidadInfo(
+          nombre: presentacion.nombre,
+          tipo: TipoUnidad.entera,
+          esOpcional: !presentacion.activa,
+        ),
+      ),
+    );
+    final nombres = unidades.map((unidad) => unidad.nombre).toSet();
+    for (final medida in preset.medidas) {
+      for (final unidad in RegistroUnidades.unidadesDe(medida.familia)) {
+        if (!nombres.add(unidad.nombre)) continue;
+        unidades.add(
+          UnidadInfo(nombre: unidad.nombre, tipo: TipoUnidad.entera),
+        );
+      }
+    }
+    return unidades;
   }
 
   void _restaurarConfiguracion(Map<String, dynamic> datos) {
@@ -135,6 +166,13 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
     // si no existe, se adapta lo que haya en unidadesMedida legacy (mismo
     // criterio que obtenerCatalogoVenta); si no hay nada que adaptar, queda
     // el preset del rubro sembrado en el constructor.
+    //
+    // Un negocio legacy (creado antes del preset, como el caso reportado
+    // "dasdsad") trae unidades heredadas del mapa legacy en su documento y
+    // SIN catalogoVenta: aquí se conservan en el catálogo lo que el registro
+    // cerrado permite traducir y se marcan las demás para revisión. Esa
+    // revisión es la migración de datos única que esos negocios necesitan;
+    // los negocios nuevos jamás pasan por este camino.
     final catalogoGuardado = CatalogoVentaPersistido.desdeMapa(
       datos['catalogoVenta'],
     );
@@ -394,6 +432,13 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
     );
   }
 
+  /// Unidades en formato legacy. DESTINO: compatibilidad de lectura.
+  ///
+  /// Para negocios NUEVOS es el espejo del preset ([_unidadesEspejoDelPreset]);
+  /// para negocios legacy se restaura tal cual del documento guardado. La UI
+  /// de "Unidades de venta"/"Medidas" ya no la usa (vive en presentaciones y
+  /// medidas de [_catalogoVenta]); `guardar()` la escribe en Firestore solo
+  /// porque el flujo de productos y los filtros legacy aún la leen.
   late List<UnidadInfo> _unidadesMedida;
   List<UnidadInfo> get unidadesMedida => List.unmodifiable(_unidadesMedida);
   List<UnidadInfo> get unidadesPredefinidas =>

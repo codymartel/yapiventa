@@ -2,7 +2,6 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/core/theme/app_colors.dart';
-import 'package:mobile/domain/models/categoria.dart';
 import 'package:mobile/features/negocio/data/negocio_repository.dart';
 import 'package:mobile/features/negocio/domain/models/catalogo_venta/catalogo_venta_persistido.dart';
 import 'package:mobile/features/negocio/domain/models/catalogo_venta/formato_presentacion.dart';
@@ -81,7 +80,10 @@ void main() {
         find.descendant(of: find.byKey(Key(fila)), matching: find.text(texto));
 
     expect(
-      enFila('resumen-categorias', '${Categorias.obtener('Bodega').length}'),
+      enFila(
+        'resumen-categorias',
+        '${PresetsVenta.obtener('Bodega').categorias.length}',
+      ),
       findsOneWidget,
     );
     expect(
@@ -128,7 +130,10 @@ void main() {
     final provider = await mostrarPaso(tester);
     await verResumen(tester);
 
-    expect(provider.categoriasActivas, Categorias.obtener('Bodega').length);
+    expect(
+      provider.categoriasActivas,
+      PresetsVenta.obtener('Bodega').categorias.length,
+    );
     expect(
       provider.presentacionesActivas,
       provider.catalogoVenta.presentaciones.where((p) => p.activa).length,
