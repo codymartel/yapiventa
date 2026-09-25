@@ -708,6 +708,35 @@ void main() {
       expect(provider.medidaDe(FamiliaUnidad.peso)!.permiteMonto, isTrue);
     });
 
+    test('edita la unidad habitual de una medida', () {
+      final provider = crearProvider(rubro: 'Bodega');
+      expect(provider.medidaDe(FamiliaUnidad.peso)!.unidadVisual, isNotNull);
+
+      provider.editarUnidadVisual(FamiliaUnidad.peso, RegistroUnidades.g);
+      expect(
+        provider.medidaDe(FamiliaUnidad.peso)!.unidadVisual,
+        RegistroUnidades.g,
+      );
+      expect(provider.errorCatalogo, isNull);
+
+      provider.editarUnidadVisual(FamiliaUnidad.peso, RegistroUnidades.kg);
+      expect(
+        provider.medidaDe(FamiliaUnidad.peso)!.unidadVisual,
+        RegistroUnidades.kg,
+      );
+    });
+
+    test('rechaza una unidad habitual fuera de la familia', () {
+      final provider = crearProvider(rubro: 'Bodega');
+
+      provider.editarUnidadVisual(FamiliaUnidad.peso, RegistroUnidades.L);
+      expect(provider.errorCatalogo, contains('no pertenece a la familia'));
+      expect(
+        provider.medidaDe(FamiliaUnidad.peso)!.unidadVisual,
+        isNot(RegistroUnidades.L),
+      );
+    });
+
     test('no edita medidas sin familia resuelta', () {
       final provider = crearProvider(
         configuracionInicial: {

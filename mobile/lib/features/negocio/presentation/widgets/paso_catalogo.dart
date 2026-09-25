@@ -8,18 +8,22 @@ import '../../domain/models/catalogo_venta/formato_presentacion.dart';
 import '../../domain/models/catalogo_venta/opcion_presentacion.dart';
 import '../../domain/models/catalogo_venta/unidad_registrada.dart';
 import '../providers/configuracion_negocio_provider.dart';
+import 'seccion_medidas.dart';
 
 // ═════════════════════════════════════════════════════════════════════════
 // PasoCatalogo — Paso 2 del wizard: "Catálogo"
 // ═════════════════════════════════════════════════════════════════════════
 //
-// El interior del paso se organiza en dos pestañas:
+// El interior del paso se organiza en tres pestañas:
 //   - "Categorías": diseño nuevo con cabecera (título + contador + botón),
 //     tarjetas de categorías sugeridas y personalizadas, y diálogos con
 //     validación mejorada.
 //   - "Unidades de venta": la interfaz "Unidad o presentación" con el
 //     catálogo cerrado de presentaciones (obligatorias, "Más opciones" y
 //     personalizadas), sus formatos y su editor.
+//   - "Medidas": la interfaz "Venta por medida" con las medidas del rubro
+//     (peso, volumen, longitud, área) y su editor (mínimo, incremento y
+//     cantidades rápidas en la unidad base).
 //
 // NO escribe Firestore al cambiar de pestaña y NO toca la lógica de
 // guardado: el proveedor solo expone helpers de lectura (categoriaActiva,
@@ -34,7 +38,7 @@ class PasoCatalogo extends StatefulWidget {
 }
 
 class _PasoCatalogoState extends State<PasoCatalogo> {
-  bool _mostrandoUnidades = false;
+  int _pestanasActiva = 0; // 0 Categorías, 1 Unidades de venta, 2 Medidas.
 
   @override
   Widget build(BuildContext context) {
@@ -42,13 +46,14 @@ class _PasoCatalogoState extends State<PasoCatalogo> {
       padding: const EdgeInsets.all(20),
       children: [
         _SelectorPestanas(
-          categoriasActiva: !_mostrandoUnidades,
-          onCambiar: (unidades) =>
-              setState(() => _mostrandoUnidades = unidades),
+          activa: _pestanasActiva,
+          onCambiar: (indice) => setState(() => _pestanasActiva = indice),
         ),
         const SizedBox(height: 20),
-        if (_mostrandoUnidades)
+        if (_pestanasActiva == 1)
           const SeccionPresentaciones()
+        else if (_pestanasActiva == 2)
+          const SeccionMedidas()
         else
           const _PanelCategorias(),
       ],
@@ -57,18 +62,15 @@ class _PasoCatalogoState extends State<PasoCatalogo> {
 }
 
 // ═════════════════════════════════════════════════════════════════════════
-// Selector de pestañas (Categorías / Unidades de venta)
+// Selector de pestañas (Categorías / Unidades de venta / Medidas)
 // ═════════════════════════════════════════════════════════════════════════
-// Escritorio: alto 52 px, ancho máximo 500 px, cada pestaña la mitad.
+// Escritorio: alto 52 px, ancho máximo 500 px, cada pestaña un tercio.
 // Móvil: ocupa todo el ancho disponible, sin scroll horizontal.
 class _SelectorPestanas extends StatelessWidget {
-  final bool categoriasActiva;
-  final ValueChanged<bool> onCambiar;
+  final int activa;
+  final ValueChanged<int> onCambiar;
 
-  const _SelectorPestanas({
-    required this.categoriasActiva,
-    required this.onCambiar,
-  });
+  const _SelectorPestanas({required this.activa, required this.onCambiar});
 
   @override
   Widget build(BuildContext context) {
@@ -92,8 +94,8 @@ class _SelectorPestanas extends StatelessWidget {
                   clave: 'pestana-categorias',
                   etiqueta: 'Categorías',
                   icono: Icons.category_outlined,
-                  activa: categoriasActiva,
-                  onTap: () => onCambiar(false),
+                  activa: activa == 0,
+                  onTap: () => onCambiar(0),
                 ),
               ),
               Expanded(
@@ -101,8 +103,17 @@ class _SelectorPestanas extends StatelessWidget {
                   clave: 'pestana-unidades',
                   etiqueta: 'Unidades de venta',
                   icono: Icons.straighten,
-                  activa: !categoriasActiva,
-                  onTap: () => onCambiar(true),
+                  activa: activa == 1,
+                  onTap: () => onCambiar(1),
+                ),
+              ),
+              Expanded(
+                child: _Pestana(
+                  clave: 'pestana-medidas',
+                  etiqueta: 'Medidas',
+                  icono: Icons.square_foot,
+                  activa: activa == 2,
+                  onTap: () => onCambiar(2),
                 ),
               ),
             ],

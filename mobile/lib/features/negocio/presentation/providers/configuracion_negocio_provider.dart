@@ -11,6 +11,7 @@ import '../../domain/models/catalogo_venta/catalogo_venta_persistido.dart';
 import '../../domain/models/catalogo_venta/configuracion_medida.dart';
 import '../../domain/models/catalogo_venta/formato_presentacion.dart';
 import '../../domain/models/catalogo_venta/opcion_presentacion.dart';
+import '../../domain/models/catalogo_venta/unidad_registrada.dart';
 import '../../domain/models/catalogo_venta/preset_venta_rubro.dart';
 import '../../../../domain/models/categoria.dart';
 import '../../../../domain/models/unidad_medida.dart';
@@ -803,6 +804,13 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
     _editarMedidaValidando(familia, rapidas: cantidades);
   }
 
+  /// Cambia la unidad habitual que ve el cliente (kg, L, cm, m²...).
+  /// El dropdown del editor solo ofrece unidades de la familia, así que una
+  /// unidad inválida se rechaza aquí mismo (defensivo).
+  void editarUnidadVisual(FamiliaUnidad familia, UnidadRegistrada unidad) {
+    _editarMedidaValidando(familia, unidadVisual: unidad);
+  }
+
   /// Activa/desactiva la venta por cantidad en esa medida.
   void establecerPermiteCantidad(
     FamiliaUnidad familia, {
@@ -824,6 +832,7 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
   /// fieles al mínimo+incremento, y al menos venta por cantidad o por monto).
   void _editarMedidaValidando(
     FamiliaUnidad familia, {
+    UnidadRegistrada? unidadVisual,
     int? minimo,
     int? incremento,
     List<int>? rapidas,
@@ -845,6 +854,7 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
       );
       return;
     }
+    final unidadVisualFinal = unidadVisual ?? actual.unidadVisual!;
     final minimoFinal = minimo ?? actual.minimoBase;
     final incrementoFinal = incremento ?? actual.incrementoBase;
     final rapidasFinales = rapidas ?? actual.cantidadesRapidasBase;
@@ -853,7 +863,7 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
 
     final error = ConfiguracionMedida.validar(
       familia: actual.familia!,
-      unidadVisual: actual.unidadVisual!,
+      unidadVisual: unidadVisualFinal,
       minimoBase: minimoFinal,
       incrementoBase: incrementoFinal,
       cantidadesRapidasBase: rapidasFinales,
@@ -868,6 +878,7 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
       index,
       _medidaEditada(
         actual,
+        unidadVisual: unidadVisualFinal,
         minimo: minimoFinal,
         incremento: incrementoFinal,
         rapidas: rapidasFinales,
@@ -881,6 +892,7 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
   MedidaVentaPersistida _medidaEditada(
     MedidaVentaPersistida actual, {
     bool? activa,
+    UnidadRegistrada? unidadVisual,
     int? minimo,
     int? incremento,
     List<int>? rapidas,
@@ -892,7 +904,7 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
       nombre: actual.nombre,
       familia: actual.familia,
       unidadBase: actual.unidadBase,
-      unidadVisual: actual.unidadVisual,
+      unidadVisual: unidadVisual ?? actual.unidadVisual,
       minimoBase: minimo ?? actual.minimoBase,
       incrementoBase: incremento ?? actual.incrementoBase,
       cantidadesRapidasBase: rapidas ?? actual.cantidadesRapidasBase,
