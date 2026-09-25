@@ -126,6 +126,19 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
     final categoriasGuardadas = (datos['categorias'] as List?)?.cast<String>();
     if (categoriasGuardadas != null) _categorias = categoriasGuardadas;
 
+    // Decisiones del negocio sobre el preset (categorías del rubro que ocultó).
+    // Se canonicalizan al leer porque el campo es texto plano y no queremos
+    // que una escritura vieja o manual rompa la comparación por clave.
+    _categoriasDesactivadas
+      ..clear()
+      ..addAll(
+        (datos['categoriasDesactivadas'] as List?)
+                ?.whereType<String>()
+                .map(canonicalizarCategoria)
+                .where((clave) => clave.isNotEmpty) ??
+            const [],
+      );
+
     _categoriasPersonalizadas = CategoriaPersonalizada.listaDesde(
       datos['categoriasPersonalizadas'],
     );
@@ -489,6 +502,89 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
       _categoriasPersonalizadas.indexWhere(
         (categoria) => categoria.clave == clave,
       );
+
+  // ── Categorías del preset desactivadas ───────────────────────────────
+  // A diferencia de las personalizadas, aquí no hay nada que crear ni borrar:
+  // el preset del rubro es inmutable y siempre se conserva entero. Desactivar
+  // es SOLO registrar la decisión del negocio ("esta del preset no la
+  // quiero"), y se guarda como la lista de claves canónicas en
+  // `categoriasDesactivadas`. Sin esta lista, volver a abrir la configuración
+  // no tendría forma de saber qué ocultó el usuario.
+  //
+  // Es un Set porque la identidad de una desactivación es la clave, y dos
+  // entradas iguales serían la misma desactivación escrita dos veces.
+  final Set<String> _categoriasDesactivadas = <String>{};
+
+  /// Claves canónicas de las categorías del preset que están desactivadas.
+  Set<String> get categoriasDesactivadas =>
+      Set.unmodifiable(_categoriasDesactivadas);
+
+  /// true si la categoría del preset con este nombre está desactivada.
+  ///
+  /// Compara por clave canónica, no por texto: así da igual cómo lo escribió
+  /// el usuario. No dice nada sobre las categorías personalizadas, que
+  /// tienen su propio `activa`.
+  bool categoriaPresetDesactivada(String nombre) =>
+      _categoriasDesactivadas.contains(canonicalizarCategoria(nombre));
+
+  /// Desactiva una categoría del preset sin tocarla.
+  ///
+  /// A diferencia de [desactivarCategoria], que borra la categoría de
+  /// [_categorias], aquí no se modifica nada del preset ni de la lista
+  /// visible: solo se registra la clave. Eso es lo que hace falta para que un
+  /// negocio pueda cambiar de rubro más adelante sin que sus decisiones se
+  /// pierdan, y para que volver a abrir la configuración respete la
+  /// elección.
+  ///
+  /// No es un no-op silencioso lo que devuelve cuando la categoría ya estaba
+  /// desactivada: devuelve `true` sin escribir, porque el estado pedido ya
+  /// está. Lo que sí rechaza es lo imposible: un nombre vacío, o un nombre
+  /// que no pertenece al preset del rubro —esa sería una personalizada, y
+  /// estas tienen su propio ciclo de vida—.
+  ///
+  /// Igual que el resto de escrituras, primero Firestore y después la
+  /// memoria, y notifica una sola vez, solo si la escritura funcionó.
+  Future<bool> desactivarCategoriaDelPreset(String uid, String nombre) async {
+    final clave = canonicalizarCategoria(nombre.trim());
+    if (clave.isEmpty) {
+      _errorCatalogo = 'El nombre de la categoría no puede estar vacío.';
+      return false;
+    }
+    if (!_presetCategoriaIncluye(clave)) {
+      _errorCatalogo = '"$nombre" no es una categoría de $rubro.';
+      return false;
+    }
+    if (_categoriasDesactivadas.contains(clave)) return true;
+
+    final actualizadas = {..._categoriasDesactivadas, clave};
+    try {
+      await _repository.guardarCategoriasDesactivadas(
+        uid,
+        actualizadas.toList(),
+        negocioId: negocioId,
+      );
+    } catch (_) {
+      _errorCatalogo =
+          'No se pudo desactivar la categoría. Revisa tu conexión.';
+      return false;
+    }
+
+    _categoriasDesactivadas
+      ..clear()
+      ..addAll(actualizadas);
+    _errorCatalogo = null;
+    notifyListeners();
+    return true;
+  }
+
+  /// ¿La clave corresponde a una categoría del preset del rubro?
+  ///
+  /// Se consulta el preset, no [_categorias]: esa lista es un borrador que el
+  /// usuario puede haber editado, y una categoría que él mismo agregó no
+  /// cuenta como "del preset".
+  bool _presetCategoriaIncluye(String clave) => PresetsVenta.obtener(
+    rubro,
+  ).categorias.any((categoria) => canonicalizarCategoria(categoria) == clave);
 
   /// Renombra una categoría personalizada conservando su identidad.
   ///

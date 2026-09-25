@@ -2200,6 +2200,128 @@ void main() {
       ]);
     });
   });
+
+  group('categorías del preset desactivadas', () {
+    ConfiguracionNegocioProvider crearProvider({
+      FirebaseFirestore? firestore,
+      Object? desactivadas,
+      Map<String, dynamic>? configuracionInicial,
+    }) => ConfiguracionNegocioProvider(
+      rubro: 'Bodega',
+      negocioId: 'negocio-1',
+      configuracionInicial:
+          desactivadas != null
+              ? {'categoriasDesactivadas': desactivadas}
+              : configuracionInicial,
+      repository: NegocioRepository(
+        firestore: firestore ?? FakeFirebaseFirestore(),
+      ),
+    );
+
+    test('carga vacía si el campo no existe', () {
+      final sinCampo = crearProvider(configuracionInicial: {'nombreNegocio': 'B'});
+      final sinConfiguracion = crearProvider();
+      final conNull = crearProvider(desactivadas: null);
+
+      expect(sinCampo.categoriasDesactivadas, isEmpty);
+      expect(sinConfiguracion.categoriasDesactivadas, isEmpty);
+      expect(conNull.categoriasDesactivadas, isEmpty);
+      expect(sinCampo.categoriaPresetDesactivada('Snacks'), isFalse);
+    });
+
+    test('carga lo guardado usando la clave canónica', () {
+      final provider = crearProvider(desactivadas: ['  SNACKS  ']);
+
+      expect(provider.categoriasDesactivadas, {'snacks'});
+      // La consulta es por clave, no por texto: da igual cómo se escriba.
+      expect(provider.categoriaPresetDesactivada('snacks'), isTrue);
+      expect(provider.categoriaPresetDesactivada('  Snacks '), isTrue);
+      expect(provider.categoriaPresetDesactivada('Bebidas'), isFalse);
+    });
+
+    test('desactiva una categoría del preset sin tocarla', () async {
+      final firestore = FakeFirebaseFirestore();
+      final provider = crearProvider(firestore: firestore);
+      var notificaciones = 0;
+      provider.addListener(() => notificaciones++);
+      final categoriasIniciales = provider.categorias;
+
+      final desactivada = await provider.desactivarCategoriaDelPreset(
+        'usuario-1',
+        'Snacks',
+      );
+
+      expect(desactivada, isTrue);
+      expect(provider.errorCatalogo, isNull);
+      expect(notificaciones, 1);
+      expect(provider.categoriasDesactivadas, {'snacks'});
+      expect(provider.categoriaPresetDesactivada('Snacks'), isTrue);
+      // El preset y la lista visible siguen intactos: desactivar no borra.
+      expect(provider.categorias, categoriasIniciales);
+      expect(provider.categorias, contains('Snacks'));
+    });
+
+    test('no duplica claves al desactivar dos veces', () async {
+      final firestore = FakeFirebaseFirestore();
+      final provider = crearProvider(firestore: firestore);
+      var notificaciones = 0;
+      provider.addListener(() => notificaciones++);
+
+      await provider.desactivarCategoriaDelPreset('usuario-1', 'Snacks');
+      // Misma categoría escrita con otra capitalización y con espacios.
+      final repetida = await provider.desactivarCategoriaDelPreset(
+        'usuario-1',
+        '  SNACKS ',
+      );
+
+      expect(repetida, isTrue);
+      expect(provider.categoriasDesactivadas, {'snacks'});
+      expect(provider.categoriasDesactivadas, hasLength(1));
+      // La segunda vez no hay nada que escribir ni que avisar.
+      expect(notificaciones, 1);
+    });
+
+    test('persiste la lista completa de claves', () async {
+      final firestore = FakeFirebaseFirestore();
+      final provider = crearProvider(firestore: firestore);
+
+      await provider.desactivarCategoriaDelPreset('usuario-1', 'Snacks');
+      await provider.desactivarCategoriaDelPreset('usuario-1', 'Limpieza');
+
+      expect(provider.categoriasDesactivadas, {'snacks', 'limpieza'});
+      final datos =
+          (await firestore.collection('negocios').doc('negocio-1').get())
+              .data()!;
+      expect(
+        (datos['categoriasDesactivadas'] as List).toSet(),
+        {'snacks', 'limpieza'},
+      );
+    });
+
+    test('el getter de desactivadas no es modificable', () {
+      final provider = crearProvider(desactivadas: ['snacks']);
+
+      expect(
+        () => provider.categoriasDesactivadas.add('bebidas'),
+        throwsUnsupportedError,
+      );
+      expect(provider.categoriasDesactivadas, {'snacks'});
+    });
+
+    test('rechaza una categoría que no es del preset', () async {
+      final firestore = FakeFirebaseFirestore();
+      final provider = crearProvider(firestore: firestore);
+
+      final desactivada = await provider.desactivarCategoriaDelPreset(
+        'usuario-1',
+        'Mascotas',
+      );
+
+      expect(desactivada, isFalse);
+      expect(provider.errorCatalogo, contains('no es una categoría de Bodega'));
+      expect(provider.categoriasDesactivadas, isEmpty);
+    });
+  });
 }
 
 

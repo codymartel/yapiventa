@@ -506,6 +506,34 @@ class NegocioRepository
     );
   }
 
+  /// Guarda las claves canónicas de las categorías del preset que el negocio
+  /// tiene desactivadas.
+  ///
+  /// Se guarda solo la lista de claves, NO el preset: desactivar es una
+  /// decisión del negocio sobre un catálogo que sigue siendo del rubro. Por
+  /// eso no se proyecta al documento público ni participa del cambio de rubro
+  /// (eso reescribe el catálogo desde el preset de todos modos).
+  ///
+  /// La lista se guarda completa y ya deduplicada por quien la arma: aquí solo
+  /// se serializa.
+  Future<void> guardarCategoriasDesactivadas(
+    String uid,
+    List<String> claves, {
+    String? negocioId,
+  }) async {
+    final negocioIdResuelto = await _resolverNegocioId(uid, negocioId);
+    await _firestore
+        .collection('negocios')
+        .doc(negocioIdResuelto)
+        .set({
+          'categoriasDesactivadas': claves
+              .map(canonicalizarCategoria)
+              .where((clave) => clave.isNotEmpty)
+              .toSet()
+              .toList(),
+        }, SetOptions(merge: true));
+  }
+
   List<Map<String, dynamic>> _serializarCategoriasPersonalizadas(
     Iterable<CategoriaPersonalizada> categorias,
   ) {
