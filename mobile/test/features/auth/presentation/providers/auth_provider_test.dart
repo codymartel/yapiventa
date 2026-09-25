@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart' show User;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:mobile/features/auth/data/auth_repository.dart';
+import 'package:mobile/features/auth/data/google_sign_in_service.dart';
 import 'package:mobile/features/auth/data/user_repository.dart';
 import 'package:mobile/features/auth/presentation/providers/auth_provider.dart';
 
@@ -11,19 +12,27 @@ class _AuthRepositoryMock extends Mock implements AuthRepository {}
 
 class _UserRepositoryMock extends Mock implements UserRepository {}
 
+class _GoogleSignInServiceMock extends Mock implements GoogleSignInService {}
+
 class _UserMock extends Mock implements User {}
 
 void main() {
   late _AuthRepositoryMock authRepository;
   late _UserRepositoryMock userRepository;
+  late _GoogleSignInServiceMock googleSignInService;
   late AuthProvider provider;
 
   setUp(() {
     authRepository = _AuthRepositoryMock();
     userRepository = _UserRepositoryMock();
+    googleSignInService = _GoogleSignInServiceMock();
+    when(() => googleSignInService.cerrarSesionGoogle()).thenAnswer(
+      (_) async {},
+    );
     provider = AuthProvider(
       repository: authRepository,
       userRepository: userRepository,
+      googleSignInService: googleSignInService,
     );
   });
 
@@ -277,4 +286,72 @@ when(
       expect(provider.isLoading, isFalse);
     },
   );
+
+  group('cerrar sesión', () {
+    test('cierra Firebase y limpia la sesión de Google', () async {
+      when(() => authRepository.cerrarSesion()).thenAnswer((_) async {});
+
+      await provider.cerrarSesion();
+
+      verify(() => authRepository.cerrarSesion()).called(1);
+      verify(() => googleSignInService.cerrarSesionGoogle()).called(1);
+      expect(provider.status, AuthStatus.idle);
+      expect(provider.isLoading, isFalse);
+    });
+
+    test('también limpia Google para usuarios de correo y contraseña', () async {
+      when(() => authRepository.cerrarSesion()).thenAnswer((_) async {});
+
+      await provider.cerrarSesion();
+
+      verify(() => googleSignInService.cerrarSesionGoogle()).called(1);
+      expect(provider.status, AuthStatus.idle);
+      expect(provider.errorMessage, isNull);
+    });
+
+    test(
+      'si Google falla, el usuario sigue habiendo salido de Firebase',
+      () async {
+        when(() => authRepository.cerrarSesion()).thenAnswer((_) async {});
+        when(
+          () => googleSignInService.cerrarSesionGoogle(),
+        ).thenThrow(Exception('Google no respondió'));
+
+        await provider.cerrarSesion();
+
+        // Firebase se cerró igual, y el logout NO se reporta como error.
+        verify(() => authRepository.cerrarSesion()).called(1);
+        expect(provider.status, AuthStatus.idle);
+        expect(provider.errorMessage, isNull);
+        expect(provider.isLoading, isFalse);
+      },
+    );
+
+    test('si Firebase falla, el error se reporta sin tocar Google', () async {
+      when(
+        () => authRepository.cerrarSesion(),
+      ).thenThrow(Exception('Firebase no disponible'));
+
+      await provider.cerrarSesion();
+
+      expect(provider.status, AuthStatus.error);
+      expect(provider.errorMessage, 'No se pudo cerrar la sesión. Intenta de nuevo.');
+      verifyNever(() => googleSignInService.cerrarSesionGoogle());
+    });
+
+    test('ignora un segundo cierre de sesión concurrente', () async {
+      final respuesta = Completer<void>();
+      when(
+        () => authRepository.cerrarSesion(),
+      ).thenAnswer((_) => respuesta.future);
+
+      final primero = provider.cerrarSesion();
+      final segundo = provider.cerrarSesion();
+      respuesta.complete();
+      await Future.wait([primero, segundo]);
+
+      verify(() => authRepository.cerrarSesion()).called(1);
+      verify(() => googleSignInService.cerrarSesionGoogle()).called(1);
+    });
+  });
 }

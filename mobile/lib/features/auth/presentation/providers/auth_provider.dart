@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import '../../data/auth_repository.dart';
+import '../../data/google_sign_in_service.dart';
 import '../../data/user_repository.dart';
 
 enum AuthStatus { idle, loading, success, emailNotVerified, error }
@@ -9,10 +10,15 @@ enum AuthStatus { idle, loading, success, emailNotVerified, error }
 class AuthProvider extends ChangeNotifier {
   final AuthRepository _repository;
   final UserRepository _userRepository;
+  final GoogleSignInService _googleSignInService;
 
-  AuthProvider({AuthRepository? repository, UserRepository? userRepository})
-    : _repository = repository ?? AuthRepository(),
-      _userRepository = userRepository ?? UserRepository();
+  AuthProvider({
+    AuthRepository? repository,
+    UserRepository? userRepository,
+    GoogleSignInService? googleSignInService,
+  }) : _repository = repository ?? AuthRepository(),
+       _userRepository = userRepository ?? UserRepository(),
+       _googleSignInService = googleSignInService ?? GoogleSignInService();
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -223,7 +229,10 @@ class AuthProvider extends ChangeNotifier {
   Future<void> cerrarSesion() async {
     if (!_iniciarOperacion()) return;
     try {
+      // Primero Firebase: la sesión de la app es la que manda, y ya no
+      // debe quedar nadie autenticado aunque el paso siguiente falle.
       await _repository.cerrarSesion();
+      await _limpiarSesionGoogle();
       _relojTimer?.cancel();
       _bloqueoBoton = 0;
       _errorMessage = null;
@@ -233,6 +242,22 @@ class AuthProvider extends ChangeNotifier {
       _status = AuthStatus.error;
     } finally {
       _setLoading(false);
+    }
+  }
+
+  /// Cierra también la sesión de Google para que el próximo
+  /// "Continuar con Google" vuelva a mostrar el selector de cuenta en vez
+  /// de reutilizar silenciosamente la anterior.
+  ///
+  /// Va en su propio try/catch a propósito: si Google falla, la sesión de
+  /// Firebase ya está cerrada y el usuario sí salió de la app. Reportarlo
+  /// como error de "cerrar sesión" sería mentir, y revertir el estado
+  /// dejaría al usuario autenticado contra su intención.
+  Future<void> _limpiarSesionGoogle() async {
+    try {
+      await _googleSignInService.cerrarSesionGoogle();
+    } catch (_) {
+      // Sin efecto: solo se pierde el atajo de la cuenta de Google cacheada.
     }
   }
 
