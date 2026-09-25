@@ -15,6 +15,7 @@ void main() {
     String rubro = 'Bodega',
     Size size = const Size(900, 2400),
     TextScaler textScaler = TextScaler.noScaling,
+    Map<String, dynamic>? configuracionInicial,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -22,6 +23,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     final provider = ConfiguracionNegocioProvider(
       rubro: rubro,
+      configuracionInicial: configuracionInicial,
       repository: NegocioRepository(firestore: FakeFirebaseFirestore()),
     );
     addTearDown(provider.dispose);
@@ -160,6 +162,136 @@ void main() {
     );
     expect(find.text('Categorías de productos'), findsOneWidget);
     expect(find.text('Venta por medida'), findsNothing);
+  });
+
+  // ── 3b. Medida con requiereRevision: se muestra, sin botón Editar ──────
+  testWidgets(
+    'una medida requiereRevision muestra el chip, guiones y sin Editar',
+    (tester) async {
+      await mostrarPaso(
+        tester,
+        configuracionInicial: {
+          'nombreNegocio': 'Bodega Ana',
+          'catalogoVenta': {
+            'versionEsquema': 1,
+            'presentaciones': <Map<String, dynamic>>[],
+            'medidas': [
+              {
+                'id': 'docena',
+                'nombre': 'Docena',
+                'minimoBase': 0,
+                'incrementoBase': 0,
+                'cantidadesRapidasBase': <int>[],
+                'permiteCantidad': true,
+                'permiteMonto': false,
+                'activa': false,
+                'obligatoria': false,
+                'requiereRevision': true,
+              },
+            ],
+          },
+          'delivery': false,
+        },
+      );
+      await irAMedidas(tester);
+
+      expect(tester.takeException(), isNull);
+
+      final tarjeta = find.byKey(const Key('medida-card-docena'));
+      expect(tarjeta, findsOneWidget);
+      expect(
+        find.descendant(of: tarjeta, matching: find.text('Requiere revisión')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: tarjeta, matching: find.text('Familia: —')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: tarjeta,
+          matching: find.text('Unidad base: —  ·  Unidad habitual: —'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: tarjeta,
+          matching: find.text('Mínimo: —  ·  Incremento: —'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: tarjeta,
+          matching: find.text('Cantidades rápidas: —'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('editar-medida-docena')), findsNothing);
+      expect(
+        find.descendant(of: tarjeta, matching: find.text('Editar')),
+        findsNothing,
+      );
+    },
+  );
+
+  // ── 3c. Longitud con cm: sin fracciones de referencia ──────────────────
+  testWidgets('la familia Longitud con cm esconde el bloque de fracciones', (
+    tester,
+  ) async {
+    await mostrarPaso(
+      tester,
+      configuracionInicial: {
+        'nombreNegocio': 'Bodega Ana',
+        'catalogoVenta': {
+          'versionEsquema': 1,
+          'presentaciones': <Map<String, dynamic>>[],
+          'medidas': [
+            {
+              'id': 'longitud',
+              'nombre': 'Longitud',
+              'familia': 'longitud',
+              'unidadBase': 'mm',
+              'unidadVisual': 'm',
+              'minimoBase': 500,
+              'incrementoBase': 500,
+              'cantidadesRapidasBase': [500, 1000, 1500, 2000],
+              'permiteCantidad': true,
+              'permiteMonto': true,
+              'activa': true,
+              'obligatoria': false,
+              'requiereRevision': false,
+            },
+          ],
+        },
+        'delivery': false,
+      },
+    );
+    await irAMedidas(tester);
+
+    await tester.ensureVisible(find.byKey(const Key('editar-medida-longitud')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('editar-medida-longitud')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Editar Longitud'), findsOneWidget);
+    expect(find.text('Rápida de referencia (m):'), findsOneWidget);
+    expect(find.byKey(const Key('boton-fraccion-rapida-1')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('campo-unidad-medida')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('cm').last);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Rápida de referencia (cm):'), findsNothing);
+    expect(find.byKey(const Key('boton-fraccion-rapida-1')), findsNothing);
+    expect(find.byKey(const Key('boton-fraccion-rapida-2')), findsNothing);
+    expect(find.byKey(const Key('boton-fraccion-rapida-3')), findsNothing);
+    expect(find.byKey(const Key('boton-fraccion-rapida-4')), findsNothing);
+
+    await tester.tap(find.text('Cancelar'));
+    await tester.pumpAndSettle();
   });
 
   // ── 4. Editor: campos protegidos y preview ─────────────────────────────
