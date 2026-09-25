@@ -1384,6 +1384,106 @@ void main() {
       expect(provider.categoriasPersonalizadas.map((c) => c.clave), ['dulces']);
     });
   });
+
+  group('categorías personalizadas: crear', () {
+    ConfiguracionNegocioProvider crear({
+      String? negocioId,
+      List<Map<String, dynamic>> guardadas = const [],
+    }) => ConfiguracionNegocioProvider(
+      rubro: 'Bodega',
+      negocioId: negocioId,
+      configuracionInicial: {'categoriasPersonalizadas': guardadas},
+      repository: NegocioRepository(firestore: FakeFirebaseFirestore()),
+    );
+
+    test('agrega la categoría con su clave canónica y activa', () async {
+      final provider = crear(negocioId: 'negocio-1');
+
+      final agregado = await provider.agregarCategoriaPersonalizada(
+        'usuario-1',
+        '  Bebidas Caseras  ',
+      );
+
+      expect(agregado, isTrue);
+      expect(provider.categoriasPersonalizadas, [
+        const CategoriaPersonalizada(
+          clave: 'bebidas caseras',
+          nombre: 'Bebidas Caseras',
+        ),
+      ]);
+    });
+
+    test('rechaza una clave duplicada sin tocar el estado', () async {
+      final provider = crear(negocioId: 'negocio-1', guardadas: [
+        {'clave': 'dulces', 'nombre': 'Dulces', 'activa': true},
+      ]);
+      var notificaciones = 0;
+      provider.addListener(() => notificaciones++);
+
+      final agregado = await provider.agregarCategoriaPersonalizada(
+        'usuario-1',
+        'DULCES',
+      );
+
+      expect(agregado, isFalse);
+      expect(provider.errorCatalogo, contains('Ya existe'));
+      expect(provider.categoriasPersonalizadas.map((c) => c.clave), ['dulces']);
+      expect(notificaciones, 0);
+    });
+
+    test('rechaza un nombre vacío', () async {
+      final provider = crear(negocioId: 'negocio-1');
+      var notificaciones = 0;
+      provider.addListener(() => notificaciones++);
+
+      final agregado = await provider.agregarCategoriaPersonalizada(
+        'usuario-1',
+        '   ',
+      );
+
+      expect(agregado, isFalse);
+      expect(provider.errorCatalogo, contains('no puede estar vacío'));
+      expect(provider.categoriasPersonalizadas, isEmpty);
+      expect(notificaciones, 0);
+    });
+
+    test('persiste la lista y notifica una sola vez', () async {
+      final firestore = FakeFirebaseFirestore();
+      final provider = ConfiguracionNegocioProvider(
+        rubro: 'Bodega',
+        negocioId: 'negocio-1',
+        configuracionInicial: {
+          'categoriasPersonalizadas': [
+            {'clave': 'dulces', 'nombre': 'Dulces', 'activa': true},
+          ],
+        },
+        repository: NegocioRepository(firestore: firestore),
+      );
+      var notificaciones = 0;
+      provider.addListener(() => notificaciones++);
+
+      final agregado = await provider.agregarCategoriaPersonalizada(
+        'usuario-1',
+        'Salas',
+      );
+
+      expect(agregado, isTrue);
+      expect(provider.errorCatalogo, isNull);
+      expect(notificaciones, 1);
+      expect(provider.categoriasPersonalizadas.map((c) => c.clave), [
+        'dulces',
+        'salas',
+      ]);
+
+      final datos =
+          (await firestore.collection('negocios').doc('negocio-1').get())
+              .data()!;
+      expect(datos['categoriasPersonalizadas'], [
+        {'clave': 'dulces', 'nombre': 'Dulces', 'activa': true},
+        {'clave': 'salas', 'nombre': 'Salas', 'activa': true},
+      ]);
+    });
+  });
 }
 
 

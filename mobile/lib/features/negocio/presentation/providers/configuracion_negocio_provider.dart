@@ -365,11 +365,55 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
   List<String> get categorias => List.unmodifiable(_categorias);
 
   /// Categorías creadas por el usuario, cargadas desde
-  /// `categoriasPersonalizadas`. Solo lectura: por ahora no se crean, editan
-  /// ni eliminan; la UI y la escritura llegan en etapas posteriores.
+  /// `categoriasPersonalizadas`. Editar, eliminar y desactivar llegan en
+  /// etapas posteriores; aquí solo se crean.
   late List<CategoriaPersonalizada> _categoriasPersonalizadas;
   List<CategoriaPersonalizada> get categoriasPersonalizadas =>
       List.unmodifiable(_categoriasPersonalizadas);
+
+  /// Crea una categoría personalizada y la persiste.
+  ///
+  /// La identidad es la clave canónica del nombre ([canonicalizarCategoria]),
+  /// no el texto: escribir "  Dulces  " y "dulces" es la misma categoría y la
+  /// segunda se rechaza. La escritura va primero; el estado en memoria solo
+  /// cambia si Firestore confirma, así un fallo de red no deja una categoría
+  /// que se pierde al recargar. Por eso este método notifica exactamente una
+  /// vez, y solo en el camino exitoso: los rechazos y el error de guardado
+  /// dejan el estado intacto y reportan el motivo en [errorCatalogo].
+  Future<bool> agregarCategoriaPersonalizada(String uid, String nombre) async {
+    final nombreLimpio = nombre.trim();
+    final clave = canonicalizarCategoria(nombreLimpio);
+    if (clave.isEmpty) {
+      _errorCatalogo = 'El nombre de la categoría no puede estar vacío.';
+      return false;
+    }
+    if (_categoriasPersonalizadas.any((categoria) => categoria.clave == clave)) {
+      _errorCatalogo = 'Ya existe una categoría con ese nombre.';
+      return false;
+    }
+
+    final nueva = CategoriaPersonalizada(
+      clave: clave,
+      nombre: nombreLimpio,
+      activa: true,
+    );
+    final actualizadas = [..._categoriasPersonalizadas, nueva];
+    try {
+      await _repository.guardarCategoriasPersonalizadas(
+        uid,
+        actualizadas,
+        negocioId: negocioId,
+      );
+    } catch (_) {
+      _errorCatalogo = 'No se pudo guardar la categoría. Revisa tu conexión.';
+      return false;
+    }
+
+    _categoriasPersonalizadas = actualizadas;
+    _errorCatalogo = null;
+    notifyListeners();
+    return true;
+  }
 
   void agregarCategoria(String nombre) {
     if (_esCategoriaDuplicada(nombre)) return;
