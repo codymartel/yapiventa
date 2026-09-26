@@ -47,8 +47,8 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
 
   /// Resuelto en la sesión por AccesoProvider; evita releer users/{uid}.
   final String? negocioId;
-  late final Set<String> _categoriasIniciales;
   late final Set<String> _unidadesIniciales;
+  late final Set<String> _categoriasEfectivasIniciales;
   bool _disposed = false;
 
   /// Borrador en memoria del catálogo de venta (presentaciones + medidas).
@@ -79,7 +79,7 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
     if (configuracionInicial != null && configuracionInicial.isNotEmpty) {
       _restaurarConfiguracion(configuracionInicial);
     }
-    _categoriasIniciales = _categorias.toSet();
+    _categoriasEfectivasIniciales = categoriasEfectivas.toSet();
     _unidadesIniciales = _unidadesMedida.map((u) => u.nombre).toSet();
   }
 
@@ -460,8 +460,7 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
     final indice = _indiceCategoriaPersonalizada(clave);
     if (indice == -1) return false;
 
-    if (_dejariaCatalogoVacio(
-      clave,
+    if (_quedariaSinCategoriasActivas(
       actualmenteActiva: _categoriasPersonalizadas[indice].activa,
     )) {
       return _rechazarPorIntegridad();
@@ -562,10 +561,7 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
       return false;
     }
     if (_categoriasDesactivadas.contains(clave)) return true;
-    if (_dejariaCatalogoVacio(
-      clave,
-      actualmenteActiva: true,
-    )) {
+    if (_quedariaSinCategoriasActivas(actualmenteActiva: true)) {
       return _rechazarPorIntegridad();
     }
 
@@ -652,34 +648,60 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
   static const mensajeUltimaCategoriaActiva =
       'Debes mantener al menos una categoría activa.';
 
-  /// Cuántas categorías ve realmente el negocio ahora mismo: las del preset
-  /// que no están en [categoriasDesactivadas] más las personalizadas con
-  /// `activa`.
+  /// Categorías que el negocio tiene activas ahora mismo, en este orden:
   ///
-  /// Es el número que la regla de integridad protege. No usa [_categorias]:
-  /// ese borrador sigue con el preset completo y por eso no puede decidir si el
-  /// catálogo quedaría vacío.
-  int get categoriasEfectivas {
-    final preset = PresetsVenta.obtener(rubro).categorias;
-    final activasDelPreset = preset
-        .where((nombre) => !_categoriasDesactivadas.contains(
-          canonicalizarCategoria(nombre),
-        ))
-        .length;
-    final activasPersonalizadas = _categoriasPersonalizadas
-        .where((categoria) => categoria.activa)
-        .length;
-    return activasDelPreset + activasPersonalizadas;
+  ///   1. las del preset del rubro que NO están en [categoriasDesactivadas];
+  ///   2. las personalizadas con `activa`.
+  ///
+  /// Es la ÚNICA fuente de verdad de "qué categorías existen" en este flujo: la
+  /// UI, el guardado, las validaciones del wizard y lo que Productos recibe a
+  /// través de `catalogo.categorias` salen todos de aquí.
+  ///
+  /// [_categorias] sigue existiendo (borrador legacy + APIs viejas que no se
+  /// borran en esta etapa) pero ya no decide nada: no aparece aquí, ni en
+  /// `guardar()`, ni en las validaciones. Se conserva intacto para no romper
+  /// nada fuera de este flujo.
+  ///
+  /// La deduplicación es CANÓNICA (vía [canonicalizarCategoria]), no textual:
+  /// una personalizada cuya clave colisione con una del preset no puede
+  /// duplicarla, y el preset gana porque se recorre primero.
+  List<String> get categoriasEfectivas {
+    final resultado = <String>[];
+    final clavesVistas = <String>{};
+
+    for (final nombre in PresetsVenta.obtener(rubro).categorias) {
+      final clave = canonicalizarCategoria(nombre);
+      if (clave.isEmpty || _categoriasDesactivadas.contains(clave)) continue;
+      if (!clavesVistas.add(clave)) continue;
+      resultado.add(nombre);
+    }
+
+    for (final categoria in _categoriasPersonalizadas) {
+      if (!categoria.activa) continue;
+      final clave = canonicalizarCategoria(categoria.clave);
+      if (clave.isEmpty || !clavesVistas.add(clave)) continue;
+      resultado.add(
+        categoria.nombre.trim().isEmpty ? categoria.clave : categoria.nombre,
+      );
+    }
+
+    return List.unmodifiable(resultado);
   }
+
+  /// Conteo de [categoriasEfectivas]. Es el número que protege la regla de
+  /// integridad, para no reimplementarla.
+  int get cantidadCategoriasEfectivas => categoriasEfectivas.length;
 
   /// ¿Esta operación dejaría el catálogo sin ninguna categoría activa?
   ///
   /// Solo se consulta cuando la operación realmente va a reducir el conteo
   /// (desactivar algo que está activo, eliminar algo activo), así que
   /// reactivar, crear o renombrar nunca se bloquean.
-  bool _dejariaCatalogoVacio(String clave, {required bool actualmenteActiva}) {
+  bool _quedariaSinCategoriasActivas({
+    required bool actualmenteActiva,
+  }) {
     if (!actualmenteActiva) return false;
-    return categoriasEfectivas - 1 <= 0;
+    return cantidadCategoriasEfectivas <= 1;
   }
 
   /// Registra el rechazo por integridad y devuelve `false` sin escribir nada:
@@ -786,8 +808,7 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
       return false;
     }
 
-    if (_dejariaCatalogoVacio(
-      clave,
+    if (_quedariaSinCategoriasActivas(
       actualmenteActiva: _categoriasPersonalizadas[indice].activa,
     )) {
       return _rechazarPorIntegridad();
@@ -962,7 +983,7 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
   // ── Resumen del catálogo para la integración visual final ─────────────
   // Cantidades de solo lectura que alimentan el resumen "antes de avanzar"
   // del paso Catálogo y sus pruebas de integración.
-  int get categoriasActivas => _categorias.length;
+  int get categoriasActivas => cantidadCategoriasEfectivas;
   int get presentacionesActivas => _catalogoVenta.presentaciones
       .where((presentacion) => presentacion.activa)
       .length;
@@ -1488,7 +1509,7 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
   bool get faltaTelefono => _telefono.length != _paisTelefono.digitosEsperados;
   bool get faltaDireccion => _direccion.trim().length < 5;
   bool get faltaReferencia => _referencia.trim().length < 5;
-  bool get faltaCategoria => _categorias.isEmpty;
+  bool get faltaCategoria => categoriasEfectivas.isEmpty;
   bool get faltaUnidad => _unidadesMedida.isEmpty;
   bool get faltaZonas => _tieneDelivery && _zonasDelivery.isEmpty;
 
@@ -1610,9 +1631,9 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final categoriasEliminadas = _categoriasIniciales
-          .difference(_categorias.toSet())
-          .toList();
+      final categoriasEliminadas = _categoriasEfectivasIniciales.difference(
+        categoriasEfectivas.toSet(),
+      ).toList();
       final unidadesEliminadas = _unidadesIniciales
           .difference(_unidadesMedida.map((u) => u.nombre).toSet())
           .toList();
@@ -1643,7 +1664,7 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
         tiktok: _linkTiktok,
         instagram: _linkInstagram,
         youtube: _linkYoutube,
-        categorias: _categorias,
+        categorias: categoriasEfectivas,
         unidadesMedida: _unidadesMedida,
         catalogoVenta: _catalogoVenta,
         tieneDelivery: _tieneDelivery,

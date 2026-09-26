@@ -21,6 +21,7 @@ void main() {
     TextScaler textScaler = TextScaler.noScaling,
     Map<String, dynamic>? configuracionInicial,
     FakeFirebaseFirestore? firestore,
+    String? negocioId,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -28,6 +29,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     final provider = ConfiguracionNegocioProvider(
       rubro: rubro,
+      negocioId: negocioId,
       configuracionInicial: configuracionInicial,
       repository: NegocioRepository(
         firestore: firestore ?? FakeFirebaseFirestore(),
@@ -150,13 +152,15 @@ void main() {
   testWidgets('el resumen reacciona a los cambios del borrador', (
     tester,
   ) async {
-    final provider = await mostrarPaso(tester);
+    final provider = await mostrarPaso(tester, negocioId: 'negocio-1');
     await verResumen(tester);
 
     final categoriasIniciales = provider.categoriasActivas;
     final formatosIniciales = provider.totalFormatos;
 
-    provider.agregarCategoria('Ofertas');
+    // El contador sigue a las categorías EFECTIVAS, no al borrador legacy: una
+    // personalizada activa suma y una desactivada ya no cuenta.
+    await provider.agregarCategoriaPersonalizada('usuario-1', 'Ofertas');
     provider.agregarFormato('botella', volumen(100));
     await tester.pump();
 
@@ -171,6 +175,17 @@ void main() {
     expect(nuevosCategorias, findsOneWidget);
     expect(nuevosFormatos, findsOneWidget);
     expect(provider.totalFormatos, formatosIniciales + 1);
+
+    await provider.desactivarCategoriaPersonalizada('usuario-1', 'ofertas');
+    await tester.pump();
+
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('resumen-categorias')),
+        matching: find.text('$categoriasIniciales'),
+      ),
+      findsOneWidget,
+    );
   });
 
   // ── 3. Errores pendientes ────────────────────────────────────────────

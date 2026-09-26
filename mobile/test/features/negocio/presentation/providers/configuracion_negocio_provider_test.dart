@@ -329,8 +329,8 @@ void main() {
         },
         repository: NegocioRepository(firestore: firestore),
       );
-      provider.eliminarCategoria(0);
-      provider.agregarCategoria('Snacks');
+      // 'Bebidas' sale de las efectivas al desactivarla en el preset.
+      await provider.desactivarCategoriaDelPreset('usuario-1', 'Bebidas');
 
       final guardado = await provider.guardar('usuario-1');
 
@@ -492,8 +492,10 @@ void main() {
       },
       repository: NegocioRepository(firestore: firestore),
     );
-    provider.eliminarCategoria(0);
-    provider.agregarCategoria('Snacks');
+    await provider.desactivarCategoriaDelPreset(
+      'usuario-sin-perfil',
+      'Bebidas',
+    );
 
     final guardado = await provider.guardar('usuario-sin-perfil');
 
@@ -2331,14 +2333,19 @@ void main() {
     /// Limpieza y Cuidado personal.
     ConfiguracionNegocioProvider crearProvider({
       FirebaseFirestore? firestore,
-      List<String>? desactivadas = const [],
-      List<Map<String, dynamic>>? personalizadas = const [],
+      List<String>? desactivadas,
+      List<Map<String, dynamic>>? personalizadas,
+      Map<String, dynamic>? configuracionInicial,
     }) => ConfiguracionNegocioProvider(
       rubro: 'Bodega',
       negocioId: 'negocio-1',
       configuracionInicial: {
-        'categoriasDesactivadas': desactivadas,
-        'categoriasPersonalizadas': personalizadas,
+        ...?configuracionInicial,
+        // Solo se inyectan si vienen explícitas: si no, gana lo que traiga
+        // `configuracionInicial`.
+        if (desactivadas != null) 'categoriasDesactivadas': desactivadas,
+        if (personalizadas != null)
+          'categoriasPersonalizadas': personalizadas,
       },
       repository: NegocioRepository(
         firestore: firestore ?? FakeFirebaseFirestore(),
@@ -2359,17 +2366,280 @@ void main() {
       'activa': true,
     };
 
-    test('categoriasEfectivas suma preset no desactivadas y personalizadas activas', () {
-      expect(crearProvider().categoriasEfectivas, 5);
+    Map<String, dynamic> personalizadaInactiva(String clave) => {
+      'clave': clave,
+      'nombre': clave[0].toUpperCase() + clave.substring(1),
+      'activa': false,
+    };
+
+    /// Datos mínimos para que `guardar()` pase las validaciones del wizard y
+    /// llegue a escribir.
+    Map<String, dynamic> negocioCompleto() => {
+      'nombreNegocio': 'Bodega Ana',
+      'telefono': '+51999999999',
+      'direccion': 'Av. Lima 123 (Ref: Frente al parque)',
+      'unidadesMedida': [
+        {
+          'nombre': 'Unidad',
+          'tipo': 'entera',
+          'fraccionesPermitidas': <String>[],
+          'esOpcional': false,
+        },
+      ],
+      'delivery': false,
+    };
+
+    // ═══════════════════════════════════════════════════════════════════
+    // categoriasEfectivas: la lista, no el conteo
+    // ═══════════════════════════════════════════════════════════════════
+
+    test('la lista incluye la preset activa y la personalizada activa', () {
+      final provider = crearProvider(
+        personalizadas: [personalizadaActiva('ofertas')],
+      );
+
+      expect(provider.categoriasEfectivas, [
+        'Abarrotes',
+        'Bebidas',
+        'Snacks',
+        'Limpieza',
+        'Cuidado personal',
+        'Ofertas',
+      ]);
+      expect(provider.cantidadCategoriasEfectivas, 6);
+    });
+
+    test('la lista excluye la preset desactivada', () {
+      final provider = crearProvider(desactivadas: ['bebidas', 'snacks']);
+
+      expect(provider.categoriasEfectivas, isNot(contains('Bebidas')));
+      expect(provider.categoriasEfectivas, isNot(contains('Snacks')));
+      expect(provider.categoriasEfectivas, [
+        'Abarrotes',
+        'Limpieza',
+        'Cuidado personal',
+      ]);
+    });
+
+    test('la lista excluye la personalizada inactiva', () {
+      final provider = crearProvider(
+        personalizadas: [
+          personalizadaActiva('ofertas'),
+          personalizadaInactiva('dulces'),
+        ],
+      );
+
+      expect(provider.categoriasEfectivas, contains('Ofertas'));
+      expect(provider.categoriasEfectivas, isNot(contains('Dulces')));
+    });
+
+    test('no hay duplicados canónicos entre preset y personalizadas', () {
+      // Una personalizada cuya clave colisiona con la de una del preset no
+      // puede duplicarla: la comparación es canónica, no textual.
+      final provider = crearProvider(
+        personalizadas: [
+          personalizadaActiva('bebidas'),
+          personalizadaActiva('BEBIDAS'),
+          personalizadaActiva('ofertas'),
+        ],
+      );
+
+      final lista = provider.categoriasEfectivas;
+      final claves = lista.map(canonicalizarCategoria).toList();
+      expect(claves.toSet(), hasLength(claves.length));
+      expect(lista.where((n) => canonicalizarCategoria(n) == 'bebidas'), [
+        'Bebidas',
+      ], reason: 'gana el nombre del preset porque se recorre primero');
+      expect(lista, contains('Ofertas'));
+    });
+
+    test('el orden es preset activas primero y luego personalizadas', () {
+      final provider = crearProvider(
+        desactivadas: ['snacks'],
+        personalizadas: [
+          personalizadaActiva('dulces'),
+          personalizadaActiva('ofertas'),
+        ],
+      );
+
+      expect(provider.categoriasEfectivas, [
+        'Abarrotes',
+        'Bebidas',
+        'Limpieza',
+        'Cuidado personal',
+        'Dulces',
+        'Ofertas',
+      ]);
+    });
+
+    test('el getter no es modificable desde fuera', () {
+      final provider = crearProvider();
+      expect(
+        () => provider.categoriasEfectivas.add('Intrusa'),
+        throwsUnsupportedError,
+      );
+      expect(provider.categoriasEfectivas, isNot(contains('Intrusa')));
+    });
+
+    // ═══════════════════════════════════════════════════════════════════
+    // guardar() sincroniza el campo legacy/publicable
+    // ═══════════════════════════════════════════════════════════════════
+
+    test('guardar escribe exactamente categoriasEfectivas en categorias', () async {
+      final firestore = FakeFirebaseFirestore();
+      final provider = crearProvider(
+        firestore: firestore,
+        configuracionInicial: negocioCompleto(),
+      );
+
+      // Operaciones reales: cada una persiste su propio campo interno.
+      await provider.desactivarCategoriaDelPreset('usuario-1', 'Bebidas');
+      await provider.desactivarCategoriaDelPreset('usuario-1', 'Snacks');
+      await provider.agregarCategoriaPersonalizada('usuario-1', 'Ofertas');
+      await provider.desactivarCategoriaPersonalizada('usuario-1', 'ofertas');
+      await provider.reactivarCategoriaPersonalizada('usuario-1', 'ofertas');
+
+      final guardado = await provider.guardar('usuario-1');
+
+      expect(guardado, isTrue);
+      final datos =
+          (await firestore.collection('negocios').doc('negocio-1').get()).data()!;
+      // El campo legacy/publicable lleva exactamente las efectivas: sin la
+      // preset desactivada y con la personalizada activa.
+      expect(datos['categorias'], [
+        'Abarrotes',
+        'Limpieza',
+        'Cuidado personal',
+        'Ofertas',
+      ]);
+      // El estado interno nuevo sigue separado del que se publica.
+      // (Su persistencia en Firestore se cubre en negocio_repository_test; aquí
+      // no se puede comprobar porque fake_cloud_firestore REEMPLAZA el documento
+      // en `transaction.set(..., merge: true)` en vez de mergearlo.)
+      expect(provider.categoriasDesactivadas, {'bebidas', 'snacks'});
+      expect(
+        provider.categoriasPersonalizadas.map((categoria) => categoria.clave),
+        ['ofertas'],
+      );
+      // La proyección pública solo recibe `categorias` como List<String>.
+      final publica = await firestore.collection('negocios_publicos').get();
+      expect(publica.docs, isNotEmpty);
+      final projecting = publica.docs.first.data()!;
+      expect(projecting['categorias'], [
+        'Abarrotes',
+        'Limpieza',
+        'Cuidado personal',
+        'Ofertas',
+      ]);
+      expect(projecting.containsKey('categoriasDesactivadas'), isFalse);
+      expect(projecting.containsKey('categoriasPersonalizadas'), isFalse);
+    });
+
+    test('guardar y recargar mantiene el resultado', () async {
+      final firestore = FakeFirebaseFirestore();
+      await firestore.collection('users').doc('usuario-1').set({
+        'email': 'ana@example.com',
+        'negocioId': 'negocio-1',
+      });
+      final provider = crearProvider(
+        firestore: firestore,
+        configuracionInicial: negocioCompleto(),
+      );
+      await provider.desactivarCategoriaDelPreset('usuario-1', 'Bebidas');
+      await provider.agregarCategoriaPersonalizada('usuario-1', 'Ofertas');
+      final antes = provider.categoriasEfectivas;
+      expect(antes, [
+        'Abarrotes',
+        'Snacks',
+        'Limpieza',
+        'Cuidado personal',
+        'Ofertas',
+      ]);
+      expect(await provider.guardar('usuario-1'), isTrue);
+      final documento =
+          (await firestore.collection('negocios').doc('negocio-1').get()).data();
+      expect(documento, isNotNull);
+      expect(documento!['categorias'], antes);
+      provider.dispose();
+
+      // Se reconstruye el provider como lo hace el flujo real: el documento se
+      // lee crudo y alimenta `configuracionInicial` junto al estado interno.
+      final recargado = crearProvider(
+        firestore: firestore,
+        configuracionInicial: {
+          'categorias': documento['categorias'],
+          'categoriasDesactivadas': ['bebidas'],
+          'categoriasPersonalizadas': [
+            {'clave': 'ofertas', 'nombre': 'Ofertas', 'activa': true},
+          ],
+        },
+      );
+
+      expect(recargado.categoriasEfectivas, antes);
+      // Productos recibe `catalogo.categorias` desde ese mismo campo.
+      final leido = await NegocioRepository(
+        firestore: firestore,
+      ).obtenerCatalogoNegocio('usuario-1');
+      expect(leido.categorias, antes);
+      expect(leido.categorias, isNot(contains('Bebidas')));
+      recargado.dispose();
+    });
+
+    test('Productos deja de recibir una preset desactivada', () async {
+      final firestore = FakeFirebaseFirestore();
+      await firestore.collection('users').doc('usuario-1').set({
+        'email': 'ana@example.com',
+        'negocioId': 'negocio-1',
+      });
+      final provider = crearProvider(
+        firestore: firestore,
+        configuracionInicial: negocioCompleto(),
+      );
+      await provider.desactivarCategoriaDelPreset('usuario-1', 'Bebidas');
+      await provider.desactivarCategoriaDelPreset('usuario-1', 'Snacks');
+      await provider.desactivarCategoriaDelPreset('usuario-1', 'Limpieza');
+      await provider.desactivarCategoriaDelPreset(
+        'usuario-1',
+        'Cuidado personal',
+      );
+      expect(await provider.guardar('usuario-1'), isTrue);
+      provider.dispose();
+
+      // Productos lee `catalogo.categorias`; el contrato no cambia, cambia lo
+      // que llega: exactamente las efectivas.
+      final catalogo = await NegocioRepository(
+        firestore: firestore,
+      ).obtenerCatalogoNegocio('usuario-1');
+
+      expect(catalogo.categorias, ['Abarrotes']);
+      expect(catalogo.categorias, isNot(contains('Bebidas')));
+      expect(catalogo.categorias, isNot(contains('Cuidado personal')));
+    });
+
+    test('categoriasEfectivas lista preset no desactivadas y personalizadas activas', () {
+      expect(crearProvider().categoriasEfectivas, [
+        'Abarrotes',
+        'Bebidas',
+        'Snacks',
+        'Limpieza',
+        'Cuidado personal',
+      ]);
       expect(
         crearProvider(desactivadas: ['snacks', 'limpieza']).categoriasEfectivas,
-        3,
+        ['Abarrotes', 'Bebidas', 'Cuidado personal'],
       );
       expect(
         crearProvider(
           personalizadas: [personalizadaActiva('ofertas')],
         ).categoriasEfectivas,
-        6,
+        [
+          'Abarrotes',
+          'Bebidas',
+          'Snacks',
+          'Limpieza',
+          'Cuidado personal',
+          'Ofertas',
+        ],
       );
       expect(
         crearProvider(
@@ -2378,7 +2648,7 @@ void main() {
             {'clave': 'dulces', 'nombre': 'Dulces', 'activa': false},
           ],
         ).categoriasEfectivas,
-        6,
+        isNot(contains('Dulces')),
       );
     });
 
@@ -2391,7 +2661,7 @@ void main() {
       var notificaciones = 0;
       provider.addListener(() => notificaciones++);
       final desactivadasAntes = provider.categoriasDesactivadas;
-      expect(provider.categoriasEfectivas, 1);
+      expect(provider.cantidadCategoriasEfectivas, 1);
 
       final desactivada = await provider.desactivarCategoriaDelPreset(
         'usuario-1',
@@ -2403,7 +2673,7 @@ void main() {
       // Ni memoria ni Firestore cambian.
       expect(provider.categoriasDesactivadas, desactivadasAntes);
       expect(provider.categoriaPresetDesactivada('Abarrotes'), isFalse);
-      expect(provider.categoriasEfectivas, 1);
+      expect(provider.cantidadCategoriasEfectivas, 1);
       expect(notificaciones, 0);
       final datos =
           (await firestore.collection('negocios').doc('negocio-1').get()).data();
@@ -2425,7 +2695,7 @@ void main() {
         ],
         personalizadas: [personalizadaActiva('ofertas')],
       );
-      expect(provider.categoriasEfectivas, 1);
+      expect(provider.cantidadCategoriasEfectivas, 1);
 
       final desactivada = await provider.desactivarCategoriaPersonalizada(
         'usuario-1',
@@ -2435,7 +2705,7 @@ void main() {
       expect(desactivada, isFalse);
       expect(provider.errorCatalogo, mensaje);
       expect(provider.categoriasPersonalizadas.single.activa, isTrue);
-      expect(provider.categoriasEfectivas, 1);
+      expect(provider.cantidadCategoriasEfectivas, 1);
       final datos =
           (await firestore.collection('negocios').doc('negocio-1').get()).data();
       expect(datos?['categoriasPersonalizadas'], isNull);
@@ -2466,7 +2736,7 @@ void main() {
         provider.categoriasPersonalizadas.map((categoria) => categoria.clave),
         ['ofertas'],
       );
-      expect(provider.categoriasEfectivas, 1);
+      expect(provider.cantidadCategoriasEfectivas, 1);
       final datos =
           (await firestore.collection('negocios').doc('negocio-1').get()).data();
       expect(datos?['categoriasPersonalizadas'], isNull);
@@ -2477,13 +2747,13 @@ void main() {
         desactivadas: soloUnaPresetActiva(),
         personalizadas: [personalizadaActiva('ofertas')],
       );
-      expect(provider.categoriasEfectivas, 2);
+      expect(provider.cantidadCategoriasEfectivas, 2);
 
       expect(
         await provider.desactivarCategoriaDelPreset('usuario-1', 'Abarrotes'),
         isTrue,
       );
-      expect(provider.categoriasEfectivas, 1);
+      expect(provider.cantidadCategoriasEfectivas, 1);
       expect(provider.errorCatalogo, isNull);
 
       // Y la personalizada tampoco se puede desactivar después: ya es la única.
@@ -2505,7 +2775,7 @@ void main() {
           personalizadaActiva('dulces'),
         ],
       );
-      expect(provider.categoriasEfectivas, 3);
+      expect(provider.cantidadCategoriasEfectivas, 3);
 
       expect(
         await provider.eliminarCategoriaPersonalizada('usuario-1', 'ofertas'),
@@ -2515,12 +2785,12 @@ void main() {
         provider.categoriasPersonalizadas.map((categoria) => categoria.clave),
         ['dulces'],
       );
-      expect(provider.categoriasEfectivas, 2);
+      expect(provider.cantidadCategoriasEfectivas, 2);
       expect(provider.errorCatalogo, isNull);
 
       // Con el preset también oculto, Dulces pasa a ser la única efectiva.
       await provider.desactivarCategoriaDelPreset('usuario-1', 'Abarrotes');
-      expect(provider.categoriasEfectivas, 1);
+      expect(provider.cantidadCategoriasEfectivas, 1);
 
       expect(
         await provider.eliminarCategoriaPersonalizada('usuario-1', 'dulces'),
@@ -2531,7 +2801,7 @@ void main() {
         provider.categoriasPersonalizadas.map((categoria) => categoria.clave),
         ['dulces'],
       );
-      expect(provider.categoriasEfectivas, 1);
+      expect(provider.cantidadCategoriasEfectivas, 1);
     });
 
     test('6. el rechazo no modifica Firestore ni memoria ni notifica', () async {
@@ -2541,7 +2811,7 @@ void main() {
         firestore: firestoreA,
         desactivadas: soloUnaPresetActiva(),
       );
-      expect(soloPreset.categoriasEfectivas, 1);
+      expect(soloPreset.cantidadCategoriasEfectivas, 1);
       var notificacionesA = 0;
       soloPreset.addListener(() => notificacionesA++);
       final desactivadasAntes = soloPreset.categoriasDesactivadas;
@@ -2555,7 +2825,7 @@ void main() {
       expect(soloPreset.errorCatalogo, mensaje);
       expect(soloPreset.categoriasDesactivadas, desactivadasAntes);
       expect(soloPreset.categoriaPresetDesactivada('Abarrotes'), isFalse);
-      expect(soloPreset.categoriasEfectivas, 1);
+      expect(soloPreset.cantidadCategoriasEfectivas, 1);
       final datosA =
           (await firestoreA.collection('negocios').doc('negocio-1').get()).data();
       expect(datosA?['categoriasDesactivadas'], isNull);
@@ -2573,7 +2843,7 @@ void main() {
         ],
         personalizadas: [personalizadaActiva('ofertas')],
       );
-      expect(soloPersonalizada.categoriasEfectivas, 1);
+      expect(soloPersonalizada.cantidadCategoriasEfectivas, 1);
       var notificacionesB = 0;
       soloPersonalizada.addListener(() => notificacionesB++);
 
@@ -2592,7 +2862,7 @@ void main() {
         soloPersonalizada.categoriasPersonalizadas.single.activa,
         isTrue,
       );
-      expect(soloPersonalizada.categoriasEfectivas, 1);
+      expect(soloPersonalizada.cantidadCategoriasEfectivas, 1);
       final datosB =
           (await firestoreB.collection('negocios').doc('negocio-1').get()).data();
       expect(datosB?['categoriasPersonalizadas'], isNull);
@@ -2606,7 +2876,7 @@ void main() {
         await provider.reactivarCategoriaDelPreset('usuario-1', 'Bebidas'),
         isTrue,
       );
-      expect(provider.categoriasEfectivas, 2);
+      expect(provider.cantidadCategoriasEfectivas, 2);
 
       // Crear y renombrar tampoco reducen el conteo.
       expect(
