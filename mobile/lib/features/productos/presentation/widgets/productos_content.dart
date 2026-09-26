@@ -23,6 +23,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/encabezado_pantalla.dart';
 import '../../../negocio/presentation/providers/catalogo_negocio_provider.dart';
 import '../../domain/models/producto.dart';
 import '../providers/productos_provider.dart';
@@ -338,43 +339,19 @@ class _EncabezadoProductos extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Productos',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                  color: AppColors.texto,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Gestiona los productos de tu catálogo',
-                style: TextStyle(
-                  color: AppColors.texto.withValues(alpha: 0.75),
-                  fontSize: 15,
-                ),
-              ),
-            ],
-          ),
+    return EncabezadoPantalla.sinPadding(
+      titulo: 'Productos',
+      subtitulo: 'Gestiona los productos de tu catálogo',
+      acciones: FilledButton.icon(
+        onPressed: agregarHabilitado ? onAgregar : null,
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.blue,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
         ),
-        const SizedBox(width: 16),
-        FilledButton.icon(
-          onPressed: agregarHabilitado ? onAgregar : null,
-          style: FilledButton.styleFrom(
-            backgroundColor: AppColors.blue,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
-          ),
-          icon: const Icon(Icons.add, size: 20),
-          label: const Text('Agregar producto'),
-        ),
-      ],
+        icon: const Icon(Icons.add, size: 18),
+        label: const Text('Agregar producto'),
+      ),
     );
   }
 }

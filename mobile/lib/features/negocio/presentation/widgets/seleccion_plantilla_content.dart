@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../../core/widgets/encabezado_pantalla.dart';
 import '../../domain/models/plantilla_web.dart';
 
 /// Contenido de la selección de plantilla web.
@@ -122,40 +123,19 @@ class SeleccionPlantillaContent extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 60),
-
-                    const Text(
-                      'PLANTILLA',
-                      style: TextStyle(
-                        color: _azulAcento,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                        letterSpacing: 2,
-                      ),
-                    ),
-
-                    const SizedBox(height: 4),
-
-                    const Text(
-                      'Elige el estilo\nde tu tienda',
-                      style: TextStyle(
-                        color: _blancoPuro,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 32,
-                        height: 1.2,
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    Text(
-                      rubro.isEmpty
+                    EncabezadoPantalla(
+                      padding: const EdgeInsets.only(top: 16),
+                      eyebrow: 'PLANTILLA',
+                      titulo: 'Elige el estilo\nde tu tienda',
+                      subtitulo: rubro.isEmpty
                           ? 'Se aplicará automáticamente a tu catálogo.'
                           : 'Se verá con tus productos de $rubro.',
-                      style: const TextStyle(color: _grisTenue, fontSize: 14),
+                      colorEyebrow: _azulAcento,
+                      colorTitulo: _blancoPuro,
+                      colorSubtitulo: _grisTenue,
                     ),
 
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 20),
 
                     if (cargando && !cargado)
                       Padding(

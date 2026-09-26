@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/encabezado_pantalla.dart';
 import '../../../negocio/domain/models/progreso_configuracion.dart';
 import '../providers/dashboard_provider.dart';
 import '../state/dashboard_ui_state.dart';
@@ -38,8 +39,8 @@ class DashboardHomeContent extends StatelessWidget {
         final movil = constraints.maxWidth < 600;
         return SingleChildScrollView(
           padding: movil
-              ? const EdgeInsets.fromLTRB(16, 16, 16, 28)
-              : const EdgeInsets.fromLTRB(26, 28, 26, 40),
+              ? const EdgeInsets.fromLTRB(16, 12, 16, 20)
+              : const EdgeInsets.fromLTRB(20, 12, 20, 28),
           child: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 1540),
@@ -50,9 +51,9 @@ class DashboardHomeContent extends StatelessWidget {
                     progreso: progreso,
                     onAbrirEtapa: onAbrirEtapa,
                   ),
-                  if (!progreso.completo) const SizedBox(height: 18),
+                  if (!progreso.completo) const SizedBox(height: 14),
                   _DashboardHeading(periodo: state.periodo),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 14),
                   DashboardSummaryCards(state: state),
                   const SizedBox(height: 18),
                   DashboardSalesChart(puntos: state.ventasUltimos7Dias),
@@ -85,33 +86,12 @@ class _DashboardHeading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      alignment: WrapAlignment.spaceBetween,
-      crossAxisAlignment: WrapCrossAlignment.end,
-      runSpacing: 16,
-      children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Resumen de tu negocio',
-              style: TextStyle(
-                color: AppColors.texto,
-                fontSize: 30,
-                fontWeight: FontWeight.w800,
-                letterSpacing: -1,
-              ),
-            ),
-            const SizedBox(height: 7),
-            Text(
-              'Resumen de ${periodo.label.toLowerCase()} · '
-              'gráfico con referencia de los últimos 7 días.',
-              style: const TextStyle(color: AppColors.muted, fontSize: 14),
-            ),
-          ],
-        ),
-        _PeriodSelector(periodo: periodo),
-      ],
+    return EncabezadoPantalla.sinPadding(
+      titulo: 'Resumen de tu negocio',
+      subtitulo:
+          'Resumen de ${periodo.label.toLowerCase()} · gráfico con referencia '
+          'de los últimos 7 días.',
+      acciones: _PeriodSelector(periodo: periodo),
     );
   }
 }

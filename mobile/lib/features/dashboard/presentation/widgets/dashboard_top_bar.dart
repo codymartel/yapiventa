@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/authenticated_shell.dart';
 
 class DashboardTopBar extends StatelessWidget {
@@ -29,10 +30,10 @@ class DashboardTopBar extends StatelessWidget {
         final compacto = constraints.maxWidth < 700;
         final separacion = compacto ? 2.0 : 10.0;
         return Container(
-          constraints: const BoxConstraints(minHeight: 60),
+          constraints: const BoxConstraints(minHeight: 52),
           padding: EdgeInsets.symmetric(
             horizontal: compacto ? 10 : 20,
-            vertical: 8,
+            vertical: 6,
           ),
           decoration: BoxDecoration(
             color: AppColors.fondo.withValues(alpha: 0.94),
@@ -45,36 +46,31 @@ class DashboardTopBar extends StatelessWidget {
                   onPressed: onAbrirMenu,
                   tooltip: 'Abrir menú',
                   color: AppColors.texto,
+                  visualDensity: VisualDensity.compact,
                   icon: const Icon(Icons.menu_rounded),
                 ),
                 SizedBox(width: separacion),
               ],
+              // La marca ya vive en el sidebar: aquí solo el negocio, de
+              // forma discreta, porque el título de la pantalla va debajo.
               Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      'YapiVenta',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.muted,
-                        fontSize: 11,
-                        height: 1.1,
-                      ),
+                    Icon(
+                      Icons.storefront_rounded,
+                      size: 15,
+                      color: AppColors.muted,
                     ),
-                    const SizedBox(height: 1),
-                    Text(
-                      nombreNegocio,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.texto,
-                        fontSize: 15,
-                        height: 1.2,
-                        fontWeight: FontWeight.w700,
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        nombreNegocio,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.topBarBusiness.copyWith(
+                          color: AppColors.muted,
+                        ),
                       ),
                     ),
                   ],

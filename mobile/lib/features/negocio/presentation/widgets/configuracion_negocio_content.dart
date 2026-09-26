@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_typography.dart';
+import '../../../../core/widgets/encabezado_pantalla.dart';
 import '../providers/configuracion_negocio_provider.dart';
 import 'paso_negocio.dart';
 import 'paso_catalogo.dart';
@@ -50,66 +52,37 @@ class ConfiguracionNegocioContent extends StatelessWidget {
             Container(
               width: double.infinity,
               color: AppColors.superficie,
-              padding: EdgeInsets.fromLTRB(
-                paddingHorizontal,
-                8,
-                paddingHorizontal,
-                8,
+              padding: EdgeInsets.only(
+                left: paddingHorizontal,
+                right: paddingHorizontal,
               ),
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Align(
-                    alignment: Alignment.topLeft,
-                    child: IconButton(
-                      tooltip: 'Cambiar rubro',
-                      visualDensity: VisualDensity.compact,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(
-                        minWidth: 40,
-                        minHeight: 40,
-                      ),
-                      onPressed: p.guardando ? null : onVolver,
-                      icon: const Icon(Icons.arrow_back, size: 20),
+                  IconButton(
+                    tooltip: 'Cambiar rubro',
+                    visualDensity: VisualDensity.compact,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(
+                      minWidth: 36,
+                      minHeight: 36,
                     ),
+                    onPressed: p.guardando ? null : onVolver,
+                    icon: const Icon(Icons.arrow_back, size: 20),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Configura tu $rubro',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: AppColors.texto,
-                            fontSize: 18,
-                            height: 1.2,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Crea tu tienda virtual.',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: AppColors.muted,
-                            fontSize: 12,
-                            height: 1.2,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        _BarraPasos(
-                          pasoActual: p.pasoActual,
-                          nombres: _nombresPasos,
-                          onPasoClick: (i) {
-                            if (i < p.pasoActual) p.irAPaso(i);
-                          },
-                        ),
-                      ],
+                    child: EncabezadoPantalla(
+                      titulo: 'Configura tu $rubro',
+                      subtitulo: 'Crea tu tienda virtual.',
+                      padding: const EdgeInsets.only(top: 12, bottom: 10),
+                      debajo: _BarraPasos(
+                        pasoActual: p.pasoActual,
+                        nombres: _nombresPasos,
+                        onPasoClick: (i) {
+                          if (i < p.pasoActual) p.irAPaso(i);
+                        },
+                      ),
                     ),
                   ),
                 ],
@@ -249,7 +222,7 @@ class _BarraPasos extends StatelessWidget {
             color: AppColors.blue,
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 5),
         Row(
           children: [
             for (var i = 0; i < nombres.length; i++)
@@ -262,9 +235,9 @@ class _BarraPasos extends StatelessWidget {
                     children: [
                       Text(
                         '${i + 1}',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
+                        style: AppTypography.screenEyebrow.copyWith(
                           fontSize: 12,
+                          letterSpacing: 0,
                           height: 1.1,
                           color: i == pasoActual
                               ? AppColors.texto
@@ -273,15 +246,14 @@ class _BarraPasos extends StatelessWidget {
                                     : AppColors.muted),
                         ),
                       ),
-                      const SizedBox(height: 1),
                       Text(
                         nombres[i],
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
-                        style: const TextStyle(
+                        style: AppTypography.screenSubtitle.copyWith(
                           fontSize: 9,
-                          height: 1.1,
+                          height: 1.25,
                           color: AppColors.muted,
                         ),
                       ),

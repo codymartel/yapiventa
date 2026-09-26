@@ -3,6 +3,8 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../../core/widgets/encabezado_pantalla.dart';
+
 class SeleccionNegocioContent extends StatefulWidget {
   static const fondo = Color(0xFF000000);
   static const _marinoCard = Color(0xFF0A1B2E);
@@ -111,34 +113,18 @@ class _SeleccionNegocioContentState extends State<SeleccionNegocioContent> {
                   paddingHorizontal,
                   32,
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'TU RUBRO',
-                      style: TextStyle(
-                        color: _azulAcento,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                        letterSpacing: 2,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      EncabezadoPantalla.sinPadding(
+                        eyebrow: 'TU RUBRO',
+                        titulo: '¿A qué se dedica\ntu negocio?',
+                        subtitulo: 'Configuraremos las medidas automáticas.',
+                        colorEyebrow: _azulAcento,
+                        colorTitulo: _blancoPuro,
+                        colorSubtitulo: _grisTenue,
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      '¿A qué se dedica\ntu negocio?',
-                      style: TextStyle(
-                        color: _blancoPuro,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 32,
-                        height: 1.2,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Configuraremos las medidas automáticas.',
-                      style: TextStyle(color: _grisTenue, fontSize: 14),
-                    ),
-                    const SizedBox(height: 40),
+                      const SizedBox(height: 20),
                     Wrap(
                       key: const Key('rubros-wrap'),
                       spacing: separacion,
