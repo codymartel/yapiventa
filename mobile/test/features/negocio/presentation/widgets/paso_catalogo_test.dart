@@ -1236,6 +1236,36 @@ void main() {
       expect(provider.categoriasPersonalizadas.single.nombre, 'Lentos');
     });
 
+    testWidgets('el formulario no desborda en móvil ni se ensancha en escritorio', (
+      tester,
+    ) async {
+      // Móvil: todo cabe y no hay desbordamiento.
+      await mostrarPaso(tester, size: const Size(320, 640));
+      await tester.tap(botonNuevaCategoria());
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(botonGuardarCategoria(), findsOneWidget);
+      // El formulario ocupa el ancho disponible menos el margen, ni más.
+      expect(
+        tester.getSize(campoNombreCategoria()).width,
+        moreOrLessEquals(240),
+      );
+      await tester.tap(botonCancelarCategoria());
+      await tester.pumpAndSettle();
+
+      // Escritorio: el ancho está acotado a 380, no se estira a la ventana.
+      await mostrarPaso(tester, size: const Size(1720, 900));
+      await tester.tap(botonNuevaCategoria());
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(
+        tester.getSize(campoNombreCategoria()).width,
+        moreOrLessEquals(380),
+      );
+      await tester.tap(botonCancelarCategoria());
+      await tester.pumpAndSettle();
+    });
+
     testWidgets('cancelar y Escape cierran sin modificar nada', (tester) async {
       final db = FakeFirebaseFirestore();
       final provider = await mostrarPaso(
