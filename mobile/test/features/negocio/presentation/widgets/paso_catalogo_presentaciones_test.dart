@@ -531,4 +531,244 @@ void main() {
       });
     }
   }
+
+  // ═════════════════════════════════════════════════════════════════════
+  // 16. Alcance del provider: los diálogos cuelgan del Navigator raíz
+  // ═════════════════════════════════════════════════════════════════════
+  // La app real monta el provider DEBAJO del MaterialApp (main.dart), así que
+  // una ruta de `showDialog` no lo alcanza por su context. Estos tests usan ese
+  // mismo montaje: antes de reexponer la instancia, `initState` del editor
+  // reventaba con ProviderNotFoundError.
+  Future<ConfiguracionNegocioProvider> mostrarPasoComoLaApp(
+    WidgetTester tester, {
+    String rubro = 'Bodega',
+    Size size = const Size(900, 2400),
+  }) async {
+    tester.view.physicalSize = size;
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final provider = ConfiguracionNegocioProvider(
+      rubro: rubro,
+      repository: NegocioRepository(firestore: FakeFirebaseFirestore()),
+    );
+    addTearDown(provider.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ChangeNotifierProvider.value(
+          value: provider,
+          child: const Scaffold(body: PasoCatalogo()),
+        ),
+      ),
+    );
+    await tester.pump();
+    return provider;
+  }
+
+  testWidgets('abrir Editar no lanza ProviderNotFoundError', (tester) async {
+    await mostrarPasoComoLaApp(tester);
+    await irAUnidades(tester);
+
+    await tester.tap(find.byKey(const Key('editar-presentacion-botella')));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(editor(), findsOneWidget);
+    expect(find.text('Editar Botella'), findsOneWidget);
+  });
+
+  testWidgets('guardar la edición conserva los cambios', (tester) async {
+    final provider = await mostrarPasoComoLaApp(tester);
+    await irAUnidades(tester);
+
+    await tester.tap(find.byKey(const Key('editar-presentacion-botella')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('campo-valor-formato')), '750');
+    await tester.tap(find.byKey(const Key('boton-agregar-formato')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Guardar'));
+    await tester.pumpAndSettle();
+
+    expect(editor(), findsNothing);
+    expect(
+      provider.presentacionPorId('botella')!.formatos.any(
+        (formato) => formato.valorBase == 750,
+      ),
+      isTrue,
+    );
+  });
+
+  testWidgets('abrir Nueva presentación no lanza ProviderNotFoundError', (
+    tester,
+  ) async {
+    await mostrarPasoComoLaApp(tester, rubro: 'Otros');
+    await irAUnidades(tester);
+
+    await tester.tap(find.byKey(const Key('boton-nueva-presentacion')));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(editor(), findsOneWidget);
+    expect(find.text('Nueva presentación'), findsOneWidget);
+  });
+
+  testWidgets('crear y guardar agrega la presentación', (tester) async {
+    final provider = await mostrarPasoComoLaApp(tester, rubro: 'Otros');
+    await irAUnidades(tester);
+
+    await tester.tap(find.byKey(const Key('boton-nueva-presentacion')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('campo-nombre-presentacion')),
+      'Canasto',
+    );
+    await tester.enterText(find.byKey(const Key('campo-valor-formato')), '10');
+    await tester.tap(find.byKey(const Key('boton-agregar-formato')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Guardar'));
+    await tester.pumpAndSettle();
+
+    expect(editor(), findsNothing);
+    final creada = provider.presentacionPorId('personalizada-1')!;
+    expect(creada.nombre, 'Canasto');
+    expect(creada.personalizada, isTrue);
+    expect(creada.formatos.single.valorBase, 10);
+    expect(
+      find.byKey(const Key('presentacion-card-personalizada-1')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('cancelar un alta no modifica nada', (tester) async {
+    final provider = await mostrarPasoComoLaApp(tester, rubro: 'Otros');
+    await irAUnidades(tester);
+    final antes = provider.presentaciones.length;
+
+    await tester.tap(find.byKey(const Key('boton-nueva-presentacion')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('campo-nombre-presentacion')),
+      'Descartada',
+    );
+    await tester.enterText(find.byKey(const Key('campo-valor-formato')), '10');
+    await tester.tap(find.byKey(const Key('boton-agregar-formato')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cancelar'));
+    await tester.pumpAndSettle();
+
+    expect(editor(), findsNothing);
+    expect(tester.takeException(), isNull);
+    expect(provider.presentaciones.length, antes);
+    expect(
+      provider.presentaciones.any(
+        (presentacion) => presentacion.nombre == 'Descartada',
+      ),
+      isFalse,
+    );
+  });
+
+  testWidgets('cancelar una edición no modifica nada', (tester) async {
+    final provider = await mostrarPasoComoLaApp(tester);
+    await irAUnidades(tester);
+    final formatosAntes = provider.presentacionPorId('botella')!.formatos.length;
+
+    await tester.tap(find.byKey(const Key('editar-presentacion-botella')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('campo-valor-formato')), '750');
+    await tester.tap(find.byKey(const Key('boton-agregar-formato')));
+    await tester.pumpAndSettle();
+    expect(find.text('750 ml'), findsOneWidget);
+    await tester.tap(find.text('Cancelar'));
+    await tester.pumpAndSettle();
+
+    expect(editor(), findsNothing);
+    expect(tester.takeException(), isNull);
+    expect(
+      provider.presentacionPorId('botella')!.formatos.length,
+      formatosAntes,
+    );
+    expect(
+      provider.presentacionPorId('botella')!.formatos.any(
+        (formato) => formato.valorBase == 750,
+      ),
+      isFalse,
+    );
+  });
+
+  testWidgets('cerrar y reabrir el editor muestra el estado ya guardado', (
+    tester,
+  ) async {
+    final provider = await mostrarPasoComoLaApp(tester);
+    await irAUnidades(tester);
+
+    await tester.tap(find.byKey(const Key('editar-presentacion-botella')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('campo-valor-formato')), '750');
+    await tester.tap(find.byKey(const Key('boton-agregar-formato')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Guardar'));
+    await tester.pumpAndSettle();
+    expect(editor(), findsNothing);
+    expect(
+      provider.presentacionPorId('botella')!.formatos.any(
+        (formato) => formato.valorBase == 750,
+      ),
+      isTrue,
+    );
+
+    // Al reabrirlo se precarga desde el provider, con lo guardado y no con lo
+    // que quedó en el editor cerrado.
+    await tester.ensureVisible(
+      find.byKey(const Key('editar-presentacion-botella')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('editar-presentacion-botella')));
+    await tester.pumpAndSettle();
+
+    expect(editor(), findsOneWidget);
+    expect(find.text('Botella 750 ml'), findsOneWidget);
+  });
+
+  testWidgets('un rechazo del provider se muestra sin cerrar el editor', (
+    tester,
+  ) async {
+    final provider = await mostrarPasoComoLaApp(tester, rubro: 'Otros');
+    provider.agregarPresentacionPersonalizada(
+      nombre: 'Canasto',
+      formatos: [
+        FormatoPresentacion(
+          valorBase: 10,
+          familia: FamiliaUnidad.conteo,
+          unidadVisible: RegistroUnidades.unidad,
+        ),
+      ],
+    );
+    await tester.pump();
+    final antes = provider.presentaciones.length;
+    await irAUnidades(tester);
+
+    await tester.tap(find.byKey(const Key('boton-nueva-presentacion')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('campo-nombre-presentacion')),
+      'canasto ',
+    );
+    await tester.enterText(find.byKey(const Key('campo-valor-formato')), '5');
+    await tester.tap(find.byKey(const Key('boton-agregar-formato')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Guardar'));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(editor(), findsOneWidget);
+    expect(
+      find.text('Ya existe una presentación con ese nombre.'),
+      findsOneWidget,
+    );
+    expect(provider.presentaciones.length, antes);
+
+    await tester.tap(find.text('Cancelar'));
+    await tester.pumpAndSettle();
+  });
 }

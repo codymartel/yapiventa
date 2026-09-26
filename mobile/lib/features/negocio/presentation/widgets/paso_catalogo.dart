@@ -1587,10 +1587,18 @@ class _EtiquetaChip extends StatelessWidget {
 }
 
 Future<void> _abrirEditor(BuildContext context, String? presentacionId) {
-  context.read<ConfiguracionNegocioProvider>().limpiarErrorCatalogo();
+  final p = context.read<ConfiguracionNegocioProvider>();
+  p.limpiarErrorCatalogo();
   return showDialog<void>(
     context: context,
-    builder: (_) => EditorPresentacion(presentacionId: presentacionId),
+    // El wizard vive DEBAJO del Navigator y `showDialog` cuelga la ruta en el
+    // Navigator raíz, así que el editor no alcanza el provider por su context
+    // (`ProviderNotFoundError`). Se reexpone la MISMA instancia dentro del
+    // diálogo: `value:` no crea estado nuevo ni lo destruye al cerrar.
+    builder: (_) => ChangeNotifierProvider.value(
+      value: p,
+      child: EditorPresentacion(presentacionId: presentacionId),
+    ),
   );
 }
 
