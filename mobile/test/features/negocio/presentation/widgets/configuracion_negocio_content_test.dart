@@ -102,6 +102,45 @@ void main() {
     expect(find.byType(PasoPagos, skipOffstage: false), findsOneWidget);
   });
 
+  testWidgets('la cabecera es compacta: sin subtítulo y de 90 a 105 px', (
+    tester,
+  ) async {
+    await montarContenido(tester);
+    tester.view.physicalSize = const Size(1280, 900);
+    await tester.pump();
+
+    final cabecera = find
+        .descendant(
+          of: find.byType(ConfiguracionNegocioContent),
+          matching: find.byType(Container),
+        )
+        .first;
+
+    expect(find.text('Crea tu tienda virtual.'), findsNothing);
+    expect(find.text('Configura tu Bodega'), findsOneWidget);
+    expect(tester.getSize(cabecera).height, inInclusiveRange(90, 105));
+  });
+
+  testWidgets('el stepper conserva números y labels de los cuatro pasos', (
+    tester,
+  ) async {
+    await montarContenido(tester);
+
+    expect(find.text('Negocio'), findsOneWidget);
+    expect(find.text('Catálogo'), findsOneWidget);
+    expect(find.text('Logística'), findsOneWidget);
+    expect(find.text('Pagos'), findsOneWidget);
+    for (final n in ['1', '2', '3', '4']) {
+      expect(
+        find.descendant(
+          of: find.byType(ConfiguracionNegocioContent),
+          matching: find.text(n),
+        ),
+        findsOneWidget,
+      );
+    }
+  });
+
   testWidgets('Atrás, Siguiente y Finalizar ejecutan los callbacks correctos', (
     tester,
   ) async {

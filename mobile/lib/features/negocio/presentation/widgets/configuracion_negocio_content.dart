@@ -53,42 +53,50 @@ class ConfiguracionNegocioContent extends StatelessWidget {
         final paddingHorizontal = compacto ? 12.0 : 20.0;
         return Column(
           children: [
-            // ── HEADER: título + barra de pasos ──────────────────────────
+            // ── HEADER compacto: volver + título, y el stepper justo debajo ─
+            // Sin subtítulo ni padding propio del encabezado: el ritmo vertical
+            // va aquí para que la cabecera ocupe lo mínimo antes del contenido.
             Container(
               width: double.infinity,
               color: AppColors.superficie,
-              padding: EdgeInsets.only(
-                left: paddingHorizontal,
-                right: paddingHorizontal,
+              padding: EdgeInsets.fromLTRB(
+                paddingHorizontal,
+                8,
+                paddingHorizontal,
+                10,
               ),
-              child: Row(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  IconButton(
-                    tooltip: 'Cambiar rubro',
-                    visualDensity: VisualDensity.compact,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(
-                      minWidth: 36,
-                      minHeight: 36,
-                    ),
-                    onPressed: p.guardando ? null : onVolver,
-                    icon: const Icon(Icons.arrow_back, size: 20),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: EncabezadoPantalla(
-                      titulo: 'Configura tu $rubro',
-                      subtitulo: 'Crea tu tienda virtual.',
-                      padding: const EdgeInsets.only(top: 12, bottom: 10),
-                      debajo: _BarraPasos(
-                        pasoActual: p.pasoActual,
-                        nombres: _nombresPasos,
-                        onPasoClick: (i) {
-                          if (i < p.pasoActual) p.irAPaso(i);
-                        },
+                  Row(
+                    children: [
+                      IconButton(
+                        tooltip: 'Cambiar rubro',
+                        visualDensity: VisualDensity.compact,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(
+                          minWidth: 36,
+                          minHeight: 36,
+                        ),
+                        onPressed: p.guardando ? null : onVolver,
+                        icon: const Icon(Icons.arrow_back, size: 20),
                       ),
-                    ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: EncabezadoPantalla.sinPadding(
+                          titulo: 'Configura tu $rubro',
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  _BarraPasos(
+                    pasoActual: p.pasoActual,
+                    nombres: _nombresPasos,
+                    onPasoClick: (i) {
+                      if (i < p.pasoActual) p.irAPaso(i);
+                    },
                   ),
                 ],
               ),
@@ -201,6 +209,10 @@ class ConfiguracionNegocioContent extends StatelessWidget {
   );
 }
 
+/// Stepper del wizard en una sola línea: badge numerado + label por paso.
+///
+/// El paso activo se marca con badge relleno, label en azul y un fondo tenue;
+/// los pasos ya completados quedan en azul claro y los pendientes apagados.
 class _BarraPasos extends StatelessWidget {
   final int pasoActual;
   final List<String> nombres;
@@ -219,12 +231,12 @@ class _BarraPasos extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         ClipRRect(
-          borderRadius: BorderRadius.circular(2),
+          borderRadius: BorderRadius.circular(1),
           child: LinearProgressIndicator(
             value: progreso,
             minHeight: 2,
             backgroundColor: AppColors.border,
-            color: AppColors.blue,
+            color: AppColors.blueLt,
           ),
         ),
         const SizedBox(height: 5),
@@ -235,40 +247,96 @@ class _BarraPasos extends StatelessWidget {
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
                   onTap: () => onPasoClick(i),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        '${i + 1}',
-                        style: AppTypography.screenEyebrow.copyWith(
-                          fontSize: 12,
-                          letterSpacing: 0,
-                          height: 1.1,
-                          color: i == pasoActual
-                              ? AppColors.texto
-                              : (i < pasoActual
-                                    ? AppColors.blueLt
-                                    : AppColors.muted),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: i == pasoActual
+                          ? AppColors.blue.withValues(alpha: 0.18)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _BadgePaso(
+                          numero: i + 1,
+                          activo: i == pasoActual,
+                          completado: i < pasoActual,
                         ),
-                      ),
-                      Text(
-                        nombres[i],
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
-                        style: AppTypography.screenSubtitle.copyWith(
-                          fontSize: 9,
-                          height: 1.25,
-                          color: AppColors.muted,
+                        const SizedBox(width: 5),
+                        Flexible(
+                          child: Text(
+                            nombres[i],
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTypography.screenSubtitle.copyWith(
+                              fontSize: 9.5,
+                              height: 1.2,
+                              fontWeight: i == pasoActual
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                              color: i == pasoActual
+                                  ? AppColors.texto
+                                  : (i < pasoActual
+                                        ? AppColors.blueLt
+                                        : AppColors.muted),
+                            ),
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
           ],
         ),
       ],
+    );
+  }
+}
+
+/// Círculo numerado del stepper. Relleno en el paso activo, contorno en el resto.
+class _BadgePaso extends StatelessWidget {
+  final int numero;
+  final bool activo;
+  final bool completado;
+
+  const _BadgePaso({
+    required this.numero,
+    required this.activo,
+    required this.completado,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final color = activo
+        ? AppColors.blueLt
+        : (completado ? AppColors.blueLt : AppColors.muted);
+    return Container(
+      width: 16,
+      height: 16,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: activo ? AppColors.blueLt : Colors.transparent,
+        border: Border.all(
+          color: activo || completado ? AppColors.blueLt : AppColors.dim,
+          width: 1,
+        ),
+      ),
+      child: Text(
+        '$numero',
+        style: AppTypography.screenEyebrow.copyWith(
+          fontSize: 9.5,
+          height: 1,
+          letterSpacing: 0,
+          color: activo ? Colors.white : color,
+        ),
+      ),
     );
   }
 }
