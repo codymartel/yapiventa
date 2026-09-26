@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/authenticated_shell.dart';
 
 class DashboardTopBar extends StatelessWidget {
   final String nombreNegocio;
   final VoidCallback onElegirPlantilla;
   final VoidCallback onVerTienda;
   final VoidCallback? onAbrirMenu;
+  final VoidCallback? onAbrirAyuda;
   final String email;
   final VoidCallback onCerrarSesion;
 
@@ -15,6 +17,7 @@ class DashboardTopBar extends StatelessWidget {
     required this.onElegirPlantilla,
     required this.onVerTienda,
     this.onAbrirMenu,
+    this.onAbrirAyuda,
     required this.email,
     required this.onCerrarSesion,
   });
@@ -24,11 +27,12 @@ class DashboardTopBar extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final compacto = constraints.maxWidth < 700;
+        final separacion = compacto ? 2.0 : 10.0;
         return Container(
-          constraints: const BoxConstraints(minHeight: 76),
+          constraints: const BoxConstraints(minHeight: 60),
           padding: EdgeInsets.symmetric(
-            horizontal: compacto ? 12 : 24,
-            vertical: 12,
+            horizontal: compacto ? 10 : 20,
+            vertical: 8,
           ),
           decoration: BoxDecoration(
             color: AppColors.fondo.withValues(alpha: 0.94),
@@ -43,39 +47,56 @@ class DashboardTopBar extends StatelessWidget {
                   color: AppColors.texto,
                   icon: const Icon(Icons.menu_rounded),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: separacion),
               ],
               Expanded(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text(
+                    Text(
                       'YapiVenta',
-                      style: TextStyle(color: AppColors.muted, fontSize: 12),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 11,
+                        height: 1.1,
+                      ),
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 1),
                     Text(
                       nombreNegocio,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: AppColors.texto,
-                        fontSize: 16,
+                        fontSize: 15,
+                        height: 1.2,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: separacion),
+              if (onAbrirAyuda != null) ...[
+                IconButton(
+                  key: AuthenticatedShell.helpButtonKey,
+                  onPressed: onAbrirAyuda,
+                  tooltip: 'Ayuda contextual',
+                  icon: const Icon(Icons.help_outline_rounded, size: 20),
+                ),
+                SizedBox(width: separacion),
+              ],
               IconButton(
                 onPressed: onElegirPlantilla,
                 tooltip: 'Elegir plantilla',
                 color: AppColors.blueLt,
                 icon: const Icon(Icons.palette_outlined),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: separacion),
               PopupMenuButton<String>(
                 tooltip: 'Cuenta',
                 icon: const Icon(Icons.account_circle_outlined),
@@ -97,7 +118,7 @@ class DashboardTopBar extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: separacion),
               if (compacto)
                 IconButton(
                   onPressed: onVerTienda,
@@ -113,11 +134,11 @@ class DashboardTopBar extends StatelessWidget {
                       color: AppColors.blueLt.withValues(alpha: 0.55),
                     ),
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 18,
-                      vertical: 15,
+                      horizontal: 14,
+                      vertical: 11,
                     ),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(10),
                     ),
                   ),
                   icon: const Icon(Icons.open_in_new_rounded, size: 18),

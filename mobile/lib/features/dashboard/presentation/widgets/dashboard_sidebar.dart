@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/authenticated_shell.dart';
 
 enum DashboardDestination {
   inicio,
@@ -28,15 +29,15 @@ class DashboardSidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 252,
+      width: AuthenticatedShell.navigationWidth,
       color: AppColors.superficie,
-      padding: const EdgeInsets.fromLTRB(18, 24, 18, 18),
+      padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
       child: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const _MarcaYapiVenta(),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
             Expanded(
               child: ListView(
                 padding: EdgeInsets.zero,
@@ -76,9 +77,9 @@ class DashboardSidebar extends StatelessWidget {
                     icono: Icons.tune_rounded,
                     texto: 'Configuración',
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 20),
                   Divider(color: AppColors.border),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   _item(
                     destino: DashboardDestination.plan,
                     icono: Icons.workspace_premium_outlined,
@@ -109,30 +110,33 @@ class DashboardSidebar extends StatelessWidget {
       button: true,
       selected: activo,
       child: Padding(
-        padding: const EdgeInsets.only(bottom: 7),
+        padding: const EdgeInsets.only(bottom: 5),
         child: Material(
           color: activo
               ? AppColors.blue.withValues(alpha: 0.2)
               : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(11),
           child: InkWell(
             onTap: () => onSeleccionar(destino),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(11),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 10),
               child: Row(
                 children: [
                   Icon(
                     icono,
-                    size: 21,
+                    size: 20,
                     color: activo ? AppColors.blueLt : AppColors.muted,
                   ),
-                  const SizedBox(width: 13),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       texto,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: activo ? AppColors.texto : AppColors.muted,
+                        fontSize: 13,
                         fontWeight: activo ? FontWeight.w700 : FontWeight.w500,
                       ),
                     ),
@@ -140,7 +144,7 @@ class DashboardSidebar extends StatelessWidget {
                   if (!habilitado)
                     const Icon(
                       Icons.lock_outline,
-                      size: 16,
+                      size: 15,
                       color: AppColors.muted,
                     )
                   else if (activo)

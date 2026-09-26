@@ -349,104 +349,110 @@ void main() {
   });
 
   testWidgets(
-    'bajo escritorio el panel derecho se pliega y el centro conserva su ancho',
+    'bajo el umbral de tres columnas el panel se pliega y el centro gana ancho',
     (tester) async {
-      await mostrarDashboard(tester, size: const Size(1050, 1000));
+      final ancho = AuthenticatedShell.anchoMinimoTresColumnas - 1;
+      await mostrarDashboard(tester, size: Size(ancho, 1000));
 
       expect(find.byType(Scaffold), findsOneWidget);
       expect(
+        find.byKey(const Key('authenticated-shell-contextual-panel')),
+        findsNothing,
+      );
+      expect(_botonAyuda(), findsOneWidget);
+      expect(find.byTooltip('Abrir menú'), findsOneWidget);
+      expect(
         find.byKey(const Key('authenticated-shell-navigation')),
-        findsOneWidget,
+        findsNothing,
+      );
+
+      final contenido = tester.getRect(
+        find.byKey(const Key('authenticated-shell-content')),
+      );
+      expect(contenido.width, ancho);
+      expect(
+        contenido.width,
+        greaterThan(AuthenticatedShell.contenidoMinimoComodo),
+      );
+    },
+  );
+
+  testWidgets(
+    'bajo el umbral de tres columnas la ayuda se abre bajo demanda',
+    (tester) async {
+      await mostrarDashboard(
+        tester,
+        size: Size(AuthenticatedShell.anchoMinimoTresColumnas - 1, 1000),
+      );
+
+      expect(find.byType(Scaffold), findsOneWidget);
+      expect(find.byType(DashboardTopBar), findsOneWidget);
+      expect(find.byTooltip('Abrir menú'), findsOneWidget);
+      expect(
+        find.byKey(const Key('authenticated-shell-navigation')),
+        findsNothing,
       );
       expect(
         find.byKey(const Key('authenticated-shell-contextual-panel')),
         findsNothing,
       );
-      expect(
-        find.byKey(const Key('authenticated-shell-contextual-expansion')),
-        findsOneWidget,
-      );
-      expect(find.byTooltip('Abrir menú'), findsNothing);
+      expect(_botonAyuda(), findsOneWidget);
+      expect(find.text('Necesita tu atención'), findsNothing);
 
-      final contenido = tester.getRect(
-        find.byKey(const Key('authenticated-shell-content')),
-      );
-      expect(
-        contenido.width,
-        1050 - AuthenticatedShell.navigationWidth,
-      );
-      expect(
-        contenido.width,
-        greaterThanOrEqualTo(AuthenticatedShell.contenidoMinimoComodo),
-      );
+      await _abrirAyuda(tester);
+
+      expect(_dialogoAyuda(), findsOneWidget);
+      expect(find.text('Necesita tu atención'), findsOneWidget);
+
+      await _cerrarAyuda(tester);
+
+      expect(find.text('Necesita tu atención'), findsNothing);
+
+      await tester.tap(find.byTooltip('Abrir menú'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(DashboardSidebar), findsOneWidget);
     },
   );
-
-  testWidgets('muestra Drawer y ayuda contextual plegable bajo 1050 px', (
-    tester,
-  ) async {
-    await mostrarDashboard(tester, size: const Size(1049, 1000));
-
-    expect(find.byType(Scaffold), findsOneWidget);
-    expect(find.byType(DashboardTopBar), findsOneWidget);
-    expect(find.byTooltip('Abrir menú'), findsOneWidget);
-    expect(
-      find.byKey(const Key('authenticated-shell-navigation')),
-      findsNothing,
-    );
-    expect(
-      find.byKey(const Key('authenticated-shell-contextual-panel')),
-      findsNothing,
-    );
-    expect(
-      find.byKey(const Key('authenticated-shell-contextual-expansion')),
-      findsOneWidget,
-    );
-    expect(find.text('Necesita tu atención'), findsNothing);
-
-    await tester.tap(find.text('Ayuda contextual'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Necesita tu atención'), findsOneWidget);
-
-    await tester.tap(find.byTooltip('Abrir menú'));
-    await tester.pumpAndSettle();
-
-    expect(find.byType(DashboardSidebar), findsOneWidget);
-  });
 
   testWidgets('el panel derecho se pliega antes de comprimir el contenido', (
     tester,
   ) async {
-    await mostrarDashboard(tester, size: const Size(1140, 1000));
+    await mostrarDashboard(
+      tester,
+      size: Size(AuthenticatedShell.anchoMinimoTresColumnas, 1000),
+    );
 
     final centroConAmbas = tester.getRect(
       find.byKey(const Key('authenticated-shell-content')),
     );
     expect(
       centroConAmbas.width,
-      AuthenticatedShell.contenidoMinimoComodo,
+      AuthenticatedShell.anchoMinimoTresColumnas -
+          AuthenticatedShell.navigationWidth -
+          AuthenticatedShell.contextualPanelWidth,
+    );
+    expect(
+      centroConAmbas.width,
+      greaterThanOrEqualTo(AuthenticatedShell.contenidoMinimoComodo),
     );
     expect(
       find.byKey(const Key('authenticated-shell-contextual-panel')),
       findsOneWidget,
     );
-    expect(
-      find.byKey(const Key('authenticated-shell-contextual-expansion')),
-      findsNothing,
-    );
+    expect(_botonAyuda(), findsNothing);
 
     await tester.pumpWidget(const SizedBox.shrink());
-    await mostrarDashboard(tester, size: const Size(1139, 1000));
+    await mostrarDashboard(
+      tester,
+      size: Size(AuthenticatedShell.anchoMinimoTresColumnas - 1, 1000),
+    );
 
     expect(
       find.byKey(const Key('authenticated-shell-contextual-panel')),
       findsNothing,
     );
-    expect(
-      find.byKey(const Key('authenticated-shell-contextual-expansion')),
-      findsOneWidget,
-    );
+    expect(_botonAyuda(), findsOneWidget);
     final centroPlegado = tester.getRect(
       find.byKey(const Key('authenticated-shell-content')),
     );
@@ -460,9 +466,10 @@ void main() {
   testWidgets('el menú pasa a Drawer solo cuando el centro necesita espacio', (
     tester,
   ) async {
-    for (final ancho in const [360, 500, 768, 1049]) {
+    final arriba = AuthenticatedShell.anchoMinimoTresColumnas;
+    for (final ancho in const [360.0, 500.0, 768.0]) {
       await tester.pumpWidget(const SizedBox.shrink());
-      await mostrarDashboard(tester, size: Size(ancho.toDouble(), 1000));
+      await mostrarDashboard(tester, size: Size(ancho, 1000));
 
       expect(
         find.byTooltip('Abrir menú'),
@@ -475,15 +482,24 @@ void main() {
         reason: 'sin navegación fija a $ancho px',
       );
       expect(
-        find.byKey(const Key('authenticated-shell-contextual-expansion')),
+        _botonAyuda(),
         findsOneWidget,
-        reason: 'ayuda plegable esperada a $ancho px',
+        reason: 'ayuda bajo demanda esperada a $ancho px',
       );
     }
 
-    for (final ancho in const [1050, 1139, 1140, 1366, 1720]) {
+    await tester.pumpWidget(const SizedBox.shrink());
+    await mostrarDashboard(tester, size: Size(arriba - 1, 1000));
+
+    expect(find.byTooltip('Abrir menú'), findsOneWidget);
+    expect(
+      find.byKey(const Key('authenticated-shell-navigation')),
+      findsNothing,
+    );
+
+    for (final ancho in [arriba, 1366.0, 1720.0]) {
       await tester.pumpWidget(const SizedBox.shrink());
-      await mostrarDashboard(tester, size: Size(ancho.toDouble(), 1000));
+      await mostrarDashboard(tester, size: Size(ancho, 1000));
 
       expect(
         find.byTooltip('Abrir menú'),
@@ -873,53 +889,44 @@ void main() {
     },
   );
 
-  testWidgets(
-    'en compacto la ayuda de Productos es plegable y cerrada por defecto',
-    (tester) async {
-      for (final ancho in const [500.0, 768.0, 1049.0]) {
-        await tester.pumpWidget(const SizedBox.shrink());
-        await mostrarDashboard(
-          tester,
-          size: Size(ancho, 1000),
-          progreso: _progresoConNegocio(),
-        );
+  testWidgets('en compacto la ayuda de Productos se abre bajo demanda', (
+    tester,
+  ) async {
+    for (final ancho in const [500.0, 768.0, 1049.0]) {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await mostrarDashboard(
+        tester,
+        size: Size(ancho, 1000),
+        progreso: _progresoConNegocio(),
+      );
 
-        await tester.tap(find.byTooltip('Abrir menú'));
-        await tester.pumpAndSettle();
-        await tester.tap(find.text('Productos'));
-        await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Abrir menú'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Productos'));
+      await tester.pumpAndSettle();
 
-        expect(find.byType(ProductosFlow), findsOneWidget);
-        expect(
-          find.byKey(const Key('authenticated-shell-contextual-panel')),
-          findsNothing,
-        );
-        expect(
-          find.byKey(const Key('authenticated-shell-contextual-expansion')),
-          findsOneWidget,
-        );
-        expect(find.text('Ayuda contextual'), findsOneWidget);
-        expect(find.byType(ProductosContextualPanel), findsNothing);
-        expect(find.byKey(const Key('fases-negocio-panel')), findsNothing);
+      expect(find.byType(ProductosFlow), findsOneWidget);
+      expect(
+        find.byKey(const Key('authenticated-shell-contextual-panel')),
+        findsNothing,
+      );
+      expect(_botonAyuda(), findsOneWidget);
+      expect(find.byType(ProductosContextualPanel), findsNothing);
+      expect(find.byKey(const Key('fases-negocio-panel')), findsNothing);
 
-        final tileFinder = find.byKey(
-          const Key('authenticated-shell-contextual-expansion'),
-        );
-        expect(tester.getRect(tileFinder).height, lessThan(160));
+      await _abrirAyuda(tester);
 
-        await tester.tap(find.text('Ayuda contextual'));
-        await tester.pumpAndSettle();
+      expect(_dialogoAyuda(), findsOneWidget);
+      expect(find.byType(ProductosContextualPanel), findsOneWidget);
+      expect(find.text('¿Cómo funciona?').hitTestable(), findsOneWidget);
 
-        expect(find.byType(ProductosContextualPanel), findsOneWidget);
-        expect(find.text('¿Cómo funciona?').hitTestable(), findsOneWidget);
-        expect(tester.getRect(tileFinder).height, greaterThan(200));
+      await _cerrarAyuda(tester);
 
-        await tester.tap(find.text('Ayuda contextual'));
-        await tester.pumpAndSettle();
-        expect(tester.getRect(tileFinder).height, lessThan(160));
-      }
-    },
-  );
+      expect(find.byType(ProductosContextualPanel), findsNothing);
+      expect(_dialogoAyuda(), findsNothing);
+      expect(tester.takeException(), isNull);
+    }
+  });
 
   testWidgets('en 360 px la ayuda de Productos es accesible sin overflow', (
     tester,
@@ -938,22 +945,17 @@ void main() {
     expect(find.byType(DashboardSidebar), findsNothing);
     expect(find.byType(ProductosFlow), findsOneWidget);
     expect(
-      find.byKey(const Key('authenticated-shell-contextual-expansion')),
-      findsOneWidget,
+      find.byKey(const Key('authenticated-shell-contextual-panel')),
+      findsNothing,
     );
+    expect(_botonAyuda(), findsOneWidget);
     expect(find.byType(Scaffold), findsOneWidget);
     expect(find.byType(DashboardTopBar), findsOneWidget);
     expect(tester.takeException(), isNull);
 
-    final tileFinder360 = find.byKey(
-      const Key('authenticated-shell-contextual-expansion'),
-    );
-    expect(tester.getRect(tileFinder360).height, lessThan(160));
+    await _abrirAyuda(tester);
 
-    await tester.tap(find.text('Ayuda contextual'));
-    await tester.pumpAndSettle();
-
-    expect(tester.getRect(tileFinder360).height, greaterThan(160));
+    expect(_dialogoAyuda(), findsOneWidget);
     expect(find.byType(ProductosContextualPanel), findsOneWidget);
     expect(find.text('¿Cómo funciona?'), findsOneWidget);
     expect(tester.takeException(), isNull);
@@ -980,11 +982,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(ProductosFlow), findsOneWidget);
-      expect(find.text('Ayuda contextual'), findsOneWidget);
+      expect(_botonAyuda(), findsOneWidget);
       expect(tester.takeException(), isNull);
 
-      await tester.tap(find.text('Ayuda contextual'));
-      await tester.pumpAndSettle();
+      await _abrirAyuda(tester);
 
       expect(find.byType(ProductosContextualPanel), findsOneWidget);
       expect(find.text('¿Cómo funciona?'), findsOneWidget);
@@ -1872,20 +1873,14 @@ void main() {
           progreso: _progresoConRubro(),
         );
 
-        final conDrawer = ancho < AuthenticatedShell.desktopBreakpoint;
-        final conColumnaPanel = ancho >=
-            AuthenticatedShell.navigationWidth +
-                AuthenticatedShell.contextualPanelWidth +
-                AuthenticatedShell.contenidoMinimoComodo;
-        final anchoCentroEsperado = conDrawer
-            ? ancho.toDouble()
-            : conColumnaPanel
-                ? ancho -
-                    AuthenticatedShell.navigationWidth -
-                    AuthenticatedShell.contextualPanelWidth
-                : ancho - AuthenticatedShell.navigationWidth;
+        final conTresColumnas = ancho >= AuthenticatedShell.anchoMinimoTresColumnas;
+        final anchoCentroEsperado = conTresColumnas
+            ? ancho -
+                  AuthenticatedShell.navigationWidth -
+                  AuthenticatedShell.contextualPanelWidth
+            : ancho.toDouble();
 
-        if (conDrawer) {
+        if (!conTresColumnas) {
           await tester.tap(find.byTooltip('Abrir menú'));
           await tester.pumpAndSettle();
         }
@@ -1894,26 +1889,19 @@ void main() {
 
         expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
 
-        if (conColumnaPanel) {
+        if (conTresColumnas) {
           expect(
             find.byKey(const Key('authenticated-shell-contextual-panel')),
             findsOneWidget,
           );
-          expect(
-            find.byKey(const Key('authenticated-shell-contextual-expansion')),
-            findsNothing,
-          );
+          expect(_botonAyuda(), findsNothing);
         } else {
           expect(
             find.byKey(const Key('authenticated-shell-contextual-panel')),
             findsNothing,
           );
-          expect(
-            find.byKey(const Key('authenticated-shell-contextual-expansion')),
-            findsOneWidget,
-          );
-          await tester.tap(find.text('Ayuda contextual'));
-          await tester.pumpAndSettle();
+          expect(_botonAyuda(), findsOneWidget);
+          await _abrirAyuda(tester);
         }
 
         expect(
@@ -2262,52 +2250,44 @@ void main() {
     }
   });
 
-  testWidgets(
-    'en compacto la ayuda de Rubro es plegable y cerrada por defecto',
-    (tester) async {
-      for (final ancho in const [500.0, 768.0, 1049.0]) {
-        await mostrarDashboard(
-          tester,
-          size: Size(ancho, 1000),
-          progreso: _progresoPendiente(),
-        );
+  testWidgets('en compacto la ayuda de Rubro se abre bajo demanda', (
+    tester,
+  ) async {
+    for (final ancho in const [500.0, 768.0, 1049.0]) {
+      await mostrarDashboard(
+        tester,
+        size: Size(ancho, 1000),
+        progreso: _progresoPendiente(),
+      );
 
-        await tester.tap(find.text('Continuar configuración'));
-        await tester.pumpAndSettle();
+      await tester.tap(find.text('Continuar configuración'));
+      await tester.pumpAndSettle();
 
-        expect(find.byType(SeleccionNegocioFlow), findsOneWidget);
-        expect(
-          find.byKey(const Key('authenticated-shell-contextual-panel')),
-          findsNothing,
-        );
-        expect(
-          find.byKey(const Key('authenticated-shell-contextual-expansion')),
-          findsOneWidget,
-        );
-        expect(find.text('Ayuda contextual'), findsOneWidget);
+      expect(find.byType(SeleccionNegocioFlow), findsOneWidget);
+      expect(
+        find.byKey(const Key('authenticated-shell-contextual-panel')),
+        findsNothing,
+      );
+      expect(_botonAyuda(), findsOneWidget);
+      expect(find.byType(RubroContextualPanel), findsNothing);
+      expect(find.text('Necesita tu atención'), findsNothing);
 
-        final tileFinder = find.byKey(
-          const Key('authenticated-shell-contextual-expansion'),
-        );
-        expect(tester.getRect(tileFinder).height, lessThan(160));
+      await _abrirAyuda(tester);
 
-        await tester.tap(find.text('Ayuda contextual'));
-        await tester.pumpAndSettle();
+      expect(_dialogoAyuda(), findsOneWidget);
+      expect(find.byType(RubroContextualPanel), findsOneWidget);
+      expect(find.text('Sirve para').hitTestable(), findsOneWidget);
+      expect(find.text('Necesita tu atención'), findsNothing);
 
-        expect(find.byType(RubroContextualPanel), findsOneWidget);
-        expect(find.text('Sirve para').hitTestable(), findsOneWidget);
-        expect(tester.getRect(tileFinder).height, greaterThan(200));
-        expect(find.text('Necesita tu atención'), findsNothing);
+      await _cerrarAyuda(tester);
 
-        await tester.tap(find.text('Ayuda contextual'));
-        await tester.pumpAndSettle();
-        expect(tester.getRect(tileFinder).height, lessThan(160));
+      expect(find.byType(RubroContextualPanel), findsNothing);
+      expect(tester.takeException(), isNull);
 
-        await tester.tap(find.byTooltip('Volver al dashboard'));
-        await tester.pumpAndSettle();
-      }
-    },
-  );
+      await tester.tap(find.byTooltip('Volver al dashboard'));
+      await tester.pumpAndSettle();
+    }
+  });
 
   testWidgets('en 360 px la ayuda de Rubro es accesible sin overflow', (
     tester,
@@ -2325,17 +2305,17 @@ void main() {
 
     expect(find.byType(SeleccionNegocioFlow), findsOneWidget);
     expect(
-      find.byKey(const Key('authenticated-shell-contextual-expansion')),
-      findsOneWidget,
+      find.byKey(const Key('authenticated-shell-contextual-panel')),
+      findsNothing,
     );
-    expect(find.text('Ayuda contextual'), findsOneWidget);
+    expect(_botonAyuda(), findsOneWidget);
     expect(find.byType(Scaffold), findsOneWidget);
     expect(find.byType(DashboardTopBar), findsOneWidget);
     expect(tester.takeException(), isNull);
 
-    await tester.tap(find.text('Ayuda contextual'));
-    await tester.pumpAndSettle();
+    await _abrirAyuda(tester);
 
+    expect(find.byType(RubroContextualPanel), findsOneWidget);
     expect(find.text('Sirve para'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -2916,48 +2896,38 @@ void main() {
     }
   });
 
-  testWidgets(
-    'en compacto la ayuda de Plantilla es plegable y cerrada por defecto',
-    (tester) async {
-      for (final ancho in const [500.0, 768.0, 1049.0]) {
-        await tester.pumpWidget(const SizedBox.shrink());
-        await mostrarDashboard(tester, size: Size(ancho, 1000));
+  testWidgets('en compacto la ayuda de Plantilla se abre bajo demanda', (
+    tester,
+  ) async {
+    for (final ancho in const [500.0, 768.0, 1049.0]) {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await mostrarDashboard(tester, size: Size(ancho, 1000));
 
-        await tester.tap(find.byTooltip('Abrir menú'));
-        await tester.pumpAndSettle();
-        await tester.tap(_textoSidebar('Plantilla web'));
-        await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Abrir menú'));
+      await tester.pumpAndSettle();
+      await tester.tap(_textoSidebar('Plantilla web'));
+      await tester.pumpAndSettle();
 
-        expect(find.byType(SeleccionPlantillaFlow), findsOneWidget);
-        expect(
-          find.byKey(const Key('authenticated-shell-contextual-panel')),
-          findsNothing,
-        );
-        expect(
-          find.byKey(const Key('authenticated-shell-contextual-expansion')),
-          findsOneWidget,
-        );
-        expect(find.text('Ayuda contextual'), findsOneWidget);
-        expect(find.byType(PlantillaContextualPanel), findsNothing);
+      expect(find.byType(SeleccionPlantillaFlow), findsOneWidget);
+      expect(
+        find.byKey(const Key('authenticated-shell-contextual-panel')),
+        findsNothing,
+      );
+      expect(_botonAyuda(), findsOneWidget);
+      expect(find.byType(PlantillaContextualPanel), findsNothing);
 
-        final tileFinder = find.byKey(
-          const Key('authenticated-shell-contextual-expansion'),
-        );
-        expect(tester.getRect(tileFinder).height, lessThan(160));
+      await _abrirAyuda(tester);
 
-        await tester.tap(find.text('Ayuda contextual'));
-        await tester.pumpAndSettle();
+      expect(_dialogoAyuda(), findsOneWidget);
+      expect(find.byType(PlantillaContextualPanel), findsOneWidget);
+      expect(find.text('Qué hace Finalizar'), findsOneWidget);
 
-        expect(find.byType(PlantillaContextualPanel), findsOneWidget);
-        expect(find.text('Qué hace Finalizar'), findsOneWidget);
-        expect(tester.getRect(tileFinder).height, greaterThan(200));
+      await _cerrarAyuda(tester);
 
-        await tester.tap(find.text('Ayuda contextual'));
-        await tester.pumpAndSettle();
-        expect(tester.getRect(tileFinder).height, lessThan(160));
-      }
-    },
-  );
+      expect(find.byType(PlantillaContextualPanel), findsNothing);
+      expect(tester.takeException(), isNull);
+    }
+  });
 
   testWidgets('en 360 px la ayuda de Plantilla es accesible sin overflow', (
     tester,
@@ -2972,16 +2942,15 @@ void main() {
     expect(find.byType(DashboardSidebar), findsNothing);
     expect(find.byType(SeleccionPlantillaFlow), findsOneWidget);
     expect(
-      find.byKey(const Key('authenticated-shell-contextual-expansion')),
-      findsOneWidget,
+      find.byKey(const Key('authenticated-shell-contextual-panel')),
+      findsNothing,
     );
-    expect(find.text('Ayuda contextual'), findsOneWidget);
+    expect(_botonAyuda(), findsOneWidget);
     expect(find.byType(Scaffold), findsOneWidget);
     expect(find.byType(DashboardTopBar), findsOneWidget);
     expect(tester.takeException(), isNull);
 
-    await tester.tap(find.text('Ayuda contextual'));
-    await tester.pumpAndSettle();
+    await _abrirAyuda(tester);
 
     expect(find.byType(PlantillaContextualPanel), findsOneWidget);
     expect(find.text('Qué hace Finalizar'), findsOneWidget);
@@ -3165,6 +3134,22 @@ SeleccionPlantillaProvider _leerProveedorPlantilla(WidgetTester tester) {
 Finder _textoSidebar(String texto) => find
     .descendant(of: find.byType(DashboardSidebar), matching: find.text(texto))
     .first;
+
+/// Acción pequeña de la barra superior que abre la ayuda contextual cuando no
+/// hay panel fijo. Antes era un ExpansionTile encima del contenido.
+Finder _botonAyuda() => find.byKey(AuthenticatedShell.helpButtonKey);
+
+Finder _dialogoAyuda() => find.byKey(AuthenticatedShell.helpDialogKey);
+
+Future<void> _abrirAyuda(WidgetTester tester) async {
+  await tester.tap(_botonAyuda());
+  await tester.pumpAndSettle();
+}
+
+Future<void> _cerrarAyuda(WidgetTester tester) async {
+  await tester.tapAt(const Offset(8, 8));
+  await tester.pumpAndSettle();
+}
 
 class _DependenciasPlantilla {
   final SeleccionPlantillaDependencies seleccionPlantilla;

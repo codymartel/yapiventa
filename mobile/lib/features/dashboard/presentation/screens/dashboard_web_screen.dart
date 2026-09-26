@@ -138,11 +138,12 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
         },
         estaHabilitado: _destinoHabilitado,
       ),
-      topBarBuilder: (_, openNavigation) => DashboardTopBar(
+      topBarBuilder: (context, openNavigation, openHelp) => DashboardTopBar(
         nombreNegocio: _nombreNegocio(state),
         onElegirPlantilla: () => _elegirPlantilla(context),
         onVerTienda: () => _verTiendaWeb(context),
         onAbrirMenu: openNavigation,
+        onAbrirAyuda: openHelp,
         email: widget.email,
         onCerrarSesion: widget.onCerrarSesion,
       ),

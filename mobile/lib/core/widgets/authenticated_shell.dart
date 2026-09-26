@@ -5,32 +5,50 @@ import '../theme/app_colors.dart';
 typedef AuthenticatedNavigationBuilder =
     Widget Function(BuildContext context, VoidCallback? closeNavigation);
 typedef AuthenticatedTopBarBuilder =
-    Widget Function(BuildContext context, VoidCallback? openNavigation);
+    Widget Function(
+      BuildContext context,
+      VoidCallback? openNavigation,
+      VoidCallback? openHelp,
+    );
 
 /// Carcasa autenticada con un único [Scaffold] y distribución responsive.
 ///
-/// Decide con [LayoutBuilder] según el ancho local disponible (no con el
-/// [MediaQuery] global) y prioriza siempre el contenido central:
+/// Decide con [LayoutBuilder] sobre el ancho local disponible (no con el
+/// [MediaQuery] global) y prioriza siempre el contenido central. Hay un único
+/// umbral, [anchoMinimoTresColumnas], del que dependen AMBAS decisiones (navegación
+/// fija y panel fijo), de modo que no puede existir una franja contradictoria en la
+/// que una columna esté fija y la otra no:
 ///
-///  - Escritorio ancho: navegación izquierda fija (≤ 220 px) y panel
-///    contextual derecho (≤ 280 px) dejan todo el resto al contenido.
-///  - Si ambos laterales no dejan un centro mínimo cómodo, primero se pliega
-///    el panel derecho como "Ayuda contextual" (colapsable) y la navegación
-///    sigue fija.
-///  - Si aún así no cabe, la navegación pasa a [Drawer] y el contenido ocupa
-///    una sola columna (tablet y móvil) sin scroll horizontal.
+///  - A partir de [anchoMinimoTresColumnas]: navegación izquierda fija
+///    ([navigationWidth]) + panel contextual derecho ([contextualPanelWidth]) y el
+///    resto del ancho para el contenido.
+///  - Por debajo de ese umbral: la navegación pasa a [Drawer] y NO hay panel
+///    contextual fijo. El contenido ocupa todo el ancho disponible; la ayuda se
+///    alcanza desde una acción pequeña en la barra superior, nunca desde un panel
+///    colocado encima del contenido.
 class AuthenticatedShell extends StatelessWidget {
-  /// Desde este ancho la navegación puede mostrarse fija.
+  /// Ancho de referencia del diseño de escritorio.
   static const desktopBreakpoint = 1050.0;
 
-  /// Ancho máximo de la navegación izquierda fija.
-  static const navigationWidth = 220.0;
+  /// Ancho de la navegación izquierda fija (y del drawer).
+  static const navigationWidth = 188.0;
 
-  /// Ancho máximo del panel contextual derecho.
-  static const contextualPanelWidth = 280.0;
+  /// Ancho del panel contextual derecho fijo.
+  static const contextualPanelWidth = 220.0;
 
-  /// Centro mínimo cómodo cuando ambos laterales están visibles.
+  /// Centro mínimo cómodo cuando ambos laterales son visibles.
   static const contenidoMinimoComodo = 640.0;
+
+  /// Única fuente de verdad del corte a tres columnas. Es el mayor entre el
+  /// [desktopBreakpoint] y la suma de los dos laterales más el centro mínimo, de
+  /// modo que navegación fija y panel fijo aparecen y desaparecen a la vez.
+  static double get anchoMinimoTresColumnas {
+    const suma = navigationWidth + contextualPanelWidth + contenidoMinimoComodo;
+    return suma > desktopBreakpoint ? suma : desktopBreakpoint;
+  }
+
+  static const helpButtonKey = Key('authenticated-shell-help-button');
+  static const helpDialogKey = Key('authenticated-shell-help-dialog');
 
   final AuthenticatedNavigationBuilder navigationBuilder;
   final AuthenticatedTopBarBuilder topBarBuilder;
@@ -45,22 +63,24 @@ class AuthenticatedShell extends StatelessWidget {
     this.contextualPanel,
   });
 
+  bool tresColumnas(double ancho) => ancho >= anchoMinimoTresColumnas;
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final ancho = constraints.maxWidth;
-        final usarDrawer = ancho < desktopBreakpoint;
-        final usarColumnaPanel =
-            ancho >= navigationWidth + contextualPanelWidth +
-                contenidoMinimoComodo;
+        final conTresColumnas = tresColumnas(ancho);
+        final conPanelFijo = conTresColumnas && contextualPanel != null;
+        final conAyudaFlotante =
+            !conPanelFijo && contextualPanel != null;
         return Scaffold(
           key: const Key('authenticated-shell'),
           backgroundColor: AppColors.fondo,
-          drawer: usarDrawer ? _crearDrawer() : null,
+          drawer: conTresColumnas ? null : _crearDrawer(),
           body: Row(
             children: [
-              if (!usarDrawer)
+              if (conTresColumnas)
                 SizedBox(
                   key: const Key('authenticated-shell-navigation'),
                   width: navigationWidth,
@@ -76,23 +96,23 @@ class AuthenticatedShell extends StatelessWidget {
                       child: Builder(
                         builder: (scaffoldContext) => topBarBuilder(
                           scaffoldContext,
-                          usarDrawer
-                              ? () =>
-                                  Scaffold.of(scaffoldContext).openDrawer()
+                          conTresColumnas
+                              ? null
+                              : () =>
+                                    Scaffold.of(scaffoldContext).openDrawer(),
+                          conAyudaFlotante
+                              ? () => _abrirAyuda(context)
                               : null,
                         ),
                       ),
                     ),
                     Expanded(
-                      child: usarColumnaPanel
+                      child: conPanelFijo
                           ? _DesktopBody(
                               contextualPanel: contextualPanel,
                               child: child,
                             )
-                          : _CompactBody(
-                              contextualPanel: contextualPanel,
-                              child: child,
-                            ),
+                          : _ContentOnly(child: child),
                     ),
                   ],
                 ),
@@ -101,6 +121,33 @@ class AuthenticatedShell extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  void _abrirAyuda(BuildContext context) {
+    final panel = contextualPanel;
+    if (panel == null) return;
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => Dialog(
+        key: helpDialogKey,
+        backgroundColor: AppColors.superficie,
+        insetPadding: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: AppColors.border),
+        ),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: 480,
+            maxHeight: MediaQuery.sizeOf(dialogContext).height * 0.7,
+          ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+            child: panel,
+          ),
+        ),
+      ),
     );
   }
 
@@ -139,7 +186,7 @@ class _DesktopBody extends StatelessWidget {
           Container(
             key: const Key('authenticated-shell-contextual-panel'),
             width: AuthenticatedShell.contextualPanelWidth,
-            padding: const EdgeInsets.fromLTRB(18, 22, 18, 32),
+            padding: const EdgeInsets.fromLTRB(14, 16, 14, 20),
             decoration: BoxDecoration(
               color: AppColors.fondo,
               border: Border(left: BorderSide(color: AppColors.border)),
@@ -151,58 +198,19 @@ class _DesktopBody extends StatelessWidget {
   }
 }
 
-class _CompactBody extends StatelessWidget {
+/// Cuerpo sin panel contextual: el contenido ocupa todo el ancho disponible.
+/// La ayuda se abre bajo demanda desde la barra superior, de modo que nada se
+/// coloca por encima del módulo.
+class _ContentOnly extends StatelessWidget {
   final Widget child;
-  final Widget? contextualPanel;
 
-  const _CompactBody({required this.child, required this.contextualPanel});
+  const _ContentOnly({required this.child});
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return Column(
-          children: [
-            if (contextualPanel != null)
-              Material(
-                color: AppColors.superficie,
-                child: ExpansionTile(
-                  key: const Key('authenticated-shell-contextual-expansion'),
-                  collapsedIconColor: AppColors.blueLt,
-                  iconColor: AppColors.blueLt,
-                  shape: Border(bottom: BorderSide(color: AppColors.border)),
-                  collapsedShape: Border(
-                    bottom: BorderSide(color: AppColors.border),
-                  ),
-                  title: const Text(
-                    'Ayuda contextual',
-                    style: TextStyle(
-                      color: AppColors.texto,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  children: [
-                    ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxHeight: constraints.maxHeight * 0.45,
-                      ),
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(18, 4, 18, 20),
-                        child: contextualPanel,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            Expanded(
-              child: KeyedSubtree(
-                key: const Key('authenticated-shell-content'),
-                child: child,
-              ),
-            ),
-          ],
-        );
-      },
+    return KeyedSubtree(
+      key: const Key('authenticated-shell-content'),
+      child: child,
     );
   }
 }
