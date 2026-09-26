@@ -235,13 +235,13 @@ class _PanelCategorias extends StatelessWidget {
                       activa: !p.categoriaPresetDesactivada(nombre),
                       esSugerida: true,
                       anchoLocal: constraints.maxWidth,
-                      onActivar: () => p.reactivarCategoriaDelPreset(
-                        uid,
-                        nombre,
+                      onActivar: () => _alternarCategoria(
+                        context,
+                        () => p.reactivarCategoriaDelPreset(uid, nombre),
                       ),
-                      onDesactivar: () => p.desactivarCategoriaDelPreset(
-                        uid,
-                        nombre,
+                      onDesactivar: () => _alternarCategoria(
+                        context,
+                        () => p.desactivarCategoriaDelPreset(uid, nombre),
                       ),
                     ),
                   ),
@@ -255,13 +255,19 @@ class _PanelCategorias extends StatelessWidget {
                       activa: categoria.activa,
                       esSugerida: false,
                       anchoLocal: constraints.maxWidth,
-                      onActivar: () => p.reactivarCategoriaPersonalizada(
-                        uid,
-                        categoria.clave,
+                      onActivar: () => _alternarCategoria(
+                        context,
+                        () => p.reactivarCategoriaPersonalizada(
+                          uid,
+                          categoria.clave,
+                        ),
                       ),
-                      onDesactivar: () => p.desactivarCategoriaPersonalizada(
-                        uid,
-                        categoria.clave,
+                      onDesactivar: () => _alternarCategoria(
+                        context,
+                        () => p.desactivarCategoriaPersonalizada(
+                          uid,
+                          categoria.clave,
+                        ),
                       ),
                       onEditar: () => _intentarEditar(
                         context,
@@ -549,6 +555,23 @@ void _mostrarMensaje(BuildContext context, String mensaje) {
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
     ..showSnackBar(SnackBar(content: Text(mensaje)));
+}
+
+/// Activa o desactiva una categoría y comunica el motivo del rechazo.
+///
+/// El provider es quien decide (es el que protege la regla de integridad);
+/// esta capa solo lee `errorCatalogo` y lo muestra, para que un rechazo nunca
+/// sea silencioso.
+Future<void> _alternarCategoria(
+  BuildContext context,
+  Future<bool> Function() operacion,
+) async {
+  final p = context.read<ConfiguracionNegocioProvider>();
+  p.limpiarErrorCatalogo();
+  final ok = await operacion();
+  if (!context.mounted || ok) return;
+  final error = p.errorCatalogo;
+  if (error != null) _mostrarMensaje(context, error);
 }
 
 /// Renombrar una personalizada: la clave es su identidad y no se recalcula,

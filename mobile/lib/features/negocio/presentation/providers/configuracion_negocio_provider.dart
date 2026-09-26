@@ -460,6 +460,13 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
     final indice = _indiceCategoriaPersonalizada(clave);
     if (indice == -1) return false;
 
+    if (_dejariaCatalogoVacio(
+      clave,
+      actualmenteActiva: _categoriasPersonalizadas[indice].activa,
+    )) {
+      return _rechazarPorIntegridad();
+    }
+
     final actualizada = [..._categoriasPersonalizadas];
     // copyWith y no una construcción nueva: la clave es la identidad y el
     // nombre es la etiqueta; esta operación no puede tocarlos.
@@ -555,6 +562,12 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
       return false;
     }
     if (_categoriasDesactivadas.contains(clave)) return true;
+    if (_dejariaCatalogoVacio(
+      clave,
+      actualmenteActiva: true,
+    )) {
+      return _rechazarPorIntegridad();
+    }
 
     final actualizadas = {..._categoriasDesactivadas, clave};
     try {
@@ -630,6 +643,51 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
   bool _presetCategoriaIncluye(String clave) => PresetsVenta.obtener(
     rubro,
   ).categorias.any((categoria) => canonicalizarCategoria(categoria) == clave);
+
+  // ═════════════════════════════════════════════════════════════════════
+  // Integridad: siempre al menos una categoría efectiva activa
+  // ═════════════════════════════════════════════════════════════════════
+
+  /// Mensaje único de la regla, para que UI y pruebas compartan el texto.
+  static const mensajeUltimaCategoriaActiva =
+      'Debes mantener al menos una categoría activa.';
+
+  /// Cuántas categorías ve realmente el negocio ahora mismo: las del preset
+  /// que no están en [categoriasDesactivadas] más las personalizadas con
+  /// `activa`.
+  ///
+  /// Es el número que la regla de integridad protege. No usa [_categorias]:
+  /// ese borrador sigue con el preset completo y por eso no puede decidir si el
+  /// catálogo quedaría vacío.
+  int get categoriasEfectivas {
+    final preset = PresetsVenta.obtener(rubro).categorias;
+    final activasDelPreset = preset
+        .where((nombre) => !_categoriasDesactivadas.contains(
+          canonicalizarCategoria(nombre),
+        ))
+        .length;
+    final activasPersonalizadas = _categoriasPersonalizadas
+        .where((categoria) => categoria.activa)
+        .length;
+    return activasDelPreset + activasPersonalizadas;
+  }
+
+  /// ¿Esta operación dejaría el catálogo sin ninguna categoría activa?
+  ///
+  /// Solo se consulta cuando la operación realmente va a reducir el conteo
+  /// (desactivar algo que está activo, eliminar algo activo), así que
+  /// reactivar, crear o renombrar nunca se bloquean.
+  bool _dejariaCatalogoVacio(String clave, {required bool actualmenteActiva}) {
+    if (!actualmenteActiva) return false;
+    return categoriasEfectivas - 1 <= 0;
+  }
+
+  /// Registra el rechazo por integridad y devuelve `false` sin escribir nada:
+  /// ni Firestore ni memoria cambian, y por eso tampoco se notifica.
+  bool _rechazarPorIntegridad() {
+    _errorCatalogo = mensajeUltimaCategoriaActiva;
+    return false;
+  }
 
   /// Renombra una categoría personalizada conservando su identidad.
   ///
@@ -726,6 +784,13 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
           'Hay productos que usan la categoría "$nombre". '
           'Revísalos primero; no se borró ningún dato.';
       return false;
+    }
+
+    if (_dejariaCatalogoVacio(
+      clave,
+      actualmenteActiva: _categoriasPersonalizadas[indice].activa,
+    )) {
+      return _rechazarPorIntegridad();
     }
 
     final actualizada = [..._categoriasPersonalizadas]..removeAt(indice);

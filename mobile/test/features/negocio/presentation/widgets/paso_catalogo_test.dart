@@ -540,6 +540,36 @@ void main() {
   });
 
   // ── 14. Bloquear categoría usada por productos ──────────────────────────
+  testWidgets('la última categoría efectiva avisa y no se desactiva', (
+    tester,
+  ) async {
+    await mostrarPaso(
+      tester,
+      negocioId: 'negocio-1',
+      configuracionInicial: {
+        'categoriasDesactivadas': [
+          'bebidas',
+          'snacks',
+          'limpieza',
+          'cuidado personal',
+        ],
+      },
+    );
+
+    await tester.tap(accionTarjeta('Desactivar', 'Abarrotes'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Debes mantener al menos una categoría activa.'),
+      findsOneWidget,
+    );
+    // El estado no cambia: sigue activa y el preset no registra la clave.
+    expect(estadoTarjeta('Abarrotes', 'Activa'), findsOneWidget);
+    expect(estadoTarjeta('Abarrotes', 'Inactiva'), findsNothing);
+
+    await expulsarSnackBar(tester);
+  });
+
   testWidgets('bloquea eliminar y editar una categoría usada por productos', (
     tester,
   ) async {

@@ -2322,6 +2322,308 @@ void main() {
       expect(provider.categoriasDesactivadas, isEmpty);
     });
   });
+
+  group('integridad: al menos una categoría efectiva activa', () {
+    const mensaje =
+        ConfiguracionNegocioProvider.mensajeUltimaCategoriaActiva;
+
+    /// Bodega tiene 5 categorías de preset: Abarrotes, Bebidas, Snacks,
+    /// Limpieza y Cuidado personal.
+    ConfiguracionNegocioProvider crearProvider({
+      FirebaseFirestore? firestore,
+      List<String>? desactivadas = const [],
+      List<Map<String, dynamic>>? personalizadas = const [],
+    }) => ConfiguracionNegocioProvider(
+      rubro: 'Bodega',
+      negocioId: 'negocio-1',
+      configuracionInicial: {
+        'categoriasDesactivadas': desactivadas,
+        'categoriasPersonalizadas': personalizadas,
+      },
+      repository: NegocioRepository(
+        firestore: firestore ?? FakeFirebaseFirestore(),
+      ),
+    );
+
+    /// Deja el preset con una sola categoría activa.
+    List<String> soloUnaPresetActiva() => const [
+      'bebidas',
+      'snacks',
+      'limpieza',
+      'cuidado personal',
+    ];
+
+    Map<String, dynamic> personalizadaActiva(String clave) => {
+      'clave': clave,
+      'nombre': clave[0].toUpperCase() + clave.substring(1),
+      'activa': true,
+    };
+
+    test('categoriasEfectivas suma preset no desactivadas y personalizadas activas', () {
+      expect(crearProvider().categoriasEfectivas, 5);
+      expect(
+        crearProvider(desactivadas: ['snacks', 'limpieza']).categoriasEfectivas,
+        3,
+      );
+      expect(
+        crearProvider(
+          personalizadas: [personalizadaActiva('ofertas')],
+        ).categoriasEfectivas,
+        6,
+      );
+      expect(
+        crearProvider(
+          personalizadas: [
+            personalizadaActiva('ofertas'),
+            {'clave': 'dulces', 'nombre': 'Dulces', 'activa': false},
+          ],
+        ).categoriasEfectivas,
+        6,
+      );
+    });
+
+    test('1. no puede desactivar la única categoría del preset activa', () async {
+      final firestore = FakeFirebaseFirestore();
+      final provider = crearProvider(
+        firestore: firestore,
+        desactivadas: soloUnaPresetActiva(),
+      );
+      var notificaciones = 0;
+      provider.addListener(() => notificaciones++);
+      final desactivadasAntes = provider.categoriasDesactivadas;
+      expect(provider.categoriasEfectivas, 1);
+
+      final desactivada = await provider.desactivarCategoriaDelPreset(
+        'usuario-1',
+        'Abarrotes',
+      );
+
+      expect(desactivada, isFalse);
+      expect(provider.errorCatalogo, mensaje);
+      // Ni memoria ni Firestore cambian.
+      expect(provider.categoriasDesactivadas, desactivadasAntes);
+      expect(provider.categoriaPresetDesactivada('Abarrotes'), isFalse);
+      expect(provider.categoriasEfectivas, 1);
+      expect(notificaciones, 0);
+      final datos =
+          (await firestore.collection('negocios').doc('negocio-1').get()).data();
+      expect(datos?['categoriasDesactivadas'], isNull);
+    });
+
+    test('2. no puede desactivar la única personalizada activa', () async {
+      final firestore = FakeFirebaseFirestore();
+      // El preset queda sin ninguna categoría activa: la personalizada es la
+      // única efectiva.
+      final provider = crearProvider(
+        firestore: firestore,
+        desactivadas: const [
+          'abarrotes',
+          'bebidas',
+          'snacks',
+          'limpieza',
+          'cuidado personal',
+        ],
+        personalizadas: [personalizadaActiva('ofertas')],
+      );
+      expect(provider.categoriasEfectivas, 1);
+
+      final desactivada = await provider.desactivarCategoriaPersonalizada(
+        'usuario-1',
+        'ofertas',
+      );
+
+      expect(desactivada, isFalse);
+      expect(provider.errorCatalogo, mensaje);
+      expect(provider.categoriasPersonalizadas.single.activa, isTrue);
+      expect(provider.categoriasEfectivas, 1);
+      final datos =
+          (await firestore.collection('negocios').doc('negocio-1').get()).data();
+      expect(datos?['categoriasPersonalizadas'], isNull);
+    });
+
+    test('3. no puede eliminar la única personalizada activa', () async {
+      final firestore = FakeFirebaseFirestore();
+      final provider = crearProvider(
+        firestore: firestore,
+        desactivadas: const [
+          'abarrotes',
+          'bebidas',
+          'snacks',
+          'limpieza',
+          'cuidado personal',
+        ],
+        personalizadas: [personalizadaActiva('ofertas')],
+      );
+
+      final eliminada = await provider.eliminarCategoriaPersonalizada(
+        'usuario-1',
+        'ofertas',
+      );
+
+      expect(eliminada, isFalse);
+      expect(provider.errorCatalogo, mensaje);
+      expect(
+        provider.categoriasPersonalizadas.map((categoria) => categoria.clave),
+        ['ofertas'],
+      );
+      expect(provider.categoriasEfectivas, 1);
+      final datos =
+          (await firestore.collection('negocios').doc('negocio-1').get()).data();
+      expect(datos?['categoriasPersonalizadas'], isNull);
+    });
+
+    test('4. puede desactivar si existe otra categoría efectiva', () async {
+      final provider = crearProvider(
+        desactivadas: soloUnaPresetActiva(),
+        personalizadas: [personalizadaActiva('ofertas')],
+      );
+      expect(provider.categoriasEfectivas, 2);
+
+      expect(
+        await provider.desactivarCategoriaDelPreset('usuario-1', 'Abarrotes'),
+        isTrue,
+      );
+      expect(provider.categoriasEfectivas, 1);
+      expect(provider.errorCatalogo, isNull);
+
+      // Y la personalizada tampoco se puede desactivar después: ya es la única.
+      expect(
+        await provider.desactivarCategoriaPersonalizada(
+          'usuario-1',
+          'ofertas',
+        ),
+        isFalse,
+      );
+      expect(provider.categoriasPersonalizadas.single.activa, isTrue);
+    });
+
+    test('5. puede eliminar una personalizada si existe otra efectiva', () async {
+      final provider = crearProvider(
+        desactivadas: soloUnaPresetActiva(),
+        personalizadas: [
+          personalizadaActiva('ofertas'),
+          personalizadaActiva('dulces'),
+        ],
+      );
+      expect(provider.categoriasEfectivas, 3);
+
+      expect(
+        await provider.eliminarCategoriaPersonalizada('usuario-1', 'ofertas'),
+        isTrue,
+      );
+      expect(
+        provider.categoriasPersonalizadas.map((categoria) => categoria.clave),
+        ['dulces'],
+      );
+      expect(provider.categoriasEfectivas, 2);
+      expect(provider.errorCatalogo, isNull);
+
+      // Con el preset también oculto, Dulces pasa a ser la única efectiva.
+      await provider.desactivarCategoriaDelPreset('usuario-1', 'Abarrotes');
+      expect(provider.categoriasEfectivas, 1);
+
+      expect(
+        await provider.eliminarCategoriaPersonalizada('usuario-1', 'dulces'),
+        isFalse,
+      );
+      expect(provider.errorCatalogo, mensaje);
+      expect(
+        provider.categoriasPersonalizadas.map((categoria) => categoria.clave),
+        ['dulces'],
+      );
+      expect(provider.categoriasEfectivas, 1);
+    });
+
+    test('6. el rechazo no modifica Firestore ni memoria ni notifica', () async {
+      // Estado A: la única efectiva es una del preset.
+      final firestoreA = FakeFirebaseFirestore();
+      final soloPreset = crearProvider(
+        firestore: firestoreA,
+        desactivadas: soloUnaPresetActiva(),
+      );
+      expect(soloPreset.categoriasEfectivas, 1);
+      var notificacionesA = 0;
+      soloPreset.addListener(() => notificacionesA++);
+      final desactivadasAntes = soloPreset.categoriasDesactivadas;
+
+      await soloPreset.desactivarCategoriaDelPreset(
+        'usuario-1',
+        'Abarrotes',
+      );
+
+      expect(notificacionesA, 0);
+      expect(soloPreset.errorCatalogo, mensaje);
+      expect(soloPreset.categoriasDesactivadas, desactivadasAntes);
+      expect(soloPreset.categoriaPresetDesactivada('Abarrotes'), isFalse);
+      expect(soloPreset.categoriasEfectivas, 1);
+      final datosA =
+          (await firestoreA.collection('negocios').doc('negocio-1').get()).data();
+      expect(datosA?['categoriasDesactivadas'], isNull);
+
+      // Estado B: la única efectiva es una personalizada.
+      final firestoreB = FakeFirebaseFirestore();
+      final soloPersonalizada = crearProvider(
+        firestore: firestoreB,
+        desactivadas: const [
+          'abarrotes',
+          'bebidas',
+          'snacks',
+          'limpieza',
+          'cuidado personal',
+        ],
+        personalizadas: [personalizadaActiva('ofertas')],
+      );
+      expect(soloPersonalizada.categoriasEfectivas, 1);
+      var notificacionesB = 0;
+      soloPersonalizada.addListener(() => notificacionesB++);
+
+      await soloPersonalizada.desactivarCategoriaPersonalizada(
+        'usuario-1',
+        'ofertas',
+      );
+      await soloPersonalizada.eliminarCategoriaPersonalizada(
+        'usuario-1',
+        'ofertas',
+      );
+
+      expect(notificacionesB, 0);
+      expect(soloPersonalizada.errorCatalogo, mensaje);
+      expect(
+        soloPersonalizada.categoriasPersonalizadas.single.activa,
+        isTrue,
+      );
+      expect(soloPersonalizada.categoriasEfectivas, 1);
+      final datosB =
+          (await firestoreB.collection('negocios').doc('negocio-1').get()).data();
+      expect(datosB?['categoriasPersonalizadas'], isNull);
+    });
+
+    test('reactivar, crear y renombrar nunca se bloquean', () async {
+      final provider = crearProvider(desactivadas: soloUnaPresetActiva());
+
+      // Reactivar una del preset siempre suma.
+      expect(
+        await provider.reactivarCategoriaDelPreset('usuario-1', 'Bebidas'),
+        isTrue,
+      );
+      expect(provider.categoriasEfectivas, 2);
+
+      // Crear y renombrar tampoco reducen el conteo.
+      expect(
+        await provider.agregarCategoriaPersonalizada('usuario-1', 'Dulces'),
+        isTrue,
+      );
+      expect(
+        await provider.renombrarCategoriaPersonalizada(
+          'usuario-1',
+          'dulces',
+          'Postres',
+        ),
+        isTrue,
+      );
+      expect(provider.categoriasPersonalizadas.single.nombre, 'Postres');
+    });
+  });
 }
 
 
