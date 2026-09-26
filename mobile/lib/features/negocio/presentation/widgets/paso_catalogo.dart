@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../productos/domain/models/familia_unidad.dart';
+import '../../domain/models/categoria_personalizada.dart';
 import '../../domain/models/catalogo_venta/catalogo_venta_global.dart';
 import '../../domain/models/catalogo_venta/formato_presentacion.dart';
 import '../../domain/models/catalogo_venta/opcion_presentacion.dart';
@@ -32,7 +33,10 @@ import 'seccion_resumen_catalogo.dart';
 // ═════════════════════════════════════════════════════════════════════════
 
 class PasoCatalogo extends StatelessWidget {
-  const PasoCatalogo({super.key});
+  /// Identidad del usuario: la usan las escrituras de categorías.
+  final String uid;
+
+  const PasoCatalogo({super.key, this.uid = ''});
 
   @override
   Widget build(BuildContext context) {
@@ -50,7 +54,7 @@ class PasoCatalogo extends StatelessWidget {
         else if (p.catalogoPestana == 2)
           const SeccionMedidas()
         else
-          const _PanelCategorias(),
+          _PanelCategorias(uid: uid),
         const SizedBox(height: 24),
         const SeccionResumenCatalogo(),
       ],
@@ -174,24 +178,41 @@ class _Pestana extends StatelessWidget {
 
 // ═════════════════════════════════════════════════════════════════════════
 // Panel de Categorías
+//
+// Lee el catálogo de las TRES fuentes explícitas, sin deducir el origen de
+// ninguna categoría por comparación de strings:
+//
+//   - Preset del rubro      → PresetsVenta.obtener(rubro).categorias
+//   - Estado del preset     → categoriaPresetDesactivada (categoriasDesactivadas)
+//   - Personalizadas        → categoriasPersonalizadas (clave, nombre, activa)
+//
+// `_categorias` (el borrador legacy) ya no participa en decidir qué es preset y
+// qué es personalizada; sigue existiendo para el guardado y para las
+// validaciones del wizard, sin tocar.
 // ═════════════════════════════════════════════════════════════════════════
+
 class _PanelCategorias extends StatelessWidget {
-  const _PanelCategorias();
+  final String uid;
+
+  const _PanelCategorias({required this.uid});
 
   @override
   Widget build(BuildContext context) {
     final p = context.watch<ConfiguracionNegocioProvider>();
-    final presets = PresetsVenta.obtener(p.rubro).categorias;
-    final personalizadas = p.categorias
-        .where((nombre) => !presets.contains(nombre))
-        .toList();
+    final presetCategorias = PresetsVenta.obtener(p.rubro).categorias;
+    final personalizadas = p.categoriasPersonalizadas;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _CabeceraCategorias(
-          cantidadActivas: p.categorias.length,
-          onNueva: () => _dialogoGuardarCategoria(context, nuevo: true),
+          cantidadActivas:
+              presetCategorias
+                  .where((nombre) => !p.categoriaPresetDesactivada(nombre))
+                  .length +
+              personalizadas.where((categoria) => categoria.activa).length,
+          onNueva: () =>
+              _dialogoGuardarCategoria(context, uid: uid, nuevo: true),
         ),
         const SizedBox(height: 16),
         LayoutBuilder(
@@ -204,32 +225,56 @@ class _PanelCategorias extends StatelessWidget {
               spacing: 12,
               runSpacing: 12,
               children: [
-                for (final nombre in presets)
+                for (final nombre in presetCategorias)
                   SizedBox(
                     width: ancho,
                     child: _CategoriaCard(
                       clave: 'categoria-card-$nombre',
                       nombre: nombre,
                       subtitulo: 'Sugerida para ${p.rubro}',
-                      activa: p.categoriaActiva(nombre),
+                      activa: !p.categoriaPresetDesactivada(nombre),
                       esSugerida: true,
                       anchoLocal: constraints.maxWidth,
-                      onActivar: () => p.agregarCategoria(nombre),
-                      onDesactivar: () => _intentarDesactivar(context, nombre),
+                      onActivar: () => p.reactivarCategoriaDelPreset(
+                        uid,
+                        nombre,
+                      ),
+                      onDesactivar: () => p.desactivarCategoriaDelPreset(
+                        uid,
+                        nombre,
+                      ),
                     ),
                   ),
-                for (final nombre in personalizadas)
+                for (final categoria in personalizadas)
                   SizedBox(
                     width: ancho,
                     child: _CategoriaCard(
-                      clave: 'categoria-card-$nombre',
-                      nombre: nombre,
+                      clave: 'categoria-card-${categoria.nombre}',
+                      nombre: categoria.nombre,
                       subtitulo: 'Personalizada',
-                      activa: true,
+                      activa: categoria.activa,
                       esSugerida: false,
                       anchoLocal: constraints.maxWidth,
-                      onEditar: () => _intentarEditar(context, nombre),
-                      onEliminar: () => _intentarEliminar(context, nombre),
+                      onActivar: () => p.reactivarCategoriaPersonalizada(
+                        uid,
+                        categoria.clave,
+                      ),
+                      onDesactivar: () => p.desactivarCategoriaPersonalizada(
+                        uid,
+                        categoria.clave,
+                      ),
+                      onEditar: () => _intentarEditar(
+                        context,
+                        uid,
+                        categoria.clave,
+                        categoria.nombre,
+                      ),
+                      onEliminar: () => _intentarEliminar(
+                        context,
+                        uid,
+                        categoria.clave,
+                        categoria.nombre,
+                      ),
                     ),
                   ),
               ],
@@ -363,13 +408,14 @@ class _CategoriaCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final tactil = anchoLocal < 480;
     final acciones = <Widget>[
-      if (esSugerida)
-        _BotonAccionTarjeta(
-          etiqueta: activa ? 'Desactivar' : 'Activar',
-          tactil: tactil,
-          onPressed: activa ? onDesactivar : onActivar,
-        )
-      else ...[
+      // El interruptor activo/inactivo existe para los dos orígenes: el preset
+      // se oculta con `categoriasDesactivadas` y la personalizada con su `activa`.
+      _BotonAccionTarjeta(
+        etiqueta: activa ? 'Desactivar' : 'Activar',
+        tactil: tactil,
+        onPressed: activa ? onDesactivar : onActivar,
+      ),
+      if (!esSugerida) ...[
         _BotonAccionTarjeta(
           etiqueta: 'Editar',
           tactil: tactil,
@@ -505,19 +551,14 @@ void _mostrarMensaje(BuildContext context, String mensaje) {
     ..showSnackBar(SnackBar(content: Text(mensaje)));
 }
 
-Future<void> _intentarDesactivar(BuildContext context, String nombre) async {
-  final p = context.read<ConfiguracionNegocioProvider>();
-  if (p.categorias.length <= 1) {
-    _mostrarMensaje(
-      context,
-      'No puedes desactivar todas las categorías. Mantén al menos una activa.',
-    );
-    return;
-  }
-  p.desactivarCategoria(nombre);
-}
-
-Future<void> _intentarEditar(BuildContext context, String nombre) async {
+/// Renombrar una personalizada: la clave es su identidad y no se recalcula,
+/// por eso la busca el provider por `clave` y no por el nombre visible.
+Future<void> _intentarEditar(
+  BuildContext context,
+  String uid,
+  String clave,
+  String nombre,
+) async {
   final p = context.read<ConfiguracionNegocioProvider>();
   if (await p.categoriaTieneProductos(nombre)) {
     if (!context.mounted) return;
@@ -529,10 +570,21 @@ Future<void> _intentarEditar(BuildContext context, String nombre) async {
     return;
   }
   if (!context.mounted) return;
-  await _dialogoGuardarCategoria(context, nuevo: false, nombreActual: nombre);
+  await _dialogoGuardarCategoria(
+    context,
+    uid: uid,
+    nuevo: false,
+    clave: clave,
+    nombreActual: nombre,
+  );
 }
 
-Future<void> _intentarEliminar(BuildContext context, String nombre) async {
+Future<void> _intentarEliminar(
+  BuildContext context,
+  String uid,
+  String clave,
+  String nombre,
+) async {
   final p = context.read<ConfiguracionNegocioProvider>();
   if (await p.categoriaTieneProductos(nombre)) {
     if (!context.mounted) return;
@@ -544,13 +596,6 @@ Future<void> _intentarEliminar(BuildContext context, String nombre) async {
     return;
   }
   if (!context.mounted) return;
-  if (p.categorias.length <= 1) {
-    _mostrarMensaje(
-      context,
-      'No puedes desactivar todas las categorías. Mantén al menos una activa.',
-    );
-    return;
-  }
   final procede = await showDialog<bool>(
     context: context,
     builder: (dialogContext) => AlertDialog(
@@ -580,22 +625,29 @@ Future<void> _intentarEliminar(BuildContext context, String nombre) async {
     ),
   );
   if (!context.mounted || procede != true) return;
-  final index = p.categorias.indexOf(nombre);
-  if (index != -1) p.eliminarCategoria(index);
+  await p.eliminarCategoriaPersonalizada(uid, clave);
+  if (!context.mounted) return;
+  final error = p.errorCatalogo;
+  if (error != null) _mostrarMensaje(context, error);
 }
 
 // Diálogo reutilizable para nueva/edición de categoría con validación.
 Future<void> _dialogoGuardarCategoria(
   BuildContext context, {
+  required String uid,
   required bool nuevo,
+  String? clave,
   String? nombreActual,
 }) async {
   final p = context.read<ConfiguracionNegocioProvider>();
+  p.limpiarErrorCatalogo();
   await showDialog<void>(
     context: context,
     builder: (_) => _DialogoGuardarCategoria(
       provider: p,
+      uid: uid,
       nuevo: nuevo,
+      clave: clave,
       nombreActual: nombreActual,
     ),
   );
@@ -604,12 +656,19 @@ Future<void> _dialogoGuardarCategoria(
 class _DialogoGuardarCategoria extends StatefulWidget {
   const _DialogoGuardarCategoria({
     required this.provider,
+    required this.uid,
     required this.nuevo,
+    this.clave,
     this.nombreActual,
   });
 
   final ConfiguracionNegocioProvider provider;
+  final String uid;
   final bool nuevo;
+
+  /// Identidad canónica de la personalizada que se renombra. En alta es null.
+  final String? clave;
+
   final String? nombreActual;
 
   @override
@@ -622,11 +681,55 @@ class _DialogoGuardarCategoriaState extends State<_DialogoGuardarCategoria> {
     text: widget.nombreActual ?? '',
   );
   String? _error;
+  bool _guardando = false;
 
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
+  }
+
+  /// Persiste contra el provider. Las escrituras son asíncronas (Firestore
+  /// primero, memoria después), así que el diálogo espera y solo se cierra si
+  /// la operación devolvió `true`; si falló, el motivo queda en el propio
+  /// diálogo en lugar de perder lo que la persona escribió.
+  Future<void> _guardar() async {
+    if (_guardando) return;
+    final p = widget.provider;
+    final mensajeError = _validarNombreCategoria(
+      p,
+      _controller.text,
+      clave: widget.clave,
+    );
+    if (mensajeError != null) {
+      setState(() => _error = mensajeError);
+      return;
+    }
+
+    setState(() {
+      _guardando = true;
+      _error = null;
+    });
+    p.limpiarErrorCatalogo();
+
+    final nombre = _colapsarEspacios(_controller.text);
+    final ok = widget.nuevo
+        ? await p.agregarCategoriaPersonalizada(widget.uid, nombre)
+        : await p.renombrarCategoriaPersonalizada(
+            widget.uid,
+            widget.clave!,
+            nombre,
+          );
+
+    if (!mounted) return;
+    if (!ok) {
+      setState(() {
+        _guardando = false;
+        _error = p.errorCatalogo ?? 'No se pudo guardar la categoría.';
+      });
+      return;
+    }
+    Navigator.pop(context);
   }
 
   @override
@@ -641,6 +744,7 @@ class _DialogoGuardarCategoriaState extends State<_DialogoGuardarCategoria> {
         key: const Key('campo-nombre-categoria'),
         controller: _controller,
         autofocus: true,
+        enabled: !_guardando,
         style: const TextStyle(color: AppColors.texto),
         decoration: InputDecoration(
           labelText: 'Nombre de la categoría',
@@ -652,44 +756,33 @@ class _DialogoGuardarCategoriaState extends State<_DialogoGuardarCategoria> {
       ),
       actions: [
         TextButton(
-          onPressed: () => Navigator.pop(context),
+          onPressed: _guardando ? null : () => Navigator.pop(context),
           child: const Text(
             'Cancelar',
             style: TextStyle(color: AppColors.muted),
           ),
         ),
         ElevatedButton(
-          onPressed: () {
-            final p = widget.provider;
-            final mensajeError = _validarNombreCategoria(
-              p,
-              _controller.text,
-              nombreActual: widget.nombreActual,
-            );
-            if (mensajeError != null) {
-              setState(() => _error = mensajeError);
-              return;
-            }
-            final nombre = _colapsarEspacios(_controller.text);
-            if (widget.nuevo) {
-              p.agregarCategoria(nombre);
-            } else {
-              final index = p.categorias.indexOf(widget.nombreActual ?? '');
-              if (index != -1) p.editarCategoria(index, nombre);
-            }
-            Navigator.pop(context);
-          },
-          child: const Text('Guardar'),
+          onPressed: _guardando ? null : _guardar,
+          child: _guardando
+              ? const SizedBox.square(
+                  dimension: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Guardar'),
         ),
       ],
     );
   }
 }
 
+/// Valida el nombre contra las DOS fuentes explícitas: las personalizadas ya
+/// registradas (por `clave` canónica) y el preset del rubro. Una personalizada
+/// nunca puede pasar por una categoría del preset.
 String? _validarNombreCategoria(
   ConfiguracionNegocioProvider p,
   String textoCrudo, {
-  String? nombreActual,
+  String? clave,
 }) {
   final texto = _colapsarEspacios(textoCrudo);
   if (texto.isEmpty) return 'Escribe el nombre de la categoría.';
@@ -698,15 +791,16 @@ String? _validarNombreCategoria(
   if (!RegExp(r'[\p{L}\p{N}]', unicode: true).hasMatch(texto)) {
     return 'El nombre debe incluir letras o números.';
   }
-  final objetivo = _normalizarNombreCategoria(texto);
-  final existentes = <String>{
-    ...p.categorias,
-    ...PresetsVenta.obtener(p.rubro).categorias,
-  };
-  for (final existente in existentes) {
-    if (nombreActual != null && existente == nombreActual) continue;
-    if (_normalizarNombreCategoria(existente) == objetivo) {
+  final objetivo = canonicalizarCategoria(texto);
+  for (final categoria in p.categoriasPersonalizadas) {
+    if (categoria.clave == clave) continue;
+    if (categoria.clave == objetivo) {
       return 'Ya existe una categoría con ese nombre.';
+    }
+  }
+  for (final nombre in PresetsVenta.obtener(p.rubro).categorias) {
+    if (canonicalizarCategoria(nombre) == objetivo) {
+      return 'Ese nombre ya es una categoría sugerida de ${p.rubro}.';
     }
   }
   return null;

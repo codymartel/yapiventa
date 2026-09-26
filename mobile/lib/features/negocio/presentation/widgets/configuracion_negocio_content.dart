@@ -25,12 +25,17 @@ import 'paso_pagos.dart';
 // ═════════════════════════════════════════════════════════════════════════
 
 class ConfiguracionNegocioContent extends StatelessWidget {
+  /// Identidad del usuario dueño del negocio. La necesita el paso Catálogo
+  /// para las escrituras de categorías, que persisten por (uid, negocioId).
+  final String uid;
+
   final String rubro;
   final VoidCallback onVolver;
   final VoidCallback onFinalizar;
 
   const ConfiguracionNegocioContent({
     super.key,
+    required this.uid,
     required this.rubro,
     required this.onVolver,
     required this.onFinalizar,
@@ -93,11 +98,11 @@ class ConfiguracionNegocioContent extends StatelessWidget {
             Expanded(
               child: IndexedStack(
                 index: p.pasoActual,
-                children: const [
-                  PasoNegocio(),
-                  PasoCatalogo(),
-                  PasoLogistica(),
-                  PasoPagos(),
+                children: [
+                  const PasoNegocio(),
+                  PasoCatalogo(uid: uid),
+                  const PasoLogistica(),
+                  const PasoPagos(),
                 ],
               ),
             ),

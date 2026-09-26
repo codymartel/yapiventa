@@ -39,6 +39,7 @@ void main() {
           child: ChangeNotifierProvider<ConfiguracionNegocioProvider>.value(
             value: provider,
             child: ConfiguracionNegocioContent(
+              uid: 'usuario-1',
               rubro: rubro,
               onVolver: onVolver ?? () {},
               onFinalizar: onFinalizar ?? () {},

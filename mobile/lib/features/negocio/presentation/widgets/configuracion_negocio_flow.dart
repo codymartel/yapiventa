@@ -89,6 +89,7 @@ class _ConfiguracionNegocioFlowState extends State<ConfiguracionNegocioFlow> {
       child: AbsorbPointer(
         absorbing: _finalizando,
         child: ConfiguracionNegocioContent(
+          uid: widget.uid,
           rubro: p.rubro,
           onVolver: widget.onVolver,
           onFinalizar: _finalizar,

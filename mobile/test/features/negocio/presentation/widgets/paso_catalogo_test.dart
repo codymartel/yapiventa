@@ -73,7 +73,37 @@ void main() {
     matching: find.text(etiqueta),
   );
 
+  /// Estado visible de una tarjeta: 'Activa' o 'Inactiva'.
+  Finder estadoTarjeta(String tarjeta, String estado) => find.descendant(
+    of: find.byKey(Key('categoria-card-$tarjeta')),
+    matching: find.text(estado),
+  );
+
   Finder finderDialogo() => find.byType(AlertDialog);
+
+  /// Siembra `categoriasPersonalizadas` por el mismo camino que usa la app al
+  /// abrir la configuración, sin esperar escrituras.
+  Map<String, dynamic> seedPersonalizadas(
+    Map<String, ({bool activa})> porClave,
+  ) => {
+    'categoriasPersonalizadas': [
+      for (final entrada in porClave.entries)
+        {
+          'clave': entrada.key,
+          'nombre': entrada.key[0].toUpperCase() + entrada.key.substring(1),
+          'activa': entrada.value.activa,
+        },
+    ],
+  };
+
+  /// Mapa de la colección de una personalizada, para leer lo persistido.
+  Future<List<Map<String, dynamic>>> personalizadasGuardadas(
+    FakeFirebaseFirestore db,
+  ) async {
+    final datos = (await db.collection('negocios').doc('negocio-1').get()).data();
+    return (datos?['categoriasPersonalizadas'] as List)
+        .cast<Map<String, dynamic>>();
+  }
 
   // ── 1. Render de las dos pestañas ──────────────────────────────────────
   testWidgets('renderiza las dos pestañas: Categorías y Unidades de venta', (
@@ -109,9 +139,12 @@ void main() {
   testWidgets('cambiar a Unidades y volver conserva las categorías', (
     tester,
   ) async {
-    final provider = await mostrarPaso(tester);
-    provider.agregarCategoria('Ofertas');
-    await tester.pump();
+    final provider = await mostrarPaso(
+      tester,
+      configuracionInicial: seedPersonalizadas({
+        'ofertas': (activa: true),
+      }),
+    );
 
     await irAUnidades(tester);
     expect(find.text('Unidad o presentación'), findsOneWidget);
@@ -120,7 +153,10 @@ void main() {
     await irACategorias(tester);
     expect(find.text('Categorías de productos'), findsOneWidget);
     expect(find.byKey(const Key('categoria-card-Ofertas')), findsOneWidget);
-    expect(provider.categorias, contains('Ofertas'));
+    expect(
+      provider.categoriasPersonalizadas.map((categoria) => categoria.clave),
+      contains('ofertas'),
+    );
   });
 
   // ── 4. Grid de dos columnas en escritorio ──────────────────────────────
@@ -164,9 +200,12 @@ void main() {
     );
   });
 
-  // ── 6. Crear categoría ─────────────────────────────────────────────────
-  testWidgets('crear una categoría personalizada', (tester) async {
-    final provider = await mostrarPaso(tester);
+  // ── 6. Crear categoría personalizada ────────────────────────────────────
+  testWidgets('crear una categoría personalizada la persiste y la muestra activa', (
+    tester,
+  ) async {
+    final db = FakeFirebaseFirestore();
+    await mostrarPaso(tester, negocioId: 'negocio-1', firestore: db);
 
     await tester.tap(find.text('+ Nueva categoría'));
     await tester.pumpAndSettle();
@@ -180,8 +219,21 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Nueva categoría'), findsNothing);
-    expect(provider.categorias, contains('Ofertas'));
     expect(find.byKey(const Key('categoria-card-Ofertas')), findsOneWidget);
+    expect(estadoTarjeta('Ofertas', 'Activa'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('categoria-card-Ofertas')),
+        matching: find.text('Personalizada'),
+      ),
+      findsOneWidget,
+    );
+    // La alta va a `categoriasPersonalizadas`, no al borrador legacy: la UI ya
+    // no depende de que `_categorias` conozca el nombre.
+    expect(
+      (await personalizadasGuardadas(db)).map((c) => c['clave']),
+      contains('ofertas'),
+    );
   });
 
   // ── 7. Cancelar sin crear ──────────────────────────────────────────────
@@ -198,12 +250,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Nueva categoría'), findsNothing);
-    expect(provider.categorias, isNot(contains('Temporal')));
+    expect(provider.categoriasPersonalizadas, isEmpty);
     expect(find.byKey(const Key('categoria-card-Temporal')), findsNothing);
   });
 
-  // ── 8. Bloquear duplicado normalizado ──────────────────────────────────
-  testWidgets('bloquea nombres duplicados normalizados y conserva el texto', (
+  // ── 8. Bloquear duplicado del preset ────────────────────────────────────
+  testWidgets('bloquea un nombre que ya es del preset y conserva el texto', (
     tester,
   ) async {
     await mostrarPaso(tester);
@@ -219,7 +271,7 @@ void main() {
 
     expect(find.text('Nueva categoría'), findsOneWidget);
     expect(
-      find.text('Ya existe una categoría con ese nombre.'),
+      find.text('Ese nombre ya es una categoría sugerida de Bodega.'),
       findsOneWidget,
     );
     expect(find.textContaining('Bébidas'), findsOneWidget);
@@ -228,11 +280,49 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  // ── 9. Editar personalizada ────────────────────────────────────────────
-  testWidgets('editar una categoría personalizada', (tester) async {
-    final provider = await mostrarPaso(tester);
-    provider.agregarCategoria('Ofertas');
-    await tester.pump();
+  // ── 8b. Bloquear duplicado de otra personalizada ────────────────────────
+  testWidgets('bloquea un nombre que ya es de otra personalizada', (
+    tester,
+  ) async {
+    await mostrarPaso(
+      tester,
+      configuracionInicial: seedPersonalizadas({
+        'dulces': (activa: true),
+      }),
+    );
+
+    await tester.tap(find.text('+ Nueva categoría'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('campo-nombre-categoria')),
+      '  Dulces ',
+    );
+    await tester.tap(find.widgetWithText(ElevatedButton, 'Guardar'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Nueva categoría'), findsOneWidget);
+    expect(
+      find.text('Ya existe una categoría con ese nombre.'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.text('Cancelar'));
+    await tester.pumpAndSettle();
+  });
+
+  // ── 9. Editar personalizada conserva la clave ──────────────────────────
+  testWidgets('editar una personalizada cambia la etiqueta y conserva la clave', (
+    tester,
+  ) async {
+    final db = FakeFirebaseFirestore();
+    final provider = await mostrarPaso(
+      tester,
+      negocioId: 'negocio-1',
+      firestore: db,
+      configuracionInicial: seedPersonalizadas({
+        'ofertas': (activa: true),
+      }),
+    );
 
     await tester.ensureVisible(find.byKey(const Key('categoria-card-Ofertas')));
     await tester.tap(accionTarjeta('Editar', 'Ofertas'));
@@ -246,16 +336,30 @@ void main() {
     await tester.tap(find.widgetWithText(ElevatedButton, 'Guardar'));
     await tester.pumpAndSettle();
 
-    expect(provider.categorias, contains('Promociones'));
-    expect(provider.categorias, isNot(contains('Ofertas')));
+    final customizing = provider.categoriasPersonalizadas.single;
+    expect(customizing.clave, 'ofertas');
+    expect(customizing.nombre, 'Promociones');
+    expect(customizing.activa, isTrue);
+    expect(find.byKey(const Key('categoria-card-Ofertas')), findsNothing);
     expect(find.byKey(const Key('categoria-card-Promociones')), findsOneWidget);
+    expect(
+      (await personalizadasGuardadas(db)).single['clave'],
+      'ofertas',
+      reason: 'la clave es la identidad y no se recalcula al renombrar',
+    );
   });
 
-  // ── 10. Eliminar personalizada con confirmación ────────────────────────
+  // ── 10. Eliminar personalizada con confirmación ─────────────────────────
   testWidgets('eliminar personalizada exige confirmación', (tester) async {
-    final provider = await mostrarPaso(tester);
-    provider.agregarCategoria('Ofertas');
-    await tester.pump();
+    final db = FakeFirebaseFirestore();
+    final provider = await mostrarPaso(
+      tester,
+      negocioId: 'negocio-1',
+      firestore: db,
+      configuracionInicial: seedPersonalizadas({
+        'ofertas': (activa: true),
+      }),
+    );
 
     await tester.ensureVisible(find.byKey(const Key('categoria-card-Ofertas')));
     await tester.tap(accionTarjeta('Eliminar', 'Ofertas'));
@@ -264,7 +368,10 @@ void main() {
 
     await tester.tap(find.text('Cancelar'));
     await tester.pumpAndSettle();
-    expect(provider.categorias, contains('Ofertas'));
+    expect(
+      provider.categoriasPersonalizadas.map((categoria) => categoria.clave),
+      contains('ofertas'),
+    );
 
     await tester.tap(accionTarjeta('Eliminar', 'Ofertas'));
     await tester.pumpAndSettle();
@@ -273,11 +380,49 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(provider.categorias, isNot(contains('Ofertas')));
+    expect(provider.categoriasPersonalizadas, isEmpty);
     expect(find.byKey(const Key('categoria-card-Ofertas')), findsNothing);
+    expect(await personalizadasGuardadas(db), isEmpty);
   });
 
-  // ── 11. Preset sin Editar/Eliminar ─────────────────────────────────────
+  // ── 10b. Desactivar y reactivar una personalizada ───────────────────────
+  testWidgets('desactivar una personalizada la conserva y se puede reactivar', (
+    tester,
+  ) async {
+    final db = FakeFirebaseFirestore();
+    final provider = await mostrarPaso(
+      tester,
+      negocioId: 'negocio-1',
+      firestore: db,
+      configuracionInicial: seedPersonalizadas({
+        'ofertas': (activa: true),
+      }),
+    );
+
+    await tester.ensureVisible(find.byKey(const Key('categoria-card-Ofertas')));
+    expect(estadoTarjeta('Ofertas', 'Activa'), findsOneWidget);
+
+    await tester.tap(accionTarjeta('Desactivar', 'Ofertas'));
+    await tester.pumpAndSettle();
+
+    // Desactivar NO es eliminar: sigue en la lista, con `activa: false`.
+    expect(find.byKey(const Key('categoria-card-Ofertas')), findsOneWidget);
+    expect(estadoTarjeta('Ofertas', 'Inactiva'), findsOneWidget);
+    expect(estadoTarjeta('Ofertas', 'Activa'), findsNothing);
+    expect(provider.categoriasPersonalizadas.single.activa, isFalse);
+    expect(
+      (await personalizadasGuardadas(db)).single['activa'],
+      isFalse,
+    );
+
+    await tester.tap(accionTarjeta('Activar', 'Ofertas'));
+    await tester.pumpAndSettle();
+
+    expect(estadoTarjeta('Ofertas', 'Activa'), findsOneWidget);
+    expect(provider.categoriasPersonalizadas.single.activa, isTrue);
+  });
+
+  // ── 11. Preset: solo el interruptor, nunca Editar/Eliminar ─────────────
   testWidgets('una categoría sugerida no ofrece Editar ni Eliminar', (
     tester,
   ) async {
@@ -298,33 +443,103 @@ void main() {
     );
   });
 
-  // ── 12. Bloquear última categoría ──────────────────────────────────────
-  testWidgets('no permite desactivar la última categoría activa', (
+  // ── 12. Desactivar y reactivar una categoría del preset ─────────────────
+  testWidgets('desactivar una del preset la oculta sin borrarla del catálogo', (
+    tester,
+  ) async {
+    final db = FakeFirebaseFirestore();
+    final provider = await mostrarPaso(
+      tester,
+      negocioId: 'negocio-1',
+      firestore: db,
+    );
+    final sugeridas = PresetsVenta.obtener('Bodega').categorias;
+
+    // El estado sale de `categoriasDesactivadas`, no de comparar strings.
+    expect(provider.categoriaPresetDesactivada('Snacks'), isFalse);
+    expect(estadoTarjeta('Snacks', 'Activa'), findsOneWidget);
+
+    await tester.tap(accionTarjeta('Desactivar', 'Snacks'));
+    await tester.pumpAndSettle();
+
+    expect(provider.categoriaPresetDesactivada('Snacks'), isTrue);
+    expect(provider.categoriasDesactivadas, contains('snacks'));
+    expect(estadoTarjeta('Snacks', 'Inactiva'), findsOneWidget);
+    expect(estadoTarjeta('Snacks', 'Activa'), findsNothing);
+    // Oculta, no borra: el preset sigue íntegro.
+    expect(PresetsVenta.obtener('Bodega').categorias, sugeridas);
+    expect(find.text('Sugerida para Bodega'), findsNWidgets(sugeridas.length));
+    expect(
+      (await db.collection('negocios').doc('negocio-1').get()).data()?[
+        'categoriasDesactivadas'
+      ],
+      contains('snacks'),
+    );
+
+    await tester.tap(accionTarjeta('Activar', 'Snacks'));
+    await tester.pumpAndSettle();
+
+    expect(provider.categoriaPresetDesactivada('Snacks'), isFalse);
+    expect(provider.categoriasDesactivadas, isEmpty);
+    expect(estadoTarjeta('Snacks', 'Activa'), findsOneWidget);
+  });
+
+  // ── 12b. El estado de una del preset sobrevive a la recarga ─────────────
+  testWidgets('el estado del preset se restaura desde categoriasDesactivadas', (
     tester,
   ) async {
     final provider = await mostrarPaso(
       tester,
-      configuracionInicial: {
-        'categorias': ['Abarrotes'],
-      },
+      negocioId: 'negocio-1',
+      configuracionInicial: {'categoriasDesactivadas': ['snacks']},
     );
 
-    await tester.tap(accionTarjeta('Desactivar', 'Abarrotes'));
-    await tester.pumpAndSettle();
+    expect(estadoTarjeta('Snacks', 'Inactiva'), findsOneWidget);
+    expect(estadoTarjeta('Abarrotes', 'Activa'), findsOneWidget);
+    expect(provider.categoriaPresetDesactivada('  SnaCKS '), isTrue);
+  });
 
+  // ── 13. Una personalizada no se confunde con una del preset ─────────────
+  testWidgets('una personalizada con nombre propio no se marca como sugerida', (
+    tester,
+  ) async {
+    await mostrarPaso(
+      tester,
+      configuracionInicial: seedPersonalizadas({
+        'ofertas': (activa: true),
+      }),
+    );
+
+    // Mismo origen, subtítulos distintos: el preset nunca se infiere por
+    // comparación de nombres.
     expect(
-      find.text(
-        'No puedes desactivar todas las categorías. Mantén al menos una activa.',
+      find.descendant(
+        of: find.byKey(const Key('categoria-card-Ofertas')),
+        matching: find.text('Personalizada'),
       ),
       findsOneWidget,
     );
-    expect(provider.categorias, ['Abarrotes']);
-    expect(provider.categoriaActiva('Abarrotes'), isTrue);
-
-    await expulsarSnackBar(tester);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('categoria-card-Ofertas')),
+        matching: find.textContaining('Sugerida'),
+      ),
+      findsNothing,
+    );
+    // Y las acciones difieren por origen: el preset solo se activa/desactiva,
+    // la personalizada además se renombra y se elimina.
+    expect(accionTarjeta('Desactivar', 'Abarrotes'), findsOneWidget);
+    expect(accionTarjeta('Eliminar', 'Ofertas'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('categoria-card-Abarrotes')),
+        matching: find.text('Eliminar'),
+      ),
+      findsNothing,
+    );
   });
 
-  // ── 13. Bloquear categoría usada por productos ─────────────────────────
+  // ── 14. Bloquear categoría usada por productos ──────────────────────────
   testWidgets('bloquea eliminar y editar una categoría usada por productos', (
     tester,
   ) async {
@@ -339,9 +554,10 @@ void main() {
       tester,
       negocioId: 'negocio-1',
       firestore: firestore,
+      configuracionInicial: seedPersonalizadas({
+        'ofertas': (activa: true),
+      }),
     );
-    provider.agregarCategoria('Ofertas');
-    await tester.pump();
 
     await tester.ensureVisible(find.byKey(const Key('categoria-card-Ofertas')));
     await tester.tap(accionTarjeta('Eliminar', 'Ofertas'));
@@ -354,7 +570,10 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(provider.categorias, contains('Ofertas'));
+    expect(
+      provider.categoriasPersonalizadas.map((categoria) => categoria.clave),
+      contains('ofertas'),
+    );
     await expulsarSnackBar(tester);
 
     await tester.tap(accionTarjeta('Editar', 'Ofertas'));
@@ -367,11 +586,14 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(provider.categorias, contains('Ofertas'));
+    expect(
+      provider.categoriasPersonalizadas.map((categoria) => categoria.clave),
+      contains('ofertas'),
+    );
     await expulsarSnackBar(tester);
   });
 
-  // ── 14. Guardar diálogo no cierra Configuración ────────────────────────
+  // ── 15. Guardar diálogo no cierra Configuración ────────────────────────
   testWidgets('guardar categoría no cierra Configuración', (tester) async {
     tester.view.physicalSize = const Size(500, 850);
     tester.view.devicePixelRatio = 1;
@@ -379,6 +601,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     final provider = ConfiguracionNegocioProvider(
       rubro: 'Bodega',
+      negocioId: 'negocio-1',
       repository: NegocioRepository(firestore: FakeFirebaseFirestore()),
     );
     addTearDown(provider.dispose);
@@ -390,6 +613,7 @@ void main() {
           home: Material(
             color: AppColors.fondo,
             child: ConfiguracionNegocioContent(
+              uid: 'usuario-1',
               rubro: 'Bodega',
               onVolver: () {},
               onFinalizar: () {},
@@ -413,7 +637,10 @@ void main() {
 
     expect(find.byType(ConfiguracionNegocioContent), findsOneWidget);
     expect(provider.pasoActual, 1);
-    expect(provider.categorias, contains('Frutos secos'));
+    expect(
+      provider.categoriasPersonalizadas.map((categoria) => categoria.clave),
+      contains('frutos secos'),
+    );
   });
 
   // ── 15. Cero escrituras Firestore al cambiar pestañas ──────────────────

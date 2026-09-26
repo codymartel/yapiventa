@@ -471,6 +471,7 @@ void main() {
           home: Material(
             color: AppColors.fondo,
             child: ConfiguracionNegocioContent(
+              uid: 'usuario-1',
               rubro: 'Bodega',
               onVolver: () {},
               onFinalizar: () {},

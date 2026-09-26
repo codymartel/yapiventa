@@ -577,6 +577,51 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
     return true;
   }
 
+  /// Reactiva una categoría del preset que el negocio tenía desactivada.
+  ///
+  /// Es el inverso exacto de [desactivarCategoriaDelPreset] y comparte su
+  /// contrato: se busca por clave canónica, la lista completa se persiste, y
+  /// la memoria cambia y notifica solo si la escritura funcionó. Sin esto la
+  /// desactivación del preset sería un callejón sin salida: una vez oculta,
+  /// la categoría no volvería a aparecer nunca.
+  ///
+  /// Una clave que no está desactivada no es un error del usuario sino una
+  /// operación ya satisfecha: devuelve `true` sin escribir, sin tocar el
+  /// estado y sin notificar. Lo que sí rechaza es lo imposible: un nombre
+  /// vacío, o un nombre que no pertenece al preset del rubro.
+  Future<bool> reactivarCategoriaDelPreset(String uid, String nombre) async {
+    final clave = canonicalizarCategoria(nombre.trim());
+    if (clave.isEmpty) {
+      _errorCatalogo = 'El nombre de la categoría no puede estar vacío.';
+      return false;
+    }
+    if (!_presetCategoriaIncluye(clave)) {
+      _errorCatalogo = '"$nombre" no es una categoría de $rubro.';
+      return false;
+    }
+    if (!_categoriasDesactivadas.contains(clave)) return true;
+
+    final actualizadas = {..._categoriasDesactivadas}..remove(clave);
+    try {
+      await _repository.guardarCategoriasDesactivadas(
+        uid,
+        actualizadas.toList(),
+        negocioId: negocioId,
+      );
+    } catch (_) {
+      _errorCatalogo =
+          'No se pudo reactivar la categoría. Revisa tu conexión.';
+      return false;
+    }
+
+    _categoriasDesactivadas
+      ..clear()
+      ..addAll(actualizadas);
+    _errorCatalogo = null;
+    notifyListeners();
+    return true;
+  }
+
   /// ¿La clave corresponde a una categoría del preset del rubro?
   ///
   /// Se consulta el preset, no [_categorias]: esa lista es un borrador que el

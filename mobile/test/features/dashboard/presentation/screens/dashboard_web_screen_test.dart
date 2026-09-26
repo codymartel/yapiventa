@@ -1298,7 +1298,11 @@ void main() {
       );
       expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
       expect(find.text('Categorías de productos'), findsOneWidget);
-      expect(provider.categorias, contains('Frutos secos'));
+      // La alta va a `categoriasPersonalizadas`, no al borrador legacy.
+      expect(
+        provider.categoriasPersonalizadas.map((categoria) => categoria.clave),
+        contains('frutos secos'),
+      );
       expect(find.text('Frutos secos'), findsOneWidget);
 
       final sidebar = tester.widget<DashboardSidebar>(
