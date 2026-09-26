@@ -54,7 +54,7 @@ void main() {
   }
 
   Future<void> irAUnidades(WidgetTester tester) async {
-    await tester.tap(find.text('Unidades de venta'));
+    await tester.tap(find.text('Presentaciones'));
     await tester.pumpAndSettle();
   }
 
@@ -168,7 +168,7 @@ void main() {
   }
 
   // ── 1. Render de las dos pestañas ──────────────────────────────────────
-  testWidgets('renderiza las dos pestañas: Categorías y Unidades de venta', (
+  testWidgets('renderiza las dos pestañas: Categorías y Presentaciones', (
     tester,
   ) async {
     await mostrarPaso(tester);
@@ -176,7 +176,31 @@ void main() {
     expect(find.byKey(const Key('pestana-categorias')), findsOneWidget);
     expect(find.byKey(const Key('pestana-unidades')), findsOneWidget);
     expect(find.text('Categorías'), findsOneWidget);
-    expect(find.text('Unidades de venta'), findsOneWidget);
+    expect(find.text('Presentaciones'), findsOneWidget);
+    expect(find.text('Unidades de venta'), findsNothing);
+  });
+
+  // ── 1b. Barra de pestañas compacta ─────────────────────────────────────
+  testWidgets('las tres pestañas comparten una barra baja de la misma anchura', (
+    tester,
+  ) async {
+    await mostrarPaso(tester, size: const Size(1280, 1200));
+
+    final anchos = [
+      for (final clave in const [
+        'pestana-categorias',
+        'pestana-unidades',
+        'pestana-medidas',
+      ])
+        tester.getSize(find.byKey(Key(clave))).width,
+    ];
+    final alto = tester.getSize(find.byKey(const Key('pestana-categorias'))).height;
+
+    // Bajo, no tres botones gigantes.
+    expect(alto, inInclusiveRange(44, 48));
+    // Las tres del mismo ancho.
+    expect(anchos[1], moreOrLessEquals(anchos[0], epsilon: 0.01));
+    expect(anchos[2], moreOrLessEquals(anchos[0], epsilon: 0.01));
   });
 
   // ── 2. Categorías activa inicialmente ──────────────────────────────────
@@ -209,7 +233,7 @@ void main() {
     );
 
     await irAUnidades(tester);
-    expect(find.text('Unidad o presentación'), findsOneWidget);
+    expect(find.text('Presentaciones'), findsWidgets);
     expect(find.byKey(const Key('seccion-sugeridas')), findsNothing);
 
     await irACategorias(tester);

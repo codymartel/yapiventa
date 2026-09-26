@@ -21,7 +21,7 @@ import 'seccion_resumen_catalogo.dart';
 //   - "Categorías": diseño nuevo con cabecera (título + contador + botón),
 //     tarjetas de categorías sugeridas y personalizadas, y diálogos con
 //     validación mejorada.
-//   - "Unidades de venta": la interfaz "Unidad o presentación" con el
+//   - "Presentaciones": cómo se presenta y se vende cada producto, con el
 //     catálogo cerrado de presentaciones (obligatorias, "Más opciones" y
 //     personalizadas), sus formatos y su editor.
 //   - "Medidas": la interfaz "Venta por medida" con las medidas del rubro
@@ -49,7 +49,7 @@ class PasoCatalogo extends StatelessWidget {
           activa: p.catalogoPestana,
           onCambiar: p.cambiarCatalogoPestana,
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 14),
         if (p.catalogoPestana == 1)
           const SeccionPresentaciones()
         else if (p.catalogoPestana == 2)
@@ -64,9 +64,15 @@ class PasoCatalogo extends StatelessWidget {
 }
 
 // ═════════════════════════════════════════════════════════════════════════
-// Selector de pestañas (Categorías / Unidades de venta / Medidas)
+// Selector de pestañas (Categorías / Presentaciones / Medidas)
 // ═════════════════════════════════════════════════════════════════════════
-// Escritorio: alto 52 px, ancho máximo 500 px, cada pestaña un tercio.
+// Las tres pestañas responden a lo que la persona configura en el catálogo:
+//   - Categorías: cómo organiza sus productos.
+//   - Presentaciones: cómo se presenta y se vende (unidad, botella, caja,
+//     paquete, set…).
+//   - Medidas: venta por peso, volumen, longitud o área.
+//
+// Escritorio: alto 46 px, ancho máximo 500 px, las tres del mismo ancho.
 // Móvil: ocupa todo el ancho disponible, sin scroll horizontal.
 class _SelectorPestanas extends StatelessWidget {
   final int activa;
@@ -83,10 +89,10 @@ class _SelectorPestanas extends StatelessWidget {
             : constraints.maxWidth;
         return Container(
           width: ancho,
-          height: 52,
+          height: 46,
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
             border: Border.all(color: AppColors.border),
           ),
           child: Row(
@@ -103,8 +109,8 @@ class _SelectorPestanas extends StatelessWidget {
               Expanded(
                 child: _Pestana(
                   clave: 'pestana-unidades',
-                  etiqueta: 'Unidades de venta',
-                  icono: Icons.straighten,
+                  etiqueta: 'Presentaciones',
+                  icono: Icons.inventory_2_outlined,
                   activa: activa == 1,
                   onTap: () => onCambiar(1),
                 ),
@@ -143,6 +149,8 @@ class _Pestana extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Activa en blanco sobre el fondo azul; inactiva apagada. Es el contraste
+    // del fondo, no el tamaño, lo que marca en cuál está la persona.
     final colorTexto = activa ? Colors.white : AppColors.texto;
     return Material(
       key: Key(clave),
@@ -153,18 +161,19 @@ class _Pestana extends StatelessWidget {
           child: FittedBox(
             fit: BoxFit.scaleDown,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 6),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(icono, size: 20, color: colorTexto),
-                  const SizedBox(width: 8),
+                  Icon(icono, size: 15, color: colorTexto),
+                  const SizedBox(width: 5),
                   Text(
                     etiqueta,
+                    maxLines: 1,
                     style: TextStyle(
                       color: colorTexto,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      fontWeight: activa ? FontWeight.w700 : FontWeight.w500,
                     ),
                   ),
                 ],
@@ -1231,7 +1240,7 @@ String _normalizarNombrePresentacion(String texto) =>
     _normalizarNombreCategoria(texto);
 
 // ═════════════════════════════════════════════════════════════════════════
-// Sección "Unidad o presentación"
+// Sección "Presentaciones"
 // ═════════════════════════════════════════════════════════════════════════
 // Reemplaza el panel de unidades legacy (Entera/Fraccionaria, fracciones por
 // comas, unidad escrita libremente). Muestra el catálogo cerrado de
@@ -1337,7 +1346,7 @@ class _CabeceraPresentaciones extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final titulo = const Text(
-      'Unidad o presentación',
+      'Presentaciones',
       style: TextStyle(
         color: AppColors.texto,
         fontSize: 22,
@@ -1345,7 +1354,7 @@ class _CabeceraPresentaciones extends StatelessWidget {
       ),
     );
     final descripcion = const Text(
-      'Define en qué forma se vende cada producto: completa, '
+      'Define en qué forma se presenta y se vende cada producto: completa, '
       'opcional o personalizada, con sus tamaños.',
       maxLines: 2,
       overflow: TextOverflow.ellipsis,

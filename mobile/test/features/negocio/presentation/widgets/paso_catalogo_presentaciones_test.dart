@@ -45,7 +45,7 @@ void main() {
   }
 
   Future<void> irAUnidades(WidgetTester tester) async {
-    await tester.tap(find.text('Unidades de venta'));
+    await tester.tap(find.text('Presentaciones'));
     await tester.pumpAndSettle();
   }
 
@@ -58,7 +58,7 @@ void main() {
     await mostrarPaso(tester);
     await irAUnidades(tester);
 
-    expect(find.text('Unidad o presentación'), findsOneWidget);
+    expect(find.text('Presentaciones'), findsWidgets);
     expect(find.text('Obligatorias'), findsOneWidget);
     expect(find.text('Más opciones'), findsNothing);
     expect(find.text('Presentaciones personalizadas'), findsNothing);
@@ -318,7 +318,7 @@ void main() {
     provider.irAPaso(1);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Unidades de venta'));
+    await tester.tap(find.text('Presentaciones'));
     await tester.pumpAndSettle();
     await tester.ensureVisible(
       find.byKey(const Key('editar-presentacion-botella')),
