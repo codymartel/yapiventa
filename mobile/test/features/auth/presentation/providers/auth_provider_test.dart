@@ -53,6 +53,18 @@ void main() {
 
     expect(provider.status, AuthStatus.emailNotVerified);
     expect(provider.isLoading, isFalse);
+    // Un login no afirma ninguna aceptación: ni ahora ni al confirmar el
+    // correo después. El perfil lo asegura AccesoProvider, sin ese
+    // parámetro.
+    verifyNever(
+      () => userRepository.asegurarPerfilYPlan(
+        uid: any(named: 'uid'),
+        email: any(named: 'email'),
+        limiteProductos: any(named: 'limiteProductos'),
+        minimoProductos: any(named: 'minimoProductos'),
+        terminosAceptados: any(named: 'terminosAceptados'),
+      ),
+    );
   });
 
   test('ignora un segundo login mientras el primero está pendiente', () async {
@@ -190,7 +202,7 @@ void main() {
           email: 'nuevo@example.com',
           limiteProductos: 20,
           minimoProductos: 1,
-          terminosAceptados: any(named: 'terminosAceptados'),
+          terminosAceptados: true,
         ),
       ).thenAnswer((_) async => (existiaPerfil: false, negocioId: null));
 
@@ -205,6 +217,17 @@ void main() {
       // El camino feliz NO cierra sesión: nada revierte lo que se logró.
       verifyNever(() => authRepository.cerrarSesion());
       verifyNever(() => googleSignInService.cerrarSesionGoogle());
+      // Google en modo registro sí es un registro: la pantalla tenía la
+      // casilla bloqueante, así que la aceptación sí se escribe.
+      verify(
+        () => userRepository.asegurarPerfilYPlan(
+          uid: 'usuario-1',
+          email: 'nuevo@example.com',
+          limiteProductos: 20,
+          minimoProductos: 1,
+          terminosAceptados: true,
+        ),
+      ).called(1);
     });
 
     test('si falla el perfil, cierra Firebase y limpia Google', () async {
@@ -428,26 +451,28 @@ void main() {
         password: 'secreto',
       ),
     ).thenAnswer((_) async => usuario);
-when(
+    when(
         () => userRepository.asegurarPerfilYPlan(
           uid: 'usuario-1',
           email: 'nuevo@example.com',
           limiteProductos: 20,
           minimoProductos: 1,
-          terminosAceptados: any(named: 'terminosAceptados'),
+          terminosAceptados: true,
         ),
       ).thenAnswer((_) async => (existiaPerfil: false, negocioId: null));
 
     await provider.registrarse('nuevo@example.com', 'secreto');
 
     expect(provider.status, AuthStatus.emailNotVerified);
+    // El registro sí es un registro: la casilla estaba marcada, así que la
+    // aceptación se escribe una vez y no se vuelve a afirmar al verificar.
     verify(
       () => userRepository.asegurarPerfilYPlan(
         uid: 'usuario-1',
         email: 'nuevo@example.com',
         limiteProductos: 20,
         minimoProductos: 1,
-        terminosAceptados: any(named: 'terminosAceptados'),
+        terminosAceptados: true,
       ),
     ).called(1);
   });
