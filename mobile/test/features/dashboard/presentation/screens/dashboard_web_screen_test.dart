@@ -1280,18 +1280,25 @@ void main() {
       expect(find.byKey(const Key('seccion-sugeridas')), findsOneWidget);
       final barrerasIniciales = find.byType(ModalBarrier).evaluate().length;
 
+      // El rótulo del botón de la cabecera también es 'Nueva categoría', así que
+      // el título del formulario se busca acotado al diálogo.
+      Finder tituloFormulario() => find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.text('Nueva categoría'),
+      );
+
       await tester.tap(find.byTooltip('Agregar categoría'));
       await tester.pumpAndSettle();
-      expect(find.text('Nueva categoría'), findsOneWidget);
+      expect(tituloFormulario(), findsOneWidget);
 
       await tester.enterText(
-        find.widgetWithText(TextField, 'Nombre de la categoría'),
+        find.byKey(const Key('campo-nombre-categoria')),
         'Frutos secos',
       );
-      await tester.tap(find.widgetWithText(ElevatedButton, 'Guardar'));
+      await tester.tap(find.byKey(const Key('guardar-categoria')));
       await tester.pumpAndSettle();
 
-      expect(find.text('Nueva categoría'), findsNothing);
+      expect(tituloFormulario(), findsNothing);
       expect(
         find.byType(ModalBarrier).evaluate().length,
         barrerasIniciales,

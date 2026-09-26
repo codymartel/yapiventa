@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/core/theme/app_colors.dart';
 import 'package:mobile/features/negocio/data/negocio_repository.dart';
 import 'package:mobile/features/negocio/domain/models/catalogo_venta/preset_venta_rubro.dart';
+import 'package:mobile/features/negocio/domain/models/categoria_personalizada.dart';
 import 'package:mobile/features/negocio/presentation/providers/configuracion_negocio_provider.dart';
 import 'package:mobile/features/negocio/presentation/widgets/configuracion_negocio_content.dart';
 import 'package:mobile/features/negocio/presentation/widgets/paso_catalogo.dart';
@@ -16,6 +20,7 @@ void main() {
     String? negocioId,
     FakeFirebaseFirestore? firestore,
     Map<String, dynamic>? configuracionInicial,
+    NegocioRepository? repositorio,
     Size size = const Size(900, 2400),
     TextScaler textScaler = TextScaler.noScaling,
   }) async {
@@ -28,7 +33,7 @@ void main() {
       rubro: rubro,
       negocioId: negocioId,
       configuracionInicial: configuracionInicial,
-      repository: NegocioRepository(firestore: db),
+      repository: repositorio ?? NegocioRepository(firestore: db),
     );
     addTearDown(provider.dispose);
 
@@ -93,6 +98,34 @@ void main() {
 
   Finder finderDialogo() => find.byType(AlertDialog);
 
+  /// Botón de alta de la cabecera de Categorías. Se ancla a su key porque su
+  /// rótulo `Nueva categoría` es el mismo que el del título del formulario.
+  Finder botonNuevaCategoria() => find.byKey(const Key('boton-nueva-categoria'));
+
+  /// Título del formulario de alta, acotado al diálogo para no confundirse con
+  /// el rótulo del botón de la cabecera.
+  Finder tituloDialogoCategoria() => find.descendant(
+    of: find.byType(AlertDialog),
+    matching: find.text('Nueva categoría'),
+  );
+
+  // El formulario de alta/edición es un solo componente, así que se busca por
+  // sus keys y no por rótulos: el principal cambia entre 'Crear categoría' y
+  // 'Guardar cambios' según el estado.
+  Finder formularioCategoria() => find.byKey(const Key('dialogo-categoria'));
+
+  Finder campoNombreCategoria() =>
+      find.byKey(const Key('campo-nombre-categoria'));
+
+  Finder botonGuardarCategoria() => find.byKey(const Key('guardar-categoria'));
+
+  Finder botonCancelarCategoria() => find.byKey(const Key('cancelar-categoria'));
+
+  /// Zona de error bajo el campo (ocupa el lugar de la ayuda).
+  Finder errorCategoria() => find.byKey(const Key('error-nombre-categoria'));
+
+  Finder ayudaCategoria() => find.byKey(const Key('ayuda-nombre-categoria'));
+
   /// Abre el menú `...` de una categoría propia.
   Future<void> abrirMenu(WidgetTester tester, String tarjeta) async {
     await tester.ensureVisible(find.byKey(Key('categoria-propia-$tarjeta')));
@@ -124,12 +157,14 @@ void main() {
   };
 
   /// Mapa de la colección de una personalizada, para leer lo persistido.
+  /// Devuelve vacía si el documento todavía no existe.
   Future<List<Map<String, dynamic>>> personalizadasGuardadas(
     FakeFirebaseFirestore db,
   ) async {
     final datos = (await db.collection('negocios').doc('negocio-1').get()).data();
-    return (datos?['categoriasPersonalizadas'] as List)
-        .cast<Map<String, dynamic>>();
+    return (datos?['categoriasPersonalizadas'] as List?)
+            ?.cast<Map<String, dynamic>>() ??
+        const [];
   }
 
   // ── 1. Render de las dos pestañas ──────────────────────────────────────
@@ -234,18 +269,18 @@ void main() {
     final db = FakeFirebaseFirestore();
     await mostrarPaso(tester, negocioId: 'negocio-1', firestore: db);
 
-    await tester.tap(find.text('+ Nueva categoría'));
+    await tester.tap(botonNuevaCategoria());
     await tester.pumpAndSettle();
-    expect(find.text('Nueva categoría'), findsOneWidget);
+    expect(tituloDialogoCategoria(), findsOneWidget);
 
     await tester.enterText(
-      find.byKey(const Key('campo-nombre-categoria')),
+      campoNombreCategoria(),
       'Ofertas',
     );
-    await tester.tap(find.widgetWithText(ElevatedButton, 'Guardar'));
+    await tester.tap(botonGuardarCategoria());
     await tester.pumpAndSettle();
 
-    expect(find.text('Nueva categoría'), findsNothing);
+    expect(tituloDialogoCategoria(), findsNothing);
     expect(find.byKey(const Key('categoria-propia-ofertas')), findsOneWidget);
     expect(estadoPropia('ofertas', 'Activa'), findsOneWidget);
     // Aparece bajo "Tus categorías", no junto a las sugeridas.
@@ -276,16 +311,16 @@ void main() {
   testWidgets('cancelar cierra el diálogo sin crear', (tester) async {
     final provider = await mostrarPaso(tester);
 
-    await tester.tap(find.text('+ Nueva categoría'));
+    await tester.tap(botonNuevaCategoria());
     await tester.pumpAndSettle();
     await tester.enterText(
-      find.byKey(const Key('campo-nombre-categoria')),
+      campoNombreCategoria(),
       'Temporal',
     );
-    await tester.tap(find.text('Cancelar'));
+    await tester.tap(botonCancelarCategoria());
     await tester.pumpAndSettle();
 
-    expect(find.text('Nueva categoría'), findsNothing);
+    expect(tituloDialogoCategoria(), findsNothing);
     expect(provider.categoriasPersonalizadas, isEmpty);
     expect(find.byKey(const Key('categoria-card-Temporal')), findsNothing);
   });
@@ -296,23 +331,23 @@ void main() {
   ) async {
     await mostrarPaso(tester);
 
-    await tester.tap(find.text('+ Nueva categoría'));
+    await tester.tap(botonNuevaCategoria());
     await tester.pumpAndSettle();
     await tester.enterText(
-      find.byKey(const Key('campo-nombre-categoria')),
+      campoNombreCategoria(),
       'Bébidas ',
     );
-    await tester.tap(find.widgetWithText(ElevatedButton, 'Guardar'));
+    await tester.tap(botonGuardarCategoria());
     await tester.pumpAndSettle();
 
-    expect(find.text('Nueva categoría'), findsOneWidget);
+    expect(tituloDialogoCategoria(), findsOneWidget);
     expect(
       find.text('Ese nombre ya es una categoría sugerida de Bodega.'),
       findsOneWidget,
     );
     expect(find.textContaining('Bébidas'), findsOneWidget);
 
-    await tester.tap(find.text('Cancelar'));
+    await tester.tap(botonCancelarCategoria());
     await tester.pumpAndSettle();
   });
 
@@ -327,22 +362,22 @@ void main() {
       }),
     );
 
-    await tester.tap(find.text('+ Nueva categoría'));
+    await tester.tap(botonNuevaCategoria());
     await tester.pumpAndSettle();
     await tester.enterText(
-      find.byKey(const Key('campo-nombre-categoria')),
+      campoNombreCategoria(),
       '  Dulces ',
     );
-    await tester.tap(find.widgetWithText(ElevatedButton, 'Guardar'));
+    await tester.tap(botonGuardarCategoria());
     await tester.pumpAndSettle();
 
-    expect(find.text('Nueva categoría'), findsOneWidget);
+    expect(tituloDialogoCategoria(), findsOneWidget);
     expect(
       find.text('Ya existe una categoría con ese nombre.'),
       findsOneWidget,
     );
 
-    await tester.tap(find.text('Cancelar'));
+    await tester.tap(botonCancelarCategoria());
     await tester.pumpAndSettle();
   });
 
@@ -366,10 +401,10 @@ void main() {
     expect(find.text('Editar categoría'), findsOneWidget);
 
     await tester.enterText(
-      find.byKey(const Key('campo-nombre-categoria')),
+      campoNombreCategoria(),
       'Promociones',
     );
-    await tester.tap(find.widgetWithText(ElevatedButton, 'Guardar'));
+    await tester.tap(botonGuardarCategoria());
     await tester.pumpAndSettle();
 
     final customizing = provider.categoriasPersonalizadas.single;
@@ -850,13 +885,13 @@ void main() {
     provider.irAPaso(1);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('+ Nueva categoría'));
+    await tester.tap(botonNuevaCategoria());
     await tester.pumpAndSettle();
     await tester.enterText(
-      find.byKey(const Key('campo-nombre-categoria')),
+      campoNombreCategoria(),
       'Frutos secos',
     );
-    await tester.tap(find.widgetWithText(ElevatedButton, 'Guardar'));
+    await tester.tap(botonGuardarCategoria());
     await tester.pumpAndSettle();
 
     expect(find.byType(ConfiguracionNegocioContent), findsOneWidget);
@@ -889,43 +924,354 @@ void main() {
   testWidgets('rechaza nombres de menos de 2 caracteres', (tester) async {
     await mostrarPaso(tester);
 
-    await tester.tap(find.text('+ Nueva categoría'));
+    await tester.tap(botonNuevaCategoria());
     await tester.pumpAndSettle();
     await tester.enterText(
-      find.byKey(const Key('campo-nombre-categoria')),
+      campoNombreCategoria(),
       'a',
     );
-    await tester.tap(find.widgetWithText(ElevatedButton, 'Guardar'));
+    await tester.tap(botonGuardarCategoria());
     await tester.pumpAndSettle();
 
-    expect(find.text('Nueva categoría'), findsOneWidget);
+    expect(tituloDialogoCategoria(), findsOneWidget);
     expect(
       find.text('El nombre debe tener al menos 2 caracteres.'),
       findsOneWidget,
     );
-    await tester.tap(find.text('Cancelar'));
+    await tester.tap(botonCancelarCategoria());
     await tester.pumpAndSettle();
   });
 
   testWidgets('rechaza nombres formados solo por símbolos', (tester) async {
     await mostrarPaso(tester);
 
-    await tester.tap(find.text('+ Nueva categoría'));
+    await tester.tap(botonNuevaCategoria());
     await tester.pumpAndSettle();
     await tester.enterText(
-      find.byKey(const Key('campo-nombre-categoria')),
+      campoNombreCategoria(),
       '@@@',
     );
-    await tester.tap(find.widgetWithText(ElevatedButton, 'Guardar'));
+    await tester.tap(botonGuardarCategoria());
     await tester.pumpAndSettle();
 
-    expect(find.text('Nueva categoría'), findsOneWidget);
+    expect(tituloDialogoCategoria(), findsOneWidget);
     expect(
       find.text('El nombre debe incluir letras o números.'),
       findsOneWidget,
     );
-    await tester.tap(find.text('Cancelar'));
+    await tester.tap(botonCancelarCategoria());
     await tester.pumpAndSettle();
+  });
+
+  // ── Cabecera: título/contador a la izquierda, botón a la derecha ───────
+  testWidgets('el botón de la cabecera cierra contra las tarjetas', (
+    tester,
+  ) async {
+    await mostrarPaso(tester, size: const Size(1000, 2400));
+
+    final boton = botonNuevaCategoria();
+    // La rejilla de tarjetas sugeridas es la referencia del "borde derecho del
+    // contenido": mide la fila completa, no una card suelta.
+    final grilla = find.descendant(
+      of: find.byKey(const Key('seccion-sugeridas')),
+      matching: find.byType(Wrap),
+    );
+
+    // Mismo borde derecho que el contenido, sin offsets ni paddings a mano.
+    expect(
+      tester.getTopRight(boton).dx,
+      moreOrLessEquals(tester.getTopRight(grilla).dx, epsilon: 0.01),
+    );
+    // Título y contador se quedan a la izquierda, en la misma cabecera.
+    expect(find.text('Organiza tus productos'), findsOneWidget);
+    expect(find.textContaining('activas ·'), findsOneWidget);
+    // El rótulo no repite el `Icons.add`.
+    expect(find.text('Nueva categoría'), findsOneWidget);
+    expect(find.text('+ Nueva categoría'), findsNothing);
+  });
+
+  testWidgets('en anchos pequeños el botón baja debajo del título', (
+    tester,
+  ) async {
+    await mostrarPaso(tester, size: const Size(360, 2400));
+
+    final boton = botonNuevaCategoria();
+    final titulo = find.text('Organiza tus productos');
+
+    expect(
+      tester.getTopLeft(boton).dy,
+      greaterThan(tester.getBottomLeft(titulo).dy),
+    );
+    // Ocupa el ancho del contenido, así también cierra a la derecha.
+    expect(
+      tester.getSize(boton).width,
+      moreOrLessEquals(tester.getSize(titulo).width, epsilon: 0.01),
+    );
+  });
+
+  // ── Formulario de categoría ─────────────────────────────────────────────
+  // Alta y edición comparten un único componente: estos tests fijan el
+  // contrato visual (título, label, ayuda, rótulos del botón) sin repetir los
+  // que ya cubren la validación y la persistencia.
+  group('formulario de categoría', () {
+    testWidgets('abre "Nueva categoría" con label, ayuda y botón de alta', (
+      tester,
+    ) async {
+      await mostrarPaso(tester);
+
+      await tester.tap(botonNuevaCategoria());
+      await tester.pumpAndSettle();
+
+      expect(formularioCategoria(), findsOneWidget);
+      expect(tituloDialogoCategoria(), findsOneWidget);
+      expect(find.text('Nombre de la categoría'), findsOneWidget);
+      expect(find.text('Ej. Comida para mascotas'), findsOneWidget);
+      expect(ayudaCategoria(), findsOneWidget);
+      expect(find.text('Crear categoría'), findsOneWidget);
+      expect(find.text('Guardar cambios'), findsNothing);
+      expect(errorCategoria(), findsNothing);
+      // El campo arranca vacío y con el foco para escribir de inmediato.
+      expect(tester.widget<TextField>(campoNombreCategoria()).controller?.text, '');
+      expect(
+        tester
+            .widget<EditableText>(
+              find.descendant(
+                of: campoNombreCategoria(),
+                matching: find.byType(EditableText),
+              ),
+            )
+            .focusNode
+            .hasFocus,
+        isTrue,
+      );
+    });
+
+    testWidgets('un campo vacío no guarda y lo explica bajo el campo', (
+      tester,
+    ) async {
+      final db = FakeFirebaseFirestore();
+      final provider = await mostrarPaso(
+        tester,
+        negocioId: 'negocio-1',
+        firestore: db,
+      );
+
+      await tester.tap(botonNuevaCategoria());
+      await tester.pumpAndSettle();
+      await tester.tap(botonGuardarCategoria());
+      await tester.pumpAndSettle();
+
+      expect(formularioCategoria(), findsOneWidget);
+      expect(errorCategoria(), findsOneWidget);
+      expect(
+        find.text('Escribe el nombre de la categoría.'),
+        findsOneWidget,
+      );
+      // El error sustituye a la ayuda: la zona bajo el campo no se duplica.
+      expect(ayudaCategoria(), findsNothing);
+      expect(provider.categoriasPersonalizadas, isEmpty);
+      expect(await personalizadasGuardadas(db), isEmpty);
+    });
+
+    testWidgets('un duplicado muestra el error y conserva lo escrito', (
+      tester,
+    ) async {
+      await mostrarPaso(
+        tester,
+        configuracionInicial: seedPersonalizadas({
+          'dulces': (activa: true),
+        }),
+      );
+
+      await tester.tap(botonNuevaCategoria());
+      await tester.pumpAndSettle();
+      await tester.enterText(campoNombreCategoria(), '  Dulces ');
+      await tester.tap(botonGuardarCategoria());
+      await tester.pumpAndSettle();
+
+      expect(errorCategoria(), findsOneWidget);
+      expect(
+        find.text('Ya existe una categoría con ese nombre.'),
+        findsOneWidget,
+      );
+      expect(
+        tester.widget<TextField>(campoNombreCategoria()).controller?.text,
+        '  Dulces ',
+        reason: 'corregir el nombre no obliga a reescribirlo desde cero',
+      );
+
+      await tester.tap(botonCancelarCategoria());
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('una categoría válida se crea y cierra el formulario', (
+      tester,
+    ) async {
+      final db = FakeFirebaseFirestore();
+      final provider = await mostrarPaso(
+        tester,
+        negocioId: 'negocio-1',
+        firestore: db,
+      );
+
+      await tester.tap(botonNuevaCategoria());
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        campoNombreCategoria(),
+        'Comida para mascotas',
+      );
+      await tester.tap(botonGuardarCategoria());
+      await tester.pumpAndSettle();
+
+      expect(formularioCategoria(), findsNothing);
+      expect(provider.categoriasPersonalizadas.single.nombre,
+          'Comida para mascotas');
+      expect(
+        (await personalizadasGuardadas(db)).map((c) => c['clave']),
+        contains('comida para mascotas'),
+      );
+    });
+
+    testWidgets('Editar precarga el nombre existente', (tester) async {
+      await mostrarPaso(
+        tester,
+        configuracionInicial: seedPersonalizadas({
+          'ofertas': (activa: true),
+        }),
+      );
+
+      await tester.ensureVisible(
+        find.byKey(const Key('categoria-propia-ofertas')),
+      );
+      await tester.tap(accionTarjetaPropia('ofertas'));
+      await tester.pumpAndSettle();
+
+      expect(formularioCategoria(), findsOneWidget);
+      expect(find.text('Editar categoría'), findsOneWidget);
+      // Mismo formulario, otro rótulo: solo cambia el estado.
+      expect(find.text('Guardar cambios'), findsOneWidget);
+      expect(find.text('Crear categoría'), findsNothing);
+      expect(find.text('Nombre de la categoría'), findsOneWidget);
+      expect(
+        tester.widget<TextField>(campoNombreCategoria()).controller?.text,
+        'Ofertas',
+      );
+    });
+
+    testWidgets('guardar la edición actualiza el nombre y conserva la clave', (
+      tester,
+    ) async {
+      final db = FakeFirebaseFirestore();
+      final provider = await mostrarPaso(
+        tester,
+        negocioId: 'negocio-1',
+        firestore: db,
+        configuracionInicial: seedPersonalizadas({
+          'ofertas': (activa: true),
+        }),
+      );
+
+      await tester.ensureVisible(
+        find.byKey(const Key('categoria-propia-ofertas')),
+      );
+      await tester.tap(accionTarjetaPropia('ofertas'));
+      await tester.pumpAndSettle();
+      await tester.enterText(campoNombreCategoria(), 'Promociones');
+      await tester.tap(botonGuardarCategoria());
+      await tester.pumpAndSettle();
+
+      expect(formularioCategoria(), findsNothing);
+      final actualizada = provider.categoriasPersonalizadas.single;
+      expect(actualizada.clave, 'ofertas');
+      expect(actualizada.nombre, 'Promociones');
+      expect(
+        (await personalizadasGuardadas(db)).single['nombre'],
+        'Promociones',
+      );
+    });
+
+    testWidgets('el loading deshabilita el botón y evita el doble submit', (
+      tester,
+    ) async {
+      final db = FakeFirebaseFirestore();
+      final repositorio = _RepositorioLento(db);
+      final provider = await mostrarPaso(
+        tester,
+        negocioId: 'negocio-1',
+        firestore: db,
+        repositorio: repositorio,
+      );
+
+      await tester.tap(botonNuevaCategoria());
+      await tester.pumpAndSettle();
+      await tester.enterText(campoNombreCategoria(), 'Lentos');
+      await tester.tap(botonGuardarCategoria());
+      // Un solo frame: la escritura sigue retenida por el repositorio.
+      await tester.pump();
+
+      expect(
+        find.descendant(
+          of: formularioCategoria(),
+          matching: find.byType(CircularProgressIndicator),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Crear categoría'), findsNothing);
+      expect(
+        tester.widget<ElevatedButton>(botonGuardarCategoria()).enabled,
+        isFalse,
+        reason: 'mientras guarda no se puede volver a enviar',
+      );
+      // Enter tampoco sirve de atajo para saltarse el bloqueo.
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
+      expect(repositorio.llamadas, 1);
+      expect(provider.categoriasPersonalizadas, isEmpty);
+
+      repositorio.liberar();
+      await tester.pumpAndSettle();
+
+      expect(formularioCategoria(), findsNothing);
+      expect(repositorio.llamadas, 1);
+      expect(provider.categoriasPersonalizadas.single.nombre, 'Lentos');
+    });
+
+    testWidgets('cancelar y Escape cierran sin modificar nada', (tester) async {
+      final db = FakeFirebaseFirestore();
+      final provider = await mostrarPaso(
+        tester,
+        negocioId: 'negocio-1',
+        firestore: db,
+        configuracionInicial: seedPersonalizadas({
+          'ofertas': (activa: true),
+        }),
+      );
+
+      // Cancelar en el alta.
+      await tester.tap(botonNuevaCategoria());
+      await tester.pumpAndSettle();
+      await tester.enterText(campoNombreCategoria(), 'Temporal');
+      await tester.tap(botonCancelarCategoria());
+      await tester.pumpAndSettle();
+
+      expect(formularioCategoria(), findsNothing);
+      expect(provider.categoriasPersonalizadas.map((c) => c.clave), ['ofertas']);
+      expect(await personalizadasGuardadas(db), isEmpty);
+
+      // Escape en la edición.
+      await tester.ensureVisible(
+        find.byKey(const Key('categoria-propia-ofertas')),
+      );
+      await tester.tap(accionTarjetaPropia('ofertas'));
+      await tester.pumpAndSettle();
+      await tester.enterText(campoNombreCategoria(), 'Renombrada');
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+
+      expect(formularioCategoria(), findsNothing);
+      expect(provider.categoriasPersonalizadas.single.nombre, 'Ofertas');
+      expect(await personalizadasGuardadas(db), isEmpty);
+    });
   });
 
   // ── Matriz responsive: sin overflow, botón visible, tabs conservan ─────
@@ -949,7 +1295,7 @@ void main() {
           textScaler: TextScaler.linear(escala),
         );
 
-        expect(find.text('+ Nueva categoría'), findsOneWidget);
+        expect(botonNuevaCategoria(), findsOneWidget);
         expect(find.text('Categorías'), findsOneWidget);
         await tester.drag(find.byType(ListView), const Offset(0, -2000));
         await tester.pumpAndSettle();
@@ -967,9 +1313,39 @@ void main() {
           find.byKey(const Key('categoria-card-Abarrotes')),
           findsOneWidget,
         );
-        expect(find.text('+ Nueva categoría'), findsOneWidget);
+        expect(botonNuevaCategoria(), findsOneWidget);
         expect(tester.takeException(), isNull);
       });
     }
+  }
+}
+
+/// Repositorio que retiene la escritura de categorías hasta que se le libera.
+/// Permite observar el estado "guardando" sin depender de timers ni de esperas.
+class _RepositorioLento extends NegocioRepository {
+  _RepositorioLento(FakeFirebaseFirestore firestore)
+    : super(firestore: firestore);
+
+  /// Escrituras pedidas: si el formulario permitiera el doble submit, esta
+  /// cuenta sube a 2.
+  int llamadas = 0;
+
+  final Completer<void> _liberar = Completer<void>();
+
+  void liberar() => _liberar.complete();
+
+  @override
+  Future<void> guardarCategoriasPersonalizadas(
+    String uid,
+    List<CategoriaPersonalizada> categorias, {
+    String? negocioId,
+  }) async {
+    llamadas++;
+    await _liberar.future;
+    return super.guardarCategoriasPersonalizadas(
+      uid,
+      categorias,
+      negocioId: negocioId,
+    );
   }
 }

@@ -254,17 +254,53 @@ class _PanelCategorias extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        EncabezadoPantalla.sinPadding(
-          // No repite "Categorías": ese nombre ya está en la pestaña activa.
-          titulo: 'Organiza tus productos',
-          subtitulo:
-              '${sugeridasActivas + propiasActivas} activas · '
-              '${presetCategorias.length} sugeridas · '
-              '$propiasActivas ${propiasActivas == 1 ? 'propia' : 'propias'}',
-          acciones: _BotonNuevaCategoria(
-            onNueva: () =>
-                _dialogoGuardarCategoria(context, uid: uid, nuevo: true),
-          ),
+        // ── Cabecera de la pestaña ────────────────────────────────────────
+        // Título + contador a la izquierda y el botón pegado al BORDE
+        // DERECHO del contenido, el mismo que cierra las tarjetas.
+        //
+        // El botón va como hijo normal del Row (no `Flexible`) y el texto es el
+        // único que `Expanded`: así todo el espacio sobrante se lo queda el
+        // texto y el botón queda al extremo, en vez de flotar a media anchura.
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final textos = EncabezadoPantalla.sinPadding(
+              // No repite "Categorías": ese nombre ya está en la pestaña activa.
+              titulo: 'Organiza tus productos',
+              subtitulo:
+                  '${sugeridasActivas + propiasActivas} activas · '
+                  '${presetCategorias.length} sugeridas · '
+                  '$propiasActivas ${propiasActivas == 1 ? 'propia' : 'propias'}',
+            );
+            final boton = _BotonNuevaCategoria(
+              onNueva: () =>
+                  _dialogoGuardarCategoria(context, uid: uid, nuevo: true),
+            );
+            // El botón solo se queda a la derecha del título cuando caben los
+            // dos; si no, baja debajo. La cuenta se hace con la escala de texto
+            // activa porque con el texto muy ampliado el rótulo ocupa bastante
+            // más y empujarlo a la fila lo desbordaría.
+            final escala = MediaQuery.textScalerOf(context).scale(1);
+            final enFila = constraints.maxWidth >= 16 + 310 * escala;
+            if (!enFila) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  textos,
+                  const SizedBox(height: 10),
+                  boton,
+                ],
+              );
+            }
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(child: textos),
+                const SizedBox(width: 16),
+                boton,
+              ],
+            );
+          },
         ),
         const SizedBox(height: 18),
         LayoutBuilder(
@@ -751,7 +787,7 @@ class _BotonNuevaCategoria extends StatelessWidget {
           ),
         ),
         icon: const Icon(Icons.add, size: 18),
-        label: const Text('+ Nueva categoría'),
+        label: const Text('Nueva categoría'),
       ),
     );
   }
@@ -770,7 +806,7 @@ class _SinCategoriasPropias extends StatelessWidget {
         border: Border.all(color: AppColors.border),
       ),
       child: Text(
-        'Todavía no has creado categorías propias. Usa "+ Nueva categoría" '
+        'Todavía no has creado categorías propias. Usa "Nueva categoría" '
         'para añadir las que necesite tu negocio.',
         style: const TextStyle(color: AppColors.muted, fontSize: 12),
       ),
@@ -883,7 +919,24 @@ Future<void> _intentarEliminar(
   if (error != null) _mostrarMensaje(context, error);
 }
 
-// Diálogo reutilizable para nueva/edición de categoría con validación.
+// ═════════════════════════════════════════════════════════════════════════
+// Formulario de categoría: UN solo componente para el alta y la edición.
+//
+// Solo cambia lo que la persona ve (título, texto precargado, rótulo del botón
+// principal y la ayuda); la validación, la clave canónica y las escrituras son
+// exactamente las mismas en los dos estados.
+// ═════════════════════════════════════════════════════════════════════════
+
+/// Ayuda visible bajo el campo mientras no haya error.
+const String _ayudaNombreCategoria =
+    'La categoría aparecerá en Productos y en tu tienda cuando esté activa.';
+
+/// Borde del campo en cada estado. Un solo lugar para el radio y el color.
+OutlineInputBorder _bordeCampoCategoria(Color color) => OutlineInputBorder(
+  borderRadius: BorderRadius.circular(10),
+  borderSide: BorderSide(color: color),
+);
+
 Future<void> _dialogoGuardarCategoria(
   BuildContext context, {
   required String uid,
@@ -942,9 +995,12 @@ class _DialogoGuardarCategoriaState extends State<_DialogoGuardarCategoria> {
   }
 
   /// Persiste contra el provider. Las escrituras son asíncronas (Firestore
-  /// primero, memoria después), así que el diálogo espera y solo se cierra si
+  /// primero, memoria después), así que el formulario espera y solo se cierra si
   /// la operación devolvió `true`; si falló, el motivo queda en el propio
-  /// diálogo en lugar de perder lo que la persona escribió.
+  /// formulario en lugar de perder lo que la persona escribió.
+  ///
+  /// Es el único camino de guardado (botón, Enter y submit): el primer `if`
+  /// descarta el doble envío mientras hay una escritura en curso.
   Future<void> _guardar() async {
     if (_guardando) return;
     final p = widget.provider;
@@ -986,44 +1042,142 @@ class _DialogoGuardarCategoriaState extends State<_DialogoGuardarCategoria> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      backgroundColor: AppColors.superficie,
-      title: Text(
-        widget.nuevo ? 'Nueva categoría' : 'Editar categoría',
-        style: const TextStyle(color: AppColors.texto),
-      ),
-      content: TextField(
-        key: const Key('campo-nombre-categoria'),
-        controller: _controller,
-        autofocus: true,
-        enabled: !_guardando,
-        style: const TextStyle(color: AppColors.texto),
-        decoration: InputDecoration(
-          labelText: 'Nombre de la categoría',
-          errorText: _error,
+    final esNuevo = widget.nuevo;
+    return PopScope(
+      // Mientras escribe no se cierra: una escritura a medio camino no puede
+      // quedar a medias. Escape y "Cancelar" siguen cerrando cuando no guarda.
+      canPop: !_guardando,
+      child: AlertDialog(
+        key: const Key('dialogo-categoria'),
+        backgroundColor: AppColors.superficie,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: AppColors.border),
         ),
-        onChanged: (_) {
-          if (_error != null) setState(() => _error = null);
-        },
-      ),
-      actions: [
-        TextButton(
-          onPressed: _guardando ? null : () => Navigator.pop(context),
-          child: const Text(
-            'Cancelar',
-            style: TextStyle(color: AppColors.muted),
+        // Margen holgado en escritorio, estrecho en móvil: el formulario nunca
+        // se convierte en un diálogo enorme.
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        titlePadding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+        contentPadding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+        actionsPadding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+        title: Text(
+          esNuevo ? 'Nueva categoría' : 'Editar categoría',
+          style: const TextStyle(
+            color: AppColors.texto,
+            fontSize: 18,
+            fontWeight: FontWeight.w700,
           ),
         ),
-        ElevatedButton(
-          onPressed: _guardando ? null : _guardar,
-          child: _guardando
-              ? const SizedBox.square(
-                  dimension: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
+        content: ConstrainedBox(
+          // Tope de ancho en escritorio; en móvil manda el `insetPadding`.
+          constraints: const BoxConstraints(maxWidth: 380),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Nombre de la categoría',
+                style: TextStyle(
+                  color: AppColors.texto,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                key: const Key('campo-nombre-categoria'),
+                controller: _controller,
+                autofocus: true,
+                enabled: !_guardando,
+                style: const TextStyle(color: AppColors.texto),
+                textInputAction: TextInputAction.done,
+                decoration: InputDecoration(
+                  hintText: 'Ej. Comida para mascotas',
+                  hintStyle: const TextStyle(color: AppColors.muted),
+                  filled: true,
+                  fillColor: AppColors.card,
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 14,
+                  ),
+                  border: _bordeCampoCategoria(AppColors.border),
+                  enabledBorder: _bordeCampoCategoria(AppColors.border),
+                  focusedBorder: _bordeCampoCategoria(AppColors.blueLt),
+                  disabledBorder: _bordeCampoCategoria(AppColors.dim),
+                ),
+                onChanged: (_) {
+                  if (_error != null) setState(() => _error = null);
+                },
+                // Enter guarda, igual que el botón principal.
+                onSubmitted: (_) => _guardar(),
+              ),
+              const SizedBox(height: 10),
+              // Una sola zona bajo el campo: el error ocupa el lugar de la
+              // ayuda, así el formulario no salta de alto al validar.
+              if (_error != null)
+                Row(
+                  key: const Key('error-nombre-categoria'),
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      size: 14,
+                      color: AppColors.error,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        _error!,
+                        style: const TextStyle(
+                          color: AppColors.error,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ],
                 )
-              : const Text('Guardar'),
+              else
+                Text(
+                  _ayudaNombreCategoria,
+                  key: const Key('ayuda-nombre-categoria'),
+                  style: const TextStyle(color: AppColors.muted, fontSize: 12),
+                ),
+            ],
+          ),
         ),
-      ],
+        actions: [
+          TextButton(
+            key: const Key('cancelar-categoria'),
+            onPressed: _guardando ? null : () => Navigator.pop(context),
+            style: TextButton.styleFrom(foregroundColor: AppColors.muted),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            key: const Key('guardar-categoria'),
+            onPressed: _guardando ? null : _guardar,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.blue,
+              foregroundColor: Colors.white,
+              disabledBackgroundColor: AppColors.blue.withValues(alpha: 0.45),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(9),
+              ),
+            ),
+            child: _guardando
+                ? const SizedBox.square(
+                    dimension: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : Text(esNuevo ? 'Crear categoría' : 'Guardar cambios'),
+          ),
+        ],
+      ),
     );
   }
 }
