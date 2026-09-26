@@ -73,13 +73,40 @@ void main() {
     matching: find.text(etiqueta),
   );
 
+  /// El botón `Editar` vive dentro de la tarjeta de una propia.
+  Finder accionTarjetaPropia(String clave) => find.descendant(
+    of: find.byKey(Key('categoria-propia-$clave')),
+    matching: find.text('Editar'),
+  );
+
   /// Estado visible de una tarjeta: 'Activa' o 'Inactiva'.
   Finder estadoTarjeta(String tarjeta, String estado) => find.descendant(
     of: find.byKey(Key('categoria-card-$tarjeta')),
     matching: find.text(estado),
   );
 
+  /// Igual que [estadoTarjeta], pero para una propia: se identifica por clave.
+  Finder estadoPropia(String clave, String estado) => find.descendant(
+    of: find.byKey(Key('categoria-propia-$clave')),
+    matching: find.text(estado),
+  );
+
   Finder finderDialogo() => find.byType(AlertDialog);
+
+  /// Abre el menú `...` de una categoría propia.
+  Future<void> abrirMenu(WidgetTester tester, String tarjeta) async {
+    await tester.ensureVisible(find.byKey(Key('categoria-propia-$tarjeta')));
+    await tester.tap(find.byKey(Key('menu-categoria-$tarjeta')));
+    await tester.pumpAndSettle();
+  }
+
+  /// Elige un ítem del menú abierto. Se ancla al key del `PopupMenuItem` porque
+  /// los rótulos 'Desactivar' y 'Activar' también existen en las tarjetas
+  /// sugeridas.
+  Future<void> elegirDelMenu(WidgetTester tester, String opcion) async {
+    await tester.tap(find.byKey(ValueKey('menu-item-$opcion')));
+    await tester.pumpAndSettle();
+  }
 
   /// Siembra `categoriasPersonalizadas` por el mismo camino que usa la app al
   /// abrir la configuración, sin esperar escrituras.
@@ -131,7 +158,7 @@ void main() {
       tester.widget<Material>(find.byKey(const Key('pestana-unidades'))).color,
       Colors.transparent,
     );
-    expect(find.text('Categorías de productos'), findsOneWidget);
+    expect(find.byKey(const Key('seccion-sugeridas')), findsOneWidget);
     expect(find.text('Unidades de medida'), findsNothing);
   });
 
@@ -148,11 +175,11 @@ void main() {
 
     await irAUnidades(tester);
     expect(find.text('Unidad o presentación'), findsOneWidget);
-    expect(find.text('Categorías de productos'), findsNothing);
+    expect(find.byKey(const Key('seccion-sugeridas')), findsNothing);
 
     await irACategorias(tester);
-    expect(find.text('Categorías de productos'), findsOneWidget);
-    expect(find.byKey(const Key('categoria-card-Ofertas')), findsOneWidget);
+    expect(find.byKey(const Key('seccion-sugeridas')), findsOneWidget);
+    expect(find.byKey(const Key('categoria-propia-ofertas')), findsOneWidget);
     expect(
       provider.categoriasPersonalizadas.map((categoria) => categoria.clave),
       contains('ofertas'),
@@ -219,14 +246,23 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Nueva categoría'), findsNothing);
-    expect(find.byKey(const Key('categoria-card-Ofertas')), findsOneWidget);
-    expect(estadoTarjeta('Ofertas', 'Activa'), findsOneWidget);
+    expect(find.byKey(const Key('categoria-propia-ofertas')), findsOneWidget);
+    expect(estadoPropia('ofertas', 'Activa'), findsOneWidget);
+    // Aparece bajo "Tus categorías", no junto a las sugeridas.
+    expect(find.byKey(const Key('seccion-propias')), findsOneWidget);
     expect(
       find.descendant(
-        of: find.byKey(const Key('categoria-card-Ofertas')),
-        matching: find.text('Personalizada'),
+        of: find.byKey(const Key('seccion-propias')),
+        matching: find.byKey(const Key('categoria-propia-ofertas')),
       ),
       findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('seccion-sugeridas')),
+        matching: find.byKey(const Key('categoria-propia-ofertas')),
+      ),
+      findsNothing,
     );
     // La alta va a `categoriasPersonalizadas`, no al borrador legacy: la UI ya
     // no depende de que `_categorias` conozca el nombre.
@@ -324,8 +360,8 @@ void main() {
       }),
     );
 
-    await tester.ensureVisible(find.byKey(const Key('categoria-card-Ofertas')));
-    await tester.tap(accionTarjeta('Editar', 'Ofertas'));
+    await tester.ensureVisible(find.byKey(const Key('categoria-propia-ofertas')));
+    await tester.tap(accionTarjetaPropia('ofertas'));
     await tester.pumpAndSettle();
     expect(find.text('Editar categoría'), findsOneWidget);
 
@@ -340,8 +376,17 @@ void main() {
     expect(customizing.clave, 'ofertas');
     expect(customizing.nombre, 'Promociones');
     expect(customizing.activa, isTrue);
-    expect(find.byKey(const Key('categoria-card-Ofertas')), findsNothing);
-    expect(find.byKey(const Key('categoria-card-Promociones')), findsOneWidget);
+    // La tarjeta se identifica por clave, así que no se recrea al renombrar.
+    expect(find.byKey(const Key('categoria-propia-ofertas')), findsOneWidget);
+    expect(find.text('Promociones'), findsOneWidget);
+    expect(find.text('Ofertas'), findsNothing);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('seccion-propias')),
+        matching: find.byKey(const Key('categoria-propia-ofertas')),
+      ),
+      findsOneWidget,
+    );
     expect(
       (await personalizadasGuardadas(db)).single['clave'],
       'ofertas',
@@ -361,9 +406,8 @@ void main() {
       }),
     );
 
-    await tester.ensureVisible(find.byKey(const Key('categoria-card-Ofertas')));
-    await tester.tap(accionTarjeta('Eliminar', 'Ofertas'));
-    await tester.pumpAndSettle();
+    await abrirMenu(tester, 'ofertas');
+    await elegirDelMenu(tester, 'eliminar');
     expect(find.text('¿Eliminar Ofertas?'), findsOneWidget);
 
     await tester.tap(find.text('Cancelar'));
@@ -373,15 +417,15 @@ void main() {
       contains('ofertas'),
     );
 
-    await tester.tap(accionTarjeta('Eliminar', 'Ofertas'));
-    await tester.pumpAndSettle();
+    await abrirMenu(tester, 'ofertas');
+    await elegirDelMenu(tester, 'eliminar');
     await tester.tap(
       find.descendant(of: finderDialogo(), matching: find.text('Eliminar')),
     );
     await tester.pumpAndSettle();
 
     expect(provider.categoriasPersonalizadas, isEmpty);
-    expect(find.byKey(const Key('categoria-card-Ofertas')), findsNothing);
+    expect(find.byKey(const Key('categoria-propia-ofertas')), findsNothing);
     expect(await personalizadasGuardadas(db), isEmpty);
   });
 
@@ -399,26 +443,26 @@ void main() {
       }),
     );
 
-    await tester.ensureVisible(find.byKey(const Key('categoria-card-Ofertas')));
-    expect(estadoTarjeta('Ofertas', 'Activa'), findsOneWidget);
+    await tester.ensureVisible(find.byKey(const Key('categoria-propia-ofertas')));
+    expect(estadoPropia('ofertas', 'Activa'), findsOneWidget);
 
-    await tester.tap(accionTarjeta('Desactivar', 'Ofertas'));
-    await tester.pumpAndSettle();
+    await abrirMenu(tester, 'ofertas');
+    await elegirDelMenu(tester, 'alternar');
 
     // Desactivar NO es eliminar: sigue en la lista, con `activa: false`.
-    expect(find.byKey(const Key('categoria-card-Ofertas')), findsOneWidget);
-    expect(estadoTarjeta('Ofertas', 'Inactiva'), findsOneWidget);
-    expect(estadoTarjeta('Ofertas', 'Activa'), findsNothing);
+    expect(find.byKey(const Key('categoria-propia-ofertas')), findsOneWidget);
+    expect(estadoPropia('ofertas', 'Inactiva'), findsOneWidget);
+    expect(estadoPropia('ofertas', 'Activa'), findsNothing);
     expect(provider.categoriasPersonalizadas.single.activa, isFalse);
     expect(
       (await personalizadasGuardadas(db)).single['activa'],
       isFalse,
     );
 
-    await tester.tap(accionTarjeta('Activar', 'Ofertas'));
-    await tester.pumpAndSettle();
+    await abrirMenu(tester, 'ofertas');
+    await elegirDelMenu(tester, 'alternar');
 
-    expect(estadoTarjeta('Ofertas', 'Activa'), findsOneWidget);
+    expect(estadoPropia('ofertas', 'Activa'), findsOneWidget);
     expect(provider.categoriasPersonalizadas.single.activa, isTrue);
   });
 
@@ -430,17 +474,168 @@ void main() {
 
     final tarjeta = find.byKey(const Key('categoria-card-Abarrotes'));
     final sugeridas = PresetsVenta.obtener('Bodega').categorias.length;
-    expect(find.text('Sugerida para Bodega'), findsNWidgets(sugeridas));
+    // El rótulo del origen vive UNA vez, en el encabezado de sección: ya no
+    // se repite dentro de cada tarjeta.
+    expect(find.text('Sugeridas para Bodega'), findsOneWidget);
+    expect(find.text('Sugerida para Bodega'), findsNothing);
+    expect(find.byKey(const Key('seccion-sugeridas')), findsOneWidget);
     expect(accionTarjeta('Desactivar', 'Abarrotes'), findsOneWidget);
     expect(find.text('Activa'), findsNWidgets(sugeridas));
+    expect(find.byKey(const Key('menu-categoria-Abarrotes')), findsNothing);
     expect(
       find.descendant(of: tarjeta, matching: find.text('Editar')),
       findsNothing,
     );
+  });
+
+  // ── 11b. Iconos: solo los conocidos del preset, nunca inferidos ────────
+  testWidgets('el preset muestra iconos conocidos y las propias ninguno', (
+    tester,
+  ) async {
+    await mostrarPaso(
+      tester,
+      configuracionInicial: seedPersonalizadas({
+        'ofertas': (activa: true),
+      }),
+    );
+
+    // Nombres conocidos del preset de Bodega.
     expect(
-      find.descendant(of: tarjeta, matching: find.text('Eliminar')),
+      find.descendant(
+        of: find.byKey(const Key('categoria-card-Abarrotes')),
+        matching: find.byIcon(Icons.inventory_2_outlined),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('categoria-card-Bebidas')),
+        matching: find.byIcon(Icons.local_drink_outlined),
+      ),
+      findsOneWidget,
+    );
+    // La personalizada no lleva icono propio: solo el del menú.
+    final propia = find.byKey(const Key('categoria-propia-ofertas'));
+    expect(find.descendant(of: propia, matching: find.byIcon(Icons.more_horiz)), findsOneWidget);
+    expect(
+      find.descendant(
+        of: propia,
+        matching: find.byIcon(Icons.local_drink_outlined),
+      ),
       findsNothing,
     );
+  });
+
+  testWidgets('una personalizada no hereda el icono de una sugerida', (
+    tester,
+  ) async {
+    // "Bebidas" es una categoría CONOCIDA del preset, pero aquí llega como
+    // personalizada: el icono no se deduce del texto, así que no lo hereda.
+    await mostrarPaso(
+      tester,
+      configuracionInicial: {
+        'categoriasPersonalizadas': [
+          {'clave': 'bebidas', 'nombre': 'Bebidas', 'activa': true},
+        ],
+      },
+    );
+
+    final propia = find.byKey(const Key('categoria-propia-bebidas'));
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('seccion-propias')),
+        matching: propia,
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('seccion-sugeridas')),
+        matching: propia,
+      ),
+      findsNothing,
+    );
+    // La tarjeta propia solo lleva el icono del menú, no el de la sugerida.
+    expect(
+      find.descendant(of: propia, matching: find.byIcon(Icons.local_drink_outlined)),
+      findsNothing,
+    );
+    // Y la sugerida real sí conserva su icono.
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('seccion-sugeridas')),
+        matching: find.byIcon(Icons.local_drink_outlined),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('las dos secciones muestran su contador', (tester) async {
+    await mostrarPaso(
+      tester,
+      configuracionInicial: seedPersonalizadas({
+        'ofertas': (activa: true),
+        'dulces': (activa: false),
+      }),
+    );
+
+    // Bodega tiene 5 de preset + 1 propia activa.
+    expect(find.text('6 activas · 5 sugeridas · 1 propia'), findsOneWidget);
+    expect(find.byKey(const Key('seccion-sugeridas')), findsOneWidget);
+    expect(find.byKey(const Key('seccion-propias')), findsOneWidget);
+    expect(find.text('5 de 5'), findsOneWidget);
+    expect(find.text('1 de 2'), findsOneWidget);
+    // Con propias visibles no debe aparecer el estado vacío.
+    expect(
+      find.textContaining('Todavía no has creado categorías propias.'),
+      findsNothing,
+    );
+  });
+
+  testWidgets('sin personalizadas se muestra el estado vacío compacto', (
+    tester,
+  ) async {
+    await mostrarPaso(tester);
+
+    expect(
+      find.textContaining('Todavía no has creado categorías propias.'),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key('categoria-propia-ofertas')), findsNothing);
+  });
+
+  testWidgets('las propias ofrecen Editar y el menú con las tres acciones', (
+    tester,
+  ) async {
+    await mostrarPaso(
+      tester,
+      configuracionInicial: seedPersonalizadas({
+        'ofertas': (activa: true),
+      }),
+    );
+
+    final propia = find.byKey(const Key('categoria-propia-ofertas'));
+    expect(
+      find.descendant(of: propia, matching: find.text('Editar')),
+      findsOneWidget,
+    );
+    // Eliminar y el interruptor viven en el menú, no en la tarjeta.
+    expect(
+      find.descendant(of: propia, matching: find.text('Eliminar')),
+      findsNothing,
+    );
+    expect(
+      find.descendant(of: propia, matching: find.text('Desactivar')),
+      findsNothing,
+    );
+
+    await tester.tap(find.byKey(const Key('menu-categoria-ofertas')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('menu-item-alternar')), findsOneWidget);
+    expect(find.byKey(const ValueKey('menu-item-eliminar')), findsOneWidget);
+    // Está activa, así que el ítem ofrece desactivar y no activar.
+    expect(find.text('Activar'), findsNothing);
   });
 
   // ── 12. Desactivar y reactivar una categoría del preset ─────────────────
@@ -468,7 +663,7 @@ void main() {
     expect(estadoTarjeta('Snacks', 'Activa'), findsNothing);
     // Oculta, no borra: el preset sigue íntegro.
     expect(PresetsVenta.obtener('Bodega').categorias, sugeridas);
-    expect(find.text('Sugerida para Bodega'), findsNWidgets(sugeridas.length));
+    expect(find.text('Sugeridas para Bodega'), findsOneWidget);
     expect(
       (await db.collection('negocios').doc('negocio-1').get()).data()?[
         'categoriasDesactivadas'
@@ -510,26 +705,26 @@ void main() {
       }),
     );
 
-    // Mismo origen, subtítulos distintos: el preset nunca se infiere por
-    // comparación de nombres.
+    // El origen decide la SECCIÓN, no el nombre: 'Ofertas' vive bajo "Tus
+    // categorías" aunque comparta forma con una sugerida.
     expect(
       find.descendant(
-        of: find.byKey(const Key('categoria-card-Ofertas')),
-        matching: find.text('Personalizada'),
+        of: find.byKey(const Key('seccion-propias')),
+        matching: find.byKey(const Key('categoria-propia-ofertas')),
       ),
       findsOneWidget,
     );
     expect(
       find.descendant(
-        of: find.byKey(const Key('categoria-card-Ofertas')),
-        matching: find.textContaining('Sugerida'),
+        of: find.byKey(const Key('seccion-sugeridas')),
+        matching: find.byKey(const Key('categoria-propia-ofertas')),
       ),
       findsNothing,
     );
     // Y las acciones difieren por origen: el preset solo se activa/desactiva,
-    // la personalizada además se renombra y se elimina.
+    // la personalizada además se renombra y se elimina (vía menú).
     expect(accionTarjeta('Desactivar', 'Abarrotes'), findsOneWidget);
-    expect(accionTarjeta('Eliminar', 'Ofertas'), findsOneWidget);
+    expect(find.byKey(const Key('menu-categoria-ofertas')), findsOneWidget);
     expect(
       find.descendant(
         of: find.byKey(const Key('categoria-card-Abarrotes')),
@@ -589,9 +784,8 @@ void main() {
       }),
     );
 
-    await tester.ensureVisible(find.byKey(const Key('categoria-card-Ofertas')));
-    await tester.tap(accionTarjeta('Eliminar', 'Ofertas'));
-    await tester.pumpAndSettle();
+    await abrirMenu(tester, 'ofertas');
+    await elegirDelMenu(tester, 'eliminar');
     expect(find.text('¿Eliminar Ofertas?'), findsNothing);
     expect(
       find.text(
@@ -606,7 +800,7 @@ void main() {
     );
     await expulsarSnackBar(tester);
 
-    await tester.tap(accionTarjeta('Editar', 'Ofertas'));
+    await tester.tap(accionTarjetaPropia('ofertas'));
     await tester.pumpAndSettle();
     expect(find.text('Editar categoría'), findsNothing);
     expect(

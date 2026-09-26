@@ -1277,7 +1277,7 @@ void main() {
       provider.irAPaso(1);
       await tester.pumpAndSettle();
 
-      expect(find.text('Categorías de productos'), findsOneWidget);
+      expect(find.byKey(const Key('seccion-sugeridas')), findsOneWidget);
       final barrerasIniciales = find.byType(ModalBarrier).evaluate().length;
 
       await tester.tap(find.byTooltip('Agregar categoría'));
@@ -1297,7 +1297,7 @@ void main() {
         barrerasIniciales,
       );
       expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
-      expect(find.text('Categorías de productos'), findsOneWidget);
+      expect(find.byKey(const Key('seccion-sugeridas')), findsOneWidget);
       // La alta va a `categoriasPersonalizadas`, no al borrador legacy.
       expect(
         provider.categoriasPersonalizadas.map((categoria) => categoria.clave),
@@ -1547,7 +1547,7 @@ void main() {
 
       provider.irAPaso(1);
       await tester.pumpAndSettle();
-      expect(find.text('Categorías de productos'), findsOneWidget);
+      expect(find.byKey(const Key('seccion-sugeridas')), findsOneWidget);
       var sidebar = tester.widget<DashboardSidebar>(
         find.byType(DashboardSidebar),
       );

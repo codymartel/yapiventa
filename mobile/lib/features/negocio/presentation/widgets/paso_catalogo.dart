@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/encabezado_pantalla.dart';
 import '../../../productos/domain/models/familia_unidad.dart';
 import '../../domain/models/categoria_personalizada.dart';
 import '../../domain/models/catalogo_venta/catalogo_venta_global.dart';
@@ -189,7 +190,48 @@ class _Pestana extends StatelessWidget {
 // `_categorias` (el borrador legacy) ya no participa en decidir qué es preset y
 // qué es personalizada; sigue existiendo para el guardado y para las
 // validaciones del wizard, sin tocar.
+//
+// DISEÑO: dos secciones —"Sugeridas para {rubro}" y "Tus categorías"— con
+// tarjetas compactas de una sola fila. El rótulo "Sugerida para {rubro}" ya
+// no se repite en cada tarjeta porque lo dice el encabezado de sección. Los
+// iconos salen de una tabla EXPLÍCITA de los nombres conocidos del preset: no
+// se deducen del texto, y las personalizadas no llevan icono propio.
 // ═════════════════════════════════════════════════════════════════════════
+
+/// Iconos de las categorías CONOCIDAS del preset.
+///
+/// Tabla explícita y cerrada. Un nombre que no esté aquí produce una tarjeta
+/// sin icono, no un icono adivinado: así una categoría nueva del preset nunca
+/// recibe un semántico arbitrario.
+const Map<String, IconData> _iconosPresetConocidos = {
+  'Abarrotes': Icons.inventory_2_outlined,
+  'Bebidas': Icons.local_drink_outlined,
+  'Snacks': Icons.cookie_outlined,
+  'Limpieza': Icons.cleaning_services_outlined,
+  'Cuidado personal': Icons.spa_outlined,
+  'Entradas': Icons.restaurant_outlined,
+  'Platos principales': Icons.dinner_dining_outlined,
+  'Postres': Icons.icecream_outlined,
+  'Combos': Icons.lunch_dining_outlined,
+  'Hombre': Icons.checkroom_outlined,
+  'Mujer': Icons.checkroom_outlined,
+  'Niños': Icons.child_care_outlined,
+  'Calzado': Icons.ice_skating_outlined,
+  'Accesorios': Icons.watch_outlined,
+  'Bisutería': Icons.diamond_outlined,
+  'Carteras': Icons.shopping_bag_outlined,
+  'Peluches': Icons.toys_outlined,
+  'Regalos': Icons.card_giftcard_outlined,
+  'Detalles': Icons.auto_awesome_outlined,
+  'Cabello': Icons.content_cut_outlined,
+  'Rostro': Icons.face_retouching_natural_outlined,
+  'Cuerpo': Icons.accessibility_new_outlined,
+  'Maquillaje': Icons.brush_outlined,
+  'Perfumería': Icons.local_florist_outlined,
+  'Productos': Icons.category_outlined,
+  'Servicios relacionados': Icons.handyman_outlined,
+  'Otros': Icons.more_horiz_outlined,
+};
 
 class _PanelCategorias extends StatelessWidget {
   final String uid;
@@ -202,87 +244,105 @@ class _PanelCategorias extends StatelessWidget {
     final presetCategorias = PresetsVenta.obtener(p.rubro).categorias;
     final personalizadas = p.categoriasPersonalizadas;
 
+    final sugeridasActivas = presetCategorias
+        .where((nombre) => !p.categoriaPresetDesactivada(nombre))
+        .length;
+    final propiasActivas = personalizadas
+        .where((categoria) => categoria.activa)
+        .length;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _CabeceraCategorias(
-          cantidadActivas:
-              presetCategorias
-                  .where((nombre) => !p.categoriaPresetDesactivada(nombre))
-                  .length +
-              personalizadas.where((categoria) => categoria.activa).length,
-          onNueva: () =>
-              _dialogoGuardarCategoria(context, uid: uid, nuevo: true),
+        EncabezadoPantalla.sinPadding(
+          // No repite "Categorías": ese nombre ya está en la pestaña activa.
+          titulo: 'Organiza tus productos',
+          subtitulo:
+              '${sugeridasActivas + propiasActivas} activas · '
+              '${presetCategorias.length} sugeridas · '
+              '$propiasActivas ${propiasActivas == 1 ? 'propia' : 'propias'}',
+          acciones: _BotonNuevaCategoria(
+            onNueva: () =>
+                _dialogoGuardarCategoria(context, uid: uid, nuevo: true),
+          ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 18),
         LayoutBuilder(
           builder: (context, constraints) {
-            final dosColumnas = constraints.maxWidth >= 720;
-            final ancho = dosColumnas
-                ? (constraints.maxWidth - 12) / 2
-                : constraints.maxWidth;
-            return Wrap(
-              spacing: 12,
-              runSpacing: 12,
+            final columnas = constraints.maxWidth >= 700 ? 2 : 1;
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                for (final nombre in presetCategorias)
-                  SizedBox(
-                    width: ancho,
-                    child: _CategoriaCard(
-                      clave: 'categoria-card-$nombre',
-                      nombre: nombre,
-                      subtitulo: 'Sugerida para ${p.rubro}',
-                      activa: !p.categoriaPresetDesactivada(nombre),
-                      esSugerida: true,
-                      anchoLocal: constraints.maxWidth,
-                      onActivar: () => _alternarCategoria(
-                        context,
-                        () => p.reactivarCategoriaDelPreset(uid, nombre),
-                      ),
-                      onDesactivar: () => _alternarCategoria(
-                        context,
-                        () => p.desactivarCategoriaDelPreset(uid, nombre),
-                      ),
-                    ),
-                  ),
-                for (final categoria in personalizadas)
-                  SizedBox(
-                    width: ancho,
-                    child: _CategoriaCard(
-                      clave: 'categoria-card-${categoria.nombre}',
-                      nombre: categoria.nombre,
-                      subtitulo: 'Personalizada',
-                      activa: categoria.activa,
-                      esSugerida: false,
-                      anchoLocal: constraints.maxWidth,
-                      onActivar: () => _alternarCategoria(
-                        context,
-                        () => p.reactivarCategoriaPersonalizada(
-                          uid,
-                          categoria.clave,
+                _SeccionCategorias(
+                  clave: 'seccion-sugeridas',
+                  titulo: 'Sugeridas para ${p.rubro}',
+                  contador: '$sugeridasActivas de ${presetCategorias.length}',
+                  child: _GrillaCategorias(
+                    columnas: columnas,
+                    hijos: [
+                      for (final nombre in presetCategorias)
+                        _TarjetaPreset(
+                          nombre: nombre,
+                          activa: !p.categoriaPresetDesactivada(nombre),
+                          onActivar: () => _alternarCategoria(
+                            context,
+                            () => p.reactivarCategoriaDelPreset(uid, nombre),
+                          ),
+                          onDesactivar: () => _alternarCategoria(
+                            context,
+                            () => p.desactivarCategoriaDelPreset(uid, nombre),
+                          ),
                         ),
-                      ),
-                      onDesactivar: () => _alternarCategoria(
-                        context,
-                        () => p.desactivarCategoriaPersonalizada(
-                          uid,
-                          categoria.clave,
-                        ),
-                      ),
-                      onEditar: () => _intentarEditar(
-                        context,
-                        uid,
-                        categoria.clave,
-                        categoria.nombre,
-                      ),
-                      onEliminar: () => _intentarEliminar(
-                        context,
-                        uid,
-                        categoria.clave,
-                        categoria.nombre,
-                      ),
-                    ),
+                    ],
                   ),
+                ),
+                const SizedBox(height: 20),
+                _SeccionCategorias(
+                  clave: 'seccion-propias',
+                  titulo: 'Tus categorías',
+                  contador: propiasActivas == personalizadas.length
+                      ? '$propiasActivas'
+                      : '$propiasActivas de ${personalizadas.length}',
+                  child: personalizadas.isEmpty
+                      ? const _SinCategoriasPropias()
+                      : _GrillaCategorias(
+                          columnas: columnas,
+                          hijos: [
+                            for (final categoria in personalizadas)
+                              _TarjetaPropia(
+                                clave: categoria.clave,
+                                nombre: categoria.nombre,
+                                activa: categoria.activa,
+                                onEditar: () => _intentarEditar(
+                                  context,
+                                  uid,
+                                  categoria.clave,
+                                  categoria.nombre,
+                                ),
+                                onAlternar: () => _alternarCategoria(
+                                  context,
+                                  categoria.activa
+                                      ? () => p
+                                            .desactivarCategoriaPersonalizada(
+                                              uid,
+                                              categoria.clave,
+                                            )
+                                      : () => p
+                                            .reactivarCategoriaPersonalizada(
+                                              uid,
+                                              categoria.clave,
+                                            ),
+                                ),
+                                onEliminar: () => _intentarEliminar(
+                                  context,
+                                  uid,
+                                  categoria.clave,
+                                  categoria.nombre,
+                                ),
+                              ),
+                          ],
+                        ),
+                ),
               ],
             );
           },
@@ -292,91 +352,80 @@ class _PanelCategorias extends StatelessWidget {
   }
 }
 
-// Cabecera de Categorías: título + descripción a la izquierda, contador y
-// botón a la derecha en escritorio; apilados bajo 600 px.
-class _CabeceraCategorias extends StatelessWidget {
-  final int cantidadActivas;
-  final VoidCallback onNueva;
+/// Encabezado de sección: título a la izquierda, conteo a la derecha.
+class _SeccionCategorias extends StatelessWidget {
+  final String clave;
+  final String titulo;
+  final String contador;
+  final Widget child;
 
-  const _CabeceraCategorias({
-    required this.cantidadActivas,
-    required this.onNueva,
+  const _SeccionCategorias({
+    required this.clave,
+    required this.titulo,
+    required this.contador,
+    required this.child,
   });
 
   @override
   Widget build(BuildContext context) {
-    final titulo = Text(
-      'Categorías de productos',
-      style: TextStyle(
-        color: AppColors.texto,
-        fontSize: 22,
-        fontWeight: FontWeight.w700,
-      ),
-    );
-    final descripcion = Text(
-      'Organizan tus productos para que tus clientes los encuentren fácilmente.',
-      maxLines: 2,
-      overflow: TextOverflow.ellipsis,
-      style: TextStyle(color: AppColors.muted, fontSize: 13),
-    );
-    final contador = Text(
-      '$cantidadActivas activas',
-      style: TextStyle(
-        color: AppColors.muted,
-        fontSize: 14,
-        fontWeight: FontWeight.w600,
-      ),
-    );
-    final boton = Tooltip(
-      message: 'Agregar categoría',
-      child: OutlinedButton(
-        onPressed: onNueva,
-        style: OutlinedButton.styleFrom(
-          minimumSize: const Size(0, 48),
-          foregroundColor: AppColors.blueLt,
-          side: const BorderSide(color: Colors.transparent),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-        ),
-        child: const Text(
-          '+ Nueva categoría',
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-        ),
-      ),
-    );
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth >= 600) {
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      key: Key(clave),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Row(
             children: [
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [titulo, const SizedBox(height: 4), descripcion],
+                child: Text(
+                  titulo,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.texto,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
-              const SizedBox(width: 16),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [contador, const SizedBox(height: 16), boton],
+              const SizedBox(width: 8),
+              Text(
+                contador,
+                style: const TextStyle(
+                  color: AppColors.muted,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ],
-          );
-        }
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          ),
+        ),
+        child,
+      ],
+    );
+  }
+}
+
+/// Rejilla responsive compartida por las dos secciones.
+class _GrillaCategorias extends StatelessWidget {
+  final int columnas;
+  final List<Widget> hijos;
+
+  const _GrillaCategorias({required this.columnas, required this.hijos});
+
+  @override
+  Widget build(BuildContext context) {
+    if (hijos.isEmpty) return const SizedBox.shrink();
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final ancho =
+            (constraints.maxWidth - 10 * (columnas - 1)) / columnas;
+        return Wrap(
+          spacing: 10,
+          runSpacing: 10,
           children: [
-            titulo,
-            const SizedBox(height: 4),
-            descripcion,
-            const SizedBox(height: 12),
-            contador,
-            const SizedBox(height: 16),
-            boton,
+            for (final hijo in hijos)
+              SizedBox(width: ancho, child: hijo),
           ],
         );
       },
@@ -384,116 +433,209 @@ class _CabeceraCategorias extends StatelessWidget {
   }
 }
 
-// Tarjeta de una categoría (sugerida del rubro o personalizada).
-class _CategoriaCard extends StatelessWidget {
-  final String clave;
+/// Tarjeta de una categoría del preset: nombre, estado e interruptor.
+class _TarjetaPreset extends StatelessWidget {
   final String nombre;
-  final String subtitulo;
   final bool activa;
-  final bool esSugerida;
-  final double anchoLocal;
-  final VoidCallback? onActivar;
-  final VoidCallback? onDesactivar;
-  final VoidCallback? onEditar;
-  final VoidCallback? onEliminar;
+  final VoidCallback onActivar;
+  final VoidCallback onDesactivar;
 
-  const _CategoriaCard({
-    required this.clave,
+  const _TarjetaPreset({
     required this.nombre,
-    required this.subtitulo,
     required this.activa,
-    required this.esSugerida,
-    required this.anchoLocal,
-    this.onActivar,
-    this.onDesactivar,
-    this.onEditar,
-    this.onEliminar,
+    required this.onActivar,
+    required this.onDesactivar,
   });
 
   @override
   Widget build(BuildContext context) {
-    final tactil = anchoLocal < 480;
-    final acciones = <Widget>[
-      // El interruptor activo/inactivo existe para los dos orígenes: el preset
-      // se oculta con `categoriasDesactivadas` y la personalizada con su `activa`.
-      _BotonAccionTarjeta(
-        etiqueta: activa ? 'Desactivar' : 'Activar',
-        tactil: tactil,
-        onPressed: activa ? onDesactivar : onActivar,
-      ),
-      if (!esSugerida) ...[
-        _BotonAccionTarjeta(
-          etiqueta: 'Editar',
-          tactil: tactil,
-          onPressed: onEditar,
-        ),
-        _BotonAccionTarjeta(
-          etiqueta: 'Eliminar',
-          color: AppColors.error,
-          tactil: tactil,
-          onPressed: onEliminar,
-        ),
-      ],
-    ];
-
-    return ConstrainedBox(
-      constraints: const BoxConstraints(minHeight: 84),
-      child: Material(
-        key: Key(clave),
-        color: AppColors.card,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: AppColors.border),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(
-                      nombre,
-                      style: const TextStyle(
-                        color: AppColors.texto,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
+    final icono = _iconosPresetConocidos[nombre];
+    return _CajaCategoria(
+      clave: 'categoria-card-$nombre',
+      child: Row(
+        children: [
+          if (icono != null) ...[
+            _IconoNota(icono: icono),
+            const SizedBox(width: 10),
+          ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  nombre,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.texto,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
                   ),
-                  const SizedBox(width: 8),
-                  _EstadoCategoria(activa: activa),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text(
-                subtitulo,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: AppColors.muted, fontSize: 12),
-              ),
-              const SizedBox(height: 8),
-              Wrap(
-                alignment: WrapAlignment.end,
-                spacing: 8,
-                runSpacing: 8,
-                children: acciones,
-              ),
-            ],
+                ),
+                const SizedBox(height: 3),
+                _EstadoActiva(activa: activa),
+              ],
+            ),
           ),
-        ),
+          const SizedBox(width: 8),
+          // Flexible para que con texto muy ampliado la acción ceda espacio en
+          // lugar de desbordar la tarjeta.
+          Flexible(
+            child: _BotonInterruptor(
+              activa: activa,
+              onPressed: activa ? onDesactivar : onActivar,
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _EstadoCategoria extends StatelessWidget {
+/// Tarjeta de una categoría propia: sin icono semántico, con `Editar` y un
+/// menú `...` que agrupa Activar/Desactivar y Eliminar.
+class _TarjetaPropia extends StatelessWidget {
+  final String clave;
+  final String nombre;
+  final bool activa;
+  final VoidCallback onEditar;
+  final VoidCallback onAlternar;
+  final VoidCallback onEliminar;
+
+  const _TarjetaPropia({
+    required this.clave,
+    required this.nombre,
+    required this.activa,
+    required this.onEditar,
+    required this.onAlternar,
+    required this.onEliminar,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _CajaCategoria(
+      // Se identifica por `clave`, no por nombre: una propia puede llamarse
+      // igual que una sugerida y las dos tarjetas deben seguir siendo distintas.
+      clave: 'categoria-propia-$clave',
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  nombre,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.texto,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                _EstadoActiva(activa: activa),
+              ],
+            ),
+          ),
+          Flexible(
+            child: _BotonMenudo(
+              etiqueta: 'Editar',
+              onPressed: onEditar,
+              tooltip: 'Editar $nombre',
+            ),
+          ),
+          PopupMenuButton<String>(
+            key: Key('menu-categoria-$clave'),
+            tooltip: 'Más acciones de $nombre',
+            icon: const Icon(Icons.more_horiz, size: 18),
+            padding: EdgeInsets.zero,
+            color: AppColors.superficie,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+              side: BorderSide(color: AppColors.border),
+            ),
+            onSelected: (opcion) {
+              if (opcion == 'alternar') onAlternar();
+              if (opcion == 'eliminar') onEliminar();
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem<String>(
+                value: 'alternar',
+                // Key propia: el rótulo 'Desactivar'/'Activar' también existe en
+                // las tarjetas sugeridas y el finder debe poder aislar el menú.
+                key: const ValueKey('menu-item-alternar'),
+                child: Text(activa ? 'Desactivar' : 'Activar'),
+              ),
+              PopupMenuItem<String>(
+                value: 'eliminar',
+                key: const ValueKey('menu-item-eliminar'),
+                child: Text(
+                  'Eliminar',
+                  style: TextStyle(color: AppColors.error),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Contenedor visual común: una sola tarjeta, una sola fila, sin subtítulo
+/// repetido y con el mínimo padding vertical.
+class _CajaCategoria extends StatelessWidget {
+  final String clave;
+  final Widget child;
+
+  const _CajaCategoria({required this.clave, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      key: Key(clave),
+      color: AppColors.card,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 60),
+        padding: const EdgeInsets.fromLTRB(12, 8, 6, 8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: child,
+      ),
+    );
+  }
+}
+
+class _IconoNota extends StatelessWidget {
+  final IconData icono;
+
+  const _IconoNota({required this.icono});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 30,
+      height: 30,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: AppColors.blue.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Icon(icono, size: 16, color: AppColors.blueLt),
+    );
+  }
+}
+
+class _EstadoActiva extends StatelessWidget {
   final bool activa;
 
-  const _EstadoCategoria({required this.activa});
+  const _EstadoActiva({required this.activa});
 
   @override
   Widget build(BuildContext context) {
@@ -501,14 +643,24 @@ class _EstadoCategoria extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.circle, size: 10, color: color),
+        Container(
+          width: 6,
+          height: 6,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
         const SizedBox(width: 6),
-        Text(
-          activa ? 'Activa' : 'Inactiva',
-          style: TextStyle(
-            color: color,
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
+        // Flexible para que un nombre largo con texto ampliado nunca desborde la
+        // tarjeta: se recorta en lugar de empujar el interruptor.
+        Flexible(
+          child: Text(
+            activa ? 'Activa' : 'Inactiva',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: color,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
       ],
@@ -516,39 +668,116 @@ class _EstadoCategoria extends StatelessWidget {
   }
 }
 
-class _BotonAccionTarjeta extends StatelessWidget {
-  final String etiqueta;
-  final VoidCallback? onPressed;
-  final Color color;
-  final bool tactil;
+class _BotonInterruptor extends StatelessWidget {
+  final bool activa;
+  final VoidCallback onPressed;
 
-  const _BotonAccionTarjeta({
-    required this.etiqueta,
-    required this.tactil,
-    this.onPressed,
-    this.color = AppColors.blueLt,
-  });
+  const _BotonInterruptor({required this.activa, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
     return TextButton(
       onPressed: onPressed,
       style: TextButton.styleFrom(
-        foregroundColor: color,
-        minimumSize: tactil ? const Size(48, 48) : const Size(0, 40),
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        foregroundColor: AppColors.blueLt,
+        minimumSize: const Size(0, 32),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
       child: Text(
-        etiqueta,
-        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+        activa ? 'Desactivar' : 'Activar',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
       ),
     );
   }
 }
 
-// ═════════════════════════════════════════════════════════════════════════
-// Acciones de categorías
+class _BotonMenudo extends StatelessWidget {
+  final String etiqueta;
+  final VoidCallback onPressed;
+  final String tooltip;
+
+  const _BotonMenudo({
+    required this.etiqueta,
+    required this.onPressed,
+    required this.tooltip,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: TextButton(
+        onPressed: onPressed,
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.blueLt,
+          minimumSize: const Size(0, 32),
+          padding: const EdgeInsets.symmetric(horizontal: 8),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        child: Text(
+          etiqueta,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+        ),
+      ),
+    );
+  }
+}
+
+class _BotonNuevaCategoria extends StatelessWidget {
+  final VoidCallback onNueva;
+
+  const _BotonNuevaCategoria({required this.onNueva});
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'Agregar categoría',
+      child: FilledButton.icon(
+        key: const Key('boton-nueva-categoria'),
+        onPressed: onNueva,
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.blue,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(9),
+          ),
+        ),
+        icon: const Icon(Icons.add, size: 18),
+        label: const Text('+ Nueva categoría'),
+      ),
+    );
+  }
+}
+
+class _SinCategoriasPropias extends StatelessWidget {
+  const _SinCategoriasPropias();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Text(
+        'Todavía no has creado categorías propias. Usa "+ Nueva categoría" '
+        'para añadir las que necesite tu negocio.',
+        style: const TextStyle(color: AppColors.muted, fontSize: 12),
+      ),
+    );
+  }
+}
+
 // ═════════════════════════════════════════════════════════════════════════
 
 void _mostrarMensaje(BuildContext context, String mensaje) {

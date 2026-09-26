@@ -160,7 +160,7 @@ void main() {
           .color,
       AppColors.blue,
     );
-    expect(find.text('Categorías de productos'), findsOneWidget);
+    expect(find.byKey(const Key('seccion-sugeridas')), findsOneWidget);
     expect(find.text('Venta por medida'), findsNothing);
   });
 

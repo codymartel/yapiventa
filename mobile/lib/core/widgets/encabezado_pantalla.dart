@@ -123,7 +123,9 @@ class EncabezadoPantalla extends StatelessWidget {
                 children: [
                   Expanded(child: textos),
                   const SizedBox(width: 16),
-                  acciones!,
+                  // Flexible también la acción: con texto muy ampliado una
+                  // etiqueta larga cede espacio en vez de desbordar la fila.
+                  Flexible(child: acciones!),
                 ],
               );
             },
