@@ -54,6 +54,17 @@ void main() {
       'unidadMedidaNombre',
       'fraccionesSeleccionadas',
       'fechaVencimiento',
+      'modoVenta',
+      'presentacionId',
+      'formatoValorBase',
+      'formatoFamilia',
+      'formatoUnidad',
+      'etiquetaUnidad',
+      'medidaFamilia',
+      'medidaUnidad',
+      'precioCentavos',
+      'cantidadReferenciaBase',
+      'stockBase',
     });
     expect(datos['fechaVencimiento'], isA<Timestamp>());
     expect((datos['fechaVencimiento'] as Timestamp).toDate(), fecha);
