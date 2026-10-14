@@ -56,7 +56,7 @@ void main() {
     expect(find.byType(SafeArea), findsOneWidget);
     expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
     expect(find.byType(ConfiguracionNegocioContent), findsOneWidget);
-    expect(find.text('Configura tu Bodega'), findsOneWidget);
+    expect(find.text('Configura tu negocio'), findsOneWidget);
   });
 
   testWidgets('el botón volver del paso inicial ejecuta onVolver', (

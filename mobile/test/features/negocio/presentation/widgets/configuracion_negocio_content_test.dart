@@ -17,8 +17,7 @@ void main() {
     String rubro = 'Bodega',
     VoidCallback? onVolver,
     VoidCallback? onFinalizar,
-  }) async {
-    final provider = ConfiguracionNegocioProvider(
+  }) async {    final provider = ConfiguracionNegocioProvider(
       rubro: rubro,
       repository: NegocioRepository(firestore: FakeFirebaseFirestore()),
     );
@@ -102,7 +101,7 @@ void main() {
     expect(find.byType(PasoPagos, skipOffstage: false), findsOneWidget);
   });
 
-  testWidgets('la cabecera es compacta: sin subtítulo y de 90 a 105 px', (
+  testWidgets('la cabecera es compacta: sin subtítulo y de 100 a 125 px', (
     tester,
   ) async {
     await montarContenido(tester);
@@ -117,8 +116,10 @@ void main() {
         .first;
 
     expect(find.text('Crea tu tienda virtual.'), findsNothing);
-    expect(find.text('Configura tu Bodega'), findsOneWidget);
-    expect(tester.getSize(cabecera).height, inInclusiveRange(90, 105));
+    expect(find.text('Configura tu negocio'), findsOneWidget);
+    expect(find.text('Rubro:'), findsOneWidget);
+    expect(find.text('Bodega'), findsOneWidget);
+    expect(tester.getSize(cabecera).height, inInclusiveRange(100, 125));
   });
 
   testWidgets('el stepper conserva números y labels de los cuatro pasos', (
@@ -187,7 +188,7 @@ void main() {
     final provider = await completarPaso0(tester);
 
     await tester.enterText(
-      find.widgetWithText(TextField, 'Nombre del negocio *'),
+      find.byKey(const Key('campo_nombre')),
       'Mi Tienda',
     );
     await tester.pump();

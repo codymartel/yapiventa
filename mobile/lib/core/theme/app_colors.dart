@@ -19,4 +19,11 @@ class AppColors {
 
   // En Kotlin usabas .copy(alpha = 0.18f). En Flutter es .withValues(alpha: ...)
   static Color border = blueLt.withValues(alpha: 0.45);
+
+  // Niveles "sutil" y "medio" del mismo azul: los usa el rediseño de las
+  // superficies nuevas (formularios, paneles, barra de acciones) donde un
+  // borde al 45% satura la pantalla. No reemplazan a [border], que sigue
+  // intacto para las superficies que ya lo usaban.
+  static Color bordeSutil = blueLt.withValues(alpha: 0.14);
+  static Color bordeMedio = blueLt.withValues(alpha: 0.30);
 }

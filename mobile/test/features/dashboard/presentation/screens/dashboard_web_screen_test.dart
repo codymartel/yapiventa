@@ -1126,7 +1126,7 @@ void main() {
       );
       expect(find.text('Configuracion de negocio'), findsNothing);
       expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
-      expect(find.text('Configura tu Bodega'), findsOneWidget);
+      expect(find.text('Configura tu negocio'), findsOneWidget);
 
       final sidebar = tester.widget<DashboardSidebar>(
         find.byType(DashboardSidebar),
@@ -1460,7 +1460,7 @@ void main() {
       expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
 
       await tester.enterText(
-        find.widgetWithText(TextField, 'Nombre del negocio *'),
+        find.byKey(const Key('campo_nombre')),
         'Nuevo Nombre',
       );
       await tester.pumpAndSettle();
@@ -1603,7 +1603,7 @@ void main() {
       );
 
       await tester.enterText(
-        find.widgetWithText(TextField, 'Nombre del negocio *'),
+        find.byKey(const Key('campo_nombre')),
         'Nuevo Nombre',
       );
       await tester.pumpAndSettle();
@@ -1669,10 +1669,10 @@ void main() {
     Finder enPanel(Finder interno) =>
         find.descendant(of: panel, matching: interno);
 
-    expect(enPanel(find.text('Paso 1 de 4')), findsOneWidget);
-    expect(enPanel(find.text('Negocio')), findsOneWidget);
+    expect(enPanel(find.text('Información')), findsOneWidget);
+    expect(enPanel(find.text('Nombre del negocio')), findsOneWidget);
     expect(
-      enPanel(find.textContaining('Nombre, WhatsApp y dirección')),
+      enPanel(find.textContaining('Aquí registrarás')),
       findsOneWidget,
     );
     expect(
@@ -1689,8 +1689,8 @@ void main() {
     provider.irAPaso(1);
     await tester.pumpAndSettle();
     expect(panel, findsOneWidget);
-    expect(enPanel(find.text('Paso 2 de 4')), findsOneWidget);
-    expect(enPanel(find.text('Catálogo')), findsOneWidget);
+    expect(enPanel(find.text('Información')), findsOneWidget);
+    expect(enPanel(find.text('Categorías')), findsOneWidget);
 
     // Catálogo: el panel sigue la pestaña interna activa del paso.
     expect(provider.catalogoPestana, 0);
@@ -1736,8 +1736,8 @@ void main() {
     provider.irAPaso(2);
     await tester.pumpAndSettle();
     expect(panel, findsOneWidget);
-    expect(enPanel(find.text('Paso 3 de 4')), findsOneWidget);
-    expect(enPanel(find.text('Logística')), findsOneWidget);
+    expect(enPanel(find.text('Información')), findsOneWidget);
+    expect(enPanel(find.text('Delivery')), findsOneWidget);
     expect(
       enPanel(find.textContaining('Delivery, zonas, costo fijo y horarios')),
       findsOneWidget,
@@ -1750,8 +1750,8 @@ void main() {
     provider.irAPaso(3);
     await tester.pumpAndSettle();
     expect(panel, findsOneWidget);
-    expect(enPanel(find.text('Paso 4 de 4')), findsOneWidget);
-    expect(enPanel(find.text('Pagos')), findsOneWidget);
+    expect(enPanel(find.text('Información')), findsOneWidget);
+    expect(enPanel(find.textContaining('Yape/Plin')), findsOneWidget);
     expect(
       enPanel(find.textContaining('métodos que el negocio acepta')),
       findsOneWidget,
@@ -1775,22 +1775,22 @@ void main() {
       Finder enPanel(Finder interno) =>
           find.descendant(of: panel, matching: interno);
 
-      expect(enPanel(find.text('Negocio')), findsOneWidget);
+      expect(enPanel(find.text('Nombre del negocio')), findsOneWidget);
       expect(
         enPanel(find.textContaining('El prefijo solo indica el país del número')),
         findsOneWidget,
       );
 
       await tester.enterText(
-        find.widgetWithText(TextField, 'Nombre del negocio *'),
+        find.byKey(const Key('campo_nombre')),
         'Mi Negocio',
       );
       await tester.pumpAndSettle();
 
-      expect(enPanel(find.text('Paso 1 de 4')), findsOneWidget);
-      expect(enPanel(find.text('Qué registras')), findsOneWidget);
+      expect(enPanel(find.text('Información')), findsOneWidget);
+      expect(enPanel(find.text('Referencia')), findsOneWidget);
       expect(
-        enPanel(find.textContaining('Nombre, WhatsApp y dirección')),
+        enPanel(find.textContaining('Aquí registrarás')),
         findsOneWidget,
       );
       expect(find.byType(DashboardAttentionPanel), findsNothing);
@@ -1800,8 +1800,8 @@ void main() {
       await tester.tap(find.text('+503 El Salvador').last);
       await tester.pumpAndSettle();
 
-      expect(enPanel(find.text('Paso 1 de 4')), findsOneWidget);
-      expect(enPanel(find.text('Qué registras')), findsOneWidget);
+      expect(enPanel(find.text('Información')), findsOneWidget);
+      expect(enPanel(find.text('Referencia')), findsOneWidget);
       expect(
         enPanel(find.textContaining('El prefijo solo indica el país del número')),
         findsOneWidget,
@@ -1818,7 +1818,7 @@ void main() {
       provider.irAPaso(1);
       await tester.pumpAndSettle();
       expect(panel, findsOneWidget);
-      expect(enPanel(find.text('Catálogo')), findsOneWidget);
+      expect(enPanel(find.text('Categorías')), findsOneWidget);
       expect(
         enPanel(
           find.textContaining('Las categorías organizan tus productos'),
@@ -1971,25 +1971,25 @@ void main() {
         );
         final contenidoPorPaso = <int, List<String>>{
           0: [
-            'Paso 1 de 4',
-            'Negocio',
-            'Nombre, WhatsApp y dirección',
+            'Información',
+            'Nombre del negocio',
+            'Referencia',
             'El prefijo solo indica el país del número',
           ],
           1: [
-            'Paso 2 de 4',
-            'Catálogo',
+            'Información',
+            'Categorías',
             'Las categorías organizan tus productos',
           ],
           2: [
-            'Paso 3 de 4',
-            'Logística',
+            'Información',
+            'entregas tus productos',
             'Delivery, zonas, costo fijo y horarios',
             'no calcula distancias ni usa GPS',
           ],
           3: [
-            'Paso 4 de 4',
-            'Pagos',
+            'Información',
+            'Yape/Plin',
             'métodos que el negocio acepta',
             'no verifica depósitos automáticamente',
           ],

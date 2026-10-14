@@ -296,7 +296,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(ConfiguracionNegocioScreen), findsOneWidget);
-    expect(find.text('Configura tu Bodega'), findsOneWidget);
+    expect(find.text('Configura tu negocio'), findsOneWidget);
   });
 
   testWidgets(

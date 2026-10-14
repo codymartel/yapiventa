@@ -78,8 +78,8 @@ class DashboardSidebar extends StatelessWidget {
                     texto: 'Configuración',
                   ),
                   const SizedBox(height: 20),
-                  Divider(color: AppColors.border),
-                  const SizedBox(height: 6),
+                  Divider(color: AppColors.bordeSutil, height: 1),
+                  const SizedBox(height: 8),
                   _item(
                     destino: DashboardDestination.plan,
                     icono: Icons.workspace_premium_outlined,
@@ -110,23 +110,39 @@ class DashboardSidebar extends StatelessWidget {
       button: true,
       selected: activo,
       child: Padding(
-        padding: const EdgeInsets.only(bottom: 5),
+        padding: const EdgeInsets.only(bottom: 4),
         child: Material(
           color: activo
-              ? AppColors.blue.withValues(alpha: 0.2)
+              ? AppColors.blue.withValues(alpha: 0.16)
               : Colors.transparent,
-          borderRadius: BorderRadius.circular(11),
+          borderRadius: BorderRadius.circular(10),
           child: InkWell(
             onTap: () => onSeleccionar(destino),
-            borderRadius: BorderRadius.circular(11),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 10),
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(10, 9, 9, 9),
               child: Row(
                 children: [
+                  // El indicador de la izquierda solo aparece en el ítem
+                  // activo: reinforces la posición sin ensuciar la lista.
+                  if (activo)
+                    Container(
+                      width: 3,
+                      height: 16,
+                      margin: const EdgeInsets.only(right: 7),
+                      decoration: BoxDecoration(
+                        color: AppColors.blueLt,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    )
+                  else
+                    const SizedBox(width: 10),
                   Icon(
                     icono,
-                    size: 20,
-                    color: activo ? AppColors.blueLt : AppColors.muted,
+                    size: 18,
+                    color: !habilitado
+                        ? AppColors.dim
+                        : (activo ? AppColors.blueLt : AppColors.muted),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -135,17 +151,21 @@ class DashboardSidebar extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: activo ? AppColors.texto : AppColors.muted,
+                        color: !habilitado
+                            ? AppColors.dim
+                            : (activo ? AppColors.texto : AppColors.muted),
                         fontSize: 13,
-                        fontWeight: activo ? FontWeight.w700 : FontWeight.w500,
+                        fontWeight: activo ? FontWeight.w600 : FontWeight.w500,
                       ),
                     ),
                   ),
                   if (!habilitado)
+                    // Candado discreto: informa el bloqueo sin competir con
+                    // la etiqueta ni con el ítem activo.
                     const Icon(
                       Icons.lock_outline,
-                      size: 15,
-                      color: AppColors.muted,
+                      size: 12,
+                      color: AppColors.dim,
                     )
                   else if (activo)
                     Container(

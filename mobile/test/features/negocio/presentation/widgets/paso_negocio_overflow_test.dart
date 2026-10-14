@@ -84,7 +84,7 @@ void main() {
     expect(whatsapp.top, greaterThan(nombre.bottom - 1));
   });
 
-  testWidgets('a 768 px nombre y WhatsApp comparten fila, dirección abajo', (
+  testWidgets('a 768 px los campos siguen en una sola columna', (
     tester,
   ) async {
     await mostrarPasoNegocio(
@@ -95,13 +95,11 @@ void main() {
     final nombre = tester.getRect(find.byKey(const Key('campo_nombre')));
     final labelWhatsApp = tester.getRect(find.text('WhatsApp *'));
     final direccion = tester.getRect(find.byKey(const Key('campo_direccion')));
-    expect(
-      (nombre.top - labelWhatsApp.top).abs(),
-      lessThan(1),
-      reason: 'nombre y whatsapp deben estar en la misma fila',
-    );
-    expect(labelWhatsApp.left, greaterThan(nombre.right));
+    // El rediseño trabaja en una sola columna a cualquier ancho: cada campo
+    // ocupa el ancho útil completo, sin filas a dos columnas.
+    expect(labelWhatsApp.top, greaterThan(nombre.bottom - 1));
     expect(direccion.top, greaterThan(labelWhatsApp.bottom - 1));
+    expect(direccion.width, closeTo(nombre.width, 1));
   });
 
   testWidgets('a 1050 px el formulario se distribuye correctamente', (
@@ -130,8 +128,10 @@ void main() {
     final nombre = tester.getRect(find.byKey(const Key('campo_nombre')));
     final telefono = tester.getRect(find.byKey(const Key('campo_telefono')));
     final anchoContenido = telefono.right - nombre.left;
-    expect(nombre.width, lessThanOrEqualTo(528));
-    expect(anchoContenido, lessThanOrEqualTo(720));
+    // El ancho útil está acotado por diseño (860 px como máximo): ni el campo
+    // ni el conjunto pueden estirarse a lo ancho de la ventana.
+    expect(nombre.width, lessThanOrEqualTo(860));
+    expect(anchoContenido, lessThanOrEqualTo(860));
     expect(tester.takeException(), isNull);
   });
 
