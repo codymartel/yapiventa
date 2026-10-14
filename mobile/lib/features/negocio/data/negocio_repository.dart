@@ -769,6 +769,26 @@ class NegocioRepository
     });
   }
 
+  /// Guarda SOLO el campo `catalogoVenta` del documento del negocio.
+  ///
+  /// Es la escritura del avance del paso Catálogo: no toca ningún otro campo
+  /// ni pasa por la transacción de [guardarConfiguracionNegocio]. Las listas
+  /// se reemplazan completas, así que desactivar o quitar elementos funciona.
+  Future<void> guardarAvanceCatalogoVenta({
+    required String uid,
+    required CatalogoVentaPersistido catalogoVenta,
+    String? negocioId,
+  }) async {
+    final negocioIdResuelto = await _resolverNegocioId(uid, negocioId);
+    await _firestore
+        .collection('negocios')
+        .doc(negocioIdResuelto)
+        .set(
+          {'catalogoVenta': catalogoVenta.toMap()},
+          SetOptions(merge: true),
+        );
+  }
+
   List<Map<String, dynamic>> _serializarUnidades(
     Iterable<UnidadInfo> unidades,
   ) {

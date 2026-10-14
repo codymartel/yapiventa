@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:mobile/features/productos/domain/models/familia_unidad.dart';
 import '../../data/negocio_repository.dart';
@@ -56,6 +58,31 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
   /// guardada trae un [CatalogoVentaPersistido] (o se adapta desde unidades
   /// legacy). No se escribe en Firestore hasta `guardar()`.
   late CatalogoVentaPersistido _catalogoVenta;
+
+  /// true si el usuario modificó presentaciones o medidas en esta sesión.
+  /// Solo se marca en [_reemplazarCatalogo]; la siembra del preset y la
+  /// restauración desde Firestore asignan directo y no lo activan.
+  bool _catalogoTocado = false;
+
+  /// true si [_catalogoVenta] vino de `configuracionInicial['catalogoVenta']`.
+  /// Sin hidratar, el borrador es preset y el avance no escribe.
+  bool _catalogoHidratado = false;
+
+  /// Guarda-avance en curso. Mientras tanto Siguiente se deshabilita y una
+  /// segunda llamada retorna sin hacer nada.
+  bool _guardandoAvance = false;
+  bool get guardandoAvance => _guardandoAvance;
+
+  /// Error visible del último intento de guardar el avance. Se limpia al
+  /// reintentar (el propio Siguiente lo vuelve a intentar).
+  String? _errorAvance;
+  String? get errorAvance => _errorAvance;
+
+  void limpiarErrorAvance() {
+    if (_errorAvance == null) return;
+    _errorAvance = null;
+    notifyListeners();
+  }
 
   String? _errorCatalogo;
   String? get errorCatalogo => _errorCatalogo;
@@ -177,6 +204,7 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
     );
     if (catalogoGuardado != null) {
       _catalogoVenta = catalogoGuardado;
+      _catalogoHidratado = true;
     }
     // Si catalogoGuardado es null, _catalogoVenta se queda tal como el
     // constructor lo calculó desde el preset (CatalogoVentaPersistido.desdePreset).
@@ -1045,6 +1073,7 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
 
   void _reemplazarCatalogo(CatalogoVentaPersistido nuevo) {
     _catalogoVenta = nuevo;
+    _catalogoTocado = true;
     _errorCatalogo = null;
     notifyListeners();
   }
@@ -1678,6 +1707,45 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
       return false;
     } finally {
       _guardando = false;
+      if (!_disposed) notifyListeners();
+    }
+  }
+
+  /// Guarda SOLO el campo `catalogoVenta` al avanzar desde el paso Catálogo.
+  ///
+  /// Escribe únicamente si el usuario tocó el catálogo Y el borrador vino de
+  /// Firestore. Sin tocar o sin hidratar retorna true sin escribir (Siguiente
+  /// se comporta como hoy; solo Finalizar persiste).
+  ///
+  /// Tras éxito, `_catalogoTocado` vuelve a false. Con fallo o timeout queda
+  /// en true para el reintento, y el motivo queda en [errorAvance].
+  /// Reentrante: una segunda llamada en curso retorna false sin hacer nada.
+  Future<bool> guardarAvanceCatalogoVenta(String uid) async {
+    if (_guardandoAvance) return false;
+    if (!_catalogoTocado || !_catalogoHidratado) return true;
+    _guardandoAvance = true;
+    _errorAvance = null;
+    notifyListeners();
+    try {
+      await _repository
+          .guardarAvanceCatalogoVenta(
+            uid: uid,
+            negocioId: negocioId,
+            catalogoVenta: _catalogoVenta,
+          )
+          .timeout(const Duration(seconds: 8));
+      _catalogoTocado = false;
+      return true;
+    } on TimeoutException {
+      _errorAvance =
+          'Guardar el catálogo tardó demasiado. Revisa tu conexión e inténtalo de nuevo.';
+      return false;
+    } catch (_) {
+      _errorAvance =
+          'No se pudo guardar el avance del catálogo. Revisa tu conexión.';
+      return false;
+    } finally {
+      _guardandoAvance = false;
       if (!_disposed) notifyListeners();
     }
   }

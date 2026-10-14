@@ -45,6 +45,18 @@ class ConfiguracionNegocioContent extends StatelessWidget {
 
   static const _nombresPasos = ['Negocio', 'Catálogo', 'Logística', 'Pagos'];
 
+  /// Siguiente con guarda-avance: persiste el catálogo si fue tocado y solo
+  /// avanza si la escritura funcionó (o no hacía falta). Con fallo, el paso
+  /// no cambia y el motivo queda visible en la barra.
+  Future<void> _avanzarConGuardado(
+    BuildContext context,
+    ConfiguracionNegocioProvider p,
+  ) async {
+    final ok = await p.guardarAvanceCatalogoVenta(uid);
+    if (!context.mounted) return;
+    if (ok) p.siguiente();
+  }
+
   /// Ancho del botón primario: fijo en escritorio para que no se coma el
   /// ancho de la barra, y flexible cuando la barra es demasiado estrecha.
   static const _anchoPrimario = 200.0;
@@ -142,10 +154,12 @@ class ConfiguracionNegocioContent extends StatelessWidget {
               pasoActual: p.pasoActual,
               paddingHorizontal: paddingHorizontal,
               guardando: p.guardando,
+              guardandoAvance: p.guardandoAvance,
               puedeAvanzar: p.puedeAvanzarActual,
+              errorAvance: p.errorAvance,
               onCambiarRubro: onVolver,
               onAtras: p.atras,
-              onSiguiente: p.siguiente,
+              onSiguiente: () => _avanzarConGuardado(context, p),
               onFinalizar: onFinalizar,
             ),
           ],
@@ -473,17 +487,21 @@ class _BarraAcciones extends StatelessWidget {
   final int pasoActual;
   final double paddingHorizontal;
   final bool guardando;
+  final bool guardandoAvance;
   final bool puedeAvanzar;
+  final String? errorAvance;
   final VoidCallback onCambiarRubro;
   final VoidCallback onAtras;
-  final VoidCallback onSiguiente;
+  final Future<void> Function() onSiguiente;
   final VoidCallback onFinalizar;
 
   const _BarraAcciones({
     required this.pasoActual,
     required this.paddingHorizontal,
     required this.guardando,
+    required this.guardandoAvance,
     required this.puedeAvanzar,
+    required this.errorAvance,
     required this.onCambiarRubro,
     required this.onAtras,
     required this.onSiguiente,
@@ -504,32 +522,45 @@ class _BarraAcciones extends StatelessWidget {
         border: Border(top: BorderSide(color: AppColors.bordeSutil)),
       ),
       padding: EdgeInsets.fromLTRB(paddingHorizontal, 11, paddingHorizontal, 11),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final estrecho =
-              constraints.maxWidth <
-              ConfiguracionNegocioContent._anchoBarraEstrecha;
-          if (estrecho) {
-            return Row(
-              children: [
-                Expanded(child: _botonSecundario()),
-                const SizedBox(width: 10),
-                Expanded(child: _botonPrimario()),
-              ],
-            );
-          }
-          return Row(
-            children: [
-              Flexible(child: _botonSecundario()),
-              const SizedBox(width: 12),
-              SizedBox(
-                width: ConfiguracionNegocioContent._anchoPrimario,
-                height: 46,
-                child: _botonPrimario(),
-              ),
-            ],
-          );
-        },
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (errorAvance != null) ...[
+            Text(
+              errorAvance!,
+              style: TextStyle(color: AppColors.error, fontSize: 12),
+            ),
+            const SizedBox(height: 8),
+          ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final estrecho =
+                  constraints.maxWidth <
+                  ConfiguracionNegocioContent._anchoBarraEstrecha;
+              if (estrecho) {
+                return Row(
+                  children: [
+                    Expanded(child: _botonSecundario()),
+                    const SizedBox(width: 10),
+                    Expanded(child: _botonPrimario()),
+                  ],
+                );
+              }
+              return Row(
+                children: [
+                  Flexible(child: _botonSecundario()),
+                  const SizedBox(width: 12),
+                  SizedBox(
+                    width: ConfiguracionNegocioContent._anchoPrimario,
+                    height: 46,
+                    child: _botonPrimario(),
+                  ),
+                ],
+              );
+            },
+          ),
+        ],
       ),
     );
   }
@@ -558,11 +589,11 @@ class _BarraAcciones extends StatelessWidget {
   /// Acción primaria: azul, ancho fijo y jerarquía dominante.
   Widget _botonPrimario() {
     return ElevatedButton(
-      onPressed: !puedeAvanzar || guardando
+      onPressed: !puedeAvanzar || guardando || guardandoAvance
           ? null
-          : () {
+          : () async {
               if (!_esUltimoPaso) {
-                onSiguiente();
+                await onSiguiente();
                 return;
               }
               onFinalizar();
