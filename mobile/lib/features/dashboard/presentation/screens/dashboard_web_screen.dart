@@ -123,7 +123,17 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<DashboardProvider>().state;
+    final seccionAyuda = _plantillaAbierta
+        ? 'plantilla'
+        : _productosAbierta
+        ? 'productos'
+        : _configuracionAbierta
+        ? 'configuracion'
+        : _rubroAbierta
+        ? 'rubro'
+        : 'inicio';
     return AuthenticatedShell(
+      ayudaSeccionId: seccionAyuda,
       navigationBuilder: (_, closeNavigation) => DashboardSidebar(
         destinoActivo: _plantillaAbierta
             ? DashboardDestination.plantilla

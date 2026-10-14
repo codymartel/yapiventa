@@ -16,6 +16,7 @@ import 'package:mobile/features/negocio/domain/models/progreso_configuracion.dar
 import 'package:mobile/features/productos/productos_dependencies.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   Future<_EscenarioInicio> mostrarInicio(
@@ -24,6 +25,14 @@ void main() {
     TextScaler textScaler = TextScaler.noScaling,
     DashboardProvider? provider,
   }) async {
+    // Overlay cerrado determinista: evita la auto-apertura de primera visita.
+    SharedPreferences.setMockInitialValues({
+      'ayuda_vista_inicio': true,
+      'ayuda_vista_productos': true,
+      'ayuda_vista_configuracion': true,
+      'ayuda_vista_rubro': true,
+      'ayuda_vista_plantilla': true,
+    });
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -73,6 +82,10 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    if (find.byKey(AuthenticatedShell.helpDialogKey).evaluate().isNotEmpty) {
+      await tester.tapAt(const Offset(8, 8));
+      await tester.pumpAndSettle();
+    }
     return _EscenarioInicio(provider: dashboardProvider);
   }
 

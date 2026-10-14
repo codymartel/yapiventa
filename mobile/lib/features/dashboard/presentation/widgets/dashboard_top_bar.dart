@@ -81,8 +81,11 @@ class DashboardTopBar extends StatelessWidget {
                 IconButton(
                   key: AuthenticatedShell.helpButtonKey,
                   onPressed: onAbrirAyuda,
-                  tooltip: 'Ayuda contextual',
-                  icon: const Icon(Icons.help_outline_rounded, size: 20),
+                  tooltip: 'Ayuda',
+                  icon: const Text(
+                    'ⓘ',
+                    style: TextStyle(fontSize: 20),
+                  ),
                 ),
                 SizedBox(width: separacion),
               ],

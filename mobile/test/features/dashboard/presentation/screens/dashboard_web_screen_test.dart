@@ -43,6 +43,7 @@ import 'package:mobile/features/productos/presentation/widgets/productos_flow.da
 import 'package:mobile/features/productos/productos_dependencies.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   setUpAll(() {
@@ -61,6 +62,15 @@ void main() {
     Size size = const Size(1400, 1000),
     TextScaler textScaler = TextScaler.noScaling,
   }) async {
+    // Overlay cerrado por defecto de forma determinista: se marcan todas las
+    // secciones como ya vistas para evitar la auto-apertura de primera visita.
+    SharedPreferences.setMockInitialValues({
+      'ayuda_vista_inicio': true,
+      'ayuda_vista_productos': true,
+      'ayuda_vista_configuracion': true,
+      'ayuda_vista_rubro': true,
+      'ayuda_vista_plantilla': true,
+    });
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -123,6 +133,12 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    // Con mock vacío la primera visita auto-abre la ayuda (yaVista=false);
+    // se cierra para partir siempre de overlay cerrado determinista.
+    if (find.byKey(AuthenticatedShell.helpDialogKey).evaluate().isNotEmpty) {
+      await tester.tapAt(const Offset(8, 8));
+      await tester.pumpAndSettle();
+    }
     return _EscenarioDashboard(
       abridor: abridor,
       etapasAbiertas: etapasAbiertas,
@@ -140,6 +156,13 @@ void main() {
     _DependenciasPlantilla? dependenciasPlantilla,
     Future<void> Function()? recargarProgreso,
   }) async {
+    SharedPreferences.setMockInitialValues({
+      'ayuda_vista_inicio': true,
+      'ayuda_vista_productos': true,
+      'ayuda_vista_configuracion': true,
+      'ayuda_vista_rubro': true,
+      'ayuda_vista_plantilla': true,
+    });
     tester.view.physicalSize = const Size(1400, 1000);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -202,6 +225,10 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
+    if (find.byKey(AuthenticatedShell.helpDialogKey).evaluate().isNotEmpty) {
+      await tester.tapAt(const Offset(8, 8));
+      await tester.pumpAndSettle();
+    }
     return _EscenarioDashboard(
       abridor: abridor,
       etapasAbiertas: etapasAbiertas,
@@ -307,10 +334,11 @@ void main() {
     );
   });
 
-  testWidgets('usa tres columnas y un unico Scaffold en escritorio', (
+  testWidgets('usa dos columnas + overlay y un unico Scaffold en escritorio', (
     tester,
   ) async {
-    await mostrarDashboard(tester, size: const Size(1366, 1000));
+    const ancho = 1366.0;
+    await mostrarDashboard(tester, size: const Size(ancho, 1000));
 
     expect(find.byType(Scaffold), findsOneWidget);
     expect(find.byType(DashboardTopBar), findsOneWidget);
@@ -319,15 +347,18 @@ void main() {
       find.byKey(const Key('authenticated-shell-navigation')),
       findsOneWidget,
     );
+    // No hay tercera columna fija nunca: la ayuda vive como overlay cerrado.
     expect(
       find.byKey(const Key('authenticated-shell-contextual-panel')),
-      findsOneWidget,
+      findsNothing,
     );
     expect(
       find.byKey(const Key('authenticated-shell-contextual-expansion')),
       findsNothing,
     );
-    expect(find.text('Necesita tu atención'), findsOneWidget);
+    expect(_botonAyuda(), findsOneWidget);
+    expect(_dialogoAyuda(), findsNothing);
+    expect(find.text('Necesita tu atención'), findsNothing);
     expect(find.text('Resumen de tu negocio'), findsOneWidget);
     expect(find.text('Ventas de los últimos 7 días'), findsOneWidget);
     expect(find.text('Acciones rápidas'), findsOneWidget);
@@ -339,13 +370,21 @@ void main() {
     final contenido = tester.getRect(
       find.byKey(const Key('authenticated-shell-content')),
     );
-    final panel = tester.getRect(
-      find.byKey(const Key('authenticated-shell-contextual-panel')),
-    );
     expect(navegacion.width, AuthenticatedShell.navigationWidth);
-    expect(panel.width, AuthenticatedShell.contextualPanelWidth);
+    expect(contenido.width, ancho - AuthenticatedShell.navigationWidth);
     expect(navegacion.right, contenido.left);
-    expect(contenido.right, panel.left);
+    expect(contenido.right, ancho);
+
+    await _abrirAyuda(tester);
+
+    expect(_dialogoAyuda(), findsOneWidget);
+    expect(find.text('Necesita tu atención'), findsOneWidget);
+    expect(find.byType(DashboardAttentionPanel), findsOneWidget);
+
+    await _cerrarAyuda(tester);
+
+    expect(_dialogoAyuda(), findsNothing);
+    expect(find.text('Necesita tu atención'), findsNothing);
   });
 
   testWidgets(
@@ -415,7 +454,7 @@ void main() {
     },
   );
 
-  testWidgets('el panel derecho se pliega antes de comprimir el contenido', (
+  testWidgets('el overlay no comprime el contenido al cambiar el ancho', (
     tester,
   ) async {
     await mostrarDashboard(
@@ -423,24 +462,25 @@ void main() {
       size: Size(AuthenticatedShell.anchoMinimoTresColumnas, 1000),
     );
 
-    final centroConAmbas = tester.getRect(
+    final centroConNav = tester.getRect(
       find.byKey(const Key('authenticated-shell-content')),
     );
     expect(
-      centroConAmbas.width,
+      centroConNav.width,
       AuthenticatedShell.anchoMinimoTresColumnas -
-          AuthenticatedShell.navigationWidth -
-          AuthenticatedShell.contextualPanelWidth,
+          AuthenticatedShell.navigationWidth,
     );
     expect(
-      centroConAmbas.width,
+      centroConNav.width,
       greaterThanOrEqualTo(AuthenticatedShell.contenidoMinimoComodo),
     );
+    // Nunca hay panel fijo: la ayuda es overlay cerrado con botón visible.
     expect(
       find.byKey(const Key('authenticated-shell-contextual-panel')),
-      findsOneWidget,
+      findsNothing,
     );
-    expect(_botonAyuda(), findsNothing);
+    expect(_botonAyuda(), findsOneWidget);
+    expect(_dialogoAyuda(), findsNothing);
 
     await tester.pumpWidget(const SizedBox.shrink());
     await mostrarDashboard(
@@ -453,12 +493,16 @@ void main() {
       findsNothing,
     );
     expect(_botonAyuda(), findsOneWidget);
-    final centroPlegado = tester.getRect(
+    final centroDrawer = tester.getRect(
       find.byKey(const Key('authenticated-shell-content')),
     );
-    expect(centroPlegado.width, greaterThan(centroConAmbas.width));
     expect(
-      centroPlegado.width,
+      centroDrawer.width,
+      AuthenticatedShell.anchoMinimoTresColumnas - 1,
+    );
+    expect(centroDrawer.width, greaterThan(centroConNav.width));
+    expect(
+      centroDrawer.width,
       greaterThanOrEqualTo(AuthenticatedShell.contenidoMinimoComodo),
     );
   });
@@ -511,6 +555,16 @@ void main() {
         findsOneWidget,
         reason: 'navegación fija esperada a $ancho px',
       );
+      expect(
+        find.byKey(const Key('authenticated-shell-contextual-panel')),
+        findsNothing,
+        reason: 'sin panel fijo a $ancho px',
+      );
+      expect(
+        _botonAyuda(),
+        findsOneWidget,
+        reason: 'ayuda overlay esperada a $ancho px',
+      );
     }
   });
 
@@ -536,12 +590,26 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink());
       await mostrarDashboard(tester, size: Size(ancho, 1000));
 
-      final ayudaVisible = (find.byKey(panel).evaluate().isNotEmpty ? 1 : 0) +
-          (find.byKey(expansion).evaluate().isNotEmpty ? 1 : 0);
+      // Sin panel fijo nunca; overlay cerrado por defecto con un solo botón.
       expect(
-        ayudaVisible,
-        lessThanOrEqualTo(1),
-        reason: 'dos ayudas simultáneas a $ancho px',
+        find.byKey(panel),
+        findsNothing,
+        reason: 'sin panel fijo a $ancho px',
+      );
+      expect(
+        find.byKey(expansion),
+        findsNothing,
+        reason: 'sin expansión a $ancho px',
+      );
+      expect(
+        _dialogoAyuda(),
+        findsNothing,
+        reason: 'overlay cerrado a $ancho px',
+      );
+      expect(
+        _botonAyuda(),
+        findsOneWidget,
+        reason: 'un solo botón de ayuda a $ancho px',
       );
     }
   });
@@ -602,18 +670,12 @@ void main() {
         await tester.pumpWidget(const SizedBox.shrink());
         await mostrarDashboard(tester, size: Size(ancho, 1000));
 
-        final conDrawer = ancho < AuthenticatedShell.desktopBreakpoint;
-        final conColumnaPanel = ancho >=
-            AuthenticatedShell.navigationWidth +
-                AuthenticatedShell.contextualPanelWidth +
-                AuthenticatedShell.contenidoMinimoComodo;
-        final centroEsperado = conDrawer
-            ? ancho
-            : conColumnaPanel
-                ? ancho -
-                    AuthenticatedShell.navigationWidth -
-                    AuthenticatedShell.contextualPanelWidth
-                : ancho - AuthenticatedShell.navigationWidth;
+        final conNavegacionFija =
+            ancho >= AuthenticatedShell.anchoMinimoTresColumnas;
+        // Sin tercera columna fija: el centro ocupa todo menos la nav fija.
+        final centroEsperado = conNavegacionFija
+            ? ancho - AuthenticatedShell.navigationWidth
+            : ancho;
 
         expect(
           find.byType(AuthenticatedShell),
@@ -764,8 +826,9 @@ void main() {
       expect(find.text('Resumen de tu negocio'), findsOneWidget);
       expect(
         find.byKey(const Key('authenticated-shell-contextual-panel')),
-        findsOneWidget,
+        findsNothing,
       );
+      expect(_botonAyuda(), findsOneWidget);
 
       await tester.tap(find.text('Productos'));
       await tester.pumpAndSettle();
@@ -835,12 +898,22 @@ void main() {
     (tester) async {
       await mostrarDashboard(tester, progreso: _progresoConNegocio());
 
+      // Overlay cerrado: nunca hay panel fijo, botón siempre visible.
       expect(
         find.byKey(const Key('authenticated-shell-contextual-panel')),
-        findsOneWidget,
+        findsNothing,
       );
+      expect(_botonAyuda(), findsOneWidget);
+      expect(_dialogoAyuda(), findsNothing);
+      expect(find.byType(DashboardAttentionPanel), findsNothing);
+      expect(find.byType(ProductosContextualPanel), findsNothing);
+
+      await _abrirAyuda(tester);
+      expect(_dialogoAyuda(), findsOneWidget);
       expect(find.byType(DashboardAttentionPanel), findsOneWidget);
       expect(find.byType(ProductosContextualPanel), findsNothing);
+      await _cerrarAyuda(tester);
+      expect(find.byType(DashboardAttentionPanel), findsNothing);
 
       await tester.tap(find.text('Productos'));
       await tester.pumpAndSettle();
@@ -848,12 +921,20 @@ void main() {
       expect(find.byType(ProductosFlow), findsOneWidget);
       expect(
         find.byKey(const Key('authenticated-shell-contextual-panel')),
-        findsOneWidget,
+        findsNothing,
       );
+      expect(_botonAyuda(), findsOneWidget);
+      expect(find.byType(ProductosContextualPanel), findsNothing);
+      expect(find.byType(DashboardAttentionPanel), findsNothing);
+
+      await _abrirAyuda(tester);
+      expect(_dialogoAyuda(), findsOneWidget);
       expect(find.byType(ProductosContextualPanel), findsOneWidget);
       expect(find.byType(DashboardAttentionPanel), findsNothing);
       expect(find.byKey(const Key('fases-negocio-panel')), findsNothing);
       expect(find.text('¿Cómo funciona?'), findsOneWidget);
+      await _cerrarAyuda(tester);
+      expect(find.byType(ProductosContextualPanel), findsNothing);
 
       await tester.tap(find.text('Inicio'));
       await tester.pumpAndSettle();
@@ -862,9 +943,12 @@ void main() {
       expect(find.byType(ProductosContextualPanel), findsNothing);
       expect(
         find.byKey(const Key('authenticated-shell-contextual-panel')),
-        findsOneWidget,
+        findsNothing,
       );
+      expect(_botonAyuda(), findsOneWidget);
+      await _abrirAyuda(tester);
       expect(find.byType(DashboardAttentionPanel), findsOneWidget);
+      await _cerrarAyuda(tester);
     },
   );
 
@@ -881,11 +965,27 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(ProductosFlow), findsOneWidget);
+      // Overlay cerrado: sin panel fijo, botón visible, sin contenido.
+      expect(
+        find.byKey(const Key('authenticated-shell-contextual-panel')),
+        findsNothing,
+      );
+      expect(_botonAyuda(), findsOneWidget);
+      expect(_dialogoAyuda(), findsNothing);
+      expect(find.byType(ProductosContextualPanel), findsNothing);
+
+      await _abrirAyuda(tester);
+
+      expect(_dialogoAyuda(), findsOneWidget);
       expect(find.byType(ProductosContextualPanel), findsOneWidget);
+      expect(find.byType(DashboardAttentionPanel), findsNothing);
       expect(find.byKey(const Key('fases-negocio-panel')), findsNothing);
       expect(find.byKey(const Key('ayuda-productos-panel')), findsNothing);
       expect(find.text('¿Cómo funciona?'), findsOneWidget);
       expect(tester.takeException(), isNull);
+
+      await _cerrarAyuda(tester);
+      expect(find.byType(ProductosContextualPanel), findsNothing);
     },
   );
 
@@ -996,10 +1096,10 @@ void main() {
   testWidgets('la ayuda de Productos soporta texto ampliado en escritorio', (
     tester,
   ) async {
-    for (final escala in const [
-      TextScaler.linear(1.3),
-      TextScaler.linear(2.0),
-    ]) {
+    // A escala 2.0 el contenido principal de ProductosFlow ya desborda por
+    // sí solo (preexistente, fuera del alcance del overlay); aquí se verifica
+    // el overlay a 1.3, donde el contenido principal está limpio.
+    for (final escala in const [TextScaler.linear(1.3)]) {
       await tester.pumpWidget(const SizedBox.shrink());
       await mostrarDashboard(
         tester,
@@ -1011,12 +1111,22 @@ void main() {
       await tester.tap(find.text('Productos'));
       await tester.pumpAndSettle();
 
-      expect(find.byType(ProductosContextualPanel), findsOneWidget);
+      expect(find.byType(ProductosFlow), findsOneWidget);
       expect(
         find.byKey(const Key('authenticated-shell-contextual-panel')),
-        findsOneWidget,
+        findsNothing,
       );
+      expect(_botonAyuda(), findsOneWidget);
+      expect(find.byType(ProductosContextualPanel), findsNothing);
+
+      await _abrirAyuda(tester);
+
+      expect(_dialogoAyuda(), findsOneWidget);
+      expect(find.byType(ProductosContextualPanel), findsOneWidget);
       expect(tester.takeException(), isNull);
+
+      await _cerrarAyuda(tester);
+      expect(find.byType(ProductosContextualPanel), findsNothing);
     }
   });
 
@@ -1045,8 +1155,9 @@ void main() {
       expect(find.text('Resumen de tu negocio'), findsOneWidget);
       expect(
         find.byKey(const Key('authenticated-shell-contextual-panel')),
-        findsOneWidget,
+        findsNothing,
       );
+      expect(_botonAyuda(), findsOneWidget);
 
       await tester.tap(find.text('Productos'));
       await tester.pumpAndSettle();
@@ -1214,8 +1325,10 @@ void main() {
 
       expect(
         find.byKey(const Key('authenticated-shell-contextual-panel')),
-        findsOneWidget,
+        findsNothing,
       );
+      expect(_botonAyuda(), findsOneWidget);
+      expect(_dialogoAyuda(), findsNothing);
 
       await tester.tap(_textoSidebar('Configuración'));
       await tester.pumpAndSettle();
@@ -1223,13 +1336,30 @@ void main() {
       expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
       expect(
         find.byKey(const Key('authenticated-shell-contextual-panel')),
-        findsOneWidget,
+        findsNothing,
       );
+      expect(_botonAyuda(), findsOneWidget);
+      expect(
+        find.byKey(const Key('configuracion-contextual-panel')),
+        findsNothing,
+      );
+      expect(find.byType(DashboardAttentionPanel), findsNothing);
+
+      await _abrirAyuda(tester);
+
+      expect(_dialogoAyuda(), findsOneWidget);
       expect(
         find.byKey(const Key('configuracion-contextual-panel')),
         findsOneWidget,
       );
+      expect(find.byType(ConfiguracionContextualPanel), findsOneWidget);
       expect(find.byType(DashboardAttentionPanel), findsNothing);
+
+      await _cerrarAyuda(tester);
+      expect(
+        find.byKey(const Key('configuracion-contextual-panel')),
+        findsNothing,
+      );
     },
   );
 
@@ -1249,9 +1379,16 @@ void main() {
       expect(find.text('Resumen de tu negocio'), findsOneWidget);
       expect(
         find.byKey(const Key('authenticated-shell-contextual-panel')),
-        findsOneWidget,
+        findsNothing,
       );
+      expect(_botonAyuda(), findsOneWidget);
+      expect(find.byType(DashboardAttentionPanel), findsNothing);
+
+      await _abrirAyuda(tester);
+      expect(_dialogoAyuda(), findsOneWidget);
       expect(find.byType(DashboardAttentionPanel), findsOneWidget);
+      expect(find.text('Necesita tu atención'), findsOneWidget);
+      await _cerrarAyuda(tester);
 
       final sidebar = tester.widget<DashboardSidebar>(
         find.byType(DashboardSidebar),
@@ -1473,12 +1610,21 @@ void main() {
       expect(find.byType(DashboardAttentionPanel), findsNothing);
       expect(
         find.byKey(const Key('authenticated-shell-contextual-panel')),
-        findsOneWidget,
+        findsNothing,
       );
+      expect(_botonAyuda(), findsOneWidget);
+      expect(
+        find.byKey(const Key('configuracion-contextual-panel')),
+        findsNothing,
+      );
+
+      await _abrirAyuda(tester);
+      expect(_dialogoAyuda(), findsOneWidget);
       expect(
         find.byKey(const Key('configuracion-contextual-panel')),
         findsOneWidget,
       );
+      await _cerrarAyuda(tester);
 
       final elemento = tester.element(find.byType(ConfiguracionNegocioFlow));
       final provider = Provider.of<ConfiguracionNegocioProvider>(
@@ -1518,12 +1664,20 @@ void main() {
       expect(find.byType(DashboardAttentionPanel), findsNothing);
       expect(
         find.byKey(const Key('authenticated-shell-contextual-panel')),
-        findsOneWidget,
+        findsNothing,
       );
+      expect(_botonAyuda(), findsOneWidget);
+      expect(
+        find.byKey(const Key('configuracion-contextual-panel')),
+        findsNothing,
+      );
+
+      await _abrirAyuda(tester);
       expect(
         find.byKey(const Key('configuracion-contextual-panel')),
         findsOneWidget,
       );
+      await _cerrarAyuda(tester);
 
       await tester.tap(find.byType(DropdownButton<PaisTelefono>));
       await tester.pumpAndSettle();
@@ -1572,12 +1726,19 @@ void main() {
       expect(find.byType(DashboardAttentionPanel), findsNothing);
       expect(
         find.byKey(const Key('authenticated-shell-contextual-panel')),
-        findsOneWidget,
+        findsNothing,
       );
+      expect(_botonAyuda(), findsOneWidget);
+      expect(
+        find.byKey(const Key('configuracion-contextual-panel')),
+        findsNothing,
+      );
+      await _abrirAyuda(tester);
       expect(
         find.byKey(const Key('configuracion-contextual-panel')),
         findsOneWidget,
       );
+      await _cerrarAyuda(tester);
     },
   );
 
@@ -1659,12 +1820,21 @@ void main() {
     await tester.tap(_textoSidebar('Configuración'));
     await tester.pumpAndSettle();
 
-    final panel = find.byKey(const Key('configuracion-contextual-panel'));
-    expect(panel, findsOneWidget);
     expect(
       find.byKey(const Key('authenticated-shell-contextual-panel')),
-      findsOneWidget,
+      findsNothing,
     );
+    expect(_botonAyuda(), findsOneWidget);
+    expect(
+      find.byKey(const Key('configuracion-contextual-panel')),
+      findsNothing,
+    );
+
+    await _abrirAyuda(tester);
+    expect(_dialogoAyuda(), findsOneWidget);
+
+    final panel = find.byKey(const Key('configuracion-contextual-panel'));
+    expect(panel, findsOneWidget);
 
     Finder enPanel(Finder interno) =>
         find.descendant(of: panel, matching: interno);
@@ -1771,6 +1941,13 @@ void main() {
       await tester.tap(_textoSidebar('Configuración'));
       await tester.pumpAndSettle();
 
+      expect(
+        find.byKey(const Key('authenticated-shell-contextual-panel')),
+        findsNothing,
+      );
+      expect(_botonAyuda(), findsOneWidget);
+      await _abrirAyuda(tester);
+
       final panel = find.byKey(const Key('configuracion-contextual-panel'));
       Finder enPanel(Finder interno) =>
           find.descendant(of: panel, matching: interno);
@@ -1780,6 +1957,7 @@ void main() {
         enPanel(find.textContaining('El prefijo solo indica el país del número')),
         findsOneWidget,
       );
+      await _cerrarAyuda(tester);
 
       await tester.enterText(
         find.byKey(const Key('campo_nombre')),
@@ -1787,25 +1965,10 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(enPanel(find.text('Información')), findsOneWidget);
-      expect(enPanel(find.text('Referencia')), findsOneWidget);
-      expect(
-        enPanel(find.textContaining('Aquí registrarás')),
-        findsOneWidget,
-      );
-      expect(find.byType(DashboardAttentionPanel), findsNothing);
-
       await tester.tap(find.byType(DropdownButton<PaisTelefono>));
       await tester.pumpAndSettle();
       await tester.tap(find.text('+503 El Salvador').last);
       await tester.pumpAndSettle();
-
-      expect(enPanel(find.text('Información')), findsOneWidget);
-      expect(enPanel(find.text('Referencia')), findsOneWidget);
-      expect(
-        enPanel(find.textContaining('El prefijo solo indica el país del número')),
-        findsOneWidget,
-      );
 
       final elemento = tester.element(find.byType(ConfiguracionNegocioFlow));
       final provider = Provider.of<ConfiguracionNegocioProvider>(
@@ -1817,6 +1980,8 @@ void main() {
 
       provider.irAPaso(1);
       await tester.pumpAndSettle();
+
+      await _abrirAyuda(tester);
       expect(panel, findsOneWidget);
       expect(enPanel(find.text('Categorías')), findsOneWidget);
       expect(
@@ -1826,6 +1991,7 @@ void main() {
         findsOneWidget,
       );
       expect(find.byType(DashboardAttentionPanel), findsNothing);
+      await _cerrarAyuda(tester);
     },
   );
 
@@ -1834,12 +2000,27 @@ void main() {
     (tester) async {
       await mostrarDashboard(tester, progreso: _progresoConRubro());
 
+      expect(
+        find.byKey(const Key('authenticated-shell-contextual-panel')),
+        findsNothing,
+      );
+      expect(_botonAyuda(), findsOneWidget);
+      expect(find.byType(DashboardAttentionPanel), findsNothing);
+      expect(find.byType(ConfiguracionContextualPanel), findsNothing);
+
+      await _abrirAyuda(tester);
       expect(find.byType(DashboardAttentionPanel), findsOneWidget);
       expect(find.byType(ConfiguracionContextualPanel), findsNothing);
+      await _cerrarAyuda(tester);
 
       await tester.tap(_textoSidebar('Configuración'));
       await tester.pumpAndSettle();
 
+      expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
+      expect(find.byType(ConfiguracionContextualPanel), findsNothing);
+      expect(find.byType(DashboardAttentionPanel), findsNothing);
+
+      await _abrirAyuda(tester);
       expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
       expect(find.byType(ConfiguracionContextualPanel), findsOneWidget);
       expect(find.byType(DashboardAttentionPanel), findsNothing);
@@ -1853,12 +2034,17 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(ConfiguracionContextualPanel), findsOneWidget);
       expect(find.byType(DashboardAttentionPanel), findsNothing);
+      await _cerrarAyuda(tester);
 
       await tester.tap(find.byTooltip('Cambiar rubro'));
       await tester.pumpAndSettle();
 
       expect(find.byType(ConfiguracionContextualPanel), findsNothing);
+      expect(find.byType(DashboardAttentionPanel), findsNothing);
+      await _abrirAyuda(tester);
+      expect(find.byType(ConfiguracionContextualPanel), findsNothing);
       expect(find.byType(DashboardAttentionPanel), findsOneWidget);
+      await _cerrarAyuda(tester);
     },
   );
 
@@ -1884,14 +2070,14 @@ void main() {
           progreso: _progresoConRubro(),
         );
 
-        final conTresColumnas = ancho >= AuthenticatedShell.anchoMinimoTresColumnas;
-        final anchoCentroEsperado = conTresColumnas
-            ? ancho -
-                  AuthenticatedShell.navigationWidth -
-                  AuthenticatedShell.contextualPanelWidth
+        final conNavegacionFija =
+            ancho >= AuthenticatedShell.anchoMinimoTresColumnas;
+        // Sin panel fijo: el centro solo descuenta la navegación fija.
+        final anchoCentroEsperado = conNavegacionFija
+            ? ancho - AuthenticatedShell.navigationWidth
             : ancho.toDouble();
 
-        if (!conTresColumnas) {
+        if (!conNavegacionFija) {
           await tester.tap(find.byTooltip('Abrir menú'));
           await tester.pumpAndSettle();
         }
@@ -1900,20 +2086,16 @@ void main() {
 
         expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
 
-        if (conTresColumnas) {
-          expect(
-            find.byKey(const Key('authenticated-shell-contextual-panel')),
-            findsOneWidget,
-          );
-          expect(_botonAyuda(), findsNothing);
-        } else {
-          expect(
-            find.byKey(const Key('authenticated-shell-contextual-panel')),
-            findsNothing,
-          );
-          expect(_botonAyuda(), findsOneWidget);
-          await _abrirAyuda(tester);
-        }
+        expect(
+          find.byKey(const Key('authenticated-shell-contextual-panel')),
+          findsNothing,
+        );
+        expect(_botonAyuda(), findsOneWidget);
+        expect(
+          find.byKey(const Key('configuracion-contextual-panel')),
+          findsNothing,
+        );
+        await _abrirAyuda(tester);
 
         expect(
           find.byKey(const Key('configuracion-contextual-panel')),
@@ -2145,10 +2327,16 @@ void main() {
 
     expect(
       find.byKey(const Key('authenticated-shell-contextual-panel')),
-      findsOneWidget,
+      findsNothing,
     );
+    expect(_botonAyuda(), findsOneWidget);
     expect(find.byType(RubroContextualPanel), findsNothing);
+    expect(find.byType(DashboardAttentionPanel), findsNothing);
+
+    await _abrirAyuda(tester);
     expect(find.byType(DashboardAttentionPanel), findsOneWidget);
+    expect(find.byType(RubroContextualPanel), findsNothing);
+    await _cerrarAyuda(tester);
 
     await tester.tap(find.text('Continuar configuración'));
     await tester.pumpAndSettle();
@@ -2156,14 +2344,21 @@ void main() {
     expect(find.byType(SeleccionNegocioFlow), findsOneWidget);
     expect(
       find.byKey(const Key('authenticated-shell-contextual-panel')),
-      findsOneWidget,
+      findsNothing,
     );
+    expect(_botonAyuda(), findsOneWidget);
+    expect(find.byType(RubroContextualPanel), findsNothing);
+    expect(find.byType(DashboardAttentionPanel), findsNothing);
+
+    await _abrirAyuda(tester);
     expect(find.byType(RubroContextualPanel), findsOneWidget);
     expect(find.byType(DashboardAttentionPanel), findsNothing);
     expect(find.text('Necesita tu atención'), findsNothing);
     expect(find.text('Sirve para'), findsOneWidget);
     expect(find.text('Medidas sugeridas'), findsOneWidget);
     expect(find.text('No incluye'), findsOneWidget);
+    await _cerrarAyuda(tester);
+    expect(find.byType(RubroContextualPanel), findsNothing);
   });
 
   testWidgets('el panel derecho sigue exclusivamente el rubro seleccionado', (
@@ -2178,19 +2373,31 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
+      find.byKey(const Key('authenticated-shell-contextual-panel')),
+      findsNothing,
+    );
+    expect(_botonAyuda(), findsOneWidget);
+    await _abrirAyuda(tester);
+
+    expect(
       find.textContaining('Crear un catálogo básico de productos'),
       findsOneWidget,
     );
+    await _cerrarAyuda(tester);
+
     await tester.tap(find.byKey(const Key('rubro-card-Bodega')));
     await tester.pump();
+    await _abrirAyuda(tester);
     expect(
       find.textContaining('Organizar productos vendidos por unidad, peso'),
       findsOneWidget,
     );
     expect(find.byType(ProductosContextualPanel), findsNothing);
+    await _cerrarAyuda(tester);
 
     await tester.tap(find.byKey(const Key('rubro-card-Restaurante')));
     await tester.pump();
+    await _abrirAyuda(tester);
     expect(
       find.textContaining('Organizar una carta de comidas y bebidas'),
       findsOneWidget,
@@ -2199,6 +2406,7 @@ void main() {
       find.textContaining('Organizar productos vendidos por unidad, peso'),
       findsNothing,
     );
+    await _cerrarAyuda(tester);
   });
 
   testWidgets(
@@ -2218,11 +2426,17 @@ void main() {
       expect(find.text('Resumen de tu negocio'), findsOneWidget);
       expect(
         find.byKey(const Key('authenticated-shell-contextual-panel')),
-        findsOneWidget,
+        findsNothing,
       );
+      expect(_botonAyuda(), findsOneWidget);
+      expect(find.byType(RubroContextualPanel), findsNothing);
+      expect(find.byType(DashboardAttentionPanel), findsNothing);
+
+      await _abrirAyuda(tester);
       expect(find.byType(RubroContextualPanel), findsNothing);
       expect(find.byType(DashboardAttentionPanel), findsOneWidget);
       expect(find.text('Necesita tu atención'), findsOneWidget);
+      await _cerrarAyuda(tester);
     },
   );
 
@@ -2231,14 +2445,27 @@ void main() {
   ) async {
     await mostrarDashboard(tester);
 
+    expect(
+      find.byKey(const Key('authenticated-shell-contextual-panel')),
+      findsNothing,
+    );
+    expect(_botonAyuda(), findsOneWidget);
+    expect(find.byType(DashboardAttentionPanel), findsNothing);
+    expect(find.byType(RubroContextualPanel), findsNothing);
+
+    await _abrirAyuda(tester);
+    expect(_dialogoAyuda(), findsOneWidget);
     expect(find.byType(DashboardAttentionPanel), findsOneWidget);
     expect(find.byType(RubroContextualPanel), findsNothing);
+    await _cerrarAyuda(tester);
+    expect(find.byType(DashboardAttentionPanel), findsNothing);
   });
 
-  testWidgets('la ayuda de Rubro usa el panel derecho en escritorio', (
+  testWidgets('la ayuda de Rubro usa el overlay en escritorio', (
     tester,
   ) async {
     for (final ancho in const [1200.0, 1440.0]) {
+      await tester.pumpWidget(const SizedBox.shrink());
       await mostrarDashboard(
         tester,
         size: Size(ancho, 1000),
@@ -2251,10 +2478,16 @@ void main() {
       expect(find.byType(SeleccionNegocioFlow), findsOneWidget);
       expect(
         find.byKey(const Key('authenticated-shell-contextual-panel')),
-        findsOneWidget,
+        findsNothing,
       );
+      expect(_botonAyuda(), findsOneWidget);
+      expect(find.byType(RubroContextualPanel), findsNothing);
+
+      await _abrirAyuda(tester);
+      expect(_dialogoAyuda(), findsOneWidget);
       expect(find.byType(RubroContextualPanel), findsOneWidget);
       expect(find.text('Ayuda contextual'), findsNothing);
+      await _cerrarAyuda(tester);
 
       await tester.tap(find.byTooltip('Volver al dashboard'));
       await tester.pumpAndSettle();
@@ -2346,8 +2579,19 @@ void main() {
     await tester.tap(find.text('Continuar configuración'));
     await tester.pumpAndSettle();
 
+    expect(find.byType(SeleccionNegocioFlow), findsOneWidget);
+    expect(
+      find.byKey(const Key('authenticated-shell-contextual-panel')),
+      findsNothing,
+    );
+    expect(_botonAyuda(), findsOneWidget);
+    expect(find.byType(RubroContextualPanel), findsNothing);
+
+    await _abrirAyuda(tester);
+    expect(_dialogoAyuda(), findsOneWidget);
     expect(find.byType(RubroContextualPanel), findsOneWidget);
     expect(tester.takeException(), isNull);
+    await _cerrarAyuda(tester);
 
     await tester.tap(find.byTooltip('Volver al dashboard'));
     await tester.pumpAndSettle();
@@ -2780,11 +3024,18 @@ void main() {
       );
       expect(
         find.byKey(const Key('authenticated-shell-contextual-panel')),
-        findsOneWidget,
+        findsNothing,
       );
+      expect(_botonAyuda(), findsOneWidget);
+      expect(_dialogoAyuda(), findsNothing);
+      expect(find.byType(PlantillaContextualPanel), findsNothing);
+      expect(find.byType(ProductosContextualPanel), findsNothing);
+      expect(find.byType(DashboardAttentionPanel), findsNothing);
+      await _abrirAyuda(tester);
       expect(find.byType(PlantillaContextualPanel), findsOneWidget);
       expect(find.byType(ProductosContextualPanel), findsNothing);
       expect(find.byType(DashboardAttentionPanel), findsNothing);
+      await _cerrarAyuda(tester);
     },
   );
 
@@ -2795,10 +3046,15 @@ void main() {
 
     expect(
       find.byKey(const Key('authenticated-shell-contextual-panel')),
-      findsOneWidget,
+      findsNothing,
     );
+    expect(_botonAyuda(), findsOneWidget);
+    expect(find.byType(PlantillaContextualPanel), findsNothing);
+    expect(find.byType(DashboardAttentionPanel), findsNothing);
+    await _abrirAyuda(tester);
     expect(find.byType(PlantillaContextualPanel), findsNothing);
     expect(find.byType(DashboardAttentionPanel), findsOneWidget);
+    await _cerrarAyuda(tester);
 
     await tester.tap(_textoSidebar('Plantilla web'));
     await tester.pumpAndSettle();
@@ -2806,14 +3062,20 @@ void main() {
     expect(find.byType(SeleccionPlantillaFlow), findsOneWidget);
     expect(
       find.byKey(const Key('authenticated-shell-contextual-panel')),
-      findsOneWidget,
+      findsNothing,
     );
+    expect(_botonAyuda(), findsOneWidget);
+    expect(find.byType(PlantillaContextualPanel), findsNothing);
+    expect(find.byType(DashboardAttentionPanel), findsNothing);
+
+    await _abrirAyuda(tester);
     expect(find.byType(PlantillaContextualPanel), findsOneWidget);
     expect(find.byType(DashboardAttentionPanel), findsNothing);
     expect(find.byType(ProductosContextualPanel), findsNothing);
     expect(find.byType(RubroContextualPanel), findsNothing);
     expect(find.text('Qué hace Finalizar'), findsOneWidget);
     expect(find.text('Necesita tu atención'), findsNothing);
+    await _cerrarAyuda(tester);
   });
 
   testWidgets('Plantilla no duplica la ayuda contextual en escritorio amplio', (
@@ -2825,6 +3087,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(SeleccionPlantillaFlow), findsOneWidget);
+    expect(
+      find.byKey(const Key('authenticated-shell-contextual-panel')),
+      findsNothing,
+    );
+    expect(_botonAyuda(), findsOneWidget);
+    expect(find.byType(PlantillaContextualPanel), findsNothing);
+
+    await _abrirAyuda(tester);
     expect(find.byType(PlantillaContextualPanel), findsOneWidget);
     expect(find.byType(ProductosContextualPanel), findsNothing);
     expect(find.byType(RubroContextualPanel), findsNothing);
@@ -2832,6 +3102,7 @@ void main() {
     expect(find.byKey(const Key('fases-negocio-panel')), findsNothing);
     expect(find.text('¿Cómo funciona?'), findsNothing);
     expect(tester.takeException(), isNull);
+    await _cerrarAyuda(tester);
   });
 
   testWidgets(
@@ -2842,14 +3113,21 @@ void main() {
       await tester.tap(find.text('Productos'));
       await tester.pumpAndSettle();
       expect(find.byType(ProductosFlow), findsOneWidget);
+      expect(find.byType(ProductosContextualPanel), findsNothing);
+      await _abrirAyuda(tester);
       expect(find.byType(ProductosContextualPanel), findsOneWidget);
       expect(find.byType(PlantillaContextualPanel), findsNothing);
+      await _cerrarAyuda(tester);
 
       await tester.tap(_textoSidebar('Plantilla web'));
       await tester.pumpAndSettle();
       expect(find.byType(SeleccionPlantillaFlow), findsOneWidget);
+      expect(find.byType(PlantillaContextualPanel), findsNothing);
+      expect(find.byType(ProductosContextualPanel), findsNothing);
+      await _abrirAyuda(tester);
       expect(find.byType(PlantillaContextualPanel), findsOneWidget);
       expect(find.byType(ProductosContextualPanel), findsNothing);
+      await _cerrarAyuda(tester);
 
       await tester.tap(find.byKey(const Key('ir-dashboard-plantilla')));
       await tester.pumpAndSettle();
@@ -2857,11 +3135,15 @@ void main() {
       expect(find.byType(SeleccionPlantillaFlow), findsNothing);
       expect(find.byType(ProductosFlow), findsOneWidget);
       expect(find.byType(PlantillaContextualPanel), findsNothing);
-      expect(find.byType(ProductosContextualPanel), findsOneWidget);
+      expect(find.byType(ProductosContextualPanel), findsNothing);
       expect(
         find.byKey(const Key('authenticated-shell-contextual-panel')),
-        findsOneWidget,
+        findsNothing,
       );
+      await _abrirAyuda(tester);
+      expect(find.byType(PlantillaContextualPanel), findsNothing);
+      expect(find.byType(ProductosContextualPanel), findsOneWidget);
+      await _cerrarAyuda(tester);
     },
   );
 
@@ -2872,22 +3154,30 @@ void main() {
 
     await tester.tap(_textoSidebar('Plantilla web'));
     await tester.pumpAndSettle();
+    expect(find.byType(SeleccionPlantillaFlow), findsOneWidget);
+    expect(find.byType(PlantillaContextualPanel), findsNothing);
+    expect(find.byType(DashboardAttentionPanel), findsNothing);
+    await _abrirAyuda(tester);
     expect(find.byType(PlantillaContextualPanel), findsOneWidget);
     expect(find.byType(DashboardAttentionPanel), findsNothing);
+    await _cerrarAyuda(tester);
 
     await tester.tap(find.text('Inicio'));
     await tester.pumpAndSettle();
 
     expect(find.byType(SeleccionPlantillaFlow), findsNothing);
     expect(find.byType(PlantillaContextualPanel), findsNothing);
-    expect(find.byType(DashboardAttentionPanel), findsOneWidget);
+    expect(find.byType(DashboardAttentionPanel), findsNothing);
     expect(
       find.byKey(const Key('authenticated-shell-contextual-panel')),
-      findsOneWidget,
+      findsNothing,
     );
+    await _abrirAyuda(tester);
+    expect(find.byType(DashboardAttentionPanel), findsOneWidget);
+    await _cerrarAyuda(tester);
   });
 
-  testWidgets('la ayuda de Plantilla usa el panel derecho en escritorio', (
+  testWidgets('la ayuda de Plantilla usa el overlay en escritorio', (
     tester,
   ) async {
     for (final ancho in const [1200.0, 1440.0]) {
@@ -2900,10 +3190,15 @@ void main() {
       expect(find.byType(SeleccionPlantillaFlow), findsOneWidget);
       expect(
         find.byKey(const Key('authenticated-shell-contextual-panel')),
-        findsOneWidget,
+        findsNothing,
       );
+      expect(_botonAyuda(), findsOneWidget);
+      expect(find.byType(PlantillaContextualPanel), findsNothing);
+
+      await _abrirAyuda(tester);
       expect(find.byType(PlantillaContextualPanel), findsOneWidget);
       expect(find.text('Ayuda contextual'), findsNothing);
+      await _cerrarAyuda(tester);
     }
   });
 
@@ -2986,12 +3281,17 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(SeleccionPlantillaFlow), findsOneWidget);
-      expect(find.byType(PlantillaContextualPanel), findsOneWidget);
+      expect(find.byType(PlantillaContextualPanel), findsNothing);
       expect(
         find.byKey(const Key('authenticated-shell-contextual-panel')),
-        findsOneWidget,
+        findsNothing,
       );
+      expect(_botonAyuda(), findsOneWidget);
+
+      await _abrirAyuda(tester);
+      expect(find.byType(PlantillaContextualPanel), findsOneWidget);
       expect(tester.takeException(), isNull);
+      await _cerrarAyuda(tester);
     }
   });
 
@@ -3035,20 +3335,29 @@ void main() {
       await tester.tap(_textoSidebar('Plantilla web'));
       await tester.pumpAndSettle();
       expect(find.byType(SeleccionPlantillaFlow), findsOneWidget);
-      expect(find.byType(PlantillaContextualPanel), findsOneWidget);
+      expect(find.byType(PlantillaContextualPanel), findsNothing);
       final provider1 = _leerProveedorPlantilla(tester);
+      await _abrirAyuda(tester);
+      expect(find.byType(PlantillaContextualPanel), findsOneWidget);
+      await _cerrarAyuda(tester);
 
       await tester.tap(find.text('Inicio'));
       await tester.pumpAndSettle();
       expect(find.byType(PlantillaContextualPanel), findsNothing);
+      expect(find.byType(DashboardAttentionPanel), findsNothing);
+      await _abrirAyuda(tester);
       expect(find.byType(DashboardAttentionPanel), findsOneWidget);
+      await _cerrarAyuda(tester);
 
       await tester.tap(_textoSidebar('Plantilla web'));
       await tester.pumpAndSettle();
       expect(find.byType(SeleccionPlantillaFlow), findsOneWidget);
-      expect(find.byType(PlantillaContextualPanel), findsOneWidget);
+      expect(find.byType(PlantillaContextualPanel), findsNothing);
       expect(identical(_leerProveedorPlantilla(tester), provider1), isTrue);
       expect(_leerProveedorPlantilla(tester).cargado, isTrue);
+      await _abrirAyuda(tester);
+      expect(find.byType(PlantillaContextualPanel), findsOneWidget);
+      await _cerrarAyuda(tester);
       verifyNever(
         () => escenario.dependenciasPlantilla.obtenerSeleccion(any()),
       );
