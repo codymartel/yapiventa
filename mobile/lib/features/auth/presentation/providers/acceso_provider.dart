@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../../negocio/domain/errors/negocio_inexistente_exception.dart';
 import '../../../negocio/domain/errors/productos_dependientes_rubro_exception.dart';
 import '../../../negocio/domain/models/progreso_configuracion.dart';
 import '../../../negocio/domain/repositories/repositorio_progreso_configuracion.dart';
@@ -260,6 +261,12 @@ class AccesoProvider extends ChangeNotifier {
       _errorMessage = null;
       _refrescando = false;
       _notificar();
+    } on NegocioInexistenteException catch (e) {
+      if (!_esRespuestaVigente(uid, revision)) return;
+      // No es un fallo de conexión: el perfil apunta a un negocio que ya no
+      // está. Se distingue para que la persona no reinstale la app creyendo
+      // que es un problema de conexión.
+      _establecerError(e.mensaje);
     } catch (_) {
       if (!_esRespuestaVigente(uid, revision)) return;
       _establecerError();

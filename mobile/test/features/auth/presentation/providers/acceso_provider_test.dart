@@ -8,6 +8,7 @@ import 'package:mobile/features/auth/data/user_repository.dart';
 import 'package:mobile/features/auth/presentation/providers/acceso_provider.dart';
 import 'package:mobile/features/auth/presentation/providers/auth_provider.dart'
     as app_auth;
+import 'package:mobile/features/negocio/domain/errors/negocio_inexistente_exception.dart';
 import 'package:mobile/features/negocio/domain/models/catalogo_negocio.dart';
 import 'package:mobile/features/negocio/domain/models/progreso_configuracion.dart';
 import 'package:mobile/features/negocio/domain/repositories/repositorio_progreso_configuracion.dart';
@@ -103,6 +104,34 @@ void main() {
       ).called(2);
     },
   );
+
+  test('un negocioId huérfano se reporta distinto a un error de conexión', () async {
+    final usuario = _usuario(uid: 'usuario-1', email: 'ana@example.com');
+    when(() => authRepository.usuarioActual).thenReturn(usuario);
+    when(
+      () => progresoRepository.obtenerProgresoConfiguracion(
+        'usuario-1',
+        negocioId: any(named: 'negocioId'),
+      ),
+    ).thenThrow(
+      NegocioInexistenteException(negocioId: 'negocio-borrado', uid: 'usuario-1'),
+    );
+    provider = AccesoProvider(
+      authRepository: authRepository,
+      authProvider: authProvider,
+      userRepository: userRepository,
+      progresoRepository: progresoRepository,
+    );
+
+    cambiosDeAuth.add(usuario);
+    await pumpEventQueue();
+
+    expect(provider!.estado, EstadoAcceso.error);
+    // No es "no se pudo consultar tu configuración": es un dato inconsistente.
+    expect(provider!.errorMessage, isNot(contains('No se pudo consultar')));
+    expect(provider!.errorMessage, contains('No se encontró el negocio'));
+    expect(provider!.progreso, isNull);
+  });
 
   test('ignora una respuesta antigua después de cambiar de sesión', () async {
     final usuarioAnterior = _usuario(

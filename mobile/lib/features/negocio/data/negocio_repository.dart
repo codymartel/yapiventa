@@ -13,6 +13,7 @@ import '../domain/models/config_pago_metodo.dart';
 import '../domain/models/plantilla_web.dart';
 import '../domain/models/progreso_configuracion.dart';
 import '../domain/models/seleccion_plantilla_info.dart';
+import '../domain/errors/negocio_inexistente_exception.dart';
 import '../domain/errors/productos_dependientes_rubro_exception.dart';
 import '../domain/repositories/repositorio_catalogo_negocio.dart';
 import '../domain/repositories/repositorio_progreso_configuracion.dart';
@@ -76,6 +77,38 @@ class NegocioRepository
       );
     }
     return negocioId;
+  }
+
+  /// Lee `negocios/{negocioId}` cuando el documento DEBE existir, y convierte
+  /// "no está" en [NegocioInexistenteException] en vez de dejar que se pierda
+  /// en un error genérico.
+  ///
+  /// Se llega aquí solo con un id que salió de `users/{uid}.negocioId`, así
+  /// que el documento o bien pertenece a esa persona —y entonces la lectura
+  /// está permitida— o bien no existe. Ese es el motivo por el que un
+  /// `permission-denied` sobre ESTA lectura se traduce a negocio inexistente:
+  /// las reglas solo deniegan un documento existente cuando su
+  /// `propietarioUid` es de otra persona, y eso no puede suceder aquí.
+  ///
+  /// Cualquier otro código de error (red caída, timeout, token vencido) se
+  /// relanza intacto, para que nadie lo confunda con un negocio faltante.
+  Future<DocumentSnapshot<Map<String, dynamic>>> _leerNegocioObligatorio(
+    DocumentReference<Map<String, dynamic>> negocioRef,
+    String negocioId,
+    String uid,
+  ) async {
+    try {
+      final documento = await negocioRef.get();
+      if (!documento.exists) {
+        throw NegocioInexistenteException(negocioId: negocioId, uid: uid);
+      }
+      return documento;
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') {
+        throw NegocioInexistenteException(negocioId: negocioId, uid: uid);
+      }
+      rethrow;
+    }
   }
 
   /// Prefiere el negocioId recibido (ya resuelto en la sesión) y solo relée
@@ -172,7 +205,11 @@ class NegocioRepository
       );
     }
     final negocioRef = _firestore.collection('negocios').doc(negocioIdResuelto);
-    final negocioDocumento = await negocioRef.get();
+    final negocioDocumento = await _leerNegocioObligatorio(
+      negocioRef,
+      negocioIdResuelto,
+      uid,
+    );
     final datos = negocioDocumento.data() ?? const <String, dynamic>{};
     final catalogo = CatalogoNegocio(
       rubro: datos['rubro'] is String ? datos['rubro'] as String : '',

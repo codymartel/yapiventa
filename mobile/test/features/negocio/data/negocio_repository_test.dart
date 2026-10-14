@@ -1,8 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:mobile/domain/models/tipo_unidad.dart';
 import 'package:mobile/features/negocio/data/negocio_repository.dart';
+import 'package:mobile/features/negocio/domain/errors/negocio_inexistente_exception.dart';
 import 'package:mobile/features/negocio/domain/errors/productos_dependientes_rubro_exception.dart';
 import 'package:mobile/features/negocio/domain/models/categoria_personalizada.dart';
 import 'package:mobile/features/negocio/domain/models/catalogo_venta/catalogo_venta_persistido.dart';
@@ -1315,6 +1317,148 @@ group('guardarRubro con cambio de rubro: regresión de catálogo', () {
       expect(progreso.productosCompletos, isTrue);
       expect(progreso.completo, isTrue);
       expect(progreso.siguiente, EtapaConfiguracion.completa);
+    });
+  });
+
+  group('negocioId huérfano', () {
+    test('negocio existente: la carga sigue el flujo normal', () async {
+      await _prepararNegocio(
+        firestore,
+        'usuario-1',
+        datos: {'rubro': 'Bodega'},
+      );
+
+      final progreso = await repository.obtenerProgresoConfiguracion(
+        'usuario-1',
+      );
+
+      expect(progreso.rubroCompleto, isTrue);
+      expect(progreso.catalogo.rubro, 'Bodega');
+    });
+
+    test('sin negocioId en el perfil: comportamiento actual', () async {
+      await firestore.collection('users').doc('usuario-nuevo').set({
+        'email': 'nuevo@example.com',
+      });
+
+      final progreso = await repository.obtenerProgresoConfiguracion(
+        'usuario-nuevo',
+      );
+
+      // Sin id no hay nada que leer: progreso vacío, sin excepción.
+      expect(progreso.rubroCompleto, isFalse);
+      expect(progreso.siguiente, EtapaConfiguracion.rubro);
+    });
+
+    test('negocioId apuntando a un documento inexistente se detecta', () async {
+      await firestore.collection('users').doc('usuario-1').set({
+        'email': 'ana@example.com',
+        'negocioId': 'negocio-borrado',
+      });
+
+      expect(
+        () => repository.obtenerProgresoConfiguracion('usuario-1'),
+        throwsA(
+          isA<NegocioInexistenteException>()
+              .having((e) => e.negocioId, 'negocioId', 'negocio-borrado')
+              .having((e) => e.uid, 'uid', 'usuario-1'),
+        ),
+      );
+    });
+
+    test(
+      'el id también se detecta cuando viene resuelto, sin releer users',
+      () async {
+        await _prepararNegocio(
+          firestore,
+          'usuario-1',
+          datos: {'rubro': 'Bodega'},
+        );
+        // Se fuerza un id que no existe sin tocar el perfil.
+        await firestore.collection('users').doc('usuario-1').set({
+          'negocioId': 'negocio-fantasma',
+        });
+
+        expect(
+          () => repository.obtenerProgresoConfiguracion(
+            'usuario-1',
+            negocioId: 'negocio-fantasma',
+          ),
+          throwsA(
+            isA<NegocioInexistenteException>().having(
+              (e) => e.negocioId,
+              'negocioId',
+              'negocio-fantasma',
+            ),
+          ),
+        );
+      },
+    );
+
+    test('un permission-denied en esa lectura también es negocio huérfano', () async {
+      // En producción el síntoma real NO es `exists == false`: las reglas
+      // desreferencian `resource.data` sobre un `resource` nulo y el cliente
+      // recibe permission-denied. Por eso esa lectura también se traduce.
+      final firestoreQueNiega = _firestoreQueFallaAlLeerNegocio(
+        'permission-denied',
+        negocioId: 'negocio-borrado',
+      );
+
+      expect(
+        () => NegocioRepository(firestore: firestoreQueNiega)
+            .obtenerProgresoConfiguracion(
+              'usuario-1',
+              negocioId: 'negocio-borrado',
+            ),
+        throwsA(
+          isA<NegocioInexistenteException>()
+              .having((e) => e.negocioId, 'negocioId', 'negocio-borrado')
+              .having((e) => e.uid, 'uid', 'usuario-1'),
+        ),
+      );
+    });
+
+    test('otros errores de Firestore no se confunden con negocio inexistente', () async {
+      for (final codigo in [
+        'unavailable',
+        'deadline-exceeded',
+        'unauthenticated',
+        'internal',
+      ]) {
+        final firestoreQueFalla = _firestoreQueFallaAlLeerNegocio(
+          codigo,
+          negocioId: 'negocio-1',
+        );
+
+        expect(
+          () => NegocioRepository(firestore: firestoreQueFalla)
+              .obtenerProgresoConfiguracion('usuario-1', negocioId: 'negocio-1'),
+          throwsA(
+            allOf(
+              isA<FirebaseException>(),
+              isNot(isA<NegocioInexistenteException>()),
+            ),
+          ),
+          reason: '"$codigo" no debe traducirse a negocio inexistente',
+        );
+      }
+    });
+
+    test('la detección no borra el negocioId ni crea nada', () async {
+      await firestore.collection('users').doc('usuario-1').set({
+        'email': 'ana@example.com',
+        'negocioId': 'negocio-borrado',
+      });
+
+      await repository
+          .obtenerProgresoConfiguracion('usuario-1')
+          .then<void>((_) {})
+          .catchError((Object _) {});
+
+      final perfil = (await firestore.collection('users').doc('usuario-1').get())
+          .data()!;
+      expect(perfil['negocioId'], 'negocio-borrado');
+      expect((await firestore.collection('negocios').get()).docs, isEmpty);
     });
   });
 
@@ -3013,4 +3157,36 @@ class _MergeAwareTransaction implements Transaction {
     _writes.add(documentReference.delete);
     return this;
   }
+}
+
+// -------------------------------------------------------------------------
+// Fakes para simular c�mo responde Firestore cuando `negocios/{negocioId}`
+// no existe.
+// -------------------------------------------------------------------------
+
+class _FirebaseFirestoreMock extends Mock implements FirebaseFirestore {}
+
+class _CollectionReferenceMock<T> extends Mock implements CollectionReference<T> {}
+
+class _DocumentReferenceMock<T> extends Mock implements DocumentReference<T> {}
+
+/// Firestore que falla SOLO al leer `negocios/{negocioId}` con [codigoError].
+///
+/// Se usa pasando `negocioId` a `obtenerProgresoConfiguracion`, lo que evita
+/// la lectura de `users/{uid}` y deja el mock con una sola interacci�n.
+FirebaseFirestore _firestoreQueFallaAlLeerNegocio(
+  String codigoError, {
+  required String negocioId,
+}) {
+  final firestore = _FirebaseFirestoreMock();
+  final negocios = _CollectionReferenceMock<Map<String, dynamic>>();
+  final documento = _DocumentReferenceMock<Map<String, dynamic>>();
+
+  when(() => firestore.collection('negocios')).thenReturn(negocios);
+  when(() => negocios.doc(negocioId)).thenReturn(documento);
+  when(() => documento.get()).thenThrow(
+    FirebaseException(plugin: 'cloud_firestore', code: codigoError),
+  );
+
+  return firestore;
 }
