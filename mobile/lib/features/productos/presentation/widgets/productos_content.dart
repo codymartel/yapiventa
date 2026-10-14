@@ -69,50 +69,81 @@ class ProductosContent extends StatelessWidget {
     CatalogoNegocioProvider catalogoProvider,
     List<Producto> productos,
   ) {
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1100),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-          child: Column(
-            children: [
-              ..._mensajes(provider, catalogoProvider),
-              Expanded(
-                child: provider.cargando && productos.isEmpty
-                    ? const Center(child: CircularProgressIndicator())
-                    : productos.isEmpty && !provider.hayMas
-                    ? const _CatalogoVacio()
-                    : ListView.builder(
-                        // La siguiente pagina se solicita solo con "Ver más".
-                        padding: const EdgeInsets.only(bottom: 88),
-                        itemCount:
-                            productos.length +
-                            (provider.hayMas ? 1 : 0) +
-                            (provider.totalProductos > 0 ? 1 : 0),
-                        itemBuilder: (context, index) {
-                          if (index ==
-                              productos.length + (provider.hayMas ? 1 : 0)) {
-                            return _BotonElegirPlantilla(
-                              catalogoProvider: catalogoProvider,
-                              onElegirPlantilla: onElegirPlantilla,
-                            );
-                          }
-                          if (index == productos.length) {
-                            return _BotonVerMas(provider: provider);
-                          }
-                          return _construirProductoCard(
-                            context,
-                            provider,
-                            catalogoProvider,
-                            productos[index],
-                          );
-                        },
-                      ),
+    // El FAB vive acá (no en el flow) para que lo decida la MISMA medida
+    // que elige entre lista y encabezado+cuadrícula: el ancho local. Así
+    // siempre hay exactamente un botón de agregar, sin rango muerto.
+    final accionesHabilitadas =
+        catalogoProvider.disponible &&
+        !provider.cargando &&
+        !provider.refrescando &&
+        !provider.cargandoMas &&
+        !provider.creandoProducto &&
+        !provider.editandoProducto;
+    return Stack(
+      children: [
+        Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1100),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: Column(
+                children: [
+                  ..._mensajes(provider, catalogoProvider),
+                  Expanded(
+                    child: provider.cargando && productos.isEmpty
+                        ? const Center(child: CircularProgressIndicator())
+                        : productos.isEmpty && !provider.hayMas
+                        ? const _CatalogoVacio()
+                        : ListView.builder(
+                            // La siguiente pagina se solicita solo con "Ver más".
+                            padding: const EdgeInsets.only(bottom: 88),
+                            itemCount:
+                                productos.length +
+                                (provider.hayMas ? 1 : 0) +
+                                (provider.totalProductos > 0 ? 1 : 0),
+                            itemBuilder: (context, index) {
+                              if (index ==
+                                  productos.length +
+                                      (provider.hayMas ? 1 : 0)) {
+                                return _BotonElegirPlantilla(
+                                  catalogoProvider: catalogoProvider,
+                                  onElegirPlantilla: onElegirPlantilla,
+                                );
+                              }
+                              if (index == productos.length) {
+                                return _BotonVerMas(provider: provider);
+                              }
+                              return _construirProductoCard(
+                                context,
+                                provider,
+                                catalogoProvider,
+                                productos[index],
+                              );
+                            },
+                          ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
-      ),
+        Positioned(
+          right: 16,
+          bottom: 16,
+          child: FloatingActionButton.extended(
+            tooltip: catalogoProvider.disponible
+                ? 'Agregar producto'
+                : catalogoProvider.errorMessage != null
+                ? 'No se pudo cargar el catálogo'
+                : 'Cargando configuración del catálogo',
+            onPressed: accionesHabilitadas ? () => onAgregar?.call() : null,
+            backgroundColor: AppColors.blue,
+            foregroundColor: Colors.white,
+            icon: const Icon(Icons.add),
+            label: const Text('Agregar producto'),
+          ),
+        ),
+      ],
     );
   }
 

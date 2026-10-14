@@ -15,7 +15,8 @@
 //   propios de Productos (FormularioProducto, DialogoEliminarProducto).
 // - Expone los providers al contenido y traduce la selección de plantilla a
 //   un rubro (ValueChanged<String>) para que el embebedor navegue.
-// - Renderiza el FAB móvil "Agregar producto" superpuesto al contenido.
+// - NO dibuja botones de agregar: el encabezado (desktop) y el FAB (móvil)
+//   los decide ProductosContent con su ancho local.
 //
 // QUÉ NO HACE:
 // - NO crea Scaffold, AppBar ni SafeArea (los provee quien lo embebe).
@@ -80,6 +81,7 @@ class _ProductosFlowState extends State<ProductosFlow> {
     _catalogoProvider = CatalogoNegocioProvider(
       uid: uid,
       obtenerCatalogoNegocio: catalogoDependencies.obtenerCatalogoNegocio,
+      obtenerCatalogoVenta: catalogoDependencies.obtenerCatalogoVenta,
       catalogoInicial: widget.catalogoInicial,
     )..cargar();
 
@@ -123,49 +125,19 @@ class _ProductosFlowState extends State<ProductosFlow> {
     return ListenableBuilder(
       listenable: Listenable.merge([provider, catalogoProvider]),
       builder: (context, _) {
-        final esDesktop = MediaQuery.sizeOf(context).width >= 1100;
-        final accionesHabilitadas =
-            catalogoProvider.disponible &&
-            !provider.cargando &&
-            !provider.refrescando &&
-            !provider.cargandoMas &&
-            !provider.creandoProducto &&
-            !provider.editandoProducto;
-
         return MultiProvider(
           providers: [
             ChangeNotifierProvider.value(value: provider),
             ChangeNotifierProvider.value(value: catalogoProvider),
           ],
-          child: Stack(
-            children: [
-              ProductosContent(
-                mostrarPanelesLaterales: widget.mostrarPanelesLaterales,
-                onAgregar: () => _abrirFormulario(),
-                onEditar: (producto) => _abrirFormulario(producto: producto),
-                onEliminar: _confirmarEliminacion,
-                onElegirPlantilla: _elegirPlantilla,
-              ),
-              if (!esDesktop)
-                Positioned(
-                  right: 16,
-                  bottom: 16,
-                  child: FloatingActionButton.extended(
-                    tooltip: catalogoProvider.disponible
-                        ? 'Agregar producto'
-                        : catalogoProvider.errorMessage != null
-                        ? 'No se pudo cargar el catálogo'
-                        : 'Cargando configuración del catálogo',
-                    onPressed: accionesHabilitadas
-                        ? () => _abrirFormulario()
-                        : null,
-                    backgroundColor: AppColors.blue,
-                    foregroundColor: Colors.white,
-                    icon: const Icon(Icons.add),
-                    label: const Text('Agregar producto'),
-                  ),
-                ),
-            ],
+          // Sin FAB acá: lo dibuja ProductosContent (_construirMovil) con la
+          // misma medida local que elige entre lista y encabezado+cuadrícula.
+          child: ProductosContent(
+            mostrarPanelesLaterales: widget.mostrarPanelesLaterales,
+            onAgregar: () => _abrirFormulario(),
+            onEditar: (producto) => _abrirFormulario(producto: producto),
+            onEliminar: _confirmarEliminacion,
+            onElegirPlantilla: _elegirPlantilla,
           ),
         );
       },
@@ -191,7 +163,12 @@ class _ProductosFlowState extends State<ProductosFlow> {
         child: FormularioProducto(
           producto: producto,
           categoriasDisponibles: catalogo.categorias,
-          unidadesDisponibles: catalogo.unidadesMedida,
+          catalogoVenta: _catalogoProvider?.catalogoVenta,
+          cargandoVenta: _catalogoProvider?.cargandoVenta ?? false,
+          ventaErrorMessage: _catalogoProvider?.ventaErrorMessage,
+          onReintentarVenta: _catalogoProvider == null
+              ? null
+              : () => _catalogoProvider!.reintentarVenta(),
           onCancelar: () => Navigator.of(dialogContext).pop(),
           onGuardado: widget.onProgressChanged,
         ),
