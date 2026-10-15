@@ -471,6 +471,38 @@ void main() {
     });
   });
 
+  group('medidas en todos los rubros', () {
+    test('cada rubro trae las 4 familias de medida', () {
+      for (final rubro in PresetsVenta.porRubro.keys) {
+        final familias = PresetsVenta.obtener(rubro).medidas
+            .map((medida) => medida.familia)
+            .toSet();
+        expect(familias, {
+          FamiliaUnidad.peso,
+          FamiliaUnidad.volumen,
+          FamiliaUnidad.longitud,
+          FamiliaUnidad.area,
+        }, reason: rubro);
+      }
+    });
+
+    test('solo Bodega trae medidas activas (peso y volumen)', () {
+      for (final rubro in PresetsVenta.porRubro.keys) {
+        final activas = PresetsVenta.obtener(rubro).medidas
+            .where((medida) => medida.activa)
+            .map((medida) => medida.familia)
+            .toSet();
+        expect(
+          activas,
+          rubro == 'Bodega'
+              ? {FamiliaUnidad.peso, FamiliaUnidad.volumen}
+              : <FamiliaUnidad>{},
+          reason: rubro,
+        );
+      }
+    });
+  });
+
   // ── Protección del catálogo global ──────────────────────────────────────
   group('proteccion del catalogo global', () {
     test('estadoDe de un id ausente es inactiva', () {

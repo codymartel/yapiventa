@@ -111,7 +111,33 @@ class CatalogoVentaPersistido {
         continue;
       }
 
-      medidas.add(_medidaSegura(unidad, mapeo));
+      // Una sola medida por familia: "g" y "kg" legacy son la misma venta
+      // por peso. Se queda la unidad habitual por defecto de la familia (kg,
+      // L...) si aparece, y la medida queda activa si alguna lo estaba.
+      final indice = medidas.indexWhere((medida) => medida.familia == familia);
+      if (indice == -1) {
+        medidas.add(_medidaSegura(unidad, mapeo));
+        continue;
+      }
+      final previa = medidas[indice];
+      final preferida = CatalogoVentaGlobal.medidaPorDefecto(familia).unidadVisual;
+      final usarNueva =
+          mapeo.unidad == preferida && previa.unidadVisual != preferida;
+      final activa = previa.activa || !unidad.esOpcional;
+      final elegida = usarNueva
+          ? (unidad: unidad, mapeo: mapeo)
+          : (
+              unidad: UnidadInfo(nombre: previa.nombre, tipo: unidad.tipo),
+              mapeo: (familia: familia, unidad: previa.unidadVisual!),
+            );
+      medidas[indice] = _medidaSegura(
+        UnidadInfo(
+          nombre: elegida.unidad.nombre,
+          tipo: elegida.unidad.tipo,
+          esOpcional: !activa,
+        ),
+        elegida.mapeo,
+      );
     }
 
     return CatalogoVentaPersistido(

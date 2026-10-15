@@ -64,10 +64,6 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
   /// restauración desde Firestore asignan directo y no lo activan.
   bool _catalogoTocado = false;
 
-  /// true si [_catalogoVenta] vino de `configuracionInicial['catalogoVenta']`.
-  /// Sin hidratar, el borrador es preset y el avance no escribe.
-  bool _catalogoHidratado = false;
-
   /// Guarda-avance en curso. Mientras tanto Siguiente se deshabilita y una
   /// segunda llamada retorna sin hacer nada.
   bool _guardandoAvance = false;
@@ -204,7 +200,6 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
     );
     if (catalogoGuardado != null) {
       _catalogoVenta = catalogoGuardado;
-      _catalogoHidratado = true;
     }
     // Si catalogoGuardado es null, _catalogoVenta se queda tal como el
     // constructor lo calculó desde el preset (CatalogoVentaPersistido.desdePreset).
@@ -1713,16 +1708,17 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
 
   /// Guarda SOLO el campo `catalogoVenta` al avanzar desde el paso Catálogo.
   ///
-  /// Escribe únicamente si el usuario tocó el catálogo Y el borrador vino de
-  /// Firestore. Sin tocar o sin hidratar retorna true sin escribir (Siguiente
-  /// se comporta como hoy; solo Finalizar persiste).
+  /// Escribe si el usuario tocó el catálogo, venga el borrador de Firestore o
+  /// del preset (negocio nuevo): así lo activado llega al formulario de
+  /// producto sin esperar a Finalizar. Sin tocar retorna true sin escribir.
+  /// El repositorio no crea el documento si el negocio aún no existe.
   ///
   /// Tras éxito, `_catalogoTocado` vuelve a false. Con fallo o timeout queda
   /// en true para el reintento, y el motivo queda en [errorAvance].
   /// Reentrante: una segunda llamada en curso retorna false sin hacer nada.
   Future<bool> guardarAvanceCatalogoVenta(String uid) async {
     if (_guardandoAvance) return false;
-    if (!_catalogoTocado || !_catalogoHidratado) return true;
+    if (!_catalogoTocado) return true;
     _guardandoAvance = true;
     _errorAvance = null;
     notifyListeners();

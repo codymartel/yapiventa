@@ -10,6 +10,7 @@ import 'package:mobile/features/negocio/domain/models/catalogo_venta/unidad_regi
 import 'package:mobile/features/negocio/domain/models/categoria_personalizada.dart';
 import 'package:mobile/features/negocio/domain/models/pais_telefono.dart';
 import 'package:mobile/domain/models/tipo_unidad.dart';
+import 'package:mobile/domain/models/unidad_medida.dart';
 import 'package:mobile/features/negocio/presentation/providers/configuracion_negocio_provider.dart';
 import 'package:mobile/features/productos/domain/models/familia_unidad.dart';
 
@@ -78,8 +79,17 @@ void main() {
   });
 
   test('exige al menos una unidad para completar el catálogo', () {
+    // Negocio con unidades legacy guardadas (solo las predefinidas del rubro):
+    // el espejo del preset ya trae las unidades base protegidas de todas las
+    // familias, que no se pueden quitar.
     final provider = ConfiguracionNegocioProvider(
       rubro: 'Bodega',
+      configuracionInicial: {
+        'unidadesMedida': [
+          for (final unidad in UnidadesMedida.obtener('Bodega'))
+            {'nombre': unidad.nombre, 'tipo': 'entera'},
+        ],
+      },
       repository: NegocioRepository(firestore: FakeFirebaseFirestore()),
     );
 
@@ -542,9 +552,12 @@ void main() {
         expect(presentacion.obligatoria, isTrue);
         expect(presentacion.activa, isTrue);
       }
-      expect(bodega.medidas, hasLength(2));
+      // Las 4 familias en todos los rubros; Bodega trae activas peso y volumen.
+      expect(bodega.medidas, hasLength(4));
       expect(bodega.medidaActiva(FamiliaUnidad.peso), isTrue);
       expect(bodega.medidaActiva(FamiliaUnidad.volumen), isTrue);
+      expect(bodega.medidaActiva(FamiliaUnidad.longitud), isFalse);
+      expect(bodega.medidaActiva(FamiliaUnidad.area), isFalse);
 
       final otros = crearProvider(rubro: 'Otros');
       expect(otros.presentaciones, hasLength(6));
@@ -872,7 +885,8 @@ void main() {
         },
       );
 
-      provider.editarMinimoBase(FamiliaUnidad.peso, 100);
+      // Conteo nunca es una medida: no hay a quién editarle el mínimo.
+      provider.editarMinimoBase(FamiliaUnidad.conteo, 100);
 
       expect(provider.errorCatalogo, contains('No hay una medida'));
     });

@@ -144,7 +144,14 @@ void main() {
       provider.medidasActivas,
       provider.catalogoVenta.medidas.where((m) => m.activa).length,
     );
-    expect(provider.totalCantidadesRapidas, 8);
+    // Suma las rápidas de todas las medidas del borrador.
+    expect(
+      provider.totalCantidadesRapidas,
+      provider.medidas.fold<int>(
+        0,
+        (total, medida) => total + medida.cantidadesRapidasBase.length,
+      ),
+    );
     expect(provider.medidasPendientesRevision, isEmpty);
   });
 

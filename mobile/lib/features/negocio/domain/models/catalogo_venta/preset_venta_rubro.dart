@@ -10,8 +10,9 @@
 //   - opcional    : disponible en el rubro pero sin activar.
 //   - inactiva    : no aparece en el rubro (solo resoluble vía estadoDe).
 //
-// Medidas: solo familias {peso, volumen, longitud, area}; conteo jamás se
-// vende por medida. Mínimo, incremento y rápidas van SIEMPRE en unidad base
+// Medidas: TODOS los rubros traen las 4 familias {peso, volumen, longitud,
+// area}; las que el rubro no usa por defecto llegan desactivadas y el negocio
+// las activa si las necesita. Conteo jamás se vende por medida. Mínimo, incremento y rápidas van SIEMPRE en unidad base
 // y sin double. El monto de cada medida decide si está activo, opcional
 // (disponible sin activar) o inactivo. Envase cerrado (botella, lata, plato,
 // combo, porción) es presentación y se cuenta; SOLO el granel real se vende
@@ -276,6 +277,8 @@ class PresetsVenta {
             rapidas: const [250, 500, 750, 1000],
             monto: EstadoMonto.opcional,
           ),
+          _medidaInactiva(FamiliaUnidad.longitud),
+          _medidaInactiva(FamiliaUnidad.area),
         ],
       ),
       'Restaurante': PresetVentaRubro.modelar(
@@ -294,6 +297,8 @@ class PresetsVenta {
         medidas: [
           _medidaInactiva(FamiliaUnidad.peso),
           _medidaInactiva(FamiliaUnidad.volumen),
+          _medidaInactiva(FamiliaUnidad.longitud),
+          _medidaInactiva(FamiliaUnidad.area),
         ],
       ),
       'Ropa': PresetVentaRubro.modelar(
@@ -308,7 +313,10 @@ class PresetsVenta {
           'bolsa': _opt('bolsa', EstadoVenta.opcional),
         },
         medidas: [
+          _medidaInactiva(FamiliaUnidad.peso),
+          _medidaInactiva(FamiliaUnidad.volumen),
           _medidaInactiva(FamiliaUnidad.longitud),
+          _medidaInactiva(FamiliaUnidad.area),
         ],
       ),
       'Accesorios y regalos': PresetVentaRubro.modelar(
@@ -324,6 +332,8 @@ class PresetsVenta {
           'bolsa': _opt('bolsa', EstadoVenta.opcional),
         },
         medidas: [
+          _medidaInactiva(FamiliaUnidad.peso),
+          _medidaInactiva(FamiliaUnidad.volumen),
           _medidaInactivaPropia(
             FamiliaUnidad.longitud,
             unidadVisual: RegistroUnidades.m,
@@ -331,6 +341,7 @@ class PresetsVenta {
             incremento: 50,
             rapidas: const [100, 250, 500, 1000],
           ),
+          _medidaInactiva(FamiliaUnidad.area),
         ],
       ),
       'Belleza y cuidado personal': PresetVentaRubro.modelar(
@@ -356,6 +367,8 @@ class PresetsVenta {
         medidas: [
           _medidaInactiva(FamiliaUnidad.peso),
           _medidaInactiva(FamiliaUnidad.volumen),
+          _medidaInactiva(FamiliaUnidad.longitud),
+          _medidaInactiva(FamiliaUnidad.area),
         ],
       ),
       'Otros': PresetVentaRubro.modelar(

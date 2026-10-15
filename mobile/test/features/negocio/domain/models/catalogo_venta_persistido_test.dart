@@ -219,6 +219,28 @@ void main() {
     },
   );
 
+  test('desdeUnidadesLegacy deja una sola medida por familia (g y kg)', () {
+    final catalogo = CatalogoVentaPersistido.desdeUnidadesLegacy([
+      const UnidadInfo(nombre: 'g', tipo: TipoUnidad.entera, esOpcional: true),
+      const UnidadInfo(nombre: 'kg', tipo: TipoUnidad.entera, esOpcional: true),
+      const UnidadInfo(nombre: 'ml', tipo: TipoUnidad.entera),
+      const UnidadInfo(nombre: 'L', tipo: TipoUnidad.entera, esOpcional: true),
+    ]);
+
+    final medidas = catalogo!.medidas;
+    expect(medidas, hasLength(2));
+    final peso = medidas.singleWhere((m) => m.familia == FamiliaUnidad.peso);
+    final volumen = medidas.singleWhere(
+      (m) => m.familia == FamiliaUnidad.volumen,
+    );
+    // Se queda la unidad habitual por defecto de la familia.
+    expect(peso.unidadVisual, RegistroUnidades.kg);
+    expect(volumen.unidadVisual, RegistroUnidades.L);
+    // Activa si alguna de las unidades legacy lo estaba.
+    expect(peso.activa, isFalse);
+    expect(volumen.activa, isTrue);
+  });
+
   test(
     'desdeUnidadesLegacy adapta la unidad de conteo como presentación unidad',
     () {

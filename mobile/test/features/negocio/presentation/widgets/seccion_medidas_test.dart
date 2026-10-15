@@ -84,7 +84,7 @@ void main() {
   });
 
   // ── 2. Sección en Bodega ───────────────────────────────────────────────
-  testWidgets('Bodega muestra Venta por medida con Peso y Volumen', (
+  testWidgets('Bodega muestra las 4 medidas con Peso y Volumen activas', (
     tester,
   ) async {
     final provider = await mostrarPaso(tester);
@@ -94,7 +94,32 @@ void main() {
     expect(find.text('2 activas'), findsOneWidget);
     expect(find.byKey(const Key('medida-card-peso')), findsOneWidget);
     expect(find.byKey(const Key('medida-card-volumen')), findsOneWidget);
-    expect(provider.medidas.length, 2);
+    expect(provider.medidas.length, 4);
+    expect(provider.medidaActiva(FamiliaUnidad.longitud), isFalse);
+    expect(provider.medidaActiva(FamiliaUnidad.area), isFalse);
+  });
+
+  testWidgets('el switch de la tarjeta activa y desactiva la medida', (
+    tester,
+  ) async {
+    final provider = await mostrarPaso(tester);
+    await irAMedidas(tester);
+
+    final switchLongitud = find.byKey(
+      const Key('switch-tarjeta-medida-longitud'),
+    );
+    await tester.ensureVisible(switchLongitud);
+    await tester.tap(switchLongitud);
+    await tester.pumpAndSettle();
+    expect(provider.medidaActiva(FamiliaUnidad.longitud), isTrue);
+    expect(find.text('3 activas'), findsOneWidget);
+
+    final switchPeso = find.byKey(const Key('switch-tarjeta-medida-peso'));
+    await tester.ensureVisible(switchPeso);
+    await tester.tap(switchPeso);
+    await tester.pumpAndSettle();
+    expect(provider.medidaActiva(FamiliaUnidad.peso), isFalse);
+    expect(find.text('2 activas'), findsOneWidget);
   });
 
   testWidgets('la tarjeta Peso detalla familia, unidades, números y pedidos', (

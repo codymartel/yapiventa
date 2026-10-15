@@ -6,7 +6,7 @@ import '../../domain/models/categoria_personalizada.dart';
 import '../../domain/models/catalogo_venta/preset_venta_rubro.dart';
 import '../providers/configuracion_negocio_provider.dart';
 import 'catalogo_util.dart';
-import 'seccion_medidas.dart';
+import 'medidas/seccion_medidas.dart';
 import 'seccion_presentaciones.dart';
 import 'seccion_resumen_catalogo.dart';
 
@@ -23,7 +23,7 @@ import 'seccion_resumen_catalogo.dart';
 //     personalizadas), sus formatos y su editor. Vive en
 //     seccion_presentaciones.dart y editor_presentacion.dart.
 //   - "Medidas": la interfaz "Venta por medida" con las medidas del rubro
-//     (peso, volumen, longitud, área) y su editor. Vive en seccion_medidas.dart.
+//     (peso, volumen, longitud, área) y su editor. Vive en medidas/.
 //
 // NO escribe Firestore al cambiar de pestaña y NO toca la lógica de
 // guardado: el proveedor solo expone helpers de lectura (categoriaActiva,

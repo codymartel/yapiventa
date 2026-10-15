@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import '../../../../../core/theme/app_colors.dart';
 import '../../../domain/models/modo_venta.dart';
 
-/// Selector de modo de venta. Solo ofrece los modos ACTIVOS en el catálogo
-/// del negocio: si no hay medidas activas, la opción "Por medida" no
-/// aparece. Un único modo disponible se muestra seleccionado y deshabilitado
-/// (no hay nada que elegir).
+/// Selector de modo de venta. Solo deja elegir los modos ACTIVOS en el
+/// catálogo del negocio. Si no hay medidas activas, "Por medida" se muestra
+/// apagado con el aviso de dónde activarla (en vez de desaparecer sin
+/// explicación).
 class SelectorModoVenta extends StatelessWidget {
   const SelectorModoVenta({
     super.key,
@@ -14,6 +14,11 @@ class SelectorModoVenta extends StatelessWidget {
     required this.seleccionado,
     required this.onCambio,
   });
+
+  /// Texto que explica por qué "Por medida" está apagado.
+  static const avisoMedidaInactiva =
+      'Para vender por peso, volumen o longitud, activa una medida en '
+      'Configuración → Catálogo → Medidas.';
 
   final List<ModoVenta> modosDisponibles;
   final ModoVenta? seleccionado;
@@ -38,6 +43,8 @@ class SelectorModoVenta extends StatelessWidget {
       );
     }
 
+    final medidaApagada = !modosDisponibles.contains(ModoVenta.medida);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -48,6 +55,13 @@ class SelectorModoVenta extends StatelessWidget {
                 value: modo,
                 label: Text(etiqueta(modo)),
                 tooltip: descripcion(modo),
+              ),
+            if (medidaApagada)
+              ButtonSegment<ModoVenta>(
+                value: ModoVenta.medida,
+                label: Text(etiqueta(ModoVenta.medida)),
+                tooltip: avisoMedidaInactiva,
+                enabled: false,
               ),
           ],
           selected: seleccionado == null ||
@@ -60,6 +74,14 @@ class SelectorModoVenta extends StatelessWidget {
           },
           showSelectedIcon: false,
         ),
+        if (medidaApagada) ...[
+          const SizedBox(height: 6),
+          Text(
+            avisoMedidaInactiva,
+            key: const Key('aviso-medida-inactiva'),
+            style: TextStyle(color: AppColors.muted, fontSize: 12),
+          ),
+        ],
         if (seleccionado != null &&
             modosDisponibles.contains(seleccionado)) ...[
           const SizedBox(height: 6),

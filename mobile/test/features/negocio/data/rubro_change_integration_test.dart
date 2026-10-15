@@ -101,8 +101,18 @@ void main() {
       expect(idsPresentaciones, isNot(contains('porcion')));
       expect(idsPresentaciones, isNot(contains('plato')));
 
-      expect(provider.catalogoVenta.medidas.length, 1);
-      expect(provider.catalogoVenta.medidas.first.familia, FamiliaUnidad.longitud);
+      // Las 4 familias existen en todos los rubros, pero ninguna queda
+      // activa: no se arrastran las medidas activas del rubro anterior.
+      expect(
+        provider.catalogoVenta.medidas.map((m) => m.familia).toSet(),
+        {
+          FamiliaUnidad.peso,
+          FamiliaUnidad.volumen,
+          FamiliaUnidad.longitud,
+          FamiliaUnidad.area,
+        },
+      );
+      expect(provider.catalogoVenta.medidas.where((m) => m.activa), isEmpty);
 
       expect(provider.categorias, ['Bisutería', 'Carteras', 'Peluches', 'Regalos', 'Detalles']);
     },
@@ -186,8 +196,18 @@ void main() {
         configuracionInicial: datos,
       );
 
-      expect(provider.catalogoVenta.medidas.length, 1);
-      expect(provider.catalogoVenta.medidas.first.familia, FamiliaUnidad.longitud);
+      // Las 4 familias existen en todos los rubros, pero ninguna queda
+      // activa: no se arrastran las medidas activas del rubro anterior.
+      expect(
+        provider.catalogoVenta.medidas.map((m) => m.familia).toSet(),
+        {
+          FamiliaUnidad.peso,
+          FamiliaUnidad.volumen,
+          FamiliaUnidad.longitud,
+          FamiliaUnidad.area,
+        },
+      );
+      expect(provider.catalogoVenta.medidas.where((m) => m.activa), isEmpty);
 
       expect(
         provider.catalogoVenta.presentaciones.map((p) => p.id).toList(),
@@ -195,14 +215,6 @@ void main() {
       );
       expect(
         provider.catalogoVenta.presentaciones.map((p) => p.id).toList(),
-        isNot(contains('volumen')),
-      );
-      expect(
-        provider.catalogoVenta.medidas.map((m) => m.id).toList(),
-        isNot(contains('peso')),
-      );
-      expect(
-        provider.catalogoVenta.medidas.map((m) => m.id).toList(),
         isNot(contains('volumen')),
       );
     },

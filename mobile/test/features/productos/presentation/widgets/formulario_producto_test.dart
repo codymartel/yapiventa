@@ -165,12 +165,21 @@ void main() {
   }
 
   group('selector de modo', () {
-    testWidgets('solo ofrece los modos activos del catálogo', (tester) async {
-      await montar(tester, formulario());
+    testWidgets(
+      'sin medidas activas muestra Por medida apagado y dice dónde activarla',
+      (tester) async {
+        await montar(tester, formulario());
 
-      expect(find.text('Por presentación'), findsOneWidget);
-      expect(find.text('Por medida'), findsNothing);
-    });
+        expect(find.text('Por presentación'), findsOneWidget);
+        expect(find.text('Por medida'), findsOneWidget);
+        expect(find.byKey(const Key('aviso-medida-inactiva')), findsOneWidget);
+
+        // Tocar el segmento apagado no cambia de modo.
+        await tester.tap(find.text('Por medida'));
+        await tester.pumpAndSettle();
+        expect(find.text('Qué mides *'), findsNothing);
+      },
+    );
 
     testWidgets('ofrece medida cuando el catálogo la tiene activa', (
       tester,
@@ -179,6 +188,7 @@ void main() {
 
       expect(find.text('Por presentación'), findsOneWidget);
       expect(find.text('Por medida'), findsOneWidget);
+      expect(find.byKey(const Key('aviso-medida-inactiva')), findsNothing);
     });
   });
 

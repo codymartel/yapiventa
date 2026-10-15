@@ -77,6 +77,10 @@ void _tocarCatalogo(ConfiguracionNegocioProvider provider) {
   provider.establecerPresentacionActiva(candidata.id, activa: !candidata.activa);
 }
 
+/// Crea el documento del negocio (como lo deja la elección de rubro).
+Future<void> _negocioExistente(FakeFirebaseFirestore fake) =>
+    fake.collection('negocios').doc('neg-1').set({'rubro': 'Bodega'});
+
 Future<Map<String, dynamic>?> _docAvance(FakeFirebaseFirestore fake) async {
   final doc = await fake.collection('negocios').doc('neg-1').get();
   if (!doc.exists) return null;
@@ -101,6 +105,7 @@ void main() {
 
   test('tocado e hidratado escribe y avanza', () async {
     final fake = FakeFirebaseFirestore();
+    await _negocioExistente(fake);
     final provider = _provider(
       repository: NegocioRepository(firestore: fake),
       configuracionInicial: _inicialHidratada(),
@@ -122,14 +127,31 @@ void main() {
     expect(provider.pasoActual, 1);
   });
 
-  test('tocado pero no hidratado no escribe', () async {
+  test('negocio nuevo (sin catálogo guardado) también escribe al avanzar', () async {
+    final fake = FakeFirebaseFirestore();
+    await _negocioExistente(fake);
+    final provider = _provider(
+      repository: NegocioRepository(firestore: fake),
+    );
+    _tocarCatalogo(provider);
+
+    // Lo activado/desactivado llega a Firestore sin esperar a Finalizar.
+    expect(await provider.guardarAvanceCatalogoVenta('u'), isTrue);
+    final datos = await _docAvance(fake);
+    expect(datos!['catalogoVenta'], isA<Map>());
+    expect(datos['rubro'], 'Bodega');
+
+    provider.siguiente();
+    expect(provider.pasoActual, 1);
+  });
+
+  test('no crea el documento si el negocio aún no existe', () async {
     final fake = FakeFirebaseFirestore();
     final provider = _provider(
       repository: NegocioRepository(firestore: fake),
     );
     _tocarCatalogo(provider);
 
-    // Siguiente se comporta como hoy: no escribe; solo Finalizar persiste.
     expect(await provider.guardarAvanceCatalogoVenta('u'), isTrue);
     expect(await _docAvance(fake), isNull);
 
@@ -139,6 +161,7 @@ void main() {
 
   test('falla al escribir deja errorAvance, no avanza y reintenta', () async {
     final fake = FakeFirebaseFirestore();
+    await _negocioExistente(fake);
     final repo = _RepoConmutable(firestore: fake);
     final provider = _provider(
       repository: repo,
