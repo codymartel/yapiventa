@@ -15,10 +15,17 @@ Firebase: proyecto `yapiventa`, plan **Spark** (sin Cloud Functions por ahora). 
 
 ## Forma de trabajar (obligatoria)
 1. **Primero conversar y especificar.** No tocar código hasta que el usuario apruebe la especificación (usar `/especificar`).
-2. Analizar → planear → **revisar el tamaño de los archivos**: si uno pasa de ~500 líneas, **preguntar** antes de meterle más y proponer dividirlo en carpeta.
+2. Analizar → planear → **revisar el tamaño de los archivos** (ver "Cuándo dividir").
 3. **Separar por capas:** widget → service → provider → repository (y dominio en `domain/models`).
 4. Ajustar tests → `flutter analyze` → `flutter test` → build → **deploy solo con confirmación**.
 Para implementar un paso aprobado usar `/implementar-paso`.
+
+## Cuándo dividir un archivo
+- **Dividir cuando se cumplen las tres:** pasa de ~500 líneas, **tiene más de una responsabilidad** y **se va a cambiar ahora**. Un archivo grande pero estable no se toca. Antes de dividir, **preguntar**.
+- **Dividir por responsabilidad**, no por tamaño: pantalla (widget), estado (provider), lógica pura (service/dominio), datos (repository).
+- **No crear archivos muy chicos** (menos de ~50 líneas) salvo que se reusen en varios lugares.
+- **Lógica pura (sin Flutter) no vive en carpetas de widgets**: va a `application/services` o `domain`.
+- **Commit aparte**: primero el commit que solo divide (pruebas intactas y en verde), después el cambio de funcionalidad.
 
 ## Comandos (desde `mobile/`)
 ```bash

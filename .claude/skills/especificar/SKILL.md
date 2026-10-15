@@ -26,7 +26,7 @@ El usuario quiere **conversar y acordar** antes de que se escriba código. Esta 
 
 **Pruebas:** tests que cambian (y por qué) + tests nuevos por punto.
 
-**Archivos grandes:** los que pasan de ~500 líneas y la propuesta de división.
+**Archivos grandes:** los que pasan de ~500 líneas (o pasarán con el cambio) y la propuesta de división por responsabilidad, según "Cuándo dividir" de `CLAUDE.md`.
 
 **Decisiones pendientes:** preguntas con opción recomendada.
 ```

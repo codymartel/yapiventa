@@ -11,7 +11,7 @@ Requisito: debe existir una especificación aprobada (ver `/especificar`). Si no
 1. **Analizar.** Releer los archivos de la especificación y sus tests. Correr la base:
    `flutter test <carpetas tocadas>` desde `mobile/` y anotar cuántos pasan.
 2. **Planear.** Tabla punto → capa → archivo (líneas) → cambio. Mostrarla.
-3. **Revisar tamaños y preguntar.** Si un archivo a tocar pasa de ~500 líneas, **preguntar** antes (AskUserQuestion) si dividirlo en carpeta. Dividir es un cambio aparte, sin cambiar comportamiento, y va primero.
+3. **Revisar tamaños y preguntar.** Aplicar "Cuándo dividir" de `CLAUDE.md`: dividir solo si el archivo pasa de ~500 líneas, tiene más de una responsabilidad y se toca en este paso. **Preguntar** antes (AskUserQuestion). Dividir por responsabilidad, sin archivos de menos de ~50 líneas (salvo reuso), y la lógica pura fuera de las carpetas de widgets. La división es un commit aparte, sin cambiar comportamiento (pruebas intactas), y va primero. Si un archivo **va a pasar** de ~500 líneas por el cambio, avisar también.
 4. **Implementar por capas:** dominio (`domain/models`) → repository (`data/`) → provider → widget. La UI no habla con Firestore; el provider no construye widgets.
 5. **Tests.** Si un test esperaba el comportamiento viejo a propósito, cambiarlo y decir por qué. Sumar al menos un test por punto de la especificación.
 6. **Verificar** desde `mobile/`:
