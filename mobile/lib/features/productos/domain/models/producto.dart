@@ -75,6 +75,12 @@ class Producto {
   /// medida. null en modo presentación y en productos legacy leídos.
   final int? stockBase;
 
+  /// Mínimo e incremento PROPIOS del producto en modo medida, en unidad base
+  /// (ej. jamonada desde 100 g, de 50 en 50 g). null = usa la regla de la
+  /// medida del negocio.
+  final int? minimoBase;
+  final int? incrementoBase;
+
   /// Etiqueta de unidad heredada, de uso exclusivo para productos legacy
   /// leídos cuyo nombre NO coincide con una presentación del catálogo
   /// (ej. "kg"). Sin ella, reescribir el producto perdería la etiqueta.
@@ -115,6 +121,8 @@ class Producto {
     this.precioCentavos = 0,
     this.cantidadReferenciaBase = 0,
     this.stockBase,
+    this.minimoBase,
+    this.incrementoBase,
     this.etiquetaUnidad = '',
   });
 
@@ -147,6 +155,8 @@ class Producto {
     int? precioCentavos,
     int? cantidadReferenciaBase,
     int? stockBase,
+    int? minimoBase,
+    int? incrementoBase,
     String? etiquetaUnidad,
   }) {
     return Producto(
@@ -177,6 +187,8 @@ class Producto {
       cantidadReferenciaBase:
           cantidadReferenciaBase ?? this.cantidadReferenciaBase,
       stockBase: stockBase ?? this.stockBase,
+      minimoBase: minimoBase ?? this.minimoBase,
+      incrementoBase: incrementoBase ?? this.incrementoBase,
       etiquetaUnidad: etiquetaUnidad ?? this.etiquetaUnidad,
     );
   }

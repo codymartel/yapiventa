@@ -97,6 +97,35 @@ class LecturaUnidadesProducto {
     }
   }
 
+  /// Plural simple en español de un nombre de presentación, en minúsculas:
+  /// unidad → unidades, botella → botellas, porción → porciones.
+  static String plural(String nombre) {
+    final texto = nombre.trim().toLowerCase();
+    if (texto.isEmpty) return texto;
+    const terminanEnS = {'set', 'sachet', 'spray'};
+    if (terminanEnS.contains(texto)) return '${texto}s';
+    if (texto.endsWith('ón')) {
+      return '${texto.substring(0, texto.length - 2)}ones';
+    }
+    if (texto.endsWith('z')) {
+      return '${texto.substring(0, texto.length - 1)}ces';
+    }
+    if ('aeiouáéó'.contains(texto[texto.length - 1])) return '${texto}s';
+    return '${texto}es';
+  }
+
+  /// Texto que acompaña al precio de una presentación: "por unidad",
+  /// "por botella (500 ml)". El formato se omite cuando es 1 unidad.
+  static String textoPorPresentacion({
+    required String nombre,
+    required String formatoEtiqueta,
+    required bool formatoEsUnaUnidad,
+  }) {
+    final base = 'por ${nombre.trim().toLowerCase()}';
+    if (formatoEtiqueta.isEmpty || formatoEsUnaUnidad) return base;
+    return '$base ($formatoEtiqueta)';
+  }
+
   /// Unidad propia de un producto legacy (sin presentación); '' si no aplica.
   static String etiquetaLegacy(Producto? producto) {
     if (producto == null) return '';

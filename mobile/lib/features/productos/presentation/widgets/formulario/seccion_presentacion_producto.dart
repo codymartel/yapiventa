@@ -2,25 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../negocio/domain/models/catalogo_venta/opcion_presentacion.dart';
+import '../../../domain/models/formato_elegido.dart';
 import 'aviso_amarillo.dart';
 import 'formato_entradas.dart';
-
-/// Formato de presentación elegido en el formulario.
-class FormatoElegido {
-  const FormatoElegido({
-    required this.valorBase,
-    required this.familia,
-    required this.unidad,
-  });
-
-  final int valorBase;
-
-  /// Nombre de la familia ('peso', 'volumen'…) tal como se persiste.
-  final String familia;
-
-  /// Nombre de la unidad visible ('ml', 'kg'…).
-  final String unidad;
-}
 
 /// Sección "Por presentación": presentación activa, su formato, el precio
 /// por presentación y el stock en unidades enteras.
@@ -34,6 +18,8 @@ class SeccionPresentacionProducto extends StatelessWidget {
     required this.presentaciones,
     required this.presentacionId,
     required this.formatoEtiqueta,
+    this.textoPrecio = '',
+    this.unidadStock = '',
     required this.precioController,
     required this.stockController,
     required this.stockInfinito,
@@ -47,6 +33,12 @@ class SeccionPresentacionProducto extends StatelessWidget {
   final List<OpcionPresentacion> presentaciones;
   final String presentacionId;
   final String formatoEtiqueta;
+
+  /// Lo que cubre el precio: "por unidad", "por botella (500 ml)".
+  final String textoPrecio;
+
+  /// En qué se cuenta el stock: "unidades", "botellas"…
+  final String unidadStock;
   final TextEditingController precioController;
   final TextEditingController stockController;
   final bool stockInfinito;
@@ -93,8 +85,9 @@ class SeccionPresentacionProducto extends StatelessWidget {
           keyboardType: const TextInputType.numberWithOptions(decimal: true),
           inputFormatters: const [FormatoPrecio()],
           style: TextStyle(color: AppColors.texto),
-          decoration: const InputDecoration(
-            labelText: 'Precio por presentación S/ *',
+          decoration: InputDecoration(
+            labelText: 'Precio S/ *',
+            suffixText: textoPrecio.isEmpty ? null : textoPrecio,
           ),
         ),
         const SizedBox(height: 6),
@@ -111,8 +104,9 @@ class SeccionPresentacionProducto extends StatelessWidget {
             keyboardType: TextInputType.number,
             inputFormatters: const [FormatoEntero()],
             style: TextStyle(color: AppColors.texto),
-            decoration: const InputDecoration(
-              labelText: 'Cantidad en stock *',
+            decoration: InputDecoration(
+              labelText: 'Stock *',
+              suffixText: unidadStock.isEmpty ? null : unidadStock,
             ),
           ),
         if (etiquetaGuardada.isNotEmpty) ...[

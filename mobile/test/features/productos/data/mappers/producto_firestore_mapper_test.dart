@@ -65,11 +65,42 @@ void main() {
       'precioCentavos',
       'cantidadReferenciaBase',
       'stockBase',
+      'minimoBase',
+      'incrementoBase',
     });
     expect(datos['fechaVencimiento'], isA<Timestamp>());
     expect((datos['fechaVencimiento'] as Timestamp).toDate(), fecha);
     expect(datos['nombre'], 'Cafe');
     expect(datos['disponible'], isTrue);
+  });
+
+  test('lee mínimo e incremento propios de un producto por medida', () {
+    final base = <String, dynamic>{
+      'negocioId': 'negocio-1',
+      'nombre': 'Arroz',
+      'modoVenta': 'medida',
+      'medidaFamilia': 'peso',
+      'medidaUnidad': 'kg',
+      'cantidadReferenciaBase': 1000,
+      'precioCentavos': 450,
+      'stockBase': 25000,
+    };
+
+    final propio = ProductoFirestoreMapper.desdeFirestore('p1', {
+      ...base,
+      'minimoBase': 250,
+      'incrementoBase': 250,
+    })!;
+    expect(propio.minimoBase, 250);
+    expect(propio.incrementoBase, 250);
+
+    // Ausentes o inválidos: hereda la regla del negocio (null).
+    final heredado = ProductoFirestoreMapper.desdeFirestore('p2', {
+      ...base,
+      'minimoBase': 0,
+    })!;
+    expect(heredado.minimoBase, isNull);
+    expect(heredado.incrementoBase, isNull);
   });
 
   test('mantiene fecha nula y descarta documentos incompletos', () {

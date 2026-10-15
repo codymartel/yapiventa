@@ -260,16 +260,17 @@ void main() {
       await montar(tester, formulario(provider: provider));
 
       await tester.enterText(campo('Nombre del producto *'), 'Cerveza');
-      await tester.enterText(campo('Precio por presentación S/ *'), '8,50');
-      await tester.enterText(campo('Cantidad en stock *'), '12');
+      await tester.enterText(campo('Precio S/ *'), '8,50');
+      await tester.enterText(campo('Stock *'), '12');
 
-      // Presentación con varios formatos: hay que elegir uno.
+      // Presentación con varios formatos: al cambiar a Botella hay que
+      // elegir uno (la sugerida, Unidad, ya estaba completa).
+      await elegirEnDropdown(tester, 'Presentación *', 'Botella');
       final boton = tester.widget<ElevatedButton>(
         find.widgetWithText(ElevatedButton, 'Guardar producto'),
       );
       expect(boton.onPressed, isNull);
 
-      await elegirEnDropdown(tester, 'Presentación *', 'Botella');
       await elegirEnDropdown(tester, 'Formato *', '625 ml');
 
       await tester.tap(find.widgetWithText(ElevatedButton, 'Guardar producto'));
@@ -311,9 +312,9 @@ void main() {
       await tester.enterText(campo('Nombre del producto *'), 'Arroz');
       await elegirEnDropdown(tester, 'Qué mides *', 'Peso');
 
+      // El precio cubre 1 kg por defecto: no hay que escribir la cantidad.
       await tester.enterText(campo('Precio S/ *'), '10');
-      await tester.enterText(campo('¿Desde cuánto? (en kg) *'), '1');
-      await tester.enterText(campo('Cantidad en stock (en kg) *'), '1,5');
+      await tester.enterText(campo('Stock *'), '1,5');
       await tester.pump();
 
       // El mínimo (100 g) y el incremento (50 g) NUNCA bloquean.
@@ -366,7 +367,7 @@ void main() {
 
       // 0,05 kg = 50 g: menos del mínimo (100 g) y no alineado al
       // incremento (50 g desde 100 g). Se guarda igual.
-      await tester.enterText(campo('Cantidad en stock (en kg) *'), '0,05');
+      await tester.enterText(campo('Stock *'), '0,05');
       await tester.pump();
       await tester.tap(find.widgetWithText(ElevatedButton, 'Guardar producto'));
       await tester.pump();
@@ -406,7 +407,7 @@ void main() {
       );
 
       // 0,000 kg: el campo admite 3 decimales y truncado da 0 gramos.
-      await tester.enterText(campo('Cantidad en stock (en kg) *'), '0,000');
+      await tester.enterText(campo('Stock *'), '0,000');
       await tester.pump();
 
       expect(
@@ -440,8 +441,10 @@ void main() {
 
       expect(find.text('Precio S/ *'), findsOneWidget);
       expect(find.textContaining('«kg»'), findsOneWidget);
-      // Sin familia elegida: los campos de medida quedan vacíos.
-      expect(campo('¿Desde cuánto? (en kg) *'), findsOneWidget);
+      // Sin familia elegida: los campos de medida quedan vacíos y el
+      // precio se ofrece por 1 kg (la unidad legacy).
+      expect(find.text('por kg'), findsOneWidget);
+      expect(campo('Precio S/ *'), findsOneWidget);
     });
 
     testWidgets('editar solo el precio guarda sin elegir presentación', (
@@ -479,6 +482,168 @@ void main() {
       expect(datos['precio'], 4.0);
       expect(datos['stock'], 7);
       expect(datos['fraccionesSeleccionadas'], ['1/2']);
+    });
+  });
+
+  group('pasos 2 y 3: formulario sugerido', () {
+    _ProductosProviderMock providerQueCrea() {
+      final provider = _ProductosProviderMock();
+      when(
+        () => provider.crearProducto(
+          any(),
+          imagenBytes: any(named: 'imagenBytes'),
+          nombreArchivo: any(named: 'nombreArchivo'),
+        ),
+      ).thenAnswer((_) async => true);
+      return provider;
+    }
+
+    CatalogoVentaPersistido catalogoConRapidas() => CatalogoVentaPersistido(
+      presentaciones: [presentacion('unidad')],
+      medidas: [
+        MedidaVentaPersistida(
+          id: 'peso',
+          nombre: 'Peso',
+          familia: FamiliaUnidad.peso,
+          unidadBase: RegistroUnidades.g,
+          unidadVisual: RegistroUnidades.kg,
+          minimoBase: 100,
+          incrementoBase: 50,
+          cantidadesRapidasBase: const [250, 500, 1000],
+          permiteCantidad: true,
+          permiteMonto: true,
+          activa: true,
+        ),
+      ],
+    );
+
+    testWidgets('producto nuevo trae la primera presentación ya elegida', (
+      tester,
+    ) async {
+      await montar(tester, formulario());
+
+      expect(find.text('Formato: 1 unidad'), findsOneWidget);
+      expect(find.text('por unidad'), findsOneWidget);
+      expect(find.text('unidades'), findsOneWidget);
+    });
+
+    testWidgets('el precio dice por qué presentación y formato se cobra', (
+      tester,
+    ) async {
+      await montar(tester, formulario(catalogoVenta: catalogoConPresentaciones()));
+
+      await elegirEnDropdown(tester, 'Presentación *', 'Botella');
+      await elegirEnDropdown(tester, 'Formato *', '625 ml');
+
+      expect(find.text('por botella (625 ml)'), findsOneWidget);
+      expect(find.text('botellas'), findsOneWidget);
+    });
+
+    testWidgets('con una sola medida activa, Qué mides viene elegido', (
+      tester,
+    ) async {
+      final provider = providerQueCrea();
+      await montar(
+        tester,
+        formulario(provider: provider, catalogoVenta: catalogoConMedida()),
+      );
+
+      await tester.tap(find.text('Por medida'));
+      await tester.pumpAndSettle();
+      await tester.enterText(campo('Nombre del producto *'), 'Arroz');
+      await tester.enterText(campo('Precio S/ *'), '4,50');
+      await tester.enterText(campo('Stock *'), '25');
+      await tester.pump();
+
+      expect(find.text('por kg'), findsOneWidget);
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Guardar producto'));
+      await tester.pump();
+
+      final producto = capturarProductoCreado(provider);
+      expect(producto.medidaFamilia, FamiliaUnidad.peso);
+      expect(producto.cantidadReferenciaBase, 1000);
+      expect(producto.precioCentavos, 450);
+      expect(producto.stockBase, 25000);
+      expect(producto.minimoBase, isNull);
+      expect(producto.incrementoBase, isNull);
+    });
+
+    testWidgets('un producto guardado por 250 g abre en otra cantidad', (
+      tester,
+    ) async {
+      final producto = Producto(
+        id: 'producto-1',
+        negocioId: 'negocio-1',
+        nombre: 'Jamonada',
+        modoVenta: ModoVenta.medida,
+        medidaFamilia: FamiliaUnidad.peso,
+        medidaUnidad: 'kg',
+        cantidadReferenciaBase: 250,
+        precioCentavos: 300,
+        stockBase: 2000,
+      );
+      await montar(
+        tester,
+        formulario(producto: producto, catalogoVenta: catalogoConMedida()),
+      );
+
+      expect(find.text('por otra cantidad'), findsOneWidget);
+      expect(campo('Cantidad que cubre el precio *'), findsOneWidget);
+      expect(find.textContaining('S/ 3,00 por'), findsOneWidget);
+    });
+
+    testWidgets('mínimo e incremento propios se guardan en el producto', (
+      tester,
+    ) async {
+      final provider = providerQueCrea();
+      await montar(
+        tester,
+        formulario(provider: provider, catalogoVenta: catalogoConMedida()),
+      );
+
+      await tester.tap(find.text('Por medida'));
+      await tester.pumpAndSettle();
+      await tester.enterText(campo('Nombre del producto *'), 'Arroz');
+      await tester.enterText(campo('Precio S/ *'), '4,50');
+      await tester.enterText(campo('Stock *'), '25');
+
+      final interruptor = find.byKey(const Key('switch-regla-propia'));
+      await tester.ensureVisible(interruptor);
+      await tester.tap(interruptor);
+      await tester.pumpAndSettle();
+      // Parte de la regla del negocio (100 g, de 50 en 50 g).
+      expect(find.widgetWithText(TextField, '100'), findsOneWidget);
+      expect(find.widgetWithText(TextField, '50'), findsOneWidget);
+
+      await tester.enterText(find.byKey(const Key('minimo-propio')), '250');
+      await tester.enterText(find.byKey(const Key('incremento-propio')), '250');
+      await tester.pump();
+      await tester.tap(find.widgetWithText(ElevatedButton, 'Guardar producto'));
+      await tester.pump();
+
+      final producto = capturarProductoCreado(provider);
+      expect(producto.minimoBase, 250);
+      expect(producto.incrementoBase, 250);
+      final datos = ProductoFirestoreMapper.paraFirestore(producto);
+      expect(datos['minimoBase'], 250);
+      expect(datos['incrementoBase'], 250);
+    });
+
+    testWidgets('la vista previa muestra rápidas con precio y el monto', (
+      tester,
+    ) async {
+      await montar(tester, formulario(catalogoVenta: catalogoConRapidas()));
+
+      await tester.tap(find.text('Por medida'));
+      await tester.pumpAndSettle();
+      await tester.enterText(campo('Precio S/ *'), '4,50');
+      await tester.pump();
+
+      expect(find.textContaining('S/ 1,12'), findsOneWidget); // 1/4 kg
+      expect(find.textContaining('S/ 2,25'), findsOneWidget); // 1/2 kg
+      expect(find.textContaining('S/ 4,50'), findsOneWidget); // 1 kg
+      final monto = tester.widget<Text>(find.byKey(const Key('monto-ejemplo')));
+      expect(monto.data, contains('se cobra S/ 1,80'));
     });
   });
 }

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mobile/features/productos/presentation/widgets/formulario/medida_entrada.dart';
+import 'package:mobile/features/productos/application/services/entrada_numerica.dart';
 
 void main() {
   group('textoAUnidadBase', () {

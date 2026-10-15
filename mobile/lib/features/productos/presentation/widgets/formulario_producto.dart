@@ -236,27 +236,18 @@ class _FormularioProductoState extends State<FormularioProducto> {
         const SizedBox(height: 14),
         if (form.modoVista == ModoVenta.medida)
           SeccionMedidaProducto(
-            medidasActivas: form.medidasActivas,
-            familia: form.medidaFamilia,
-            unidadVisual: form.medidaUnidad,
-            precioController: form.precioMedidaCtrl,
-            referenciaController: form.referenciaCtrl,
-            stockController: form.stockMedidaCtrl,
+            medida: form.medida,
             stockInfinito: form.esStockInfinito,
-            resumenPrecio: form.resumenPrecioMedida,
-            errorReferencia: form.referencia?.error,
-            errorStock: form.stockMedida?.error,
             etiquetaGuardada: form.etiquetaLegacy,
-            onFamiliaCambiada: form.cambiarFamilia,
-            onUnidadCambiada: form.cambiarUnidadMedida,
             onStockInfinitoCambiado: form.cambiarStockInfinito,
-            onCambioTexto: form.trasCambioTexto,
           )
         else
           SeccionPresentacionProducto(
             presentaciones: form.presentacionesActivas,
             presentacionId: form.presentacionId,
             formatoEtiqueta: form.formatoEtiqueta,
+            textoPrecio: form.textoPrecioPresentacion,
+            unidadStock: form.unidadStockPresentacion,
             precioController: form.precioPresentacionCtrl,
             stockController: form.stockPresentacionCtrl,
             stockInfinito: form.esStockInfinito,

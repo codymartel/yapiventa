@@ -79,6 +79,8 @@ abstract final class ProductoFirestoreMapper {
       cantidadReferenciaBase: referencia,
       precioCentavos: centavos,
       stockBase: stockBaseLeido,
+      minimoBase: _enteroPositivoOpcional(data['minimoBase']),
+      incrementoBase: _enteroPositivoOpcional(data['incrementoBase']),
       precio: _centavosASoles(
         _precioPorUnidadVisual(centavos, referencia, factor),
       ),
@@ -173,6 +175,8 @@ abstract final class ProductoFirestoreMapper {
       'precioCentavos': producto.precioCentavos,
       'cantidadReferenciaBase': producto.cantidadReferenciaBase,
       'stockBase': producto.stockBase,
+      'minimoBase': producto.minimoBase,
+      'incrementoBase': producto.incrementoBase,
     };
   }
 
@@ -324,6 +328,10 @@ abstract final class ProductoFirestoreMapper {
     if (valor is num) return valor.toInt();
     return 0;
   }
+
+  /// Entero > 0 o null (campo opcional ausente, vacío o inválido).
+  static int? _enteroPositivoOpcional(Object? valor) =>
+      valor is int && valor > 0 ? valor : null;
 
   static String _texto(Object? valor) {
     final texto = valor;

@@ -30,6 +30,8 @@ class DatosFormularioProducto {
     this.referenciaBase,
     this.precioMedidaCentavos,
     this.stockMedidaBase,
+    this.minimoBase,
+    this.incrementoBase,
     required this.presentacionCompleta,
     this.presentacionId = '',
     this.formatoValorBase = 0,
@@ -56,6 +58,10 @@ class DatosFormularioProducto {
   final int? referenciaBase;
   final int? precioMedidaCentavos;
   final int? stockMedidaBase;
+
+  /// Mínimo e incremento propios (null = regla de la medida del negocio).
+  final int? minimoBase;
+  final int? incrementoBase;
 
   final bool presentacionCompleta;
   final String presentacionId;
@@ -97,6 +103,8 @@ class ConstructorProducto {
         cantidadReferenciaBase: datos.referenciaBase!,
         precioCentavos: datos.precioMedidaCentavos!,
         stockBase: datos.esStockInfinito ? null : datos.stockMedidaBase!,
+        minimoBase: datos.minimoBase,
+        incrementoBase: datos.incrementoBase,
         stock: anterior?.stock ?? 0,
       );
     }
