@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YapiVenta · modelos y "se vende en"</title>
+<style>
+:root{--fondo:#070C18;--superficie:#0D1526;--card:#111D33;--texto:#E8EDF5;--muted:#8494AD;--error:#EF4444;
+--bordeSutil:rgba(61,114,212,.14);--bordeMedio:rgba(61,114,212,.30);--precio:#8AB2FF;
+--m3pri:#D0BCFF;--m3sel:#4A4458;--m3out:#938F99;--m3surf:#1D1B20;--ok:#4ADE80}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fondo);color:var(--texto);font:14px/1.45 Roboto,"Segoe UI",system-ui,sans-serif;padding:20px 16px 40px}
+h1{font-size:20px;font-weight:700;margin:0 0 4px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 18px;max-width:950px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:22px;align-items:start}
+.paso{font-size:12px;color:var(--muted);letter-spacing:.3px;margin:0 0 8px;text-transform:uppercase}
+.dialog{background:var(--superficie);border-radius:28px;padding:22px 20px 18px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.dialog h2{font-size:22px;font-weight:400;margin:0 0 12px}
+.field{margin:8px 0 0;border-bottom:1px solid var(--m3out);padding:6px 0 7px}
+.field label{display:block;font-size:12px;color:var(--muted)}
+.field .v{font-size:15px;display:flex;justify-content:space-between}
+.seg{display:flex;border:1px solid var(--m3out);border-radius:999px;overflow:hidden;margin:12px 0 4px}
+.seg span{flex:1;text-align:center;padding:8px 6px;font-size:13.5px;font-weight:500}
+.seg span+span{border-left:1px solid var(--m3out)}
+.seg .on{background:var(--m3sel)}
+.blk{background:var(--card);border:1px solid var(--bordeMedio);border-radius:16px;padding:12px 14px;margin-top:12px}
+.blk .t{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:500}
+.pill{margin-left:auto;font-size:11.5px;border-radius:999px;padding:2px 8px}
+.pill.f{color:var(--m3pri);background:rgba(208,188,255,.14)}
+.pill.s{color:var(--precio);background:rgba(61,114,212,.18)}
+.pill.n{color:var(--muted);background:rgba(147,143,153,.15)}
+.mod{display:flex;gap:12px;padding:12px 0 4px;border-top:1px solid var(--bordeSutil);margin-top:10px}
+.mod:first-of-type{border-top:0;margin-top:4px}
+.ph{width:56px;height:56px;border-radius:12px;background:#0b1424;display:flex;align-items:center;justify-content:center;font-size:30px;flex:none}
+.mod .nom{font-size:15px;margin-bottom:4px}
+.sv{width:100%;border-collapse:collapse;font-size:13.5px}
+.sv th{color:var(--muted);font-weight:500;font-size:11.5px;text-align:left;padding:4px 4px}
+.sv th:nth-child(2),.sv th:nth-child(3),.sv td:nth-child(2),.sv td:nth-child(3){text-align:right}
+.sv td{padding:5px 4px;border-top:1px solid var(--bordeSutil)}
+.box{display:inline-block;min-width:42px;border:1px solid var(--m3out);border-radius:6px;padding:1px 6px;background:var(--m3surf);text-align:right}
+.box.falta{border-color:var(--error);color:var(--error)}
+.precio{color:var(--precio)}
+.add{display:inline-block;color:var(--m3pri);font-size:13.5px;font-weight:500;margin-top:8px}
+.tot{font-size:12px;color:var(--muted);margin-top:4px}
+.chip{display:inline-block;border:1px solid var(--m3out);border-radius:8px;padding:5px 11px;margin:6px 6px 0 0;font-size:13px;background:var(--m3surf)}
+.chip.add2{border-style:dashed;color:var(--m3pri)}
+.falta{color:var(--error);font-size:12.5px;margin-top:10px}
+.actions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.tb{color:var(--muted);padding:9px 14px;font-weight:500}
+.eb{background:var(--m3surf);color:var(--m3pri);padding:9px 20px;border-radius:999px;font-weight:500}
+.eb.dis{background:rgba(230,224,233,.12);color:rgba(230,224,233,.38)}
+.cli{background:var(--superficie);border-radius:20px;padding:16px}
+.big{height:140px;border-radius:14px;background:#0b1424;display:flex;align-items:center;justify-content:center;font-size:76px;margin-bottom:8px}
+.lbl{font-size:12px;color:var(--muted);margin:10px 0 4px}
+.c{display:inline-block;border:1px solid var(--m3out);border-radius:8px;padding:6px 12px;margin:0 6px 6px 0;font-size:13px;background:var(--m3surf)}
+.c.on{background:var(--m3sel);border-color:var(--m3sel)}
+.c.off{color:#5d5a63;text-decoration:line-through}
+.cta{display:block;text-align:center;background:var(--m3surf);color:var(--m3pri);padding:10px;border-radius:999px;font-weight:500;margin-top:12px}
+.mini{font-size:12px;color:var(--muted);margin-top:6px}
+.ej{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px;margin-top:26px}
+</style>
+</head>
+<body>
+<h1>Modelos → Se vende en (con stock) → Extras</h1>
+<p class="sub">La talla ya no es una categoría aparte: es una fila de "Se vende en", dentro de la forma de venta, donde ya vivía el stock. Cada modelo tiene su propia lista.</p>
+
+<div class="grid">
+
+<div>
+<p class="paso">Vendedor · polo con modelos</p>
+<div class="dialog">
+  <h2>Polo básico</h2>
+  <div class="field"><label>Categoría *</label><div class="v">Hombre <span style="color:var(--muted)">▼</span></div></div>
+  <div class="seg"><span class="on">Por presentación</span><span>Por medida</span></div>
+
+  <div class="blk">
+    <div class="t">📷 Modelos <span class="pill f">una foto cada uno</span></div>
+    <div class="mod"><div class="ph" style="color:#378ADD">👕</div><div style="flex:1">
+      <div class="nom">Azul</div>
+      <table class="sv"><tr><th>Talla ▾</th><th>Precio</th><th>Stock</th></tr>
+        <tr><td>S</td><td class="precio">35.00</td><td><span class="box">4</span></td></tr>
+        <tr><td>M</td><td class="precio">35.00</td><td><span class="box">6</span></td></tr>
+        <tr><td>L</td><td class="precio">35.00</td><td><span class="box">2</span></td></tr>
+      </table>
+      <span class="add">+ Agregar talla</span><div class="tot">📦 12 en stock</div></div></div>
+    <div class="mod"><div class="ph" style="color:#F2C94C">👕</div><div style="flex:1">
+      <div class="nom">Amarillo</div>
+      <table class="sv"><tr><th>Talla ▾</th><th>Precio</th><th>Stock</th></tr>
+        <tr><td>L</td><td class="precio">35.00</td><td><span class="box">5</span></td></tr>
+        <tr><td>XL</td><td class="precio">38.00</td><td><span class="box falta">¿?</span></td></tr>
+      </table>
+      <span class="add">+ Agregar talla</span><div class="tot">📦 5 en stock</div></div></div>
+    <span class="add">+ Modelo</span>
+  </div>
+
+  <div class="blk">
+    <div class="t">➕ Extras <span class="pill n">sin stock</span></div>
+    <span class="chip">Bordado + S/ 8</span><span class="chip add2">+ extra</span>
+  </div>
+
+  <div class="falta">Falta: stock de Amarillo · XL</div>
+  <div class="actions"><span class="tb">Cancelar</span><span class="eb dis">Guardar producto</span></div>
+  <p class="mini">"Talla ▾" se puede cambiar por Número, Tamaño o Formato.</p>
+</div>
+</div>
+
+<div>
+<p class="paso">Lo que ve el cliente</p>
+<div class="cli">
+  <div class="big" style="color:#F2C94C">👕</div>
+  <b style="font-weight:600;font-size:16px">Polo básico</b> · <span class="precio" style="font-weight:700">S/ 35.00</span>
+  <div class="lbl">Modelo</div>
+  <span class="c">Azul</span><span class="c on">Amarillo</span>
+  <div class="lbl">Talla (las del amarillo)</div>
+  <span class="c on">L</span><span class="c off">XL</span>
+  <div class="lbl">Extras</div>
+  <span class="c">Bordado + S/ 8</span>
+  <span class="cta">Agregar · S/ 35.00</span>
+  <p class="mini">Al elegir Amarillo cambia la foto y solo salen sus tallas. XL tachada: sin stock.</p>
+</div>
+</div>
+
+</div>
+
+<div class="ej">
+
+<div>
+<p class="paso">Café · sin modelos</p>
+<div class="dialog">
+  <h2>Café americano</h2>
+  <div class="seg"><span class="on">Por presentación</span><span>Por medida</span></div>
+  <div class="blk">
+    <div class="t">📦 Se vende en <span class="pill s">con stock</span></div>
+    <table class="sv"><tr><th>Tamaño ▾</th><th>Precio</th><th>Stock</th></tr>
+      <tr><td>Vaso 250 ml</td><td class="precio">5.00</td><td>∞</td></tr>
+      <tr><td>Vaso 350 ml</td><td class="precio">6.50</td><td>∞</td></tr>
+      <tr><td>Vaso 500 ml</td><td class="precio">8.00</td><td>∞</td></tr>
+    </table>
+  </div>
+  <div class="blk"><div class="t">➕ Extras <span class="pill n">sin stock</span></div><span class="chip">Leche + S/ 1</span><span class="chip">Sin azúcar</span></div>
+</div>
+</div>
+
+<div>
+<p class="paso">Gaseosa · modelos = sabores</p>
+<div class="dialog">
+  <h2>Gaseosa</h2>
+  <div class="seg"><span class="on">Por presentación</span><span>Por medida</span></div>
+  <div class="blk">
+    <div class="t">📷 Modelos <span class="pill f">una foto cada uno</span></div>
+    <div class="mod"><div class="ph">🥤</div><div style="flex:1"><div class="nom">Inca Kola</div>
+      <table class="sv"><tr><th>Formato ▾</th><th>Precio</th><th>Stock</th></tr>
+        <tr><td>Botella 500 ml</td><td class="precio">2.50</td><td><span class="box">24</span></td></tr>
+        <tr><td>Botella 1.5 L</td><td class="precio">6.00</td><td><span class="box">8</span></td></tr></table></div></div>
+    <div class="mod"><div class="ph">🥤</div><div style="flex:1"><div class="nom">Coca-Cola</div>
+      <table class="sv"><tr><th>Formato ▾</th><th>Precio</th><th>Stock</th></tr>
+        <tr><td>Botella 500 ml</td><td class="precio">2.50</td><td><span class="box">18</span></td></tr></table></div></div>
+  </div>
+</div>
+</div>
+
+<div>
+<p class="paso">Queso · por medida = una fila</p>
+<div class="dialog">
+  <h2>Queso</h2>
+  <div class="seg"><span>Por presentación</span><span class="on">Por medida</span></div>
+  <div class="blk">
+    <div class="t">📷 Modelos <span class="pill f">una foto cada uno</span></div>
+    <div class="mod"><div class="ph">🧀</div><div style="flex:1"><div class="nom">Fresco</div>
+      <table class="sv"><tr><th>Medida</th><th>Precio</th><th>Stock</th></tr>
+        <tr><td>por kg</td><td class="precio">18.00</td><td><span class="box">4</span> kg</td></tr></table></div></div>
+    <div class="mod"><div class="ph">🧀</div><div style="flex:1"><div class="nom">Andino</div>
+      <table class="sv"><tr><th>Medida</th><th>Precio</th><th>Stock</th></tr>
+        <tr><td>por kg</td><td class="precio">24.00</td><td><span class="box">2.5</span> kg</td></tr></table></div></div>
+  </div>
+  <p class="mini">Por medida hay una sola fila por modelo: no hay tallas de queso.</p>
+</div>
+</div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YapiVenta · versiones y combos</title>
+<style>
+:root{--fondo:#070C18;--superficie:#0D1526;--card:#111D33;--texto:#E8EDF5;--muted:#8494AD;--error:#EF4444;
+--bordeSutil:rgba(61,114,212,.14);--bordeMedio:rgba(61,114,212,.30);--borde:rgba(61,114,212,.45);--precio:#8AB2FF;
+--m3pri:#D0BCFF;--m3onpri:#381E72;--m3sel:#4A4458;--m3out:#938F99;--m3surf:#1D1B20;--ok:#4ADE80;--okbg:rgba(74,222,128,.12);--warn:#FBBF24;--warnbg:rgba(251,191,36,.10)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fondo);color:var(--texto);font:14px/1.45 Roboto,"Segoe UI",system-ui,sans-serif;padding:20px 16px 40px}
+h1{font-size:20px;font-weight:700;margin:0 0 4px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 18px;max-width:950px}
+.bloque{font-size:16px;font-weight:600;margin:26px 0 12px;padding-top:14px;border-top:1px solid var(--bordeSutil)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:22px;align-items:start}
+.paso{font-size:12px;color:var(--muted);letter-spacing:.3px;margin:0 0 8px;text-transform:uppercase}
+.dialog{background:var(--superficie);border-radius:28px;padding:22px 20px 18px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.dialog h2{font-size:20px;font-weight:400;margin:0 0 4px}
+.intro{color:var(--muted);font-size:13px;margin:0 0 12px}
+.field{margin:10px 0 0;border-bottom:1px solid var(--m3out);padding:6px 0 7px}
+.field label{display:block;font-size:12px;color:var(--muted)}
+.field .v{font-size:15px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.row{display:flex;gap:12px}.row>*{flex:1}
+.tag{background:var(--m3sel);border-radius:8px;padding:3px 10px;font-size:13px}
+.link{color:var(--m3pri);font-size:13px}
+.var{background:var(--card);border:1px solid var(--bordeMedio);border-radius:14px;padding:12px;margin-top:12px}
+.var .h{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.var .h b{font-weight:600}
+.pill{font-size:11.5px;border-radius:999px;padding:3px 9px}
+.pill.si{background:rgba(208,188,255,.14);color:var(--m3pri)}
+.pill.no{background:rgba(147,143,153,.15);color:var(--muted)}
+.vals{display:flex;gap:8px;flex-wrap:wrap}
+.val{width:88px;text-align:center;font-size:12px}
+.val .ph{height:70px;border-radius:10px;background:#0b1424;display:flex;align-items:center;justify-content:center;font-size:34px;margin-bottom:4px}
+.val .ph.add{border:1px dashed var(--m3out);color:var(--m3pri);font-size:12px}
+.lib{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-top:8px}
+.lib .ic{color:var(--m3pri)}
+.ayuda{display:flex;gap:10px;background:#0b1424;border-radius:12px;padding:10px;margin-top:10px;font-size:12px;color:var(--muted)}
+.ayuda div{flex:1;text-align:center}
+.ayuda .e{font-size:26px;display:block}
+.ayuda b{color:var(--texto);font-weight:500;display:block;margin-top:2px}
+.sec{font-size:13px;font-weight:600;color:var(--muted);margin:16px 0 4px;padding-top:12px;border-top:1px solid var(--bordeSutil)}
+.it{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--bordeSutil);font-size:14px}
+.it .k{font-size:11.5px;border-radius:999px;padding:2px 8px}
+.k.fijo{background:rgba(61,114,212,.18);color:var(--precio)}
+.k.elige{background:rgba(208,188,255,.14);color:var(--m3pri)}
+.k.texto{background:rgba(147,143,153,.15);color:var(--muted)}
+.it small{display:block;color:var(--muted);font-size:12px}
+.add{display:inline-block;color:var(--m3pri);font-size:14px;font-weight:500;margin:10px 16px 0 0}
+.aviso{background:var(--warnbg);border:1px solid rgba(251,191,36,.35);color:var(--warn);border-radius:10px;padding:8px 10px;font-size:12.5px;margin-top:12px}
+.actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+.tb{color:var(--muted);padding:10px 14px;font-weight:500}
+.eb{background:var(--m3surf);color:var(--m3pri);padding:10px 22px;border-radius:999px;font-weight:500}
+.cli{background:var(--superficie);border-radius:20px;padding:16px}
+.big{height:140px;border-radius:14px;background:#0b1424;display:flex;align-items:center;justify-content:center;font-size:70px;margin-bottom:8px}
+.lbl{font-size:12px;color:var(--muted);margin:10px 0 4px}
+.chip{display:inline-block;border:1px solid var(--m3out);border-radius:8px;padding:6px 12px;margin:0 6px 6px 0;font-size:13px;background:var(--m3surf)}
+.chip.on{background:var(--m3sel);border-color:var(--m3sel)}
+.chip.off{color:#5d5a63;text-decoration:line-through}
+.cta{display:block;text-align:center;background:var(--m3surf);color:var(--m3pri);padding:10px;border-radius:999px;font-weight:500;margin-top:12px}
+.precio{color:var(--precio);font-weight:700}
+.hint{font-size:12px;color:var(--muted);margin-top:8px}
+.nota{max-width:950px;color:var(--muted);font-size:13px;margin-top:22px;line-height:1.6}
+</style>
+</head>
+<body>
+<h1>Versiones con una foto por valor, y combos que las usan</h1>
+<p class="sub">Ejemplo: pollo broaster. El tamaño se ve distinto (lleva foto); las presas y el picante no (mismos botones, misma foto). El combo no tiene versiones propias: usa las del pollo y las de la gaseosa.</p>
+
+<div class="bloque">1 · El producto con versiones: Pollo broaster</div>
+<div class="grid">
+
+<div>
+<p class="paso">Formulario del vendedor</p>
+<div class="dialog">
+  <h2>Pollo broaster</h2>
+  <p class="intro">Restaurante · Por presentación · Porción</p>
+  <div class="var">
+    <div class="h"><b>Tamaño</b><span class="pill si">Se ve distinto · lleva foto</span></div>
+    <div class="vals">
+      <div class="val"><div class="ph">🍗</div>Personal<br><span style="color:var(--precio)">S/ 14.90</span></div>
+      <div class="val"><div class="ph">🪣</div>Balde 8<br><span style="color:var(--precio)">S/ 49.90</span></div>
+      <div class="val"><div class="ph">🪣</div>Balde 12<br><span style="color:var(--precio)">S/ 69.90</span></div>
+      <div class="val"><div class="ph add">+ valor</div>&nbsp;</div>
+    </div>
+    <div class="lib"><span class="ic">↺</span> Guardado en tu lista: puedes usar "Tamaño" en otros productos.</div>
+  </div>
+  <div class="var">
+    <div class="h"><b>Presas</b><span class="pill no">Se ve igual · sin foto</span></div>
+    <div class="vals"><span class="tag">Mixto</span><span class="tag">Solo pierna</span><span class="tag">Solo pecho</span><span class="link">+ escribe…</span></div>
+  </div>
+  <div class="var">
+    <div class="h"><b>Picante</b><span class="pill no">Se ve igual · sin foto</span></div>
+    <div class="vals"><span class="tag">Normal</span><span class="tag">Picante</span><span class="link">+ escribe…</span></div>
+  </div>
+  <span class="add">+ Otra versión</span><span class="add">↺ Usar de mi lista</span>
+  <div class="actions"><span class="tb">Cancelar</span><span class="eb">Guardar producto</span></div>
+</div>
+</div>
+
+<div>
+<p class="paso">Ayuda al crear una versión</p>
+<div class="dialog">
+  <h2>Nueva versión</h2>
+  <div class="field"><label>Nombre</label><div class="v">Tamaño</div></div>
+  <div class="field"><label>¿Un "Personal" y un "Balde 8" se ven distintos en una foto?</label><div class="v"><span class="tag">Sí, se ven distintos</span><span style="color:var(--muted);font-size:13px">No, se ven igual</span></div></div>
+  <div class="ayuda">
+    <div><span class="e">👕 👕</span><b>Se ven distintos</b>azul y celeste<br>→ una foto por color</div>
+    <div><span class="e">👕 👕</span><b>Se ven igual</b>talla S y L<br>→ misma foto</div>
+  </div>
+  <p class="hint">Solo una versión por producto lleva foto. Si eliges "Sí" en otra, te preguntamos cuál manda.</p>
+</div>
+</div>
+
+<div>
+<p class="paso">Lo que ve el cliente</p>
+<div class="cli">
+  <div class="big">🪣</div>
+  <b style="font-weight:600;font-size:16px">Pollo broaster</b> · <span class="precio">S/ 49.90</span>
+  <div class="lbl">Tamaño</div>
+  <span class="chip">Personal</span><span class="chip on">Balde 8</span><span class="chip">Balde 12</span>
+  <div class="lbl">Presas</div>
+  <span class="chip on">Mixto</span><span class="chip">Solo pierna</span><span class="chip off">Solo pecho</span>
+  <div class="lbl">Picante</div>
+  <span class="chip on">Normal</span><span class="chip">Picante</span>
+  <span class="cta">Agregar · S/ 49.90</span>
+  <p class="hint">Cambia la foto solo al elegir el tamaño. "Solo pecho" tachado: no hay en Balde 8.</p>
+</div>
+</div>
+
+</div>
+
+<div class="bloque">2 · El combo que usa esas versiones: Combo balde familiar</div>
+<div class="grid">
+
+<div>
+<p class="paso">Formulario del vendedor</p>
+<div class="dialog">
+  <h2>Combo balde familiar</h2>
+  <p class="intro">Combo · una foto propia · sin versiones propias</p>
+  <div class="row">
+    <div class="field"><label>Foto del combo</label><div class="v">🍗🍟🥤</div></div>
+    <div class="field"><label>Precio del combo S/ *</label><div class="v">79.90</div></div>
+  </div>
+  <div class="sec">Qué trae</div>
+  <div class="it"><div>🔗 Pollo broaster<small>Tamaño: Balde 8</small></div><span class="k fijo">Fijo</span></div>
+  <div class="it"><div>🔗 Pollo broaster · Presas<small>el cliente elige: Mixto · Solo pierna · Solo pecho</small></div><span class="k elige">Elige versión</span></div>
+  <div class="it"><div>🔗 Pollo broaster · Picante<small>el cliente elige: Normal · Picante</small></div><span class="k elige">Elige versión</span></div>
+  <div class="it"><div>🔗 Papas familiares</div><span class="k fijo">Fijo</span></div>
+  <div class="it"><div>Gaseosa 1.5 L<small>el cliente elige: 🔗 Inca Kola · 🔗 Coca-Cola</small></div><span class="k elige">Elige producto</span></div>
+  <div class="it"><div>Ensalada · cremas</div><span class="k texto">Texto</span></div>
+  <span class="add">+ Producto</span><span class="add">+ Elección</span><span class="add">+ Texto</span>
+  <div class="aviso">Stock del combo: 6 (lo limita la gaseosa). Si un balde se agota, el combo sale agotado.</div>
+  <div class="actions"><span class="tb">Cancelar</span><span class="eb">Guardar producto</span></div>
+</div>
+</div>
+
+<div>
+<p class="paso">Lo que ve el cliente</p>
+<div class="cli">
+  <div class="big">🍗🍟🥤</div>
+  <b style="font-weight:600;font-size:16px">Combo balde familiar</b> · <span class="precio">S/ 79.90</span>
+  <div class="hint" style="margin-top:2px">Trae: balde de 8 presas, papas familiares, gaseosa 1.5 L, ensalada</div>
+  <div class="lbl">Presas *</div>
+  <span class="chip on">Mixto</span><span class="chip">Solo pierna</span><span class="chip off">Solo pecho</span>
+  <div class="lbl">Picante</div>
+  <span class="chip on">Normal</span><span class="chip">Picante</span>
+  <div class="lbl">Gaseosa 1.5 L *</div>
+  <span class="chip on">Inca Kola</span><span class="chip">Coca-Cola</span>
+  <span class="cta">Agregar · S/ 79.90</span>
+  <p class="hint">La foto del combo no cambia. Lo que se elige descuenta del stock de esa versión o producto.</p>
+</div>
+</div>
+
+<div>
+<p class="paso">Cómo llega el pedido</p>
+<div class="dialog">
+  <h2>Pedido por WhatsApp</h2>
+  <div class="it"><div>1× Combo balde familiar<small>Balde 8 · Mixto · Normal · Inca Kola 1.5 L</small></div><span class="precio">S/ 79.90</span></div>
+  <div class="sec">Stock que se descuenta</div>
+  <div class="it"><div>Pollo broaster · Balde 8 · Mixto</div><span style="color:var(--muted)">− 1</span></div>
+  <div class="it"><div>Papas familiares</div><span style="color:var(--muted)">− 1</span></div>
+  <div class="it"><div>Inca Kola 1.5 L</div><span style="color:var(--muted)">− 1</span></div>
+  <div class="it"><div>Ensalada, cremas</div><span style="color:var(--muted)">no descuenta</span></div>
+</div>
+</div>
+
+</div>
+
+<p class="nota"><b>Reglas que muestra la maqueta:</b> (1) una sola versión del producto lleva foto, y es una foto por valor; (2) las versiones quedan en tu lista para usarlas en otros productos; (3) al crear una versión, una imagen de ayuda explica "se ven distintos" contra "se ven igual"; (4) el combo tiene su propia foto y precio, no tiene versiones propias, y cada cosa que trae es fija, "el cliente elige versión", "el cliente elige producto" o texto; (5) lo que se elige descuenta del stock real de esa versión o producto.</p>
+</body>
+</html>

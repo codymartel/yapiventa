@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YapiVenta · flujo de modelos</title>
+<style>
+:root{--fondo:#070C18;--superficie:#0D1526;--card:#111D33;--texto:#E8EDF5;--muted:#8494AD;--error:#EF4444;
+--bordeSutil:rgba(61,114,212,.14);--bordeMedio:rgba(61,114,212,.30);--precio:#8AB2FF;
+--m3pri:#D0BCFF;--m3sel:#4A4458;--m3out:#938F99;--m3surf:#1D1B20;--ok:#4ADE80;--okbg:rgba(74,222,128,.12);--warn:#FBBF24;--warnbg:rgba(251,191,36,.10)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fondo);color:var(--texto);font:14px/1.45 Roboto,"Segoe UI",system-ui,sans-serif;padding:20px 16px 40px}
+h1{font-size:20px;font-weight:700;margin:0 0 4px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 18px;max-width:950px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;align-items:start}
+.paso{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);letter-spacing:.3px;margin:0 0 8px;text-transform:uppercase}
+.n{width:22px;height:22px;border-radius:50%;background:var(--m3sel);color:var(--texto);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600}
+.dialog{background:var(--superficie);border-radius:26px;padding:20px 18px 16px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.dialog h2{font-size:20px;font-weight:400;margin:0 0 10px}
+.photo{height:110px;border-radius:14px;background:#0b1424;display:flex;align-items:center;justify-content:center;font-size:60px;margin-bottom:8px}
+.field{margin:8px 0 0;border-bottom:1px solid var(--m3out);padding:5px 0 6px}
+.field label{display:block;font-size:12px;color:var(--muted)}
+.field .v{font-size:15px;display:flex;justify-content:space-between;align-items:center}
+.field.focus{border-bottom:2px solid var(--m3pri)}.field.focus label{color:var(--m3pri)}
+.gris{color:#55607a;font-style:italic}
+.seg{display:flex;border:1px solid var(--m3out);border-radius:999px;overflow:hidden;margin:10px 0 4px}
+.seg span{flex:1;text-align:center;padding:7px 6px;font-size:13px;font-weight:500}
+.seg span+span{border-left:1px solid var(--m3out)}
+.seg .on{background:var(--m3sel)}
+.q{background:var(--card);border:1px solid var(--bordeMedio);border-radius:16px;padding:14px}
+.q .t{font-size:16px;margin-bottom:10px}
+.pair{display:flex;gap:10px;justify-content:center;margin:6px 0 12px}
+.pair div{width:86px;text-align:center;font-size:12px;color:var(--muted)}
+.pair .ic{height:76px;border-radius:12px;background:#0b1424;display:flex;align-items:center;justify-content:center;font-size:40px;margin-bottom:4px}
+.btn2{display:flex;gap:8px}
+.btn2 span{flex:1;text-align:center;border:1px solid var(--m3out);border-radius:999px;padding:9px 6px;font-size:13.5px;font-weight:500}
+.btn2 .on{background:var(--m3sel);border-color:var(--m3sel)}
+.hint{font-size:12px;color:var(--muted);margin-top:8px}
+.sug{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.sug span{border:1px solid var(--m3out);border-radius:8px;padding:4px 10px;font-size:12.5px;background:var(--m3surf)}
+.aviso{background:var(--warnbg);border:1px solid rgba(251,191,36,.35);color:var(--warn);border-radius:12px;padding:10px 12px;font-size:12.5px;margin-top:10px}
+.aviso b{color:var(--texto);font-weight:500}
+.ok{display:inline-block;font-size:12px;color:var(--ok);background:var(--okbg);border:1px solid rgba(74,222,128,.35);border-radius:999px;padding:3px 10px;margin-top:10px}
+.mod{display:flex;gap:10px;padding:10px 0;border-top:1px solid var(--bordeSutil)}
+.mod:first-of-type{border-top:0}
+.ph{width:52px;height:52px;border-radius:12px;background:#0b1424;display:flex;align-items:center;justify-content:center;font-size:28px;flex:none}
+.ph.add{border:1px dashed var(--m3out);color:var(--m3pri);font-size:16px}
+.sv{width:100%;border-collapse:collapse;font-size:13px}
+.sv th{color:var(--muted);font-weight:500;font-size:11.5px;text-align:left;padding:3px}
+.sv td{padding:4px 3px;border-top:1px solid var(--bordeSutil)}
+.sv td:nth-child(2),.sv td:nth-child(3),.sv th:nth-child(2),.sv th:nth-child(3){text-align:right}
+.box{display:inline-block;min-width:38px;border:1px solid var(--m3out);border-radius:6px;padding:0 6px;background:var(--m3surf);text-align:right}
+.precio{color:var(--precio)}
+.tot{font-size:12px;color:var(--muted);margin-top:4px}
+.add{display:inline-block;color:var(--m3pri);font-size:13.5px;font-weight:500;margin-top:8px}
+.totalp{display:flex;justify-content:space-between;background:#0b1424;border-radius:10px;padding:8px 10px;margin-top:10px;font-size:13px}
+.totalp span:last-child{color:var(--muted)}
+.blk{background:var(--card);border:1px solid var(--bordeMedio);border-radius:14px;padding:10px 12px;margin-top:10px}
+.blk .t{font-size:14px;font-weight:500;display:flex;justify-content:space-between}
+.blk .t i{font-style:normal;font-size:11.5px;color:var(--m3pri)}
+</style>
+</head>
+<body>
+<h1>Flujo: de un producto simple a un producto con modelos</h1>
+<p class="sub">Ejemplo de ropa. En otros rubros cambia solo el ejemplo (sabor de gaseosa, tono de labial, metal del anillo). La forma de venta queda en el producto; cada modelo tiene su lista con stock.</p>
+
+<div class="grid">
+
+<div>
+<p class="paso"><span class="n">1</span> Sube la foto y lo básico</p>
+<div class="dialog">
+  <h2>Agregar producto</h2>
+  <div class="photo" style="color:#378ADD">👕</div>
+  <div class="field"><label>Nombre del producto *</label><div class="v">Polo básico</div></div>
+  <div class="field"><label>Categoría *</label><div class="v">Hombre <span style="color:var(--muted)">▼</span></div></div>
+  <div class="seg"><span class="on">Por presentación</span><span>Por medida</span></div>
+  <div class="field"><label>Precio base S/ *</label><div class="v">35.00</div></div>
+</div>
+</div>
+
+<div>
+<p class="paso"><span class="n">2</span> Una pregunta, con el ejemplo de su rubro</p>
+<div class="dialog">
+  <div class="q">
+    <div class="t">¿Este producto viene en distintos colores, sabores o diseños?</div>
+    <div class="pair"><div><div class="ic" style="color:#E24B4A">👕</div>Polo rojo</div><div><div class="ic" style="color:#378ADD">👕</div>Polo azul</div></div>
+    <div class="btn2"><span class="on">Sí, viene en varios</span><span>No, es uno solo</span></div>
+  </div>
+  <p class="hint">Con "No", el producto queda simple: una lista de tallas con su stock y listo.</p>
+</div>
+</div>
+
+<div>
+<p class="paso"><span class="n">3</span> Nombra la variable con su palabra</p>
+<div class="dialog">
+  <h2>¿Qué cambia entre ellos?</h2>
+  <div class="field focus"><label>Nombre</label><div class="v">Color</div></div>
+  <div class="sug"><span>Color</span><span>Sabor</span><span>Diseño</span><span>Tono</span><span>Material</span></div>
+  <div class="field"><label>Primer valor</label><div class="v gris">ej. Azul</div></div>
+  <p class="hint">Escribe libre. Queda guardado en tu lista para usarlo en otros productos.</p>
+</div>
+</div>
+
+<div>
+<p class="paso"><span class="n">4</span> La foto que subiste es el primer modelo</p>
+<div class="dialog">
+  <h2>¿Cómo se llama este?</h2>
+  <div class="mod"><div class="ph" style="color:#378ADD">👕</div><div style="flex:1">
+    <div class="field focus" style="margin-top:0"><label>Color</label><div class="v">Azul</div></div></div></div>
+  <div class="aviso">⚠ Este producto ya tenía stock: <b>S 4 · M 6</b>. Se pasa al modelo <b>Azul</b>. Después agregas los otros colores.</div>
+  <span class="ok">Nada se pierde ni se duplica</span>
+</div>
+</div>
+
+<div>
+<p class="paso"><span class="n">5</span> "+ Modelo" para cada otro color</p>
+<div class="dialog">
+  <h2>Polo básico</h2>
+  <div class="blk">
+    <div class="t">📷 Modelos · Color <i>una foto cada uno</i></div>
+    <div class="mod"><div class="ph" style="color:#378ADD">👕</div><div style="flex:1"><b style="font-weight:500">Azul</b>
+      <table class="sv"><tr><th>Talla</th><th>Precio</th><th>Stock</th></tr>
+        <tr><td>S</td><td class="precio">35.00</td><td><span class="box">4</span></td></tr>
+        <tr><td>M</td><td class="precio">35.00</td><td><span class="box">6</span></td></tr></table></div></div>
+    <div class="mod"><div class="ph" style="color:#E24B4A">👕</div><div style="flex:1"><b style="font-weight:500">Rojo</b>
+      <table class="sv"><tr><th>Talla</th><th>Precio</th><th>Stock</th></tr>
+        <tr><td>M</td><td class="precio">35.00</td><td><span class="box">3</span></td></tr>
+        <tr><td>L</td><td class="precio">35.00</td><td><span class="box">2</span></td></tr></table></div></div>
+    <div class="mod"><div class="ph add">+</div><div style="align-self:center;color:var(--m3pri);font-weight:500">Modelo</div></div>
+  </div>
+  <div class="totalp"><span>📦 Stock del producto: 15</span><span>🔒 suma de los modelos</span></div>
+  <p class="hint">Agregar el Rojo no cambió el stock del Azul. La forma de venta (por presentación) es la misma para todos.</p>
+</div>
+</div>
+
+<div>
+<p class="paso"><span class="n">✓</span> Si un modelo no tiene tallas</p>
+<div class="dialog">
+  <h2>Gaseosa 500 ml</h2>
+  <div class="blk">
+    <div class="t">📷 Modelos · Sabor <i>una foto cada uno</i></div>
+    <div class="mod"><div class="ph">🥤</div><div style="flex:1"><b style="font-weight:500">Inca Kola</b><div class="tot">Stock: <span class="box">24</span> botellas · S/ 2.50</div></div></div>
+    <div class="mod"><div class="ph">🥤</div><div style="flex:1"><b style="font-weight:500">Coca-Cola</b><div class="tot">Stock: <span class="box">18</span> botellas · S/ 2.50</div></div></div>
+  </div>
+  <div class="totalp"><span>📦 Stock del producto: 42</span><span>🔒 suma</span></div>
+</div>
+</div>
+
+</div>
+</body>
+</html>

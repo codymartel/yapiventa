@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YapiVenta · fotos, stock y precio</title>
+<style>
+:root{--fondo:#070C18;--superficie:#0D1526;--card:#111D33;--texto:#E8EDF5;--muted:#8494AD;--error:#EF4444;
+--bordeSutil:rgba(61,114,212,.14);--bordeMedio:rgba(61,114,212,.30);--precio:#8AB2FF;
+--m3pri:#D0BCFF;--m3sel:#4A4458;--m3out:#938F99;--m3surf:#1D1B20;--ok:#4ADE80;--okbg:rgba(74,222,128,.12);--warn:#FBBF24;--warnbg:rgba(251,191,36,.10)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fondo);color:var(--texto);font:14px/1.45 Roboto,"Segoe UI",system-ui,sans-serif;padding:20px 16px 40px}
+h1{font-size:20px;font-weight:700;margin:0 0 4px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 18px;max-width:950px}
+.bloque{font-size:16px;font-weight:600;margin:26px 0 12px;padding-top:14px;border-top:1px solid var(--bordeSutil)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:22px;align-items:start}
+.paso{font-size:12px;color:var(--muted);letter-spacing:.3px;margin:0 0 8px;text-transform:uppercase}
+.dialog{background:var(--superficie);border-radius:28px;padding:22px 20px 18px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.dialog h2{font-size:20px;font-weight:400;margin:0 0 4px}
+.intro{color:var(--muted);font-size:13px;margin:0 0 12px}
+.leyenda{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 12px}
+.leyenda span{font-size:12px;border-radius:999px;padding:4px 10px;background:var(--card);border:1px solid var(--bordeMedio)}
+.leyenda b{font-weight:600;color:var(--m3pri)}
+.slot{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--bordeSutil);border-radius:12px;padding:8px 10px;margin-top:8px}
+.slot .ph{width:46px;height:46px;border-radius:10px;background:#0b1424;display:flex;align-items:center;justify-content:center;font-size:24px;flex:none}
+.slot .ph.add{border:1px dashed var(--m3out);color:var(--m3pri);font-size:16px}
+.slot small{display:block;color:var(--muted);font-size:12px}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
+.sec{font-size:13px;font-weight:600;color:var(--muted);margin:16px 0 6px;padding-top:12px;border-top:1px solid var(--bordeSutil)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{color:var(--muted);font-weight:500;font-size:12px;text-align:center;padding:6px 2px}
+th:first-child{text-align:left}
+td{padding:6px 3px;border-top:1px solid var(--bordeSutil);text-align:center}
+td:first-child{text-align:left;white-space:nowrap}
+.c{display:inline-block;min-width:54px;border:1px solid var(--m3out);border-radius:8px;padding:3px 4px;background:var(--m3surf)}
+.c small{display:block;color:var(--muted);font-size:10.5px}
+.c.alto small{color:var(--precio)}
+.c.no{border-style:dashed;color:#5d5a63;background:transparent}
+.fila{font-size:11px;color:var(--m3pri);display:block;margin-top:2px}
+.hint{font-size:12px;color:var(--muted);margin-top:8px}
+.ok{display:inline-block;font-size:12px;color:var(--ok);background:var(--okbg);border:1px solid rgba(74,222,128,.35);border-radius:999px;padding:3px 10px;margin-top:10px}
+.it{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--bordeSutil);font-size:14px}
+.it small{display:block;color:var(--muted);font-size:12px}
+.k{font-size:11.5px;border-radius:999px;padding:2px 8px;white-space:nowrap}
+.k.si{background:rgba(61,114,212,.18);color:var(--precio)}
+.k.no{background:rgba(147,143,153,.15);color:var(--muted)}
+.vivo{background:#0b1424;border:1px solid var(--bordeMedio);border-radius:12px;padding:10px 12px;margin-top:14px}
+.vivo .t{font-size:12.5px;font-weight:600;margin-bottom:6px}
+.vivo div.l{display:flex;justify-content:space-between;font-size:13px;padding:3px 0}
+.vivo .m{color:var(--muted)}
+.aviso{background:var(--warnbg);border:1px solid rgba(251,191,36,.35);color:var(--warn);border-radius:10px;padding:8px 10px;font-size:12.5px;margin-top:12px}
+.preg{background:var(--card);border:1px solid var(--bordeMedio);border-radius:14px;padding:12px;margin-top:10px}
+.preg .t{margin-bottom:8px}
+.btns{display:flex;gap:8px}
+.btns span{flex:1;text-align:center;border:1px solid var(--m3out);border-radius:999px;padding:8px 6px;font-size:13px}
+.btns .on{background:var(--m3sel);border-color:var(--m3sel)}
+.uso{display:flex;gap:8px;align-items:center;background:var(--card);border-radius:10px;padding:8px 10px;font-size:13px;margin-top:10px}
+.uso b{color:var(--m3pri);font-weight:500}
+.nota{max-width:950px;color:var(--muted);font-size:13px;margin-top:22px;line-height:1.6}
+</style>
+</head>
+<body>
+<h1>Fotos, stock y precio en versiones — y qué descuenta un combo</h1>
+<p class="sub">Cómo se le explica al vendedor sin palabras técnicas: cada cosa en su lugar, con una línea que dice qué hace.</p>
+
+<div class="bloque">1 · Polo con versiones: foto por color, stock y precio por combinación</div>
+<div class="grid">
+
+<div>
+<p class="paso">Fotos · una por color</p>
+<div class="dialog">
+  <h2>Polo básico · versiones</h2>
+  <div class="leyenda"><span><b>Foto</b> → por color</span><span><b>Stock</b> → por combinación</span><span><b>Precio</b> → por combinación</span></div>
+  <div class="slot"><div class="ph" style="color:#378ADD">👕</div><div>Azul<small>Esta foto se ve en Azul S, M y L</small></div></div>
+  <div class="slot"><div class="ph" style="color:#7EC8F0">👕</div><div>Celeste<small>Se ve en Celeste M y L</small></div></div>
+  <div class="slot"><div class="ph add">+</div><div>Amarillo<small>Sin foto: se usará la foto general</small></div></div>
+  <p class="hint">La talla no tiene fotos: un polo S y uno L se ven igual.</p>
+</div>
+</div>
+
+<div>
+<p class="paso">Stock y precio · por combinación</p>
+<div class="dialog">
+  <h2>¿Cuántos tienes y a cuánto?</h2>
+  <p class="intro">Precio base: S/ 35.00. Cambia solo los que cuestan distinto.</p>
+  <table>
+    <tr><th>Color \ Talla</th><th>S</th><th>M</th><th>L</th><th>XL</th></tr>
+    <tr><td><span class="dot" style="background:#378ADD"></span>Azul<span class="fila">precio a toda la fila</span></td>
+      <td><span class="c">4<small>35.00</small></span></td><td><span class="c">6<small>35.00</small></span></td><td><span class="c">2<small>35.00</small></span></td><td><span class="c alto">1<small>38.00</small></span></td></tr>
+    <tr><td><span class="dot" style="background:#7EC8F0"></span>Celeste<span class="fila">precio a toda la fila</span></td>
+      <td><span class="c no">no hay</span></td><td><span class="c">3<small>35.00</small></span></td><td><span class="c">2<small>35.00</small></span></td><td><span class="c no">no hay</span></td></tr>
+    <tr><td><span class="dot" style="background:#F2C94C"></span>Amarillo<span class="fila">precio a toda la fila</span></td>
+      <td><span class="c no">no hay</span></td><td><span class="c no">no hay</span></td><td><span class="c">5<small>35.00</small></span></td><td><span class="c">2<small>35.00</small></span></td></tr>
+  </table>
+  <p class="hint">"no hay" = esa combinación no existe y el cliente no la ve. Tocar una celda vacía la crea.</p>
+  <span class="ok">Total: 25 polos · se calcula solo</span>
+</div>
+</div>
+
+<div>
+<p class="paso">Mismo modelo en el pollo</p>
+<div class="dialog">
+  <h2>Pollo broaster · versiones</h2>
+  <div class="leyenda"><span><b>Foto</b> → por tamaño</span><span><b>Stock</b> → ∞ (se cocina al momento)</span><span><b>Precio</b> → por combinación</span></div>
+  <table>
+    <tr><th>Tamaño \ Presas</th><th>Mixto</th><th>Solo pierna</th><th>Solo pecho</th></tr>
+    <tr><td>🍗 Personal<span class="fila">precio a toda la fila</span></td><td><span class="c">∞<small>14.90</small></span></td><td><span class="c">∞<small>14.90</small></span></td><td><span class="c alto">∞<small>16.90</small></span></td></tr>
+    <tr><td>🪣 Balde 8<span class="fila">precio a toda la fila</span></td><td><span class="c">∞<small>49.90</small></span></td><td><span class="c">∞<small>49.90</small></span></td><td><span class="c no">no hay</span></td></tr>
+  </table>
+  <p class="hint">"Poner precio a toda la fila" deja S/ 49.90 en todo el Balde 8 de un toque. Picante (Normal o Picante) no cambia precio ni stock: es una elección de texto.</p>
+</div>
+</div>
+
+</div>
+
+<div class="bloque">2 · Combo: el vendedor ve qué se descuenta antes de guardar</div>
+<div class="grid">
+
+<div>
+<p class="paso">Formulario del combo</p>
+<div class="dialog">
+  <h2>Combo balde familiar</h2>
+  <p class="intro">Precio del combo: S/ 79.90 · una foto propia</p>
+  <div class="it"><div>🔗 Pollo broaster · Balde 8<small>descuenta stock de Pollo broaster</small></div><span class="k si">descuenta</span></div>
+  <div class="it"><div>🔗 Presas: el cliente elige<small>Mixto · Solo pierna</small></div><span class="k si">descuenta la elegida</span></div>
+  <div class="it"><div>🔗 Papas familiares<small>descuenta stock de Papas familiares</small></div><span class="k si">descuenta</span></div>
+  <div class="it"><div>🔗 Gaseosa 1.5 L: el cliente elige<small>Inca Kola (6) · Coca-Cola (0)</small></div><span class="k si">descuenta la elegida</span></div>
+  <div class="it"><div>Ensalada, cremas<small>solo texto</small></div><span class="k no">no descuenta</span></div>
+  <div class="vivo">
+    <div class="t">Al vender 1 combo se descuenta:</div>
+    <div class="l"><span>Pollo broaster · Balde 8 · (presa elegida)</span><span class="m">−1</span></div>
+    <div class="l"><span>Papas familiares</span><span class="m">−1</span></div>
+    <div class="l"><span>La gaseosa que elija el cliente</span><span class="m">−1</span></div>
+    <div class="l"><span>Ensalada, cremas</span><span class="m">nada</span></div>
+  </div>
+  <div class="aviso">Puedes vender 6 combos: lo limita la Inca Kola 1.5 L (la Coca-Cola está agotada).</div>
+</div>
+</div>
+
+<div>
+<p class="paso">Al agregar un extra o una elección</p>
+<div class="dialog">
+  <h2>Nuevo extra</h2>
+  <div class="preg">
+    <div class="t">¿Este extra es uno de tus productos?</div>
+    <div class="btns"><span class="on">🔗 Sí, es un producto<br><small style="color:var(--muted)">descuenta su stock</small></span><span>Solo texto<br><small style="color:var(--muted)">cremas, sin cebolla</small></span></div>
+  </div>
+  <div class="preg">
+    <div class="t">Elige el producto</div>
+    <div class="it" style="border:0"><div>🔗 Inca Kola 500 ml<small>stock 24 · precio solo S/ 3.00</small></div><span class="k si">+ S/ 2.50 como extra</span></div>
+  </div>
+  <p class="hint">2 hamburguesas con este extra descuentan 2 Inca Kola.</p>
+</div>
+</div>
+
+<div>
+<p class="paso">En la ficha de cada producto</p>
+<div class="dialog">
+  <h2>Inca Kola 1.5 L</h2>
+  <p class="intro">Stock: 6 botellas</p>
+  <div class="uso">↪ Se usa en: <b>Combo balde familiar</b>, <b>Combo personal</b></div>
+  <p class="hint">Si lo ocultas o se agota, esos combos lo sienten: deja de ofrecerse como opción, y si era lo único, el combo sale agotado. No se puede borrar mientras esté en un combo.</p>
+</div>
+</div>
+
+</div>
+
+<p class="nota"><b>Lógica que muestra:</b> la foto va por valor de la versión que se ve distinta; el stock y el precio van por combinación, con el precio base por defecto y un atajo para una fila entera. En los combos y extras, solo lo marcado con 🔗 descuenta stock, y el vendedor ve en vivo qué se descontará al vender uno. Cada producto avisa en qué combos se usa.</p>
+</body>
+</html>

@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YapiVenta · versiones, tallas y opciones</title>
+<style>
+:root{--fondo:#070C18;--superficie:#0D1526;--card:#111D33;--texto:#E8EDF5;--muted:#8494AD;--error:#EF4444;
+--bordeSutil:rgba(61,114,212,.14);--bordeMedio:rgba(61,114,212,.30);--precio:#8AB2FF;
+--m3pri:#D0BCFF;--m3sel:#4A4458;--m3out:#938F99;--m3surf:#1D1B20;--ok:#4ADE80;--okbg:rgba(74,222,128,.12)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fondo);color:var(--texto);font:14px/1.45 Roboto,"Segoe UI",system-ui,sans-serif;padding:20px 16px 40px}
+h1{font-size:20px;font-weight:700;margin:0 0 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:22px;align-items:start}
+.paso{font-size:12px;color:var(--muted);letter-spacing:.3px;margin:0 0 8px;text-transform:uppercase}
+.dialog{background:var(--superficie);border-radius:28px;padding:22px 20px 18px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.dialog h2{font-size:20px;font-weight:400;margin:0 0 14px}
+.blk{background:var(--card);border:1px solid var(--bordeMedio);border-radius:16px;padding:12px 14px;margin-top:12px}
+.blk .t{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:500;margin-bottom:2px}
+.blk .s{font-size:12px;color:var(--muted);margin-bottom:10px}
+.ej{font-size:12px;color:#55607a;font-style:italic;margin-bottom:8px}
+.ver{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--bordeSutil)}
+.ver:first-of-type{border-top:0}
+.ph{width:58px;height:58px;border-radius:12px;background:#0b1424;display:flex;align-items:center;justify-content:center;font-size:30px;flex:none}
+.ph.add{border:1px dashed var(--m3out);color:var(--m3pri);font-size:18px}
+.nom{font-size:15px;margin-bottom:6px}
+.tallas{display:flex;gap:6px;flex-wrap:wrap}
+.tl{border:1px solid var(--m3out);border-radius:10px;padding:4px 8px;text-align:center;min-width:52px;background:var(--m3surf)}
+.tl b{display:block;font-weight:500;font-size:13px}
+.tl span{font-size:12px;color:var(--precio)}
+.tl.falta{border-color:var(--error)}
+.tl.falta span{color:var(--error)}
+.tl.add{border-style:dashed;color:var(--m3pri);font-size:13px;display:flex;align-items:center;justify-content:center}
+.tot{font-size:12px;color:var(--muted);margin-top:6px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--m3out);border-radius:8px;padding:5px 11px;font-size:13px;background:var(--m3surf)}
+.chip.add{border-style:dashed;color:var(--m3pri)}
+.nostock{display:inline-block;font-size:11.5px;color:var(--muted);background:rgba(147,143,153,.15);border-radius:999px;padding:2px 8px;margin-left:auto}
+.sistock{display:inline-block;font-size:11.5px;color:var(--precio);background:rgba(61,114,212,.18);border-radius:999px;padding:2px 8px;margin-left:auto}
+.foto{display:inline-block;font-size:11.5px;color:var(--m3pri);background:rgba(208,188,255,.14);border-radius:999px;padding:2px 8px;margin-left:auto}
+.add2{display:inline-block;color:var(--m3pri);font-size:14px;font-weight:500;margin-top:10px}
+.cli{background:var(--superficie);border-radius:20px;padding:16px}
+.big{height:150px;border-radius:14px;background:#0b1424;display:flex;align-items:center;justify-content:center;font-size:80px;margin-bottom:8px}
+.lbl{font-size:12px;color:var(--muted);margin:10px 0 4px}
+.c{display:inline-block;border:1px solid var(--m3out);border-radius:8px;padding:6px 12px;margin:0 6px 6px 0;font-size:13px;background:var(--m3surf)}
+.c.on{background:var(--m3sel);border-color:var(--m3sel)}
+.c.off{color:#5d5a63;text-decoration:line-through}
+.cta{display:block;text-align:center;background:var(--m3surf);color:var(--m3pri);padding:10px;border-radius:999px;font-weight:500;margin-top:12px}
+.precio{color:var(--precio);font-weight:700}
+.mini{font-size:12px;color:var(--muted);margin-top:6px}
+.vacio .ph{font-size:24px;color:#55607a}
+</style>
+</head>
+<body>
+<h1>Versiones, tallas y opciones</h1>
+
+<div class="grid">
+
+<div>
+<p class="paso">Vacío · el ejemplo en gris enseña solo</p>
+<div class="dialog vacio">
+  <h2>Polo básico</h2>
+  <div class="blk">
+    <div class="t">📷 Versiones <span class="foto">una foto cada una</span></div>
+    <div class="ej">ej. Azul · Rojo</div>
+    <div class="ver"><div class="ph add">+</div><div><div class="nom" style="color:#55607a">Azul</div>
+      <div class="tallas"><div class="tl" style="opacity:.45"><b>S</b><span>3</span></div><div class="tl" style="opacity:.45"><b>M</b><span>5</span></div><div class="tl add">+</div></div></div></div>
+  </div>
+  <div class="blk">
+    <div class="t">👆 Opciones del cliente <span class="nostock">sin stock</span></div>
+    <div class="ej">ej. Con bolsa de regalo</div>
+    <div class="chips"><span class="chip add">+ opción</span></div>
+  </div>
+</div>
+</div>
+
+<div>
+<p class="paso">Lleno</p>
+<div class="dialog">
+  <h2>Polo básico</h2>
+  <div class="blk">
+    <div class="t">📷 Versiones <span class="foto">una foto cada una</span></div>
+    <div class="ver"><div class="ph" style="color:#378ADD">👕</div><div style="flex:1"><div class="nom">Azul</div>
+      <div class="tallas"><div class="tl"><b>S</b><span>3</span></div><div class="tl"><b>M</b><span>5</span></div><div class="tl"><b>L</b><span>2</span></div><div class="tl add">+</div></div>
+      <div class="tot">📦 10 en stock</div></div></div>
+    <div class="ver"><div class="ph" style="color:#F2C94C">👕</div><div style="flex:1"><div class="nom">Amarillo</div>
+      <div class="tallas"><div class="tl"><b>L</b><span>4</span></div><div class="tl falta"><b>XL</b><span>¿?</span></div><div class="tl add">+</div></div>
+      <div class="tot">📦 4 en stock</div></div></div>
+    <span class="add2">+ Versión</span>
+  </div>
+  <div class="blk">
+    <div class="t">👆 Opciones del cliente <span class="nostock">sin stock</span></div>
+    <div class="chips"><span class="chip">Con bolsa de regalo</span><span class="chip add">+ opción</span></div>
+  </div>
+  <div class="mini" style="color:var(--error)">Falta: stock de Amarillo · XL</div>
+</div>
+</div>
+
+<div>
+<p class="paso">Lo que ve tu cliente</p>
+<div class="cli">
+  <div class="big" style="color:#378ADD">👕</div>
+  <b style="font-weight:600;font-size:16px">Polo básico</b> · <span class="precio">S/ 35.00</span>
+  <div class="lbl">Versión</div>
+  <span class="c on">Azul</span><span class="c">Amarillo</span>
+  <div class="lbl">Talla</div>
+  <span class="c">S</span><span class="c on">M</span><span class="c">L</span>
+  <div class="lbl">Opciones</div>
+  <span class="c">Con bolsa de regalo</span>
+  <span class="cta">Agregar</span>
+</div>
+</div>
+
+</div>
+
+<div class="grid" style="margin-top:22px">
+
+<div>
+<p class="paso">Otro rubro · bodega</p>
+<div class="dialog">
+  <h2>Gaseosa 500 ml</h2>
+  <div class="blk">
+    <div class="t">📷 Versiones <span class="foto">una foto cada una</span></div>
+    <div class="ver"><div class="ph">🥤</div><div style="flex:1"><div class="nom">Inca Kola</div><div class="tot">📦 24 botellas</div></div></div>
+    <div class="ver"><div class="ph">🥤</div><div style="flex:1"><div class="nom">Coca-Cola</div><div class="tot">📦 18 botellas</div></div></div>
+  </div>
+  <p class="mini">Sin tallas: el stock va en cada versión.</p>
+</div>
+</div>
+
+<div>
+<p class="paso">Otro rubro · restaurante</p>
+<div class="dialog">
+  <h2>Pollo a la brasa</h2>
+  <div class="blk">
+    <div class="t">👆 Opciones del cliente <span class="nostock">sin stock</span></div>
+    <div class="chips"><span class="chip">Con ají</span><span class="chip">Sin ají</span><span class="chip">Pierna</span><span class="chip">Pecho</span></div>
+  </div>
+  <p class="mini">Sin versiones: el stock es del producto (∞).</p>
+</div>
+</div>
+
+</div>
+</body>
+</html>

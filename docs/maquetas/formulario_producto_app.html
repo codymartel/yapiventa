@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YapiVenta · formulario de producto</title>
+<style>
+:root{
+  --fondo:#070C18;--superficie:#0D1526;--card:#111D33;--navy:#1A3A6E;--blue:#2457B3;--blueLt:#3D72D4;
+  --texto:#E8EDF5;--muted:#8494AD;--dim:#2A3A55;--error:#EF4444;
+  --borde:rgba(61,114,212,.45);--bordeSutil:rgba(61,114,212,.14);--bordeMedio:rgba(61,114,212,.30);
+  --precio:#8AB2FF;--m3pri:#D0BCFF;--m3onpri:#381E72;--m3sel:#4A4458;--m3out:#938F99;--m3surf:#1D1B20;
+  --ok:#4ADE80;--okbg:rgba(74,222,128,.12);--warn:#FBBF24;--warnbg:rgba(251,191,36,.10);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fondo);color:var(--texto);font:14px/1.45 Roboto,"Segoe UI",system-ui,sans-serif;padding:20px 16px 40px}
+h1{font-size:20px;font-weight:700;margin:0 0 4px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 18px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:22px;align-items:start}
+.caso{font-size:12px;color:var(--muted);letter-spacing:.3px;margin:0 0 8px;text-transform:uppercase}
+.dialog{background:var(--superficie);border-radius:28px;padding:24px 22px 18px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.dialog h2{font-size:24px;font-weight:400;margin:0 0 14px}
+.photo{height:120px;border-radius:14px;background:var(--card);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px;text-align:center;margin-bottom:12px}
+.fotos{display:flex;gap:8px;margin-bottom:12px}
+.mini{width:66px;height:66px;border-radius:12px;background:var(--card);display:flex;align-items:flex-end;justify-content:center;font-size:10px;color:var(--muted);padding-bottom:4px;position:relative}
+.mini b{position:absolute;top:8px;font-size:18px;font-weight:400}
+.field{margin:10px 0 0;border-bottom:1px solid var(--m3out);padding:6px 0 7px;position:relative}
+.field label{display:block;font-size:12px;color:var(--muted)}
+.field .v{font-size:16px;min-height:22px;display:flex;justify-content:space-between;align-items:center}
+.field .v .sfx{color:var(--muted);font-size:15px}
+.field .v .ar{color:var(--muted);font-size:12px}
+.field.focus{border-bottom:2px solid var(--m3pri)}
+.field.focus label{color:var(--m3pri)}
+.field.err{border-bottom-color:var(--error)}
+.help{font-size:12px;color:var(--muted);margin-top:4px}
+.row{display:flex;gap:12px}.row>*{flex:1}
+.seg{display:flex;border:1px solid var(--m3out);border-radius:999px;overflow:hidden;margin-top:14px}
+.seg span{flex:1;text-align:center;padding:9px 6px;font-size:14px;font-weight:500}
+.seg span+span{border-left:1px solid var(--m3out)}
+.seg .on{background:var(--m3sel)}
+.seg .off{color:#6b6873}
+.tipo{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:2px 0 6px}
+.tipo div{border:1px solid var(--bordeMedio);border-radius:12px;padding:9px 8px;font-size:12.5px;text-align:center;color:var(--muted)}
+.tipo div b{display:block;color:var(--texto);font-weight:500;font-size:13px}
+.tipo .on{border-color:var(--m3pri);background:rgba(208,188,255,.08)}
+.switch{display:flex;justify-content:space-between;align-items:center;padding:12px 0 2px;font-size:14px}
+.sw{width:52px;height:32px;border-radius:16px;border:2px solid var(--m3out);position:relative;background:#36343B;flex:none}
+.sw:after{content:"";position:absolute;width:16px;height:16px;border-radius:50%;background:var(--m3out);top:6px;left:6px}
+.sw.on{background:var(--m3pri);border-color:var(--m3pri)}
+.sw.on:after{width:24px;height:24px;top:2px;left:22px;background:var(--m3onpri)}
+.subt{font-size:12px;color:var(--muted)}
+.menu{background:#211F26;border-radius:4px;box-shadow:0 6px 18px rgba(0,0,0,.5);margin:4px 0 0 auto;width:62%;padding:6px 0}
+.menu div{padding:10px 14px;font-size:15px}
+.menu .sel{background:#36343B}
+.menu .sep{border-top:1px solid #3a3740;color:var(--m3pri)}
+.chip{display:inline-block;border:1px solid var(--m3out);border-radius:8px;padding:6px 12px;margin:0 6px 6px 0;font-size:13px;background:var(--m3surf)}
+.chip.on{background:var(--m3sel);border-color:var(--m3sel)}
+.add{display:inline-block;color:var(--m3pri);font-size:14px;font-weight:500;margin:10px 16px 0 0}
+.sec{font-size:13px;font-weight:600;color:var(--muted);margin:18px 0 2px;padding-top:12px;border-top:1px solid var(--bordeSutil)}
+.pv{background:var(--card);border:1px solid var(--bordeSutil);border-radius:10px;padding:10px 12px;margin-top:12px}
+.pv .t{font-size:12px;font-weight:600;margin-bottom:6px}
+.pv .m{font-size:12px;color:var(--muted)}
+.vt{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:6px}
+.vt td{padding:8px 4px;border-bottom:1px solid var(--bordeSutil)}
+.vt td:nth-child(2),.vt td:nth-child(3){text-align:right;width:70px}
+.vt .h td{color:var(--muted);font-size:12px}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
+.aviso{background:var(--warnbg);border:1px solid rgba(251,191,36,.35);color:var(--warn);border-radius:10px;padding:8px 10px;font-size:12.5px;margin-top:10px}
+.actions{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-top:20px}
+.falta{margin-right:auto;color:var(--error);font-size:12.5px}
+.tb{color:var(--muted);padding:10px 14px;font-weight:500}
+.eb{background:var(--m3surf);color:var(--m3pri);padding:10px 22px;border-radius:999px;font-weight:500;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+.eb.dis{background:rgba(230,224,233,.12);color:rgba(230,224,233,.38);box-shadow:none}
+.card{background:var(--card);border:1px solid var(--borde);border-radius:16px;overflow:hidden;margin-top:12px}
+.card .img{height:96px;background:#0b1424;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px}
+.card .b{padding:12px 14px}
+.card .n{font-size:16px;font-weight:600}
+.card .p{color:var(--precio);font-size:15px;font-weight:700;margin:4px 0 8px}
+.card .d{color:var(--muted);font-size:13px;margin:3px 0}
+.disp{display:inline-block;margin-top:8px;font-size:12px;color:var(--ok);background:var(--okbg);border:1px solid rgba(74,222,128,.35);border-radius:999px;padding:3px 10px}
+.etq{font-size:11px;color:var(--muted);margin:14px 0 4px}
+.link{color:var(--m3pri)}
+</style>
+</head>
+<body>
+<h1>Formulario de producto</h1>
+<p class="sub">Con el estilo de tu panel (tema oscuro, tus colores). Debajo de cada formulario, la tarjeta como queda en Productos.</p>
+
+<div class="grid">
+
+<!-- ───────── 1. Presentación (con presentación propia) ───────── -->
+<div>
+<p class="caso">1 · Por presentación — huevos por jaba</p>
+<div class="dialog">
+  <h2>Agregar producto</h2>
+  <div class="tipo"><div class="on"><b>Normal</b>uno solo</div><div><b>Versiones</b>talla, color…</div><div><b>Combo</b>con otros</div></div>
+  <div class="photo">Foto del producto (opcional)<br>toca para elegir</div>
+  <div class="field"><label>Nombre del producto *</label><div class="v">Huevos de granja</div></div>
+  <div class="field"><label>Categoría *</label><div class="v">Abarrotes <span class="ar">▼</span></div></div>
+  <div class="seg"><span class="on">Por presentación</span><span>Por medida</span></div>
+  <div class="help">¿Lo cuentas o lo pesas? Si lo cuentas, por presentación.</div>
+  <div class="field focus"><label>Presentación *</label><div class="v">Jaba · 30 unidades <span class="ar">▼</span></div></div>
+  <div class="menu">
+    <div>Unidad</div><div>Bolsa</div><div>Caja · 12</div>
+    <div class="sel">Jaba · 30 unidades <span class="subt">(tuya)</span></div>
+    <div class="sep">+ Nueva presentación…</div>
+  </div>
+  <div class="row">
+    <div class="field"><label>Precio S/ *</label><div class="v">16.50 <span class="sfx">por jaba</span></div></div>
+    <div class="field"><label>Stock *</label><div class="v">12 <span class="sfx">jabas</span></div></div>
+  </div>
+  <div class="switch">Stock infinito <span class="sw"></span></div>
+  <span class="add">+ Ficha técnica</span><span class="add">+ Extras</span>
+  <div class="actions"><span class="tb">Cancelar</span><span class="eb">Guardar producto</span></div>
+</div>
+<p class="etq">Tarjeta en Productos</p>
+<div class="card"><div class="img">foto</div><div class="b"><div class="n">Huevos de granja</div><div class="p">S/ 16.50 · jaba</div><div class="d">▣ Stock: 12 jabas (360 unidades)</div><div class="d">◇ Abarrotes</div><span class="disp">Disponible</span></div></div>
+</div>
+
+<!-- ───────── 2. Medida ───────── -->
+<div>
+<p class="caso">2 · Por medida — jamonada por ¼ kg</p>
+<div class="dialog">
+  <h2>Agregar producto</h2>
+  <div class="tipo"><div class="on"><b>Normal</b>uno solo</div><div><b>Versiones</b>talla, color…</div><div><b>Combo</b>con otros</div></div>
+  <div class="field"><label>Nombre del producto *</label><div class="v">Jamonada</div></div>
+  <div class="field"><label>Categoría *</label><div class="v">Abarrotes <span class="ar">▼</span></div></div>
+  <div class="seg"><span>Por presentación</span><span class="on">Por medida</span></div>
+  <div class="help">Se vende por peso, volumen… al granel</div>
+  <div class="field"><label>Qué mides *</label><div class="v">Peso <span class="ar">▼</span></div></div>
+  <div class="row">
+    <div class="field"><label>Precio S/ *</label><div class="v">3.00</div></div>
+    <div class="field focus"><label>Por *</label><div class="v">¼ kg <span class="ar">▼</span></div></div>
+  </div>
+  <div class="menu"><div>1 kg</div><div>½ kg</div><div class="sel">¼ kg</div><div>100 g</div><div class="sep">Otra cantidad…</div></div>
+  <div class="help">= S/ 12.00 por kg</div>
+  <div class="switch">Stock infinito <span class="sw"></span></div>
+  <div class="field"><label>Stock *</label><div class="v">2.5 <span class="sfx">kg</span></div></div>
+  <div class="switch"><div>Mínimo e incremento propios<div class="subt">Regla del negocio: desde 100 g, de 50 en 50 g</div></div><span class="sw on"></span></div>
+  <div class="row">
+    <div class="field"><label>Desde *</label><div class="v">100 <span class="sfx">g</span></div></div>
+    <div class="field"><label>De cuánto en cuánto *</label><div class="v">100 <span class="sfx">g</span></div></div>
+  </div>
+  <div class="pv"><div class="t">Así lo ve tu cliente</div><div class="m" style="margin-bottom:4px">Cantidades rápidas</div>
+    <span class="chip">100 g · S/ 1.20</span><span class="chip">¼ kg · S/ 3.00</span><span class="chip">½ kg · S/ 6.00</span><span class="chip">1 kg · S/ 12.00</span>
+    <div class="m">Desde 100 g, de 100 en 100 g</div></div>
+  <div class="actions"><span class="tb">Cancelar</span><span class="eb">Guardar producto</span></div>
+</div>
+<p class="etq">Tarjeta en Productos</p>
+<div class="card"><div class="img">foto</div><div class="b"><div class="n">Jamonada</div><div class="p">S/ 3.00 / ¼ kg · S/ 12.00 / kg</div><div class="d">▣ Stock: 2.5 kg</div><div class="d">◇ Abarrotes</div><span class="disp">Disponible</span></div></div>
+</div>
+
+<!-- ───────── 3. Versiones ───────── -->
+<div>
+<p class="caso">3 · Con versiones — polo color y talla</p>
+<div class="dialog">
+  <h2>Agregar producto</h2>
+  <div class="tipo"><div><b>Normal</b>uno solo</div><div class="on"><b>Versiones</b>talla, color…</div><div><b>Combo</b>con otros</div></div>
+  <div class="fotos">
+    <div class="mini"><b>👕</b>General</div><div class="mini"><b style="color:#E24B4A">👕</b>Rojo</div><div class="mini"><b style="color:#378ADD">👕</b>Azul</div><div class="mini"><b>+</b>foto</div>
+  </div>
+  <div class="field"><label>Nombre del producto *</label><div class="v">Polo básico</div></div>
+  <div class="field"><label>Categoría *</label><div class="v">Hombre <span class="ar">▼</span></div></div>
+  <div class="row">
+    <div class="field"><label>Se vende por *</label><div class="v">Unidad <span class="ar">▼</span></div></div>
+    <div class="field"><label>Precio base S/ *</label><div class="v">35.00</div></div>
+  </div>
+  <div class="sec">Versiones</div>
+  <div class="field"><label>Color (con fotos)</label><div class="v" style="font-size:14px">Rojo ✕ &nbsp; Azul ✕ &nbsp; <span class="link">+ escribe…</span></div></div>
+  <div class="field"><label>Talla</label><div class="v" style="font-size:14px">S ✕ &nbsp; L ✕ &nbsp; XXL ✕ &nbsp; <span class="link">+ escribe…</span></div></div>
+  <table class="vt">
+    <tr class="h"><td>Versión</td><td>Stock</td><td>Precio</td></tr>
+    <tr><td><span class="dot" style="background:#E24B4A"></span>Rojo · L</td><td>5</td><td style="color:var(--muted)">35.00</td></tr>
+    <tr><td><span class="dot" style="background:#378ADD"></span>Azul · L</td><td>3</td><td style="color:var(--muted)">35.00</td></tr>
+    <tr><td><span class="dot" style="background:#378ADD"></span>Azul · XXL</td><td>1</td><td>38.00</td></tr>
+    <tr><td><span class="dot" style="background:#378ADD"></span>Azul · S</td><td style="color:var(--error)">—</td><td style="color:var(--muted)">35.00</td></tr>
+  </table>
+  <span class="add">+ Agregar versión</span>
+  <div class="actions"><span class="falta">Falta: stock de “Azul · S”</span><span class="tb">Cancelar</span><span class="eb dis">Guardar producto</span></div>
+</div>
+<p class="etq">Tarjeta en Productos</p>
+<div class="card"><div class="img">foto (rojo)</div><div class="b"><div class="n">Polo básico</div><div class="p">desde S/ 35.00</div><div class="d">▣ Stock: 9 · 3 versiones</div><div class="d">◇ Hombre</div><span class="disp">Disponible</span></div></div>
+</div>
+
+<!-- ───────── 4. Combo ───────── -->
+<div>
+<p class="caso">4 · Combo — pollo familiar</p>
+<div class="dialog">
+  <h2>Agregar producto</h2>
+  <div class="tipo"><div><b>Normal</b>uno solo</div><div><b>Versiones</b>talla, color…</div><div class="on"><b>Combo</b>con otros</div></div>
+  <div class="field"><label>Nombre del producto *</label><div class="v">Combo familiar</div></div>
+  <div class="field"><label>Categoría *</label><div class="v">Combos <span class="ar">▼</span></div></div>
+  <div class="field"><label>Precio del combo S/ *</label><div class="v">75.00</div></div>
+  <div class="sec">Trae siempre</div>
+  <table class="vt">
+    <tr><td>🔗 Pollo entero</td><td>× 1</td><td style="color:var(--muted)">∞</td></tr>
+    <tr><td>🔗 Papas familiares</td><td>× 1</td><td style="color:var(--muted)">∞</td></tr>
+    <tr><td>Ensalada</td><td></td><td style="color:var(--muted)">texto</td></tr>
+  </table>
+  <span class="add">+ Producto o texto</span>
+  <div class="sec">El cliente elige</div>
+  <div class="field"><label>Gaseosa 1.5 L · elige 1 · obligatorio</label><div class="v" style="font-size:14px">🔗 Inca Kola (8) · 🔗 Coca-Cola <span style="color:var(--error)">(agotada)</span></div></div>
+  <div class="field"><label>Cremas · hasta 3</label><div class="v" style="font-size:14px">Mayonesa · Ají · Ketchup</div></div>
+  <span class="add">+ Elección</span>
+  <div class="sec">Extras</div>
+  <div class="field"><label>Suman al precio</label><div class="v" style="font-size:14px">🔗 Chicha 1 L <span class="sfx">+ S/ 8.00</span></div></div>
+  <div class="aviso">Stock del combo: 8 (lo limita la Inca Kola 1.5 L). La Coca-Cola agotada no se muestra al cliente.</div>
+  <div class="actions"><span class="tb">Cancelar</span><span class="eb">Guardar producto</span></div>
+</div>
+<p class="etq">Tarjeta en Productos</p>
+<div class="card"><div class="img">foto</div><div class="b"><div class="n">Combo familiar</div><div class="p">S/ 75.00</div><div class="d">▣ Stock: 8 (calculado)</div><div class="d">◇ Combos</div><span class="disp">Disponible</span></div></div>
+</div>
+
+</div>
+</body>
+</html>

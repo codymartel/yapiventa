@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YapiVenta · versiones y fotos</title>
+<style>
+:root{--fondo:#070C18;--superficie:#0D1526;--card:#111D33;--texto:#E8EDF5;--muted:#8494AD;--error:#EF4444;
+--bordeSutil:rgba(61,114,212,.14);--bordeMedio:rgba(61,114,212,.30);--precio:#8AB2FF;
+--m3pri:#D0BCFF;--m3onpri:#381E72;--m3sel:#4A4458;--m3out:#938F99;--m3surf:#1D1B20;--ok:#4ADE80;--okbg:rgba(74,222,128,.12)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fondo);color:var(--texto);font:14px/1.45 Roboto,"Segoe UI",system-ui,sans-serif;padding:20px 16px 40px}
+h1{font-size:20px;font-weight:700;margin:0 0 4px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 18px;max-width:900px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:22px;align-items:start}
+.paso{font-size:12px;color:var(--muted);letter-spacing:.3px;margin:0 0 8px;text-transform:uppercase}
+.dialog{background:var(--superficie);border-radius:28px;padding:22px 20px 18px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.dialog h2{font-size:20px;font-weight:400;margin:0 0 4px}
+.dialog .intro{color:var(--muted);font-size:13px;margin:0 0 14px}
+.field{margin:10px 0 0;border-bottom:1px solid var(--m3out);padding:6px 0 7px}
+.field label{display:block;font-size:12px;color:var(--muted)}
+.field .v{font-size:15px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.tag{background:var(--m3sel);border-radius:8px;padding:3px 10px;font-size:13px}
+.link{color:var(--m3pri);font-size:13px}
+.q{background:var(--card);border:1px solid var(--bordeMedio);border-radius:16px;padding:14px;margin-top:12px}
+.q .t{font-size:15px;margin-bottom:10px}
+.q .t b{font-weight:600}
+.pair{display:flex;gap:10px;justify-content:center;margin-bottom:12px}
+.pol{width:92px;text-align:center;font-size:12px;color:var(--muted)}
+.pol .ic{height:84px;border-radius:12px;background:#0b1424;display:flex;align-items:center;justify-content:center;font-size:44px;margin-bottom:4px}
+.vs{align-self:center;color:var(--muted);font-size:12px}
+.btns{display:flex;gap:8px}
+.btns span{flex:1;text-align:center;border:1px solid var(--m3out);border-radius:999px;padding:9px 6px;font-size:13.5px;font-weight:500}
+.btns .on{background:var(--m3sel);border-color:var(--m3sel)}
+.hint{font-size:12px;color:var(--muted);margin-top:8px}
+.ok{display:inline-block;font-size:12px;color:var(--ok);background:var(--okbg);border:1px solid rgba(74,222,128,.35);border-radius:999px;padding:3px 10px;margin-top:10px}
+.slot{background:var(--card);border:1px solid var(--bordeSutil);border-radius:14px;padding:10px 12px;margin-top:10px}
+.slot .h{display:flex;justify-content:space-between;font-size:14px;margin-bottom:8px}
+.slot .h span{color:var(--muted);font-size:12px}
+.fotos{display:flex;gap:8px;flex-wrap:wrap}
+.mini{width:62px;height:62px;border-radius:10px;background:#0b1424;display:flex;align-items:center;justify-content:center;font-size:28px}
+.mini.add{border:1px dashed var(--m3out);font-size:20px;color:var(--m3pri)}
+.dot{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+.cli{background:var(--superficie);border-radius:20px;padding:16px}
+.big{height:150px;border-radius:14px;background:#0b1424;display:flex;align-items:center;justify-content:center;font-size:80px;margin-bottom:6px}
+.dots{text-align:center;color:var(--muted);font-size:12px;margin-bottom:8px}
+.chip{display:inline-block;border:1px solid var(--m3out);border-radius:8px;padding:6px 12px;margin:0 6px 6px 0;font-size:13px;background:var(--m3surf)}
+.chip.on{background:var(--m3sel);border-color:var(--m3sel)}
+.lbl{font-size:12px;color:var(--muted);margin:8px 0 4px}
+.eb{display:block;text-align:center;background:var(--m3surf);color:var(--m3pri);padding:10px 22px;border-radius:999px;font-weight:500;margin-top:10px}
+.precio{color:var(--precio);font-weight:700}
+.nota{max-width:900px;color:var(--muted);font-size:13px;margin-top:22px;line-height:1.6}
+</style>
+</head>
+<body>
+<h1>Versiones y fotos — cómo explicarlo sin palabras difíciles</h1>
+<p class="sub">El vendedor nunca lee "variable que afecta la imagen". La app le pregunta con <b>sus propios productos</b>: "¿se ven distintos en una foto?". Con su respuesta, arma sola los espacios para subir fotos.</p>
+
+<div class="grid">
+
+<div>
+<p class="paso">Paso 1 · Escribe tus versiones</p>
+<div class="dialog">
+  <h2>Polo básico</h2>
+  <p class="intro">¿En qué versiones viene? Escribe lo que tienes.</p>
+  <div class="field"><label>Versión 1 (ej. color, sabor, diseño…)</label><div class="v"><b style="font-weight:500">Color:</b><span class="tag">Azul</span><span class="tag">Celeste</span><span class="tag">Amarillo</span><span class="link">+ escribe…</span></div></div>
+  <div class="field"><label>Versión 2 (opcional)</label><div class="v"><b style="font-weight:500">Talla:</b><span class="tag">S</span><span class="tag">M</span><span class="tag">L</span><span class="tag">XL</span><span class="link">+ escribe…</span></div></div>
+  <p class="hint">Escribe libre. Las sugerencias de tu rubro aparecen mientras escribes.</p>
+</div>
+</div>
+
+<div>
+<p class="paso">Paso 2 · Una pregunta por versión, con tus productos</p>
+<div class="dialog">
+  <h2>¿Se ven distintos en una foto?</h2>
+  <p class="intro">Así sabemos para qué subir fotos.</p>
+  <div class="q">
+    <div class="t">Un polo <b>azul</b> y un polo <b>celeste</b>…</div>
+    <div class="pair"><div class="pol"><div class="ic" style="color:#378ADD">👕</div>Azul</div><span class="vs">vs</span><div class="pol"><div class="ic" style="color:#7EC8F0">👕</div>Celeste</div></div>
+    <div class="btns"><span class="on">Sí, se ven distintos</span><span>No, se ven igual</span></div>
+  </div>
+  <div class="q">
+    <div class="t">Un polo talla <b>S</b> y uno talla <b>L</b>…</div>
+    <div class="pair"><div class="pol"><div class="ic" style="font-size:30px">👕</div>S</div><span class="vs">vs</span><div class="pol"><div class="ic">👕</div>L</div></div>
+    <div class="btns"><span>Sí, se ven distintos</span><span class="on">No, se ven igual</span></div>
+  </div>
+  <span class="ok">Listo: subirás fotos por color. La talla usa las mismas fotos.</span>
+  <p class="hint">Ya viene marcado lo más común (color sí, talla no). Solo se cambia si hace falta, por ejemplo el tamaño de un pollo (¼ o entero) sí se ve distinto.</p>
+</div>
+</div>
+
+<div>
+<p class="paso">Paso 3 · Espacios de fotos ya armados</p>
+<div class="dialog">
+  <h2>Fotos</h2>
+  <p class="intro">Sube varias fotos de cada color. Sirven para todas sus tallas.</p>
+  <div class="slot"><div class="h"><span style="color:var(--texto)">Generales</span><span>siempre se muestran · opcional</span></div><div class="fotos"><div class="mini">🏷️</div><div class="mini add">+</div></div></div>
+  <div class="slot"><div class="h"><span style="color:var(--texto)"><span class="dot" style="background:#378ADD"></span>Azul</span><span>3 fotos</span></div><div class="fotos"><div class="mini" style="color:#378ADD">👕</div><div class="mini" style="color:#378ADD">🧍</div><div class="mini" style="color:#378ADD">🔍</div><div class="mini add">+</div></div></div>
+  <div class="slot"><div class="h"><span style="color:var(--texto)"><span class="dot" style="background:#7EC8F0"></span>Celeste</span><span>1 foto</span></div><div class="fotos"><div class="mini" style="color:#7EC8F0">👕</div><div class="mini add">+</div></div></div>
+  <div class="slot"><div class="h"><span style="color:var(--texto)"><span class="dot" style="background:#F2C94C"></span>Amarillo</span><span style="color:#FBBF24">sin fotos · usará las generales</span></div><div class="fotos"><div class="mini add">+</div></div></div>
+  <p class="hint">No hay que marcar cada foto: se sube directo en el espacio de su color.</p>
+</div>
+</div>
+
+<div>
+<p class="paso">Lo que ve el cliente</p>
+<div class="cli">
+  <div class="big" style="color:#7EC8F0">👕</div>
+  <div class="dots">● ○ — fotos del celeste</div>
+  <b style="font-weight:600;font-size:16px">Polo básico</b> · <span class="precio">S/ 35.00</span>
+  <div class="lbl">Color</div>
+  <span class="chip"><span class="dot" style="background:#378ADD"></span>Azul</span><span class="chip on"><span class="dot" style="background:#7EC8F0"></span>Celeste</span><span class="chip"><span class="dot" style="background:#F2C94C"></span>Amarillo</span>
+  <div class="lbl">Talla (solo las que hay en celeste)</div>
+  <span class="chip">M</span><span class="chip on">L</span>
+  <span class="eb">Agregar al pedido</span>
+  <p class="hint">Al tocar otro color, cambian las fotos y las tallas disponibles. El amarillo, por ejemplo, solo tiene L y XL.</p>
+</div>
+</div>
+
+</div>
+
+<p class="nota"><b>Por qué funciona:</b> la pregunta usa los valores que el vendedor acaba de escribir ("azul" contra "celeste", "S" contra "L"), así que no hay que entender ningún concepto. La respuesta ya viene marcada con lo más común. Y en vez de subir fotos y después etiquetarlas, aparecen espacios con el nombre de cada color: la foto se sube directo donde corresponde. Si dos versiones dicen "Sí, se ven distintos" (color y tamaño), la app pregunta cuál manda en las fotos, porque solo una puede llevarlas.</p>
+</body>
+</html>
