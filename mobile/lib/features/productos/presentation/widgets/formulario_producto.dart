@@ -304,6 +304,7 @@ class _FormularioProductoState extends State<FormularioProducto> {
             stockInfinito: form.esStockInfinito,
             habilitada: !form.guardando,
             formatos: form.formatosDePresentacion,
+            nombreEnvase: form.nombrePresentacion,
             referencia: form.medida.referenciaEtiqueta,
             unidad: form.medida.unidad,
             factorStock: LecturaUnidadesProducto.factorDe(form.medida.unidad),

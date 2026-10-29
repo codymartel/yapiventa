@@ -247,6 +247,9 @@ class FormularioProductoController extends ChangeNotifier {
   List<FormatoPresentacion> get formatosDePresentacion =>
       _presentacionElegida?.formatos ?? const [];
 
+  /// Nombre de la presentación elegida ("Jaba"); '' si no hay.
+  String get nombrePresentacion => _presentacionElegida?.nombre ?? '';
+
   /// "por unidad", "por botella (500 ml)"; '' sin presentación elegida.
   String get textoPrecioPresentacion {
     final elegida = _presentacionElegida;
@@ -467,6 +470,7 @@ class FormularioProductoController extends ChangeNotifier {
         incrementoBase: reglaPropia ? medida.incrementoPropio : null,
         presentacionCompleta: presentacionCompleta,
         presentacionId: presentacionId,
+        presentacionNombre: nombrePresentacion,
         formatoValorBase: elegido?.valorBase ?? 0,
         formatoFamilia: elegido?.familia ?? '',
         formatoUnidad: elegido?.unidad ?? '',

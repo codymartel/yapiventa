@@ -39,6 +39,7 @@ class DatosFormularioProducto {
     this.incrementoBase,
     required this.presentacionCompleta,
     this.presentacionId = '',
+    this.presentacionNombre = '',
     this.formatoValorBase = 0,
     this.formatoFamilia = '',
     this.formatoUnidad = '',
@@ -73,6 +74,7 @@ class DatosFormularioProducto {
 
   final bool presentacionCompleta;
   final String presentacionId;
+  final String presentacionNombre;
   final int formatoValorBase;
   final String formatoFamilia;
   final String formatoUnidad;
@@ -149,6 +151,7 @@ class ConstructorProducto {
         esStockInfinito: datos.esStockInfinito,
         modoVenta: ModoVenta.presentacion,
         presentacionId: datos.presentacionId,
+        presentacionNombre: datos.presentacionNombre,
         precioCentavos: TotalesProducto.precioDesdeCentavos(datos.modelos),
         stock: TotalesProducto.stockTotal(datos.modelos),
         tituloModelos: datos.tituloModelos,
@@ -172,6 +175,7 @@ class ConstructorProducto {
         esStockInfinito: datos.esStockInfinito,
         modoVenta: ModoVenta.presentacion,
         presentacionId: datos.presentacionId,
+        presentacionNombre: datos.presentacionNombre,
         formatoValorBase: datos.formatoValorBase,
         formatoFamilia: FamiliaUnidad.values.firstWhere(
           (familia) => familia.name == datos.formatoFamilia,

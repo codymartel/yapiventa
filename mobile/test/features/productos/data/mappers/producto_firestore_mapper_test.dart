@@ -56,6 +56,7 @@ void main() {
       'fechaVencimiento',
       'modoVenta',
       'presentacionId',
+      'presentacionNombre',
       'formatoValorBase',
       'formatoFamilia',
       'formatoUnidad',

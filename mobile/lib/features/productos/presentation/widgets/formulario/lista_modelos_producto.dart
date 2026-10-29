@@ -18,6 +18,7 @@ class ListaModelosProducto extends StatelessWidget {
     required this.stockInfinito,
     required this.habilitada,
     required this.formatos,
+    this.nombreEnvase = '',
     required this.referencia,
     required this.unidad,
     required this.factorStock,
@@ -31,6 +32,16 @@ class ListaModelosProducto extends StatelessWidget {
 
   /// Formatos de la presentación elegida (para elegir el tamaño de cada fila).
   final List<FormatoPresentacion> formatos;
+
+  /// Nombre de la presentación elegida ("Jaba"). Si trae varios formatos, la
+  /// fila se llama así y los formatos son sus opciones («de 30 unidades»).
+  final String nombreEnvase;
+
+  bool get _filasPorEnvase => formatos.length > 1 && nombreEnvase.isNotEmpty;
+
+  /// La palabra con que se llama a cada fila: el envase o la que puso el vendedor.
+  String get palabraFilas =>
+      _filasPorEnvase ? nombreEnvase : modelos.tituloFilas;
 
   /// Por medida: lo que cubre cada precio ("¼ kg") y la unidad del stock.
   final String referencia;
@@ -107,7 +118,7 @@ class ListaModelosProducto extends StatelessWidget {
               ),
             ],
           ),
-          if (!porMedida) _selectorTitulo(context),
+          if (!porMedida && !_filasPorEnvase) _selectorTitulo(context),
           for (final modelo in modelos.modelos)
             _TarjetaModelo(
               key: Key('modelo-${modelo.id}'),
@@ -184,7 +195,7 @@ class _TarjetaModelo extends StatelessWidget {
   Widget build(BuildContext context) {
     final modelos = lista.modelos;
     final palabra = modelos.tituloCtrl.text.trim().toLowerCase();
-    final tituloFilas = modelos.tituloFilas;
+    final tituloFilas = lista.palabraFilas;
     final total = modelos.totalDelModelo(
       modelo,
       porMedida: lista.porMedida,

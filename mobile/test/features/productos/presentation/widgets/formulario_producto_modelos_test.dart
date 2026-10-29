@@ -245,7 +245,10 @@ void main() {
       await tester.pump();
       await escribir(tester, 'Nombre del sabor *', 'Inca Kola');
 
-      await elegirEnDropdown(tester, 'Formato', '625 ml');
+      // El envase da nombre a la fila: no hay selector «Dentro de cada…».
+      expect(find.textContaining('Dentro de cada'), findsNothing);
+      expect(find.text('Talla'), findsNothing);
+      await elegirEnDropdown(tester, 'Botella', 'de 625 ml');
       await escribir(tester, 'Precio S/', '2.5');
       await escribir(tester, 'Stock', '24');
       await ponerFotos(tester);

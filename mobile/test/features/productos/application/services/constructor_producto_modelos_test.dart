@@ -43,6 +43,7 @@ DatosFormularioProducto _datos({
   presentacionId: presentacionId,
   tituloModelos: 'Color',
   tituloFilas: 'Talla',
+  presentacionNombre: 'Jaba',
   modelos: modelos,
 );
 
@@ -55,6 +56,7 @@ void main() {
 
       expect(producto.modoVenta, ModoVenta.presentacion);
       expect(producto.presentacionId, 'unidad');
+      expect(producto.presentacionNombre, 'Jaba');
       expect(producto.precioCentavos, 3200);
       expect(producto.stock, 15);
       expect(producto.tituloModelos, 'Color');

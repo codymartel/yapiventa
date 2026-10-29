@@ -4,6 +4,7 @@ import 'package:mobile/features/negocio/domain/models/catalogo_venta/catalogo_ve
 import 'package:mobile/features/negocio/domain/models/catalogo_venta/preset_venta_rubro.dart';
 import 'package:mobile/features/productos/application/services/sugerencias_modelos.dart';
 import 'package:mobile/features/productos/domain/models/modo_venta.dart';
+import 'package:mobile/features/productos/presentation/widgets/formulario/fila_modelo_producto.dart';
 import 'package:mocktail/mocktail.dart';
 
 import 'formulario_producto_helpers.dart';
@@ -96,8 +97,8 @@ void main() {
             if (conFormatos) {
               await elegirEnDropdown(
                 tester,
-                sugerencia.tituloFilas,
-                presentacion.formatos.first.etiqueta,
+                presentacion.nombre,
+                FilaModeloProducto.textoFormato(presentacion.formatos.first),
               );
             } else {
               await escribir(tester, sugerencia.tituloFilas, 'Fila uno');

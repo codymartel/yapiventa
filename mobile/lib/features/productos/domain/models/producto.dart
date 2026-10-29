@@ -50,6 +50,11 @@ class Producto {
   /// cuyo nombre no coincide con ninguna del catálogo global.
   final String presentacionId;
 
+  /// Nombre de la presentación tal como se llamaba al guardar ("Jaba", "Botella").
+  /// Se guarda aparte porque las presentaciones propias del negocio no están en
+  /// el catálogo global: sin esto la tarjeta no podría decir «12 jabas».
+  final String presentacionNombre;
+
   /// Tamaño físico de la presentación, en la unidad BASE de su familia
   /// (625 ml → 625, familia volumen). 0 cuando no aplica o no se conoce.
   final int formatoValorBase;
@@ -123,6 +128,7 @@ class Producto {
     this.fechaVencimiento,
     this.modoVenta = ModoVenta.presentacion,
     this.presentacionId = '',
+    this.presentacionNombre = '',
     this.formatoValorBase = 0,
     this.formatoFamilia,
     this.formatoUnidad = '',
@@ -163,6 +169,7 @@ class Producto {
     DateTime? fechaVencimiento,
     ModoVenta? modoVenta,
     String? presentacionId,
+    String? presentacionNombre,
     int? formatoValorBase,
     FamiliaUnidad? formatoFamilia,
     String? formatoUnidad,
@@ -197,6 +204,7 @@ class Producto {
       fechaVencimiento: fechaVencimiento ?? this.fechaVencimiento,
       modoVenta: modoVenta ?? this.modoVenta,
       presentacionId: presentacionId ?? this.presentacionId,
+      presentacionNombre: presentacionNombre ?? this.presentacionNombre,
       formatoValorBase: formatoValorBase ?? this.formatoValorBase,
       formatoFamilia: formatoFamilia ?? this.formatoFamilia,
       formatoUnidad: formatoUnidad ?? this.formatoUnidad,

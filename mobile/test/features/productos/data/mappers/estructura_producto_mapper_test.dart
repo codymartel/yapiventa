@@ -145,6 +145,36 @@ void main() {
     });
   });
 
+  group('presentación propia del negocio', () {
+    test('se guarda su nombre y la tienda actual lo lee como unidad', () {
+      final huevos = Producto(
+        id: 'h1',
+        negocioId: 'n1',
+        nombre: 'Huevos',
+        presentacionId: 'jaba',
+        presentacionNombre: 'Jaba',
+        precioCentavos: 1650,
+        stock: 12,
+      );
+
+      final datos = ProductoFirestoreMapper.paraFirestore(huevos);
+      expect(datos['presentacionNombre'], 'Jaba');
+      expect(datos['unidadMedidaNombre'], 'Jaba');
+
+      final leido = ProductoFirestoreMapper.desdeFirestore('h1', datos)!;
+      expect(leido.presentacionNombre, 'Jaba');
+    });
+
+    test('un documento anterior sin el campo se lee con nombre vacío', () {
+      final leido = ProductoFirestoreMapper.desdeFirestore('p', {
+        'negocioId': 'n1',
+        'nombre': 'Café',
+        'presentacionId': 'unidad',
+      })!;
+      expect(leido.presentacionNombre, isEmpty);
+    });
+  });
+
   group('lectura defensiva', () {
     test('lo que no se entiende se ignora', () {
       final modelos = EstructuraProductoMapper.modelosDesde([

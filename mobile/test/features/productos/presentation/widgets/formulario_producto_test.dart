@@ -132,6 +132,7 @@ void main() {
       final producto = capturarProductoCreado(provider);
       expect(producto.modoVenta, ModoVenta.presentacion);
       expect(producto.presentacionId, 'botella');
+      expect(producto.presentacionNombre, 'Botella');
       expect(producto.formatoValorBase, 625);
       expect(producto.formatoFamilia, FamiliaUnidad.volumen);
       expect(producto.formatoUnidad, 'ml');

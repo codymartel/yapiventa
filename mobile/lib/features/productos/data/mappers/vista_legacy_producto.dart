@@ -61,6 +61,10 @@ abstract final class VistaLegacyProducto {
       if (producto.presentacionId.isNotEmpty) {
         final nombre = _nombrePresentacion(producto.presentacionId);
         if (nombre != null) return nombre;
+        // Presentación propia del negocio (Jaba): no está en el catálogo global.
+        if (producto.presentacionNombre.isNotEmpty) {
+          return producto.presentacionNombre;
+        }
       }
       return producto.etiquetaUnidad;
     }

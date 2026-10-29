@@ -84,7 +84,7 @@ class TextosTarjetaProducto {
     final unidades = producto.tieneModelos
         ? TotalesProducto.stockTotal(producto.modelos)
         : producto.stock;
-    final nombre = CatalogoVentaGlobal.nombres[producto.presentacionId];
+    final nombre = _nombrePresentacion(producto);
     if (nombre == null) return '$unidades uds.';
     return '$unidades ${LecturaUnidadesProducto.plural(nombre)}';
   }
@@ -123,8 +123,18 @@ class TextosTarjetaProducto {
         '${grande.nombre}';
   }
 
+  /// El nombre de la presentación: el guardado en el producto (cubre las
+  /// propias del negocio, como «Jaba») o, en productos anteriores, el del
+  /// catálogo global.
+  static String? _nombrePresentacion(Producto producto) {
+    if (producto.presentacionNombre.isNotEmpty) {
+      return producto.presentacionNombre;
+    }
+    return CatalogoVentaGlobal.nombres[producto.presentacionId];
+  }
+
   static String _sufijoPresentacion(Producto producto) {
-    final nombre = CatalogoVentaGlobal.nombres[producto.presentacionId];
+    final nombre = _nombrePresentacion(producto);
     if (nombre == null) return '';
     final base = nombre.toLowerCase();
     final familia = producto.formatoFamilia;

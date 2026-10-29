@@ -256,4 +256,52 @@ void main() {
       expect(TextosTarjetaProducto.precio(queso), 'desde S/ 18.00 / kg');
     });
   });
+
+  group('presentación propia del negocio (Jaba)', () {
+    final huevos = Producto(
+      negocioId: 'n1',
+      nombre: 'Huevos',
+      presentacionId: 'jaba',
+      presentacionNombre: 'Jaba',
+      precioCentavos: 1650,
+      stock: 12,
+    );
+
+    test('el precio y el stock dicen «jaba» aunque no esté en el catálogo', () {
+      expect(TextosTarjetaProducto.precio(huevos), 'S/ 16.50 / jaba');
+      expect(TextosTarjetaProducto.stock(huevos), '12 jabas');
+    });
+
+    test('con variables dice jabas y cuántos tipos', () {
+      final conTipos = huevos.copyWith(
+        tituloModelos: 'Tipo',
+        modelos: const [
+          ModeloProducto(
+            id: 'a',
+            nombre: 'Rosados',
+            filas: [FilaVenta(id: 'f', precioCentavos: 1650, stock: 12)],
+          ),
+          ModeloProducto(
+            id: 'b',
+            nombre: 'Blancos',
+            filas: [FilaVenta(id: 'f', precioCentavos: 900, stock: 8)],
+          ),
+        ],
+      );
+
+      expect(TextosTarjetaProducto.stock(conTipos), '20 jabas · 2 tipos');
+      expect(TextosTarjetaProducto.precio(conTipos), 'desde S/ 9.00 / jaba');
+    });
+
+    test('un producto anterior sin nombre guardado usa el del catálogo', () {
+      final botella = Producto(
+        negocioId: 'n1',
+        nombre: 'Cerveza',
+        presentacionId: 'botella',
+        precioCentavos: 850,
+        stock: 3,
+      );
+      expect(TextosTarjetaProducto.stock(botella), '3 botellas');
+    });
+  });
 }
