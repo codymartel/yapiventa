@@ -123,6 +123,7 @@ class _FormularioProductoState extends State<FormularioProducto> {
       listenable: _form,
       builder: (context, _) {
         final guardando = _form.guardando;
+        final falta = _form.queFalta;
         return PopScope(
           canPop: !guardando,
           child: AlertDialog(
@@ -139,6 +140,19 @@ class _FormularioProductoState extends State<FormularioProducto> {
               ),
             ),
             actions: [
+              if (falta != null)
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 260),
+                  child: Text(
+                    falta,
+                    key: const Key('falta-para-guardar'),
+                    style: const TextStyle(
+                      color: Color(0xFFFBBF24),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
               TextButton(
                 onPressed: guardando ? null : widget.onCancelar,
                 child: Text(
@@ -182,7 +196,8 @@ class _FormularioProductoState extends State<FormularioProducto> {
     }
     if (widget.ventaErrorMessage != null) {
       return MensajeCatalogo(
-        mensaje: 'No se pudo cargar el catálogo de venta. '
+        mensaje:
+            'No se pudo cargar el catálogo de venta. '
             'Sin él no se pueden elegir las formas de venta.',
         detalle: widget.ventaErrorMessage,
         onReintentar: widget.onReintentarVenta,
@@ -190,7 +205,8 @@ class _FormularioProductoState extends State<FormularioProducto> {
     }
     if (widget.catalogoVenta == null) {
       return MensajeCatalogo(
-        mensaje: 'Todavía no sabemos cómo se vende en tu negocio. '
+        mensaje:
+            'Todavía no sabemos cómo se vende en tu negocio. '
             'Completa la configuración del catálogo o reintenta.',
         onReintentar: widget.onReintentarVenta,
       );
@@ -214,13 +230,13 @@ class _FormularioProductoState extends State<FormularioProducto> {
           controller: form.nombreCtrl,
           onChanged: (_) => form.trasCambioTexto(),
           style: TextStyle(color: AppColors.texto),
-          decoration: const InputDecoration(
-            labelText: 'Nombre del producto *',
-          ),
+          decoration: const InputDecoration(labelText: 'Nombre del producto *'),
         ),
         const SizedBox(height: 10),
         DropdownButtonFormField<String>(
-          initialValue: form.categoria.trim().isNotEmpty ? form.categoria : null,
+          initialValue: form.categoria.trim().isNotEmpty
+              ? form.categoria
+              : null,
           decoration: const InputDecoration(labelText: 'Categoría *'),
           items: form.categoriasEfectivas
               .map((c) => DropdownMenuItem(value: c, child: Text(c)))

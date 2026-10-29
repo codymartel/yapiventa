@@ -170,9 +170,9 @@ void main() {
 
       expect(find.text('Precio S/ *'), findsOneWidget);
       expect(find.textContaining('«kg»'), findsOneWidget);
-      // Sin familia elegida: los campos de medida quedan vacíos y el
-      // precio se ofrece por 1 kg (la unidad legacy).
-      expect(find.text('por kg'), findsOneWidget);
+      // Sin familia elegida: los campos de medida quedan vacíos y «Por» espera
+      // a que se elija qué se mide (nada se migra a la fuerza).
+      expect(find.text('Elige qué mides'), findsOneWidget);
       expect(campo('Precio S/ *'), findsOneWidget);
     });
 

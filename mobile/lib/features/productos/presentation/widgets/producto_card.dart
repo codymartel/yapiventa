@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../application/services/textos_tarjeta_producto.dart';
 import '../../domain/models/producto.dart';
 
 // ═════════════════════════════════════════════════════════════════════════
@@ -94,7 +95,7 @@ class ProductoCard extends StatelessWidget {
                       children: [
                         Flexible(
                           child: Text(
-                            'S/ ${producto.precio.toStringAsFixed(2)}',
+                            TextosTarjetaProducto.precio(producto),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
@@ -109,7 +110,7 @@ class ProductoCard extends StatelessWidget {
                           child: Text(
                             producto.esStockInfinito
                                 ? '∞'
-                                : '${producto.stock} uds.',
+                                : TextosTarjetaProducto.stock(producto),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
@@ -142,7 +143,7 @@ class ProductoCard extends StatelessWidget {
               ),
             ],
           ),
-          if (producto.unidadMedidaNombre.isNotEmpty) ...[
+          if (TextosTarjetaProducto.unidadAntigua(producto).isNotEmpty) ...[
             const SizedBox(height: 6),
             Divider(color: AppColors.border, height: 0.5),
             const SizedBox(height: 4),
@@ -152,9 +153,7 @@ class ProductoCard extends StatelessWidget {
                 const SizedBox(width: 5),
                 Expanded(
                   child: Text(
-                    producto.fraccionesSeleccionadas.isNotEmpty
-                        ? '${producto.unidadMedidaNombre} · fracción: ${producto.fraccionesSeleccionadas.first}'
-                        : producto.unidadMedidaNombre,
+                    TextosTarjetaProducto.lineaUnidadAntigua(producto),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(color: _textoSecundario, fontSize: 12),
@@ -221,7 +220,9 @@ class ProductoCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'S/ ${producto.precio.toStringAsFixed(2)}',
+                    TextosTarjetaProducto.precio(producto),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: _precio,
                       fontSize: 15,
@@ -274,9 +275,10 @@ class ProductoCard extends StatelessWidget {
   String _stockYUnidad() {
     final stock = producto.esStockInfinito
         ? 'Stock ilimitado'
-        : 'Stock: ${producto.stock}';
-    if (producto.unidadMedidaNombre.isEmpty) return stock;
-    return '$stock · ${producto.unidadMedidaNombre}';
+        : 'Stock: ${TextosTarjetaProducto.stock(producto)}';
+    final unidadAntigua = TextosTarjetaProducto.unidadAntigua(producto);
+    if (unidadAntigua.isEmpty) return stock;
+    return '$stock · $unidadAntigua';
   }
 
   Widget _acciones({bool usarIconoVisibilidad = false}) {

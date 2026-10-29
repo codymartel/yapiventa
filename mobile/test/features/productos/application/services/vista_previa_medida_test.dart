@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mobile/features/negocio/domain/models/catalogo_venta/unidad_registrada.dart';
 import 'package:mobile/features/productos/application/services/lectura_unidades_producto.dart';
 import 'package:mobile/features/productos/application/services/vista_previa_medida.dart';
 import 'package:mobile/features/productos/domain/models/familia_unidad.dart';
@@ -18,13 +17,13 @@ void main() {
     test('cada cantidad rápida cuesta lo justo, redondeado hacia abajo', () {
       final rapidas = VistaPreviaMedida.cantidadesRapidas(
         regla,
-        RegistroUnidades.kg,
         const [250, 500, 750, 1000],
       );
 
       expect(rapidas.map((r) => r.cantidadBase), [250, 500, 750, 1000]);
       // 250 g × 450 / 1000 = 112,5 → 112 céntimos (a favor del cliente).
       expect(rapidas.map((r) => r.precioCentavos), [112, 225, 337, 450]);
+      expect(rapidas.map((r) => r.etiqueta), ['¼ kg', '½ kg', '¾ kg', '1 kg']);
     });
 
     test('las rápidas que no respetan mínimo e incremento no se ofrecen', () {
@@ -38,7 +37,6 @@ void main() {
 
       final rapidas = VistaPreviaMedida.cantidadesRapidas(
         propia,
-        RegistroUnidades.kg,
         const [250, 500, 750, 1000],
       );
 
@@ -46,12 +44,13 @@ void main() {
     });
 
     test('por monto entrega lo que alcanza sin cobrar de más', () {
-      final monto = VistaPreviaMedida.porMonto(regla, RegistroUnidades.kg)!;
+      final monto = VistaPreviaMedida.porMonto(regla)!;
 
       // S/ 2.00 → 444 g → al incremento: 400 g → se cobra S/ 1.80.
       expect(monto.esValido, isTrue);
       expect(monto.cantidadBase, 400);
       expect(monto.costoCentavos, 180);
+      expect(monto.etiqueta, '400 g');
       expect(monto.costoCentavos! <= monto.montoCentavos, isTrue);
     });
 
@@ -65,7 +64,7 @@ void main() {
         permiteMonto: true,
       )!;
 
-      final monto = VistaPreviaMedida.porMonto(cara, RegistroUnidades.kg)!;
+      final monto = VistaPreviaMedida.porMonto(cara)!;
 
       expect(monto.esValido, isFalse);
       expect(monto.error, isNotNull);
@@ -80,7 +79,7 @@ void main() {
         incrementoBase: 50,
       )!;
 
-      expect(VistaPreviaMedida.porMonto(sinMonto, RegistroUnidades.kg), isNull);
+      expect(VistaPreviaMedida.porMonto(sinMonto), isNull);
     });
 
     test('sin precio o con datos en cero no hay regla', () {
@@ -117,7 +116,6 @@ void main() {
 
       final rapidas = VistaPreviaMedida.cantidadesRapidas(
         tela,
-        RegistroUnidades.m,
         const [500, 1000, 2000],
       );
 

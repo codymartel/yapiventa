@@ -45,17 +45,17 @@ void main() {
   });
 
   group('baseATextoVisual', () {
-    test('devuelve texto con coma y sin ceros de más', () {
-      expect(baseATextoVisual(1500, 1000), '1,5');
+    test('devuelve texto con punto y sin ceros de más', () {
+      expect(baseATextoVisual(1500, 1000), '1.5');
       expect(baseATextoVisual(1000, 1000), '1');
-      expect(baseATextoVisual(100, 1000), '0,1');
-      expect(baseATextoVisual(1750, 1000), '1,75');
+      expect(baseATextoVisual(100, 1000), '0.1');
+      expect(baseATextoVisual(1750, 1000), '1.75');
       expect(baseATextoVisual(250, 10), '25');
       expect(baseATextoVisual(25, 1), '25');
     });
 
     test('ida y vuelta texto -> base -> texto', () {
-      for (final texto in ['1,5', '0,25', '3', '0,1']) {
+      for (final texto in ['1.5', '0.25', '3', '0.1']) {
         final base = textoAUnidadBase(texto, 1000, unidadBase: 'g').base!;
         expect(baseATextoVisual(base, 1000), texto);
       }
@@ -75,9 +75,9 @@ void main() {
     });
 
     test('centavosATexto siempre muestra dos decimales', () {
-      expect(centavosATexto(1025), '10,25');
-      expect(centavosATexto(1000), '10,00');
-      expect(centavosATexto(5), '0,05');
+      expect(centavosATexto(1025), '10.25');
+      expect(centavosATexto(1000), '10.00');
+      expect(centavosATexto(5), '0.05');
     });
   });
 }

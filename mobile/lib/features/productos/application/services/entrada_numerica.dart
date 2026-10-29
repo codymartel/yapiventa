@@ -3,8 +3,9 @@
 // ═════════════════════════════════════════════════════════════════════════
 // Conversión entre lo que escribe la persona y los enteros del dominio.
 // REGLA: nunca se usa double. La parte entera y la decimal se parsean como
-// texto y se calculan con aritmética de enteros, así "4,35" kg con
-// factorBase 1000 da exactamente 4350 g.
+// texto y se calculan con aritmética de enteros, así "4.35" kg con
+// factorBase 1000 da exactamente 4350 g. Se ESCRIBE con punto o coma; lo que
+// la app muestra va siempre con punto (S/ 12.00, 16.65 kg).
 //
 // El truncamiento es hacia abajo (la web nunca promete más de lo que hay),
 // pero un valor MAYOR que cero que truncado da cero se RECHAZA con mensaje:
@@ -81,8 +82,8 @@ ConversionCantidad textoAUnidadBase(
   return ConversionCantidad.valida(base);
 }
 
-/// Texto (con coma decimal) de una cantidad base en la unidad visual.
-/// Se usa para precargar el formulario al editar: 1500 g → "1,5".
+/// Texto (con punto decimal) de una cantidad base en la unidad visual.
+/// Se usa para precargar el formulario y en la tarjeta: 1500 g → "1.5".
 String baseATextoVisual(int base, int factorBase) {
   if (factorBase <= 0) return base.toString();
   final digitos = decimalesDeFactor(factorBase);
@@ -91,7 +92,7 @@ String baseATextoVisual(int base, int factorBase) {
   final decimal = (base % factorBase).toString().padLeft(digitos, '0');
   final decimalLimpio = decimal.replaceFirst(RegExp(r'0+$'), '');
   if (decimalLimpio.isEmpty) return '$enteros';
-  return '$enteros,$decimalLimpio';
+  return '$enteros.$decimalLimpio';
 }
 
 /// Convierte soles escritos ("18,25") a céntimos enteros. null si está
@@ -109,9 +110,9 @@ int? textoACentavos(String texto) {
   return parteEntera * 100 + int.parse(decimal);
 }
 
-/// Texto con coma decimal a partir de céntimos: 1025 → "10,25".
+/// Texto con punto decimal a partir de céntimos: 1025 → "10.25".
 String centavosATexto(int centavos) {
   final soles = centavos ~/ 100;
   final decimal = (centavos % 100).abs().toString().padLeft(2, '0');
-  return '$soles,$decimal';
+  return '$soles.$decimal';
 }

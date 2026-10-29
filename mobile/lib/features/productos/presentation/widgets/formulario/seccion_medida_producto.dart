@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 
 import '../../../../../core/theme/app_colors.dart';
-import '../../../../negocio/domain/models/catalogo_venta/unidad_registrada.dart';
 import '../../../domain/models/familia_unidad.dart';
 import '../../providers/formulario_medida_controller.dart';
 import 'aviso_amarillo.dart';
 import 'formato_entradas.dart';
+import 'selector_por_medida.dart';
 import 'vista_previa_medida_producto.dart';
 
-/// Sección "Por medida": qué se mide, la unidad, el precio (por 1 unidad o
-/// por otra cantidad), el stock, la regla de venta y la vista previa del
-/// cliente. El estado vive en [FormularioMedidaController]; acá solo se
+/// Sección "Por medida": qué se mide, el precio y la cantidad que cubre, el
+/// stock, la regla de venta y la vista previa del cliente. La unidad no se
+/// elige: es la habitual del negocio. El estado vive en [FormularioMedidaController]; acá solo se
 /// pinta.
 ///
 /// El mínimo y el incremento nunca bloquean el stock (regla de producto).
@@ -32,117 +32,44 @@ class SeccionMedidaProducto extends StatelessWidget {
   Widget build(BuildContext context) {
     final familia = medida.familia;
     final unidad = medida.unidad;
-    final unidades = familia == null
-        ? const <UnidadRegistrada>[]
-        : RegistroUnidades.unidadesDe(familia);
     final familias = <FamiliaUnidad, String>{
       for (final activa in medida.medidasActivas())
         if (activa.familia != null) activa.familia!: activa.nombre,
     };
-    final referencia = medida.referencia;
     final stock = medida.stock;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        DropdownButtonFormField<FamiliaUnidad>(
-          key: ValueKey('medida-${familia?.name ?? ''}'),
-          initialValue: familia,
-          decoration: const InputDecoration(labelText: 'Qué mides *'),
-          items: [
-            for (final entrada in familias.entries)
-              DropdownMenuItem<FamiliaUnidad>(
-                value: entrada.key,
-                child: Text(entrada.value),
-              ),
-          ],
-          onChanged: (valor) {
-            if (valor != null) medida.cambiarFamilia(valor);
-          },
-        ),
-        const SizedBox(height: 10),
-        DropdownButtonFormField<String>(
-          key: ValueKey('unidad-${familia?.name ?? ''}-$unidad'),
-          initialValue: unidad.isNotEmpty ? unidad : null,
-          decoration: const InputDecoration(labelText: 'Unidad de venta *'),
-          items: [
-            for (final opcion in unidades)
-              DropdownMenuItem<String>(
-                value: opcion.nombre,
-                child: Text(opcion.nombre),
-              ),
-          ],
-          onChanged: (valor) {
-            if (valor != null) medida.cambiarUnidad(valor);
-          },
-        ),
-        const SizedBox(height: 10),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: TextField(
-                key: const Key('precio-medida'),
-                controller: medida.precioCtrl,
-                onChanged: (_) => medida.trasCambioTexto(),
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
+        if (medida.familiaDesactivada)
+          _FamiliaFija(medida: medida)
+        else
+          DropdownButtonFormField<FamiliaUnidad>(
+            key: ValueKey('medida-${familia?.name ?? ''}'),
+            initialValue: familia,
+            decoration: const InputDecoration(labelText: 'Qué mides *'),
+            items: [
+              for (final entrada in familias.entries)
+                DropdownMenuItem<FamiliaUnidad>(
+                  value: entrada.key,
+                  child: Text(entrada.value),
                 ),
-                inputFormatters: const [FormatoPrecio()],
-                style: TextStyle(color: AppColors.texto),
-                decoration: const InputDecoration(labelText: 'Precio S/ *'),
-              ),
-            ),
-            const SizedBox(width: 10),
-            SizedBox(
-              width: 170,
-              child: DropdownButtonFormField<bool>(
-                key: ValueKey('precio-por-$unidad-${medida.precioPorUnidad}'),
-                initialValue: medida.precioPorUnidad,
-                isExpanded: true,
-                decoration: const InputDecoration(labelText: 'Precio'),
-                items: [
-                  DropdownMenuItem(
-                    value: true,
-                    child: Text(unidad.isEmpty ? 'por unidad' : 'por $unidad'),
-                  ),
-                  const DropdownMenuItem(
-                    value: false,
-                    child: Text('por otra cantidad'),
-                  ),
-                ],
-                onChanged: (valor) {
-                  if (valor != null) medida.cambiarPrecioPorUnidad(valor);
-                },
-              ),
-            ),
-          ],
-        ),
-        if (!medida.precioPorUnidad) ...[
-          const SizedBox(height: 10),
-          TextField(
-            key: const Key('referencia-medida'),
-            controller: medida.referenciaCtrl,
-            onChanged: (_) => medida.trasCambioTexto(),
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: const [FormatoCantidad()],
-            style: TextStyle(color: AppColors.texto),
-            decoration: InputDecoration(
-              labelText: 'Cantidad que cubre el precio *',
-              suffixText: unidad.isEmpty ? null : unidad,
-              errorText: medida.referenciaCtrl.text.trim().isEmpty
-                  ? null
-                  : referencia?.error,
-            ),
+            ],
+            onChanged: (valor) {
+              if (valor != null) medida.cambiarFamilia(valor);
+            },
           ),
-          if (medida.resumenPrecio.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Text(
-              medida.resumenPrecio,
-              style: TextStyle(color: AppColors.muted, fontSize: 12),
-            ),
-          ],
+        if (familia != null && unidad.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Text(
+            'Tu unidad habitual es $unidad (se cambia en '
+            'Configuración → Medidas).',
+            key: const Key('unidad-habitual'),
+            style: TextStyle(color: AppColors.muted, fontSize: 13),
+          ),
         ],
+        const SizedBox(height: 10),
+        SelectorPorMedida(medida: medida),
         const SizedBox(height: 10),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
@@ -274,11 +201,45 @@ class _CampoEntero extends StatelessWidget {
       decoration: InputDecoration(
         labelText: etiqueta,
         suffixText: sufijo.isEmpty ? null : sufijo,
-        errorText: controller.text.trim().isNotEmpty &&
-                (valor == null || valor <= 0)
+        errorText:
+            controller.text.trim().isNotEmpty && (valor == null || valor <= 0)
             ? 'Debe ser mayor que 0'
             : null,
       ),
+    );
+  }
+}
+
+/// La medida del producto, fija: el negocio la desactivó después, pero el
+/// producto la conserva y no se cambia solo.
+class _FamiliaFija extends StatelessWidget {
+  const _FamiliaFija({required this.medida});
+
+  final FormularioMedidaController medida;
+
+  @override
+  Widget build(BuildContext context) {
+    final nombre = medida.medidaDelNegocio?.nombre ?? 'esta medida';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        InputDecorator(
+          key: const Key('medida-fija'),
+          decoration: const InputDecoration(
+            labelText: 'Qué mides',
+            suffixIcon: Icon(Icons.lock_outline, size: 18),
+          ),
+          child: Text(nombre, style: TextStyle(color: AppColors.muted)),
+        ),
+        const SizedBox(height: 8),
+        AvisoAmarillo(
+          key: const Key('aviso-medida-desactivada'),
+          mensaje:
+              'Desactivaste «$nombre» en Configuración → Medidas. Este '
+              'producto sigue vendiéndose así; puedes cambiar nombre, precio '
+              'y stock. Para cambiar la unidad o la regla, vuelve a activarla.',
+        ),
+      ],
     );
   }
 }

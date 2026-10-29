@@ -1,9 +1,9 @@
 import '../../../negocio/domain/models/catalogo_venta/formateador_presentacion.dart';
-import '../../../negocio/domain/models/catalogo_venta/unidad_registrada.dart';
 import '../../domain/models/calculador_venta_medida.dart';
 import '../../domain/models/dinero.dart';
 import '../../domain/models/familia_unidad.dart';
 import '../../domain/models/regla_venta_medida.dart';
+import 'cantidades_tipicas.dart';
 
 // ═════════════════════════════════════════════════════════════════════════
 // VistaPreviaMedida
@@ -14,7 +14,8 @@ import '../../domain/models/regla_venta_medida.dart';
 // cliente). Función pura, sin Flutter.
 // ═════════════════════════════════════════════════════════════════════════
 
-/// Una cantidad rápida con su precio: "¼ kg · S/ 1.12".
+/// Una cantidad rápida con su precio: "¼ kg · S/ 1.12" (la etiqueta sale de
+/// CantidadesTipicas: la unidad más natural, no la habitual del negocio).
 class CantidadRapidaConPrecio {
   const CantidadRapidaConPrecio({
     required this.cantidadBase,
@@ -87,7 +88,6 @@ class VistaPreviaMedida {
   /// Cantidades rápidas que respetan mínimo e incremento, con su precio.
   static List<CantidadRapidaConPrecio> cantidadesRapidas(
     ReglaVentaMedida regla,
-    UnidadRegistrada unidadVisual,
     List<int> rapidasBase,
   ) {
     final minimo = regla.cantidadMinimaBase.valor;
@@ -104,7 +104,7 @@ class VistaPreviaMedida {
       resultado.add(
         CantidadRapidaConPrecio(
           cantidadBase: base,
-          etiqueta: FormateadorPresentacion.formatear(cantidad, unidadVisual),
+          etiqueta: CantidadesTipicas.etiqueta(regla.familia, base),
           precioCentavos: precio.precio!.centimos,
         ),
       );
@@ -115,8 +115,7 @@ class VistaPreviaMedida {
   /// Lo que recibe el cliente si pide [montoCentavos]. null si la regla no
   /// permite pedido por monto.
   static PedidoPorMonto? porMonto(
-    ReglaVentaMedida regla,
-    UnidadRegistrada unidadVisual, {
+    ReglaVentaMedida regla, {
     int montoCentavos = montoEjemploCentavos,
   }) {
     if (!regla.permitePedidoPorMonto) return null;
@@ -134,7 +133,7 @@ class VistaPreviaMedida {
     return PedidoPorMonto(
       montoCentavos: montoCentavos,
       cantidadBase: cantidad.valor,
-      etiqueta: FormateadorPresentacion.formatear(cantidad, unidadVisual),
+      etiqueta: CantidadesTipicas.etiqueta(regla.familia, cantidad.valor),
       costoCentavos: resultado.costo!.centimos,
     );
   }

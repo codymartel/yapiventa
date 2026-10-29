@@ -51,8 +51,10 @@ class FormularioProductoController extends ChangeNotifier {
     esStockInfinito = producto?.esStockInfinito ?? false;
     tieneDelivery = producto?.tieneDelivery ?? true;
     urlImagenActual = producto?.urlImagen ?? '';
-    medida = FormularioMedidaController(medidasActivas: () => medidasActivas)
-      ..addListener(notifyListeners);
+    medida = FormularioMedidaController(
+      medidasActivas: () => medidasActivas,
+      medidasDelCatalogo: () => medidasDelCatalogo,
+    )..addListener(notifyListeners);
     _precargarDesde(producto);
   }
 
@@ -165,10 +167,20 @@ class FormularioProductoController extends ChangeNotifier {
           .where((medida) => medida.activa && medida.familia != null)
           .toList();
 
+  /// Todas las medidas del catálogo con familia, activas o no.
+  List<MedidaVentaPersistida> get medidasDelCatalogo =>
+      (catalogoVenta?.medidas ?? const <MedidaVentaPersistida>[])
+          .where((medida) => medida.familia != null)
+          .toList();
+
+  /// Un producto ya guardado por medida sigue mostrando "Por medida" aunque
+  /// el negocio haya desactivado esa medida (nada se cambia solo).
   List<ModoVenta> get modosDisponibles {
     final modos = <ModoVenta>[];
     if (presentacionesActivas.isNotEmpty) modos.add(ModoVenta.presentacion);
-    if (medidasActivas.isNotEmpty) modos.add(ModoVenta.medida);
+    if (medidasActivas.isNotEmpty || (producto?.esPorMedida ?? false)) {
+      modos.add(ModoVenta.medida);
+    }
     return modos;
   }
 
@@ -255,6 +267,41 @@ class FormularioProductoController extends ChangeNotifier {
     if (presentacionCompleta) return true;
     // Legacy sin presentación: se puede guardar (regla 4).
     return !esNuevo;
+  }
+
+  /// Lo primero que impide guardar, para decírselo a la persona ("Falta:
+  /// precio", "Revisa: stock"). null si se puede guardar. Va en el mismo
+  /// orden del formulario: nombre → categoría → presentación/formato o qué
+  /// mides → precio → cantidad de «Otra cantidad» → stock → regla propia.
+  String? get queFalta {
+    if (camposOk || _guardando) return null;
+    if (nombreCtrl.text.trim().isEmpty) return 'Falta: nombre del producto';
+    if (categoria.isEmpty) return 'Falta: categoría';
+
+    if (modoVista == ModoVenta.medida) {
+      return medida.queFalta(
+        stockInfinito: esStockInfinito,
+        exigirTodo: esNuevo,
+      );
+    }
+
+    // Un producto antiguo puede guardarse sin presentación (regla 4).
+    if (esNuevo) {
+      if (_presentacionElegida == null) return 'Falta: presentación';
+      if (!presentacionCompleta) return 'Falta: formato';
+    }
+    final centavos = precioVisibleCentavos;
+    if (centavos == null || centavos <= 0) {
+      return precioPresentacionCtrl.text.trim().isEmpty
+          ? 'Falta: precio'
+          : 'Revisa: precio';
+    }
+    if (!_stockPresentacionValido) {
+      return stockPresentacionCtrl.text.trim().isEmpty
+          ? 'Falta: stock'
+          : 'Revisa: stock';
+    }
+    return null;
   }
 
   // ── Acciones ──────────────────────────────────────────────────────────

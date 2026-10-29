@@ -2,6 +2,7 @@ import 'package:flutter/widgets.dart';
 
 import '../../../negocio/domain/models/catalogo_venta/catalogo_venta_persistido.dart';
 import '../../../negocio/domain/models/catalogo_venta/unidad_registrada.dart';
+import '../../application/services/cantidades_tipicas.dart';
 import '../../application/services/entrada_numerica.dart';
 import '../../application/services/lectura_unidades_producto.dart';
 import '../../application/services/vista_previa_medida.dart';
@@ -12,23 +13,35 @@ import '../../domain/models/regla_venta_medida.dart';
 // ═════════════════════════════════════════════════════════════════════════
 // FormularioMedidaController
 // ═════════════════════════════════════════════════════════════════════════
-// Estado del modo "Por medida" del formulario de producto: qué se mide, en
-// qué unidad, el precio (por 1 unidad o por otra cantidad), el stock, la
-// regla de venta (la del negocio o una propia) y la vista previa del
-// cliente. Lo usa FormularioProductoController.
+// Estado del modo "Por medida" del formulario de producto: qué se mide, el
+// precio y la cantidad que cubre ("S/ 3.00 por ¼ kg"), el stock, la regla de
+// venta (la del negocio o una propia) y la vista previa del cliente. Lo usa
+// FormularioProductoController.
 //
 // REGLAS:
-//   - El stock se escribe en la unidad visual (kg, L…) con decimales y se
-//     guarda entero en unidad base (g, ml). Mínimo e incremento nunca
-//     bloquean el stock.
-//   - Por defecto el precio cubre 1 unidad de la medida (S/ 4.50 por kg).
+//   - La unidad del producto NO se elige acá: es la unidad habitual que el
+//     negocio configuró para esa medida (Configuración → Medidas).
+//   - El stock se escribe en esa unidad (kg, L…) con decimales y se guarda
+//     entero en unidad base (g, ml). Mínimo e incremento nunca lo bloquean.
+//   - "Por" elige una cantidad típica (1 kg, ½ kg, ¼ kg, 100 g) o "Otra
+//     cantidad", con su propia unidad. Se guarda lo que el vendedor escribió,
+//     nunca convertido; la equivalencia por kg solo se muestra.
 //   - Con una sola medida activa, "Qué mides" se elige solo.
+//   - Si la medida del producto se desactivó después, el producto conserva su
+//     familia y su unidad: nada se borra ni cambia solo.
 // ═════════════════════════════════════════════════════════════════════════
 class FormularioMedidaController extends ChangeNotifier {
-  FormularioMedidaController({required this.medidasActivas});
+  FormularioMedidaController({
+    required this.medidasActivas,
+    required this.medidasDelCatalogo,
+  });
 
   /// Medidas activas del catálogo del negocio (siempre al día).
   final List<MedidaVentaPersistida> Function() medidasActivas;
+
+  /// Todas las medidas del catálogo, activas o no: la regla de un producto
+  /// cuya medida se desactivó se sigue leyendo de acá.
+  final List<MedidaVentaPersistida> Function() medidasDelCatalogo;
 
   final TextEditingController precioCtrl = TextEditingController();
   final TextEditingController referenciaCtrl = TextEditingController();
@@ -37,11 +50,18 @@ class FormularioMedidaController extends ChangeNotifier {
   final TextEditingController incrementoCtrl = TextEditingController();
 
   FamiliaUnidad? familia;
+
+  /// Unidad habitual del producto (kg, L…): la del stock y la que se congela
+  /// en el producto.
   String unidad = '';
 
-  /// true: el precio cubre 1 unidad de la medida (S/ 4.50 por kg).
-  /// false: "otra cantidad" escrita en [referenciaCtrl] (S/ 1.20 por 250 g).
-  bool precioPorUnidad = true;
+  /// Cantidad típica elegida en "Por" (en unidad base). 0 = sin familia.
+  int porBase = 0;
+
+  /// true: "Por" es "Otra cantidad", escrita en [referenciaCtrl] con
+  /// [unidadOtra] (S/ 1.20 por 250 g).
+  bool otraCantidad = false;
+  String unidadOtra = '';
 
   /// true: el producto usa su propio mínimo e incremento.
   bool reglaPropia = false;
@@ -50,13 +70,16 @@ class FormularioMedidaController extends ChangeNotifier {
   void precargar(Producto producto) {
     familia = producto.medidaFamilia;
     unidad = producto.medidaUnidad;
+    unidadOtra = unidad;
     final factor = LecturaUnidadesProducto.factorDe(unidad);
-    if (producto.cantidadReferenciaBase > 0 && factor > 0) {
-      precioPorUnidad = producto.cantidadReferenciaBase == factor;
-      referenciaCtrl.text = baseATextoVisual(
-        producto.cantidadReferenciaBase,
-        factor,
-      );
+    final elegida = familia;
+    if (elegida != null) {
+      final referencia = producto.cantidadReferenciaBase;
+      if (referencia > 0) {
+        _precargarReferencia(elegida, referencia);
+      } else {
+        _elegirPorDefecto(elegida);
+      }
     }
     final minimo = producto.minimoBase;
     final incremento = producto.incrementoBase;
@@ -74,6 +97,24 @@ class FormularioMedidaController extends ChangeNotifier {
     }
   }
 
+  /// Una cantidad guardada que está en el menú se elige ahí; si no, abre en
+  /// "Otra cantidad" con la unidad en que se lee entera (300 g, 2 kg).
+  void _precargarReferencia(FamiliaUnidad elegida, int referencia) {
+    if (CantidadesTipicas.coincidente(elegida, referencia) != null) {
+      porBase = referencia;
+      return;
+    }
+    final natural = CantidadesTipicas.unidadNatural(elegida, referencia);
+    otraCantidad = true;
+    unidadOtra = natural.nombre;
+    referenciaCtrl.text = baseATextoVisual(referencia, natural.factorBase);
+  }
+
+  void _elegirPorDefecto(FamiliaUnidad elegida) {
+    final tipicas = CantidadesTipicas.de(elegida);
+    porBase = tipicas.isEmpty ? 0 : tipicas.first.base;
+  }
+
   /// Con una sola medida activa no hay nada que elegir en "Qué mides".
   void sugerirFamilia() {
     if (familia != null) return;
@@ -86,29 +127,39 @@ class FormularioMedidaController extends ChangeNotifier {
   String get unidadBaseNombre =>
       familia == null ? '' : RegistroUnidades.baseDe(familia!).nombre;
 
-  /// Medida activa del negocio para la familia elegida.
+  /// Medida del catálogo para la familia elegida, esté activa o no.
   MedidaVentaPersistida? get medidaDelNegocio {
-    for (final medida in medidasActivas()) {
+    for (final medida in medidasDelCatalogo()) {
       if (medida.familia == familia) return medida;
     }
     return null;
   }
 
-  int? get precioCentavos => textoACentavos(precioCtrl.text);
-
-  /// Cantidad que cubre el precio: 1 unidad de la medida (1 kg = 1000 g) o
-  /// la "otra cantidad" escrita.
-  ConversionCantidad? get referencia {
-    if (!precioPorUnidad) return _convertir(referenciaCtrl.text);
-    final factor = LecturaUnidadesProducto.factorDe(unidad);
-    return factor > 0 ? ConversionCantidad.valida(factor) : null;
+  /// true si el producto editado usa una medida que el negocio desactivó.
+  bool get familiaDesactivada {
+    final elegida = familia;
+    if (elegida == null) return false;
+    return !medidasActivas().any((medida) => medida.familia == elegida);
   }
 
-  ConversionCantidad? get stock => _convertir(stockCtrl.text);
+  /// Opciones del menú "Por" de la familia elegida.
+  List<CantidadTipica> get opcionesPor =>
+      familia == null ? const [] : CantidadesTipicas.de(familia!);
 
-  ConversionCantidad? _convertir(String texto) {
+  int? get precioCentavos => textoACentavos(precioCtrl.text);
+
+  /// Cantidad que cubre el precio: la elegida en el menú o la "otra cantidad"
+  /// escrita.
+  ConversionCantidad? get referencia {
+    if (otraCantidad) return _convertir(referenciaCtrl.text, unidadOtra);
+    return porBase > 0 ? ConversionCantidad.valida(porBase) : null;
+  }
+
+  ConversionCantidad? get stock => _convertir(stockCtrl.text, unidad);
+
+  ConversionCantidad? _convertir(String texto, String unidadNombre) {
     if (texto.trim().isEmpty) return null;
-    final factor = LecturaUnidadesProducto.factorDe(unidad);
+    final factor = LecturaUnidadesProducto.factorDe(unidadNombre);
     if (factor <= 0) return null;
     return textoAUnidadBase(texto, factor, unidadBase: unidadBaseNombre);
   }
@@ -150,7 +201,7 @@ class FormularioMedidaController extends ChangeNotifier {
       final centavos = precioCentavos;
       if (centavos == null || centavos <= 0) return false;
     }
-    if (!precioPorUnidad && referenciaCtrl.text.trim().isNotEmpty) {
+    if (otraCantidad && referenciaCtrl.text.trim().isNotEmpty) {
       final ref = referencia;
       if (ref == null || !ref.esValida) return false;
     }
@@ -164,17 +215,64 @@ class FormularioMedidaController extends ChangeNotifier {
     return true;
   }
 
-  /// "S/ 1.20 por 250 g": solo cuando el precio cubre otra cantidad.
-  String get resumenPrecio {
-    if (precioPorUnidad) return '';
-    final factor = LecturaUnidadesProducto.factorDe(unidad);
+  /// Lo primero que impide guardar, para decírselo a la persona: "Falta: …"
+  /// si no está escrito, "Revisa: …" si está mal escrito. null si no hay
+  /// nada. Con [exigirTodo] false (producto antiguo sin migrar) los campos
+  /// vacíos no cuentan; los mal escritos sí.
+  String? queFalta({required bool stockInfinito, required bool exigirTodo}) {
+    if (exigirTodo && familia == null) return 'Falta: qué mides';
+
+    final precio = precioCtrl.text.trim();
+    if (precio.isEmpty) {
+      if (exigirTodo) return 'Falta: precio';
+    } else if ((precioCentavos ?? 0) <= 0) {
+      return 'Revisa: precio';
+    }
+
+    if (otraCantidad) {
+      final texto = referenciaCtrl.text.trim();
+      if (texto.isEmpty) {
+        if (exigirTodo) return 'Falta: cantidad de «Otra cantidad»';
+      } else if (!(referencia?.esValida ?? false)) {
+        return 'Revisa: cantidad de «Otra cantidad»';
+      }
+    }
+
+    if (!stockInfinito) {
+      final texto = stockCtrl.text.trim();
+      if (texto.isEmpty) {
+        if (exigirTodo) return 'Falta: stock';
+      } else if (!(stock?.esValida ?? false)) {
+        return 'Revisa: stock';
+      }
+    }
+
+    if (reglaPropia && (minimoPropio == null || incrementoPropio == null)) {
+      return 'Falta: mínimo e incremento propios';
+    }
+    return null;
+  }
+
+  /// Cuánto sale el kg (o L, m, m²) con el precio escrito: "= S/ 12.00 por
+  /// kg", o "≈" si la cuenta no es exacta (se muestra hacia abajo). Vacío si
+  /// el precio ya es por esa unidad o falta algo.
+  String get equivalencia {
+    final elegida = familia;
     final centavos = precioCentavos;
     final ref = referencia;
-    if (factor <= 0 || centavos == null || centavos <= 0) return '';
+    if (elegida == null || centavos == null || centavos <= 0) return '';
     if (ref == null || !ref.esValida) return '';
-    return 'S/ ${centavosATexto(centavos)} por '
-        '${baseATextoVisual(ref.base!, factor)} $unidad';
+    final grande = CantidadesTipicas.unidadGrande(elegida);
+    if (ref.base == grande.factorBase) return '';
+    final porGrande = centavos * grande.factorBase;
+    final signo = porGrande % ref.base! == 0 ? '=' : '≈';
+    return '$signo S/ ${centavosATexto(porGrande ~/ ref.base!)} '
+        'por ${grande.nombre}';
   }
+
+  /// "Otra cantidad" es donde se cuelan los errores (S/ 12 por 1 g): la
+  /// equivalencia se destaca como aviso.
+  bool get equivalenciaEsAlarma => otraCantidad && equivalencia.isNotEmpty;
 
   // ── Vista previa del cliente ──────────────────────────────────────────
 
@@ -197,14 +295,10 @@ class FormularioMedidaController extends ChangeNotifier {
   /// Precio de cada cantidad rápida, como lo verá el cliente.
   List<CantidadRapidaConPrecio> get cantidadesRapidasConPrecio {
     final regla = _regla;
-    final unidadVisual = LecturaUnidadesProducto.unidadRegistrada(unidad);
     final medida = medidaDelNegocio;
-    if (regla == null || unidadVisual == null || medida == null) {
-      return const [];
-    }
+    if (regla == null || medida == null) return const [];
     return VistaPreviaMedida.cantidadesRapidas(
       regla,
-      unidadVisual,
       medida.cantidadesRapidasBase,
     );
   }
@@ -212,9 +306,8 @@ class FormularioMedidaController extends ChangeNotifier {
   /// Ejemplo de pedido por monto (S/ 2.00); null si no se vende por monto.
   PedidoPorMonto? get pedidoPorMontoEjemplo {
     final regla = _regla;
-    final unidadVisual = LecturaUnidadesProducto.unidadRegistrada(unidad);
-    if (regla == null || unidadVisual == null) return null;
-    return VistaPreviaMedida.porMonto(regla, unidadVisual);
+    if (regla == null) return null;
+    return VistaPreviaMedida.porMonto(regla);
   }
 
   // ── Acciones ──────────────────────────────────────────────────────────
@@ -232,15 +325,26 @@ class FormularioMedidaController extends ChangeNotifier {
         .where((medida) => medida.familia == nueva)
         .toList();
     unidad = activas.isEmpty ? '' : (activas.first.unidadVisual?.nombre ?? '');
+    unidadOtra = unidad;
+    otraCantidad = false;
+    referenciaCtrl.clear();
+    _elegirPorDefecto(nueva);
   }
 
-  void cambiarUnidad(String nueva) {
-    unidad = nueva;
+  /// Elige una cantidad típica del menú "Por".
+  void cambiarPor(int base) {
+    porBase = base;
+    otraCantidad = false;
     notifyListeners();
   }
 
-  void cambiarPrecioPorUnidad(bool porUnidad) {
-    precioPorUnidad = porUnidad;
+  void elegirOtraCantidad() {
+    otraCantidad = true;
+    notifyListeners();
+  }
+
+  void cambiarUnidadOtra(String nueva) {
+    unidadOtra = nueva;
     notifyListeners();
   }
 
