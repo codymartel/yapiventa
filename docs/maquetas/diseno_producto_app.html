@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YapiVenta · diseño del producto</title>
+<style>
+:root{--fondo:#070C18;--superficie:#0D1526;--card:#111D33;--card2:#162441;--texto:#E8EDF5;--muted:#9AA9C2;--dim:#2A3A55;
+--borde:rgba(61,114,212,.45);--bordeSutil:rgba(61,114,212,.16);--bordeMedio:rgba(61,114,212,.32);
+--azul:#3D72D4;--precio:#8AB2FF;--ok:#4ADE80;--okbg:rgba(74,222,128,.12);--warn:#FBBF24;--warnbg:rgba(251,191,36,.12);
+--err:#F87171;--errbg:rgba(248,113,113,.12);--m3pri:#D0BCFF;--m3sel:#4A4458;--m3surf:#1D1B20;--m3out:#938F99}
+*{box-sizing:border-box}
+body{margin:0 auto;max-width:1240px;background:var(--fondo);color:var(--texto);font:14px/1.5 Roboto,"Segoe UI",system-ui,sans-serif;padding:20px 16px 56px;-webkit-text-size-adjust:100%}
+h1{font-size:22px;margin:0 0 4px}
+h2{font-size:17px;margin:40px 0 4px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 16px;max-width:860px}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:20px;align-items:start}
+.et{font-size:12px;color:var(--muted);letter-spacing:.4px;text-transform:uppercase;margin:0 0 8px}
+.ic{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none;vertical-align:-3px}
+/* ── tarjeta de la lista ── */
+.tarjeta{background:var(--card);border:1px solid var(--bordeMedio);border-radius:16px;padding:12px;margin-bottom:12px}
+.tarjeta .fila{display:flex;gap:12px}
+.foto{width:76px;height:76px;border-radius:14px;background:#0b1424;flex:none;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px;position:relative;overflow:hidden}
+.foto.s{width:50px;height:50px;border-radius:10px}
+.foto i{position:absolute;inset:0;opacity:.9}
+.cuerpo{flex:1;min-width:0}
+.nombre{font-size:16px;font-weight:600;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cat{display:inline-block;font-size:12px;color:var(--muted);border:1px solid var(--bordeSutil);border-radius:999px;padding:1px 9px;margin:3px 0}
+.precio{font-size:18px;font-weight:700;color:var(--precio);margin:2px 0}
+.precio small{font-size:13px;font-weight:500;color:var(--muted)}
+.insignias{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;align-items:center}
+.b{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;border-radius:999px;padding:3px 10px;border:1px solid transparent}
+.b.ok{color:var(--ok);background:var(--okbg);border-color:rgba(74,222,128,.35)}
+.b.poco{color:var(--warn);background:var(--warnbg);border-color:rgba(251,191,36,.4)}
+.b.agota{color:var(--err);background:var(--errbg);border-color:rgba(248,113,113,.4)}
+.b.n{color:var(--muted);background:rgba(147,143,153,.14);border-color:var(--bordeSutil)}
+.apila{display:inline-flex;margin-left:2px}
+.apila i{width:22px;height:22px;border-radius:50%;border:2px solid var(--card);margin-left:-7px;display:block}
+.apila i:first-child{margin-left:0}
+.acciones{display:flex;gap:8px;align-items:center;justify-content:space-between;border-top:1px solid var(--bordeSutil);margin-top:10px;padding-top:8px}
+.vis{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.sw{width:44px;height:26px;border-radius:13px;background:#36343B;border:2px solid var(--m3out);position:relative;flex:none}
+.sw:after{content:"";position:absolute;width:14px;height:14px;border-radius:50%;background:var(--m3out);top:4px;left:4px}
+.sw.on{background:var(--m3pri);border-color:var(--m3pri)}
+.sw.on:after{background:#381E72;left:22px;width:16px;height:16px;top:3px}
+.btns{display:flex;gap:6px}
+.btn{min-width:44px;min-height:44px;border-radius:12px;border:1px solid var(--bordeSutil);background:transparent;color:var(--texto);display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 12px;font:inherit;font-size:13px}
+.btn.del{color:var(--err)}
+.tarjeta.agotada .foto,.tarjeta.agotada .nombre,.tarjeta.agotada .precio{opacity:.55}
+.tarjeta.oculta{border-style:dashed}
+.hoy{opacity:.85}
+.hoy .nombre{font-size:14px;font-weight:500}
+.hoy .precio{font-size:13px;font-weight:600}
+.hoy .mini{font-size:12px;color:var(--muted)}
+/* ── formularios ── */
+.marco{background:var(--superficie);border-radius:24px;box-shadow:0 10px 30px rgba(0,0,0,.45);overflow:hidden}
+.marco.movil{max-width:400px}
+.mh{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--bordeSutil)}
+.mh h3{font-size:18px;font-weight:500;margin:0;flex:1}
+.progreso{display:flex;gap:6px;padding:10px 16px 0;flex-wrap:wrap}
+.paso{font-size:12.5px;display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:3px 10px;border:1px solid var(--bordeSutil);color:var(--muted)}
+.paso.hecho{color:var(--ok);border-color:rgba(74,222,128,.35);background:var(--okbg)}
+.paso.actual{color:var(--m3pri);border-color:rgba(208,188,255,.5)}
+.cuerpoF{padding:14px 16px 6px}
+.sec{background:var(--card);border:1px solid var(--bordeSutil);border-radius:16px;padding:12px 14px;margin-bottom:12px}
+.sec>h4{font-size:14px;margin:0 0 2px;font-weight:600;display:flex;align-items:center;gap:8px}
+.sec>p{margin:0 0 8px;font-size:13px;color:var(--muted)}
+.campo{border-bottom:1px solid var(--m3out);padding:6px 0 7px;margin-top:8px;min-height:52px}
+.campo label{display:block;font-size:13px;color:var(--muted)}
+.campo .v{font-size:16px;display:flex;justify-content:space-between;align-items:center}
+.campo.foco{border-bottom:2px solid var(--m3pri)}
+.campo.foco label{color:var(--m3pri)}
+.seg{display:flex;border:1px solid var(--m3out);border-radius:999px;overflow:hidden;margin:8px 0}
+.seg span{flex:1;text-align:center;padding:11px 6px;font-size:14px;font-weight:500;min-height:44px}
+.seg span+span{border-left:1px solid var(--m3out)}
+.seg .on{background:var(--m3sel)}
+.chip{display:inline-block;border:1px solid var(--m3out);border-radius:8px;padding:9px 12px;margin:6px 6px 0 0;background:var(--m3surf);font-size:14px}
+.chip.on{background:var(--m3sel);border-color:var(--m3sel)}
+.mod{background:var(--card2);border:1px solid var(--bordeSutil);border-radius:14px;padding:10px;margin-top:10px;display:flex;gap:12px}
+.mod .foto{width:72px;height:72px}
+.mod .nm{font-size:16px;font-weight:600}
+.total{font-size:13px;color:var(--muted);display:inline-flex;gap:5px;align-items:center}
+.filas{width:100%;border-collapse:collapse;margin-top:6px;font-size:14px}
+.filas th{font-size:12.5px;font-weight:500;color:var(--muted);text-align:left;padding:3px}
+.filas th:nth-child(n+2),.filas td:nth-child(n+2){text-align:right}
+.filas td{padding:6px 3px;border-top:1px solid var(--bordeSutil)}
+.caja{display:inline-block;min-width:46px;border:1px solid var(--m3out);border-radius:8px;padding:5px 8px;background:var(--m3surf);font-weight:600;text-align:right}
+.caja.poco{border-color:var(--warn);color:var(--warn)}
+.caja.cero{border-color:var(--err);color:var(--err)}
+.pie{position:sticky;bottom:0;background:var(--superficie);border-top:1px solid var(--bordeSutil);padding:12px 16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.falta{color:var(--warn);font-size:13px;font-weight:600;flex:1;min-width:160px;display:flex;gap:6px;align-items:center}
+.tb{color:var(--muted);padding:12px 14px;font-weight:500}
+.eb{background:var(--m3surf);color:var(--m3pri);padding:12px 22px;border-radius:999px;font-weight:600}
+.eb.dis{background:rgba(230,224,233,.12);color:rgba(230,224,233,.4)}
+.eb.ok{background:var(--m3pri);color:#381E72}
+.dos{display:grid;grid-template-columns:1fr;gap:0 18px}
+@media (min-width:760px){.dos{grid-template-columns:5fr 7fr}.marco.ancho{max-width:880px}}
+.nota{background:rgba(61,114,212,.12);border:1px solid var(--bordeMedio);border-radius:12px;padding:10px 12px;font-size:13px;margin-top:14px;max-width:860px}
+ul.reglas{margin:8px 0 0;padding-left:18px;color:var(--muted);font-size:13px;max-width:860px}
+ul.reglas b{color:var(--texto);font-weight:600}
+@media (max-width:480px){body{padding:16px}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<symbol id="lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+<symbol id="edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></symbol>
+<symbol id="trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+<symbol id="eye" viewBox="0 0 24 24"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+<symbol id="box" viewBox="0 0 24 24"><path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/></symbol>
+<symbol id="alert" viewBox="0 0 24 24"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h.01"/></symbol>
+<symbol id="check" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></symbol>
+<symbol id="photo" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M21 17l-5-5-6 6"/></symbol>
+<symbol id="x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+</svg>
+
+<h1>Diseño del producto · propuesta</h1>
+<p class="sub">Dos pantallas: la <b>tarjeta de la lista</b> y el <b>formulario</b>. Misma paleta de tu panel. Reglas: textos de 13 px o más, botones de 44 px, el estado nunca se dice solo con color (siempre con icono y palabra), y lo que importa se ve de un vistazo.</p>
+
+<h2>1 · La tarjeta de la lista</h2>
+<p class="sub">Arriba lo que ves hoy; abajo la propuesta, en sus estados. El vendedor revisa su lista buscando <b>qué se agota</b>, <b>qué está oculto</b> y <b>cuánto cuesta</b>: eso es lo que pasa a primer plano.</p>
+
+<div class="cols">
+  <div>
+    <p class="et">Hoy</p>
+    <div class="tarjeta hoy">
+      <div class="fila"><div class="foto s"><i style="background:linear-gradient(135deg,#3b2b6b,#1a2a55)"></i></div>
+      <div class="cuerpo"><p class="nombre">Polo básico</p><p class="precio">desde S/ 35.00 / unidad</p><p class="mini">17 unidades · 2 diseños · Productos</p></div></div>
+      <div class="acciones"><span></span><span class="btns"><span class="btn"><svg class="ic"><use href="#eye"/></svg></span><span class="btn"><svg class="ic"><use href="#edit"/></svg></span><span class="btn del"><svg class="ic"><use href="#trash"/></svg></span></span></div>
+    </div>
+    <p class="sub" style="margin-top:-4px">Miniatura chica, todo el texto en gris y pequeño, los iconos sin palabra: no se sabe si «ojo» oculta o muestra.</p>
+  </div>
+
+  <div>
+    <p class="et">Propuesta · con variables</p>
+    <div class="tarjeta">
+      <div class="fila"><div class="foto"><i style="background:linear-gradient(135deg,#3b2b6b,#1a2a55)"></i></div>
+      <div class="cuerpo"><p class="nombre">Polo básico</p><span class="cat">Productos</span>
+        <p class="precio"><small>desde</small> S/ 35.00 <small>/ unidad</small></p>
+        <div class="insignias"><span class="b ok"><svg class="ic"><use href="#box"/></svg>17 unidades</span><span class="apila" aria-hidden="true"><i style="background:#378ADD"></i><i style="background:#F2C94C"></i></span><span class="b n">2 diseños</span></div>
+      </div></div>
+      <div class="acciones"><label class="vis"><span class="sw on"></span>Visible en la tienda</label><span class="btns"><span class="btn"><svg class="ic"><use href="#edit"/></svg>Editar</span><span class="btn del" aria-label="Eliminar"><svg class="ic"><use href="#trash"/></svg></span></span></div>
+    </div>
+  </div>
+
+  <div>
+    <p class="et">Poco stock</p>
+    <div class="tarjeta">
+      <div class="fila"><div class="foto"><i style="background:linear-gradient(135deg,#6b2b3b,#2a1a55)"></i></div>
+      <div class="cuerpo"><p class="nombre">Crema corporal</p><span class="cat">Cuerpo</span>
+        <p class="precio">S/ 22.00 <small>/ frasco (100 ml)</small></p>
+        <div class="insignias"><span class="b poco"><svg class="ic"><use href="#alert"/></svg>Quedan 2</span></div>
+      </div></div>
+      <div class="acciones"><label class="vis"><span class="sw on"></span>Visible en la tienda</label><span class="btns"><span class="btn"><svg class="ic"><use href="#edit"/></svg>Editar</span><span class="btn del"><svg class="ic"><use href="#trash"/></svg></span></span></div>
+    </div>
+  </div>
+
+  <div>
+    <p class="et">Agotado</p>
+    <div class="tarjeta agotada">
+      <div class="fila"><div class="foto"><i style="background:linear-gradient(135deg,#2b4b6b,#1a3a55)"></i></div>
+      <div class="cuerpo"><p class="nombre">Gaseosa 500 ml</p><span class="cat">Bebidas</span>
+        <p class="precio">S/ 2.50 <small>/ botella</small></p>
+        <div class="insignias"><span class="b agota"><svg class="ic"><use href="#alert"/></svg>Agotado</span></div>
+      </div></div>
+      <div class="acciones"><label class="vis"><span class="sw on"></span>Visible en la tienda</label><span class="btns"><span class="btn"><svg class="ic"><use href="#edit"/></svg>Editar</span><span class="btn del"><svg class="ic"><use href="#trash"/></svg></span></span></div>
+    </div>
+  </div>
+
+  <div>
+    <p class="et">Por medida</p>
+    <div class="tarjeta">
+      <div class="fila"><div class="foto"><i style="background:linear-gradient(135deg,#6b5b2b,#3a2a15)"></i></div>
+      <div class="cuerpo"><p class="nombre">Queso</p><span class="cat">Lácteos</span>
+        <p class="precio">S/ 18.00 <small>/ kg · S/ 4.50 / ¼ kg</small></p>
+        <div class="insignias"><span class="b ok"><svg class="ic"><use href="#box"/></svg>6.5 kg</span><span class="b n">2 tipos</span></div>
+      </div></div>
+      <div class="acciones"><label class="vis"><span class="sw on"></span>Visible en la tienda</label><span class="btns"><span class="btn"><svg class="ic"><use href="#edit"/></svg>Editar</span><span class="btn del"><svg class="ic"><use href="#trash"/></svg></span></span></div>
+    </div>
+  </div>
+
+  <div>
+    <p class="et">Oculto de la tienda · stock ilimitado</p>
+    <div class="tarjeta oculta">
+      <div class="fila"><div class="foto"><i style="background:linear-gradient(135deg,#3b6b2b,#1a3a15)"></i></div>
+      <div class="cuerpo"><p class="nombre">Café americano</p><span class="cat">Bebidas</span>
+        <p class="precio">S/ 5.00 <small>/ vaso</small></p>
+        <div class="insignias"><span class="b n">Stock ilimitado</span><span class="b n"><svg class="ic"><use href="#eye"/></svg>Oculto</span></div>
+      </div></div>
+      <div class="acciones"><label class="vis"><span class="sw"></span>Oculto en la tienda</label><span class="btns"><span class="btn"><svg class="ic"><use href="#edit"/></svg>Editar</span><span class="btn del"><svg class="ic"><use href="#trash"/></svg></span></span></div>
+    </div>
+  </div>
+</div>
+
+<ul class="reglas">
+  <li><b>Foto más grande</b> (76 px) y el precio en 18 px: es lo primero que se lee.</li>
+  <li><b>Estado con icono y palabra</b>: «Quedan 2» (ámbar), «Agotado» (rojo, la tarjeta se apaga), «Oculto» (borde punteado). Verde solo cuando hay stock bueno. Poco stock = 3 o menos; se puede ajustar.</li>
+  <li><b>El interruptor «Visible en la tienda»</b> reemplaza al ojo: se entiende solo y se ve su estado.</li>
+  <li><b>Variables a la vista</b>: los círculos de colores son la foto de cada diseño y «2 diseños» dice cuántos hay. Con la palabra del vendedor: «2 aromas», «2 tipos».</li>
+  <li><b>Botones de 44 px</b>; «Editar» con palabra, «Eliminar» solo con icono rojo y confirmación.</li>
+</ul>
+
+<h2>2 · El formulario</h2>
+<p class="sub">Hoy es una lista larga de campos en una ventana angosta. Propuesta: <b>secciones con título</b> (lo que le toca a cada cosa), un <b>progreso</b> arriba que dice qué falta, y el pie fijo con «Falta: …» y Guardar. En celular ocupa toda la pantalla; en laptop se abre en dos columnas.</p>
+
+<div class="cols">
+  <div>
+    <p class="et">Celular · pantalla completa</p>
+    <div class="marco movil">
+      <div class="mh"><svg class="ic"><use href="#x"/></svg><h3>Agregar producto</h3></div>
+      <div class="progreso"><span class="paso hecho"><svg class="ic" style="width:14px;height:14px"><use href="#check"/></svg>Básico</span><span class="paso actual">Variables</span><span class="paso">Precio y stock</span></div>
+      <div class="cuerpoF">
+        <div class="sec"><h4>Lo básico</h4><p>Nombre y dónde aparece en tu tienda.</p>
+          <div class="campo"><label>Nombre del producto *</label><div class="v">Polo básico</div></div>
+          <div class="campo"><label>Categoría *</label><div class="v">Hombre <span>▾</span></div></div></div>
+        <div class="sec"><h4>Cómo se vende</h4><p>Se cuentan unidades, pares, botellas…</p>
+          <div class="seg"><span class="on">Por presentación</span><span>Por medida</span></div>
+          <div class="campo"><label>Presentación *</label><div class="v">Unidad <span>▾</span></div></div></div>
+        <div class="sec"><h4>Variables</h4><p>¿Viene en distintos colores, estilos o diseños?</p>
+          <div class="seg"><span class="on">Sí</span><span>No</span></div>
+          <div class="campo foco"><label>¿Cómo se llama lo que cambia? *</label><div class="v">Color</div></div>
+          <div><span class="chip on">Color</span><span class="chip">Estilo</span><span class="chip">Diseño</span></div>
+          <div class="mod"><div class="foto"><i style="background:linear-gradient(135deg,#2b4b9b,#1a2a55)"></i></div>
+            <div style="flex:1;min-width:0"><div class="nm">Azul</div><span class="total"><svg class="ic" style="width:14px;height:14px"><use href="#lock"/></svg>Total 10 · el stock se escribe en cada talla</span>
+              <table class="filas"><tr><th>Talla</th><th>Precio S/</th><th>Stock</th></tr>
+              <tr><td>S</td><td>35.00</td><td><span class="caja poco">2</span></td></tr>
+              <tr><td>M</td><td>35.00</td><td><span class="caja">8</span></td></tr></table></div></div>
+        </div>
+      </div>
+      <div class="pie"><span class="falta"><svg class="ic" style="width:16px;height:16px"><use href="#alert"/></svg>Falta: foto de Amarillo</span><span class="tb">Cancelar</span><span class="eb dis">Guardar</span></div>
+    </div>
+  </div>
+
+  <div style="grid-column:1/-1">
+    <p class="et">Laptop · dos columnas</p>
+    <div class="marco ancho">
+      <div class="mh"><h3>Agregar producto</h3><span class="tb">Cancelar</span></div>
+      <div class="progreso"><span class="paso hecho"><svg class="ic" style="width:14px;height:14px"><use href="#check"/></svg>Básico</span><span class="paso hecho"><svg class="ic" style="width:14px;height:14px"><use href="#check"/></svg>Cómo se vende</span><span class="paso actual">Variables</span></div>
+      <div class="cuerpoF dos">
+        <div>
+          <div class="sec"><h4>Lo básico</h4><p>Nombre y dónde aparece en tu tienda.</p>
+            <div class="campo"><label>Nombre del producto *</label><div class="v">Polo básico</div></div>
+            <div class="campo"><label>Categoría *</label><div class="v">Hombre <span>▾</span></div></div></div>
+          <div class="sec"><h4>Cómo se vende</h4>
+            <div class="seg"><span class="on">Por presentación</span><span>Por medida</span></div>
+            <div class="campo"><label>Presentación *</label><div class="v">Unidad <span>▾</span></div></div>
+            <p style="margin:8px 0 0">Una sola para todo el producto.</p></div>
+        </div>
+        <div>
+          <div class="sec"><h4>Variables · Color</h4><p>Una foto cada uno · sin stock propio.</p>
+            <div class="mod"><div class="foto"><i style="background:linear-gradient(135deg,#2b4b9b,#1a2a55)"></i></div>
+              <div style="flex:1;min-width:0"><div class="nm">Azul</div><span class="total"><svg class="ic" style="width:14px;height:14px"><use href="#lock"/></svg>Total 10</span>
+                <table class="filas"><tr><th>Talla</th><th>Precio S/</th><th>Stock</th></tr>
+                <tr><td>S</td><td>35.00</td><td><span class="caja poco">2</span></td></tr>
+                <tr><td>M</td><td>35.00</td><td><span class="caja">8</span></td></tr></table></div></div>
+            <div class="mod"><div class="foto"><i style="background:linear-gradient(135deg,#9b8b2b,#55451a)"></i></div>
+              <div style="flex:1;min-width:0"><div class="nm">Amarillo</div><span class="total"><svg class="ic" style="width:14px;height:14px"><use href="#lock"/></svg>Total 0</span>
+                <table class="filas"><tr><th>Talla</th><th>Precio S/</th><th>Stock</th></tr>
+                <tr><td>L</td><td>38.00</td><td><span class="caja cero">0</span></td></tr></table></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="pie"><span class="falta"><svg class="ic" style="width:16px;height:16px"><use href="#alert"/></svg>Falta: foto de Amarillo</span><span class="eb dis">Guardar producto</span></div>
+    </div>
+  </div>
+</div>
+
+<ul class="reglas">
+  <li><b>Cuatro secciones con título y una línea de ayuda</b>: Lo básico, Cómo se vende, Variables, y Precio y stock (cuando no hay variables). Cada una es una tarjeta, no un campo suelto.</li>
+  <li><b>Progreso arriba</b> («Básico ✓ · Variables · Precio y stock»): se ve de un vistazo qué falta, además del «Falta: …» del pie.</li>
+  <li><b>Pie fijo</b> con el motivo y el botón: no se pierde al bajar. Guardar queda gris hasta que está completo y se pone morado sólido cuando ya se puede.</li>
+  <li><b>Los modelos son tarjetas</b> con la foto grande (72 px). El stock bajo (≤ 3) sale ámbar y el cero rojo, con el número visible: no solo color.</li>
+  <li><b>Laptop</b>: dos columnas (lo básico a la izquierda, variables a la derecha) y ancho de 880 px. <b>Celular</b>: pantalla completa con las secciones apiladas.</li>
+</ul>
+
+<p class="nota"><b>Qué cambia en el código si lo apruebas:</b> solo presentación (tarjeta y formulario). No cambia ningún dato ni lectura de Firebase. El umbral de «poco stock» se puede guardar luego en Configuración; por ahora fijo en 3.</p>
+</body>
+</html>

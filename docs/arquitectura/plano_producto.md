@@ -1,6 +1,6 @@
 # Plano del producto — diseño acordado y próximos pasos
 
-Documento vivo. Resume lo que se decidió con el usuario sobre el **producto** (panel del vendedor) para retomarlo en una conversación nueva. Leer antes de trabajar en productos. Última actualización: 2026-10-28.
+Documento vivo. Resume lo que se decidió con el usuario sobre el **producto** (panel del vendedor) para retomarlo en una conversación nueva. Leer antes de trabajar en productos. Última actualización: 2026-10-29.
 
 > El producto es el punto donde todo choca (presentación, medida, modelos, extras, combos, stock). Primero se cierra esto; lo demás (cambio de rubro, web pública, pedidos) son agregados que leen lo que ya existe.
 
@@ -100,6 +100,10 @@ Texto con precio opcional (+ S/). **No descuentan stock** (por ahora). Van en el
 ### 3.7 Presentaciones propias en todos los rubros
 Hoy solo "Otros" puede crearlas (`permitePersonalizadas`). Acordado: **todos los rubros** con nombre + cuánto trae en unidades del registro (Jaba = 30 unidades, Saco = 42.5 kg, Galón = 3 785 ml; Libra = 454 g con aviso de aproximado).
 
+**Dónde se crean (acordado 2026-10-29): en Configuración del negocio → Catálogo de venta**, igual que las medidas. NO dentro del formulario del producto (el «+ Nueva presentación…» de la maqueta `formulario_producto_app.html`, caso 1, queda superado). El formulario solo agrega, bajo «Presentación», una línea: «¿No ves tu presentación? Créala en Configuración → Catálogo», con enlace para ir. Así el formulario no se alarga y hay un solo lugar para manejarlas. El trabajo es abrir a los 6 rubros la pantalla que hoy ya usa «Otros».
+
+**Con variables no choca:** la presentación es una sola para todo el producto («Jaba de 30») y las variables van dentro (Tipo: Rosados / Blancos), con el stock en jabas dentro de cada una. Una jaba de 30 y una de 15 son **una sola presentación («Jaba») con dos formatos** (30 unidades y 15 unidades): en el producto, cada fila elige su formato. Comprobado en el panel real con «Huevos de granja» (2026-10-29).
+
 ### 3.8 Guía con ejemplo por rubro (en gris, enseña sin texto)
 | Rubro | 📷 Modelos | 📦 Se vende en | ➕ Extras |
 |---|---|---|---|
@@ -121,9 +125,17 @@ Un nivel de modelos y una lista de filas; una foto por modelo; extras sin stock;
 2. ~~**Especificación técnica del modelo de datos**~~ (hecho para modelos y filas: ver 2b; extras y combos se especifican en sus pasos).
 3. ~~**Modelos + Se vende en**~~ (hecho 2026-10-28, falta desplegar; el «No» con varias filas queda pendiente).
 4. **Extras** ← siguiente.
-5. **Presentaciones propias en todos los rubros**.
+5. **Presentaciones propias en todos los rubros** (se crean en Configuración → Catálogo; el formulario solo avisa y enlaza).
 6. **Combos**.
-7. Después: stock en pedidos (descontar al confirmar, transacciones, cancelar devuelve lo descontado), cambio de rubro, web pública, moneda por país.
+7. **Tienda pública (`web/`) — AL FINAL, con todo listo** (acordado 2026-10-29): cuando estén variables, extras, presentaciones propias y combos, se hace una sola vez para que el cliente pueda comprar con todo. Ver notas abajo.
+8. Después: stock en pedidos (descontar al confirmar, transacciones, cancelar devuelve lo descontado), cambio de rubro, moneda por país.
+
+### Notas para cuando toque la tienda (investigado 2026-10-29)
+- Son 4 plantillas estáticas (`web/public/moldes/`): **galería** (catálogo + carrito local + pedido por WhatsApp, 596 líneas), **cristal**, **neón** y **sabroso** (catálogo + ventana por producto + WhatsApp por producto). Todas leen por `shared/cargar-negocio.js`.
+- Hoy `normalizarProducto` solo lee nombre, `precio`, `stock`, `urlImagen`, `unidadMedidaNombre` y `fraccionesSeleccionadas`: **no lee modelos, filas ni extras**. El cliente ve un solo producto con la portada y el stock total.
+- Con variables hay que: leer `modelos`/`tituloModelos`/`tituloFilas`; elegir modelo y talla (la foto cambia, el precio es el de la fila, la fila sin stock sale tachada); el carrito de galería hoy usa el `id` del producto como clave y debe pasar a producto · modelo · fila; el mensaje de WhatsApp debe decir «Polo básico · Luna · M». Los productos sin modelos siguen igual.
+- Lecturas: ninguna extra (la misma consulta única, `disponible == true`). Deploy: `firebase deploy --only hosting:tienda` desde `web/`.
+- Con extras: se eligen y suman al precio en el carrito y el mensaje. Con combos: el stock del combo se calcula con los productos ya leídos.
 
 ## 5. Ideas acordadas para más adelante (no construir aún)
 - **Cambio de rubro con 3 opciones:** Sumar (recomendada, no borra nada), Reemplazar configuración (productos quedan "Revisar"), Empezar de cero (borra productos y fotos; doble confirmación escribiendo el nombre del negocio, ofrecer descargar antes, todo o nada).
@@ -140,6 +152,6 @@ Un nivel de modelos y una lista de filas; una foto por modelo; extras sin stock;
 | `se_vende_en_app.html` | **Vigente**: palabras propias del vendedor, stock solo en las filas, mismo orden en varios rubros |
 | `prototipo_modelos_app.html` | **Vigente**: prototipo interactivo (se puede tocar) |
 | `medida_y_tarjeta_app.html` | **Vigente**: Bloque A (menú «Por», 4 casos, tarjeta) |
-| `formulario_producto_app.html` | Parcial: presentación propia (jaba) y jamonada por ¼ kg vigentes; versiones y combo reemplazados |
+| `formulario_producto_app.html` | Parcial: jamonada por ¼ kg vigente; la presentación propia (jaba) se crea ahora en Configuración, no en el formulario; versiones y combo reemplazados |
 | `stock_precio_versiones_combo_app.html`, `pollo_y_combo_app.html` | Superadas (combos con elecciones; tabla color × talla) |
 | `versiones_y_fotos_app.html`, `versiones_tallas_opciones_app.html`, `formulario_producto.html` | Superadas (etapas previas del diseño) |
