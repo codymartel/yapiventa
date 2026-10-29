@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YapiVenta · prototipo de modelos</title>
+<style>
+:root{--fondo:#070C18;--superficie:#0D1526;--card:#111D33;--texto:#E8EDF5;--muted:#8494AD;--error:#EF4444;
+--bordeSutil:rgba(61,114,212,.14);--bordeMedio:rgba(61,114,212,.30);--precio:#8AB2FF;
+--m3pri:#D0BCFF;--m3sel:#4A4458;--m3out:#938F99;--m3surf:#1D1B20;--ok:#4ADE80;--warn:#FBBF24}
+*{box-sizing:border-box}
+body{margin:0 auto;max-width:1280px;background:var(--fondo);color:var(--texto);font:14px/1.45 Roboto,"Segoe UI",system-ui,sans-serif;padding:20px 16px 40px;-webkit-text-size-adjust:100%}
+h1{font-size:20px;font-weight:700;margin:0 0 4px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 14px;max-width:900px}
+.bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px;font-size:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,380px),1fr));gap:22px;align-items:start}
+.paso{font-size:13px;color:var(--muted);letter-spacing:.3px;margin:0 0 8px;text-transform:uppercase}
+.dialog{background:var(--superficie);border-radius:28px;padding:22px 20px 18px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.cli{background:var(--superficie);border-radius:20px;padding:16px;position:sticky;top:12px}
+select,input{font:inherit;color:var(--texto)}
+select{background:var(--m3surf);border:1px solid var(--m3out);border-radius:8px;padding:9px 10px;min-height:44px;max-width:100%}
+.tx{background:transparent;border:0;border-bottom:1px solid var(--m3out);padding:10px 2px;width:100%;font-size:16px;outline:none}
+.tx:focus{border-bottom:2px solid var(--m3pri)}
+label.l{display:block;font-size:13px;color:var(--muted);margin-top:12px}
+.nombre{font-size:22px;font-weight:400}
+.blk{background:var(--card);border:1px solid var(--bordeMedio);border-radius:16px;padding:12px 14px;margin-top:12px}
+.blk .t{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:500;flex-wrap:wrap}
+.pill{margin-left:auto;font-size:12px;border-radius:999px;padding:3px 9px}
+.pill.f{color:var(--m3pri);background:rgba(208,188,255,.14)}
+.pill.s{color:var(--precio);background:rgba(61,114,212,.18)}
+.pill.n{color:var(--muted);background:rgba(147,143,153,.15)}
+.pregunta{font-size:16px;font-weight:500;margin:2px 0 8px}
+.ghost{color:#6f7d95}
+.seg{display:flex;border:1px solid var(--m3out);border-radius:999px;overflow:hidden;margin:8px 0}
+.seg button{flex:1;background:transparent;border:0;color:var(--texto);padding:12px 6px;font:inherit;font-weight:500;min-height:44px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--m3out)}
+.seg .on{background:var(--m3sel)}
+.chip{display:inline-block;border:1px solid var(--m3out);border-radius:8px;padding:9px 12px;margin:6px 6px 0 0;font:inherit;background:var(--m3surf);color:var(--texto);cursor:pointer}
+.chip.on{background:var(--m3sel);border-color:var(--m3sel)}
+.chip.add2{border-style:dashed;color:var(--m3pri)}
+.chip.off{color:#6f6b76;text-decoration:line-through;cursor:not-allowed}
+.regla{background:rgba(61,114,212,.12);border:1px solid var(--bordeMedio);border-radius:10px;padding:10px 12px;font-size:13px;margin-top:12px}
+.ayuda{font-size:13px;color:var(--muted);margin-top:8px}
+.mod{display:flex;gap:12px;padding:12px 0 4px;border-top:1px solid var(--bordeSutil);margin-top:10px}
+.mod:first-of-type{border-top:0;margin-top:4px}
+.ph{width:56px;height:56px;border-radius:12px;background:#0b1424;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;color:var(--muted);flex:none;gap:4px}
+.sw{width:18px;height:18px;border-radius:50%;display:block}
+.mbody{flex:1;min-width:0}
+.mhead{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.mhead .tx{font-size:16px;font-weight:500}
+.tot{font-size:13px;color:var(--muted);white-space:nowrap}
+.guia{font-size:13px;color:var(--precio);margin:2px 0 4px}
+.ic{width:15px;height:15px;vertical-align:-2px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+table{width:100%;border-collapse:collapse}
+th{color:var(--muted);font-weight:500;font-size:13px;text-align:left;padding:4px 3px}
+td{padding:4px 3px;border-top:1px solid var(--bordeSutil)}
+td input{background:var(--m3surf);border:1px solid var(--m3out);border-radius:8px;padding:8px;width:100%;min-height:40px}
+td input.num{text-align:right}
+td input.err{border-color:var(--error)}
+.x{background:transparent;border:0;color:var(--muted);font-size:20px;cursor:pointer;min-width:36px;min-height:40px}
+.add{background:transparent;border:0;color:var(--m3pri);font:inherit;font-weight:500;padding:10px 0;cursor:pointer}
+.dup{font-size:13px;color:var(--warn);margin-top:4px}
+.falta{color:var(--warn);font-size:13px;font-weight:600;margin-top:12px}
+.actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+.eb{background:var(--m3surf);color:var(--m3pri);border:0;padding:12px 22px;border-radius:999px;font:inherit;font-weight:500;cursor:pointer}
+.eb.dis{background:rgba(230,224,233,.12);color:rgba(230,224,233,.38);cursor:not-allowed}
+.big{height:130px;border-radius:14px;background:#0b1424;display:flex;align-items:center;justify-content:center;color:var(--muted);margin-bottom:8px;gap:10px}
+.lbl{font-size:13px;color:var(--muted);margin:10px 0 4px}
+.precio{color:var(--precio);font-weight:700}
+.cta{display:block;width:100%;text-align:center;background:var(--m3surf);color:var(--m3pri);padding:12px;border-radius:999px;font:inherit;font-weight:500;margin-top:12px;border:0;cursor:pointer}
+.cta.dis{opacity:.4;cursor:not-allowed}
+.mini{font-size:13px;color:var(--muted);margin-top:8px}
+.ok{background:rgba(74,222,128,.10);border:1px solid rgba(74,222,128,.35);color:var(--ok);border-radius:10px;padding:10px 12px;font-size:13px;margin-top:12px}
+pre{background:#0b1424;border-radius:10px;padding:10px;font-size:12px;overflow:auto;max-height:260px;color:#c9d6ee}
+@media (max-width:480px){body{padding:16px}.dialog{padding:18px 14px 14px;border-radius:24px}.cli{position:static}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol></svg>
+
+<h1>Prototipo interactivo · modelos y «Se vende en»</h1>
+<p class="sub">Todo se puede tocar. Cambia el rubro, nombra lo que cambia, agrega modelos y tallas, borra el stock de una talla para ver el «Falta», crea una presentación nueva. A la derecha ves lo que ve el cliente. No guarda nada real.</p>
+<div class="bar">
+  <label for="rubro">Rubro:</label>
+  <select id="rubro"><option>Ropa</option><option>Calzado</option><option>Belleza</option><option>Bodega</option><option>Restaurante</option></select>
+  <button class="add" id="reiniciar">Reiniciar ejemplo</button>
+</div>
+<div class="grid">
+  <div><p class="paso">Vendedor</p><div class="dialog" id="form"></div></div>
+  <div><p class="paso">Lo que ve el cliente</p><div class="cli" id="cli"></div></div>
+</div>
+
+<script>
+const RUBROS = {
+  Ropa: {producto:'Polo básico', ejemplo:'colores, estilos o diseños', sugs:['Color','Estilo','Diseño'], variable:'Color', filas:'Talla', pres:'Unidad',
+    modelos:[{n:'Azul', f:[['S',35,4],['M',35,6],['L',35,2]]},{n:'Amarillo', f:[['L',35,5],['XL',38,'']]}], extras:[['Bordado',8]]},
+  Calzado: {producto:'Zapatilla urbana', ejemplo:'colores o estilos', sugs:['Color','Estilo'], variable:'', filas:'Número', pres:'Unidad', sin:true,
+    modelos:[{n:'', f:[['38',120,3],['39',120,5],['40',120,2]]}], extras:[]},
+  Belleza: {producto:'Crema corporal', ejemplo:'aromas o tonos', sugs:['Aroma','Tono','Fragancia'], variable:'Aroma', filas:'Frasco', pres:'Frasco',
+    modelos:[{n:'Rosas', f:[['100 ml',22,7],['250 ml',45,4]]},{n:'Vainilla', f:[['100 ml',22,3]]}], extras:[['Envoltura de regalo',5]]},
+  Bodega: {producto:'Gaseosa', ejemplo:'sabores', sugs:['Sabor','Marca'], variable:'Sabor', filas:'Formato', pres:'Botella',
+    modelos:[{n:'Inca Kola', f:[['500 ml',2.5,24],['1.5 L',6,8]]},{n:'Coca-Cola', f:[['500 ml',2.5,18]]}], extras:[]},
+  Restaurante: {producto:'Pollo a la brasa', ejemplo:'sabores o tipos', sugs:['Sabor','Tipo'], variable:'', filas:'Tamaño', pres:'Porción', sin:true,
+    modelos:[{n:'', f:[['Personal',18,20],['Familiar',45,10]]}], extras:[['Con ají',0],['Papas',6]]}
+};
+const COLORES = ['#378ADD','#F2C94C','#E24B4A','#4ADE80','#D4537E','#D0BCFF'];
+const TITULOS = ['Talla','Número','Tamaño','Formato','Frasco','Medida'];
+const UNIDADES = ['unidad','g','kg','ml','L','m'];
+let S, uid = 0;
+const $ = (i) => document.getElementById(i);
+const nid = () => 'i' + (++uid);
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const cents = (v) => { const t = String(v).trim().replace(',', '.'); if (!/^\d*(\.\d{0,2})?$/.test(t) || t === '' || t === '.') return 0; const [e, d = ''] = t.split('.'); return (parseInt(e || '0', 10) * 100) + parseInt(d.padEnd(2, '0') || '0', 10); };
+const fmt = (c) => Math.floor(c / 100) + '.' + String(c % 100).padStart(2, '0');
+const stk = (v) => (v === '' || v === null || isNaN(parseInt(v, 10))) ? 0 : Math.max(0, parseInt(v, 10));
+const total = (m) => m.filas.reduce((a, f) => a + stk(f.stock), 0);
+const nuevaFila = (e, p, s) => ({id: nid(), et: String(e), precio: String(p), stock: String(s)});
+
+function nuevo(rubro) {
+  const r = RUBROS[rubro]; uid = 0;
+  S = {rubro, producto: r.producto, viene: !r.sin, variable: r.variable, titulo: r.filas, pres: r.pres,
+    presentaciones: [{n:'Unidad'},{n:'Botella'},{n:'Frasco'},{n:'Porción'},{n:'Caja'},{n:'Bolsa'}],
+    pnueva: false, pn: {n:'', c:'', u:'unidad'}, xn: '', xp: '',
+    extras: r.extras.map(([n, p]) => ({n, p: String(p)})),
+    modelos: r.modelos.map((m, i) => ({id: nid(), n: m.n, color: COLORES[i % COLORES.length], filas: m.f.map(([e, p, s]) => nuevaFila(e, p, s))})),
+    selM: 0, selF: 0, guardado: false, focus: null};
+}
+function dupMsg(m) {
+  const vistos = new Set();
+  for (const f of m.filas) { const k = f.et.trim().toLowerCase(); if (!k) continue; if (vistos.has(k)) return 'Ya tienes «' + esc((S.viene && m.n ? m.n + ' · ' : '') + f.et) + '» dos veces: junta el stock o cambia el nombre.'; vistos.add(k); }
+  return '';
+}
+function falta() {
+  const v = S.variable.trim().toLowerCase();
+  if (!S.producto.trim()) return 'Falta: nombre del producto';
+  if (S.viene && !S.variable.trim()) return 'Falta: cómo se llama lo que cambia';
+  if (!S.modelos.length) return 'Falta: al menos un ' + (v || 'modelo');
+  const nombres = new Set();
+  for (const m of S.modelos) {
+    const de = S.viene ? ' de ' + (m.n || 'este ' + v) : '';
+    if (S.viene && !m.n.trim()) return 'Falta: nombre del ' + v;
+    if (S.viene) { const k = m.n.trim().toLowerCase(); if (nombres.has(k)) return 'Revisa: dos ' + v + 's se llaman «' + m.n + '»'; nombres.add(k); }
+    if (!m.filas.length) return 'Falta: ' + S.titulo.toLowerCase() + de;
+    for (const f of m.filas) {
+      const nom = (S.viene ? m.n + ' · ' : '') + f.et;
+      if (!f.et.trim()) return 'Falta: nombre de ' + S.titulo.toLowerCase() + de;
+      if (cents(f.precio) <= 0) return 'Falta: precio de ' + nom;
+      if (f.stock === '') return 'Falta: stock de ' + nom;
+    }
+    if (dupMsg(m)) return 'Revisa: ' + dupMsg(m).replace(/<[^>]*>/g, '');
+  }
+  return '';
+}
+const LOCK = '<svg class="ic"><use href="#lock"/></svg>';
+
+function formHTML() {
+  const r = RUBROS[S.rubro], v = esc(S.variable || 'modelo'), vl = (S.variable || 'modelo').toLowerCase();
+  const presOpts = S.presentaciones.map((p) => '<option value="' + esc(p.n) + '"' + (p.n === S.pres ? ' selected' : '') + '>' + esc(p.n + (p.d ? ' · ' + p.d : '')) + '</option>').join('') + '<option value="__nueva">+ Nueva presentación…</option>';
+  const titOpts = (TITULOS.includes(S.titulo) ? TITULOS : [...TITULOS, S.titulo]).map((t) => '<option' + (t === S.titulo ? ' selected' : '') + '>' + esc(t) + '</option>').join('') + '<option value="__otra">Otra palabra…</option>';
+  let h = '<input class="tx nombre" data-k="prod" value="' + esc(S.producto) + '" aria-label="Nombre del producto">';
+  h += '<label class="l">Presentación (se elige una vez)</label><select data-sel="pres" aria-label="Presentación">' + presOpts + '</select>';
+  if (S.pnueva) {
+    h += '<div class="blk"><div class="t">Nueva presentación</div>' +
+      '<label class="l">Nombre</label><input class="tx" data-k="pn.n" value="' + esc(S.pn.n) + '" placeholder="Ej: Jaba">' +
+      '<label class="l">¿Cuánto trae?</label><div style="display:flex;gap:8px"><input class="tx" data-k="pn.c" inputmode="decimal" value="' + esc(S.pn.c) + '" placeholder="30"><select data-sel="pn.u">' + UNIDADES.map((u) => '<option' + (u === S.pn.u ? ' selected' : '') + '>' + u + '</option>').join('') + '</select></div>' +
+      '<div class="actions"><button class="add" data-act="pcancel">Cancelar</button><button class="eb" data-act="pguardar">Crear presentación</button></div></div>';
+  }
+  h += '<div class="blk"><div class="pregunta">¿Este producto viene en distintos <span class="ghost">' + esc(r.ejemplo) + '</span>?</div>' +
+    '<div class="seg"><button data-act="viene" data-v="1" class="' + (S.viene ? 'on' : '') + '">Sí</button><button data-act="viene" data-v="0" class="' + (S.viene ? '' : 'on') + '">No</button></div>';
+  if (S.viene) {
+    h += '<label class="l">¿Cómo se llama lo que cambia? *</label><input class="tx" data-k="variable" value="' + esc(S.variable) + '" placeholder="Escribe tu palabra">' +
+      '<div>' + r.sugs.map((s) => '<button class="chip' + (s === S.variable ? ' on' : '') + '" data-act="sug" data-v="' + esc(s) + '">' + esc(s) + '</button>').join('') + '</div>' +
+      '<div class="regla"><b>¿Cuál va aquí?</b> Si lo que cambia necesita <b>su propia foto</b>, es un ' + vl + '. Si solo cambia <b>cuánto hay</b> (talla, tamaño), va en «Se vende en».</div>';
+  } else h += '<div class="ayuda">Sin modelos: las opciones van directo en «Se vende en».</div>';
+  h += '</div>';
+
+  h += '<div class="blk"><div class="t">' + (S.viene ? esc(S.variable || 'Modelo') + ' <span class="pill f">una foto cada uno · sin stock propio</span>' : 'Se vende en <span class="pill s">con stock</span>') + '</div>';
+  h += '<div class="ayuda">Título de las filas: <select data-sel="titulo" aria-label="Título de las filas">' + titOpts + '</select></div>';
+  S.modelos.forEach((m, i) => {
+    h += '<div class="mod">' + (S.viene ? '<div class="ph"><span class="sw" style="background:' + m.color + '"></span>foto</div>' : '') + '<div class="mbody">';
+    if (S.viene) h += '<div class="mhead"><input class="tx" data-k="m.' + m.id + '.n" value="' + esc(m.n) + '" placeholder="Nombre del ' + esc(vl) + '"><span class="tot">' + LOCK + ' <span id="tot-' + m.id + '">Total ' + total(m) + '</span></span><button class="x" data-act="delM" data-m="' + m.id + '" aria-label="Quitar">×</button></div><div class="guia">El stock se escribe en cada ' + esc(S.titulo.toLowerCase()) + '</div>';
+    h += '<table><tr><th>' + esc(S.titulo) + '</th><th>Precio S/</th><th>Stock</th><th></th></tr>';
+    m.filas.forEach((f) => {
+      h += '<tr><td><input data-k="f.' + m.id + '.' + f.id + '.et" value="' + esc(f.et) + '" aria-label="' + esc(S.titulo) + '"></td>' +
+        '<td><input class="num" inputmode="decimal" data-k="f.' + m.id + '.' + f.id + '.precio" value="' + esc(f.precio) + '" aria-label="Precio"></td>' +
+        '<td><input class="num' + (f.stock === '' ? ' err' : '') + '" inputmode="numeric" data-k="f.' + m.id + '.' + f.id + '.stock" value="' + esc(f.stock) + '" placeholder="¿?" aria-label="Stock"></td>' +
+        '<td><button class="x" data-act="delF" data-m="' + m.id + '" data-f="' + f.id + '" aria-label="Quitar fila">×</button></td></tr>';
+    });
+    h += '</table><div class="dup" id="dup-' + m.id + '">' + dupMsg(m) + '</div>' +
+      '<button class="add" data-act="addF" data-m="' + m.id + '">+ Agregar ' + esc(S.titulo.toLowerCase()) + '</button>' +
+      (m.filas.length > 1 ? ' <button class="add" data-act="mismoPrecio" data-m="' + m.id + '">Mismo precio a todas</button>' : '') + '</div></div>';
+  });
+  if (S.viene) h += '<button class="add" data-act="addM">+ ' + esc(S.variable || 'Modelo') + '</button>';
+  h += '</div>';
+
+  h += '<div class="blk"><div class="t">Extras <span class="pill n">sin stock</span></div><div>' +
+    S.extras.map((x, i) => '<span class="chip">' + esc(x.n) + (cents(x.p) ? ' + S/ ' + fmt(cents(x.p)) : '') + ' <button class="x" style="min-height:0;min-width:24px;font-size:16px" data-act="delX" data-i="' + i + '" aria-label="Quitar extra">×</button></span>').join('') + '</div>' +
+    '<div style="display:flex;gap:8px;margin-top:8px"><input class="tx" data-k="x.n" value="' + esc(S.xn) + '" placeholder="Ej: Con ají"><input class="tx" style="max-width:90px" inputmode="decimal" data-k="x.p" value="' + esc(S.xp) + '" placeholder="S/ 0"><button class="add" data-act="addX">+ extra</button></div></div>';
+
+  h += '<div class="falta" id="falta"></div><div class="actions"><button class="eb" id="save" data-act="save">Guardar producto</button></div><div id="resultado"></div>';
+  return h;
+}
+function docJSON() {
+  return JSON.stringify({nombre: S.producto, presentacion: S.pres, tituloModelos: S.viene ? S.variable : null, tituloFilas: S.titulo,
+    modelos: S.modelos.map((m) => ({id: m.id, nombre: S.viene ? m.n : null, filas: m.filas.map((f) => ({id: f.id, etiqueta: f.et, precioCentavos: cents(f.precio), stock: stk(f.stock)}))})),
+    extras: S.extras.map((x) => ({nombre: x.n, precioCentavos: cents(x.p)}))}, null, 2);
+}
+function derived() {
+  S.modelos.forEach((m) => { const t = $('tot-' + m.id); if (t) t.textContent = 'Total ' + total(m); const d = $('dup-' + m.id); if (d) d.innerHTML = dupMsg(m); });
+  const f = falta(); $('falta').textContent = f; $('falta').style.display = f ? 'block' : 'none'; $('save').classList.toggle('dis', !!f);
+  renderCli();
+}
+function renderCli() {
+  const c = $('cli'), m = S.modelos[S.selM] || S.modelos[0];
+  if (!m) { c.innerHTML = '<p class="mini">Agrega un modelo para ver cómo queda.</p>'; return; }
+  if (S.selM >= S.modelos.length) S.selM = 0;
+  if (S.selF >= m.filas.length) S.selF = 0;
+  const f = m.filas[S.selF], agotado = !f || stk(f.stock) === 0;
+  let h = '<div class="big"><span class="sw" style="background:' + m.color + '"></span>' + (S.viene ? 'foto ' + esc(m.n || '…') : 'foto') + '</div>' +
+    '<b style="font-weight:600;font-size:16px">' + esc(S.producto) + '</b> · <span class="precio">S/ ' + fmt(f ? cents(f.precio) : 0) + '</span><div class="mini">' + esc(S.pres) + '</div>';
+  if (S.viene) h += '<div class="lbl">' + esc(S.variable || 'Modelo') + '</div>' + S.modelos.map((x, i) => '<button class="chip' + (i === S.selM ? ' on' : '') + '" data-cm="' + i + '">' + esc(x.n || '…') + '</button>').join('');
+  h += '<div class="lbl">' + esc(S.titulo) + (S.viene ? ' (las de ' + esc(m.n || '…') + ')' : '') + '</div>' +
+    m.filas.map((x, i) => '<button class="chip' + (i === S.selF ? ' on' : '') + (stk(x.stock) === 0 ? ' off' : '') + '" data-cf="' + i + '">' + esc(x.et || '…') + '</button>').join('');
+  if (S.extras.length) h += '<div class="lbl">Extras</div>' + S.extras.map((x) => '<span class="chip">' + esc(x.n) + (cents(x.p) ? ' + S/ ' + fmt(cents(x.p)) : '') + '</span>').join('');
+  h += '<button class="cta' + (agotado ? ' dis' : '') + '">' + (agotado ? 'Agotado' : 'Agregar · S/ ' + fmt(f ? cents(f.precio) : 0)) + '</button>' +
+    '<p class="mini">' + (f ? 'Quedan ' + stk(f.stock) + ' de «' + esc((S.viene ? m.n + ' · ' : '') + f.et) + '». Tocar otro ' + esc((S.viene ? S.variable : S.titulo).toLowerCase()) + ' cambia lo que se ve.' : '') + '</p>';
+  c.innerHTML = h;
+}
+function render() {
+  $('form').innerHTML = formHTML();
+  if (S.focus) { const e = document.querySelector('[data-k="' + S.focus + '"]'); if (e) e.focus(); S.focus = null; }
+  derived();
+}
+function setK(k, v) {
+  const p = k.split('.');
+  if (k === 'prod') S.producto = v; else if (k === 'variable') S.variable = v;
+  else if (p[0] === 'm') S.modelos.find((m) => m.id === p[1]).n = v;
+  else if (p[0] === 'f') { const m = S.modelos.find((x) => x.id === p[1]); const f = m.filas.find((x) => x.id === p[2]); f[p[3]] = (p[3] === 'stock') ? v.replace(/\D/g, '') : v; }
+  else if (p[0] === 'x') S['x' + p[1]] = v;
+  else if (p[0] === 'pn') S.pn[p[1]] = v;
+}
+const form = $('form');
+form.addEventListener('input', (e) => {
+  const k = e.target.dataset.k; if (!k) return;
+  setK(k, e.target.value);
+  if (k.endsWith('.stock')) { e.target.value = e.target.value.replace(/\D/g, ''); e.target.classList.toggle('err', e.target.value === ''); }
+  if (k === 'variable') { document.querySelectorAll('#form .chip[data-act="sug"]').forEach((c) => c.classList.toggle('on', c.dataset.v === S.variable)); }
+  derived();
+});
+form.addEventListener('change', (e) => {
+  const s = e.target.dataset.sel; if (!s) return;
+  const v = e.target.value;
+  if (s === 'pres') { if (v === '__nueva') S.pnueva = true; else S.pres = v; }
+  else if (s === 'pn.u') S.pn.u = v;
+  else if (s === 'titulo') { if (v === '__otra') { const t = prompt('¿Cómo lo llamas? (Talla, Número, Medida…)'); if (t && t.trim()) S.titulo = t.trim(); } else S.titulo = v; }
+  render();
+});
+form.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const a = b.dataset.act, d = b.dataset, mod = S.modelos.find((m) => m.id === d.m);
+  if (a === 'viene') { S.viene = d.v === '1'; if (!S.viene) S.modelos = S.modelos.slice(0, 1); else if (!S.variable) S.variable = RUBROS[S.rubro].sugs[0]; }
+  else if (a === 'sug') S.variable = d.v;
+  else if (a === 'addM') { const base = S.modelos[0]; S.modelos.push({id: nid(), n: '', color: COLORES[S.modelos.length % COLORES.length], filas: base ? base.filas.map((f) => nuevaFila(f.et, f.precio, '')) : [nuevaFila('', '', '')]}); S.focus = 'm.' + S.modelos[S.modelos.length - 1].id + '.n'; }
+  else if (a === 'delM') S.modelos = S.modelos.filter((m) => m.id !== d.m);
+  else if (a === 'addF') { const f = nuevaFila('', mod.filas[0] ? mod.filas[0].precio : '', ''); mod.filas.push(f); S.focus = 'f.' + mod.id + '.' + f.id + '.et'; }
+  else if (a === 'delF') mod.filas = mod.filas.filter((f) => f.id !== d.f);
+  else if (a === 'mismoPrecio') mod.filas.forEach((f) => { f.precio = mod.filas[0].precio; });
+  else if (a === 'addX') { if (S.xn.trim()) { S.extras.push({n: S.xn.trim(), p: S.xp || '0'}); S.xn = ''; S.xp = ''; } }
+  else if (a === 'delX') S.extras.splice(parseInt(d.i, 10), 1);
+  else if (a === 'pcancel') { S.pnueva = false; }
+  else if (a === 'pguardar') { const c = parseFloat(String(S.pn.c).replace(',', '.')); if (S.pn.n.trim() && c > 0) { S.presentaciones.push({n: S.pn.n.trim(), d: c + ' ' + S.pn.u}); S.pres = S.pn.n.trim(); S.pnueva = false; S.pn = {n: '', c: '', u: 'unidad'}; } else { alert('Pon un nombre y cuánto trae (mayor que 0).'); return; } }
+  else if (a === 'save') {
+    if (falta()) return;
+    render(); $('resultado').innerHTML = '<div class="ok">Guardado (simulado). En la app real se escribe <b>1 documento</b>, con esta forma:</div><pre>' + esc(docJSON()) + '</pre>'; return;
+  }
+  render();
+});
+$('cli').addEventListener('click', (e) => {
+  const m = e.target.closest('[data-cm]'), f = e.target.closest('[data-cf]');
+  if (m) { S.selM = parseInt(m.dataset.cm, 10); S.selF = 0; } else if (f) S.selF = parseInt(f.dataset.cf, 10); else return;
+  renderCli();
+});
+$('rubro').addEventListener('change', (e) => { nuevo(e.target.value); render(); renderCli(); });
+$('reiniciar').addEventListener('click', () => { nuevo($('rubro').value); render(); });
+nuevo('Ropa'); render();
+</script>
+</body>
+</html>

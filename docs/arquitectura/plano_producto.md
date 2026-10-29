@@ -1,6 +1,6 @@
 # Plano del producto — diseño acordado y próximos pasos
 
-Documento vivo. Resume lo que se decidió con el usuario sobre el **producto** (panel del vendedor) para retomarlo en una conversación nueva. Leer antes de trabajar en productos. Última actualización: 2026-10-24.
+Documento vivo. Resume lo que se decidió con el usuario sobre el **producto** (panel del vendedor) para retomarlo en una conversación nueva. Leer antes de trabajar en productos. Última actualización: 2026-10-28.
 
 > El producto es el punto donde todo choca (presentación, medida, modelos, extras, combos, stock). Primero se cierra esto; lo demás (cambio de rubro, web pública, pedidos) son agregados que leen lo que ya existe.
 
@@ -12,28 +12,41 @@ Documento vivo. Resume lo que se decidió con el usuario sobre el **producto** (
 |---|---|
 | `d96797e` | Medidas: switch en la tarjeta, las 4 medidas en todos los rubros (Bodega con peso y volumen activas), guardar `catalogoVenta` al dar Siguiente (sin crear el documento si no existe), "Por medida" apagado con aviso, una medida por familia en datos legacy. `seccion_medidas.dart` dividido en `widgets/medidas/` |
 | `3442d0a` | Formulario de producto dividido por capas (widget, controller, services) |
+| `512daac`, `9d104f2`, `a0fbb34` | **Variables** (modelos + «Se vende en»): estructura en el documento del producto, pantalla con foto por modelo, filas con stock y total con candado, tarjeta «desde», prueba de los 6 rubros. **Sin desplegar** (2026-10-28) |
+| `e674e17` | **Bloque A**: tarjeta con precio y stock reales, menú «Por» (sin «Unidad de venta»), los 4 casos de medida, «Falta: …» y punto decimal. Desplegado 2026-10-28 |
 | `4af06d6` | Pasos 2 y 3: presentación sugerida, "por botella (625 ml)", medida única elegida sola, precio "por kg" u "otra cantidad", mínimo e incremento propios (`Producto.minimoBase` / `incrementoBase`), vista previa con cantidades rápidas y ejemplo por monto |
 
 Archivos clave del formulario (`mobile/lib/features/productos/`):
 - `presentation/widgets/formulario_producto.dart` (diálogo) · `presentation/providers/formulario_producto_controller.dart` y `formulario_medida_controller.dart` (estado)
 - `application/services/constructor_producto.dart`, `lectura_unidades_producto.dart`, `vista_previa_medida.dart`, `entrada_numerica.dart` (lógica pura)
-- `domain/models/producto.dart`, `data/mappers/producto_firestore_mapper.dart`
+- `domain/models/producto.dart`, `domain/models/estructura_producto.dart` (modelos y filas), `data/mappers/producto_firestore_mapper.dart`, `estructura_producto_mapper.dart`, `vista_legacy_producto.dart`
+- Variables: `presentation/providers/formulario_modelos_controller.dart` · `presentation/widgets/formulario/` (`pregunta_modelos_producto`, `lista_modelos_producto`, `fila_modelo_producto`, `foto_modelo`) · `application/services/totales_producto.dart`, `validador_modelos.dart`, `sugerencias_modelos.dart`
 
 ---
 
-## 2. Pendiente inmediato — Bloque A (medida y tarjeta)
+## 2. Bloque A — medida y tarjeta (HECHO 2026-10-28, commit `e674e17`)
 
-**Bugs vistos por el usuario:**
-1. **Tarjeta muestra `S/ 0.00` y `Stock: 0` tras guardar.** Causa: el repository devuelve el producto del formulario y la tarjeta (`producto_card.dart`) lee los campos legacy `precio` y `stock`, que el formulario deja en 0 (en Firestore está bien). Arreglo especificado: service puro `textos_tarjeta_producto.dart` que lea `precioCentavos` / `stockBase`; la tarjeta lo usa. Stock por medida con decimales (16,65 kg).
-2. **Guardar apagado sin decir por qué.** Arreglo: `queFalta` en el controller y texto "Falta: nombre del producto" junto al botón (orden: nombre → categoría → presentación/formato o qué mides → precio → cantidad de "otra cantidad" → stock → mínimo/incremento propios).
+Hecho y desplegado: tarjeta con `precioCentavos` / `stock` / `stockBase` (opción C: precio como lo escribió el vendedor + «/ kg» solo si la cuenta es exacta); menú «Por» (1 kg · ½ kg · ¼ kg · 100 g · Otra cantidad) sin «Unidad de venta» (la unidad es la habitual del negocio); 4 casos (medida desactivada fija con aviso, unidad habitual «g», gramo por «Otra cantidad» con equivalencia como alarma, varias medidas activas); «Falta: …» / «Revisa: …»; precios y cantidades con punto.
 
-**Cambios de diseño acordados en conversación (falta aprobar las decisiones):**
-- **Quitar "Unidad de venta"**: la unidad sale de Configuración → Medidas. Peligro actual: elegir "g" y "por g" cobra por gramo.
-- **Menú "Por"** con cantidades típicas: peso 1 kg · ½ kg · ¼ kg · 100 g · Otra cantidad…; volumen 1 L · ½ L · ¼ L · 100 ml; longitud 1 m · ½ m · 10 cm; área 1 m². "Otra cantidad" trae su propio g/kg y muestra siempre la equivalencia ("= S/ 12,000.00 por kg") como alarma.
-- **4 casos:** medida desactivada (se muestra fija con aviso, nunca se borra ni cambia); unidad habitual "g" (cantidades típicas por familia, stock en la habitual); venta por gramo vía "Otra cantidad"; varias medidas activas (no se elige sola).
-- **Tarjeta, opción C:** precio como lo puso el vendedor + "por kg" solo si la cuenta es exacta ("S/ 3.00 / ¼ kg · S/ 12.00 / kg"). Se guarda lo que escribió (300 céntimos / 250 g), nunca convertido.
+Servicios nuevos: `cantidades_tipicas.dart` (menú y etiquetas ½ ¼ ¾) y `textos_tarjeta_producto.dart`. Maqueta: `docs/maquetas/medida_y_tarjeta_app.html`.
 
-**Decisiones pendientes del usuario:** (1) quitar "Unidad de venta" + menú (recomendado sí); (2) tarjeta opción C (recomendado sí); (3) separador decimal: punto `S/ 12.00` (recomendado) o coma.
+**Pendientes que dejó:** probar a mano; dividir `formulario_producto_medida_test.dart` (642 líneas); borrar el precio al editar un producto por medida lo guarda como producto antiguo; color ámbar repetido (pasar a `AppColors`); Configuración → Medidas sigue con «1/4 kg».
+
+---
+
+## 2b. Variables — modelos y «Se vende en» (HECHO 2026-10-28, sin desplegar)
+
+Alcance: solo variables. **Fuera:** extras, presentación nueva (jaba), combos y mezclas.
+
+Decisiones tomadas:
+- **Un documento por producto**: `tituloModelos`, `tituloFilas` y `modelos[…filas…]` van dentro del mismo documento. Sin subcolecciones: 0 lecturas extra, 1 escritura al guardar.
+- **El stock vive solo en las filas**; el modelo muestra su total (candado). `precioCentavos` / `stock` / `stockBase` del producto son derivados (precio «desde» y suma) para la vista legacy de la tienda.
+- **La palabra la pone el vendedor** (Color, Aroma, Diseño…); el sistema solo sugiere según el rubro (`SugerenciasModelos`).
+- **La fila** lleva su etiqueta y, si la presentación tiene formatos (botella), el tamaño real. Por medida cada modelo tiene una sola fila.
+- Límites: 30 modelos × 20 filas. Ids estables cortos (el pedido guardará producto · modelo · fila).
+- **«No»** queda como siempre: un precio y un stock.
+
+Limitaciones conocidas y pendientes: ver bitácora 2026-10-28 (el «No» sin varias filas, fotos huérfanas si falla la subida, palabras no guardadas en la lista del negocio, descartar modelos al decir «No»).
 
 ---
 
@@ -104,10 +117,10 @@ Un nivel de modelos y una lista de filas; una foto por modelo; extras sin stock;
 ---
 
 ## 4. Orden de construcción
-1. **Bloque A**: tarjeta (precio y stock reales) + "Falta: …" + medida sin "Unidad de venta" (cuando el usuario apruebe las 3 decisiones).
-2. **Especificación técnica del modelo de datos** de 3.2–3.6 (cómo se guarda en Firestore, sin migrar productos actuales) y su impacto en lecturas.
-3. **Modelos + Se vende en** (con fotos por modelo, stock y precio por fila, avisos).
-4. **Extras**.
+1. ~~**Bloque A**~~ (hecho 2026-10-28).
+2. ~~**Especificación técnica del modelo de datos**~~ (hecho para modelos y filas: ver 2b; extras y combos se especifican en sus pasos).
+3. ~~**Modelos + Se vende en**~~ (hecho 2026-10-28, falta desplegar; el «No» con varias filas queda pendiente).
+4. **Extras** ← siguiente.
 5. **Presentaciones propias en todos los rubros**.
 6. **Combos**.
 7. Después: stock en pedidos (descontar al confirmar, transacciones, cancelar devuelve lo descontado), cambio de rubro, web pública, moneda por país.
@@ -124,7 +137,9 @@ Un nivel de modelos y una lista de filas; una foto por modelo; extras sin stock;
 | Archivo | Estado |
 |---|---|
 | `flujo_modelos_app.html` | **Vigente**: flujo de 5 pasos para crear modelos |
-| `se_vende_en_app.html` | **Vigente**: modelos con su lista "Se vende en", extras; café, gaseosa, queso |
+| `se_vende_en_app.html` | **Vigente**: palabras propias del vendedor, stock solo en las filas, mismo orden en varios rubros |
+| `prototipo_modelos_app.html` | **Vigente**: prototipo interactivo (se puede tocar) |
+| `medida_y_tarjeta_app.html` | **Vigente**: Bloque A (menú «Por», 4 casos, tarjeta) |
 | `formulario_producto_app.html` | Parcial: presentación propia (jaba) y jamonada por ¼ kg vigentes; versiones y combo reemplazados |
 | `stock_precio_versiones_combo_app.html`, `pollo_y_combo_app.html` | Superadas (combos con elecciones; tabla color × talla) |
 | `versiones_y_fotos_app.html`, `versiones_tallas_opciones_app.html`, `formulario_producto.html` | Superadas (etapas previas del diseño) |

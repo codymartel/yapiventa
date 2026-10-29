@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YapiVenta · Bloque A · medida y tarjeta</title>
+<style>
+:root{
+  --fondo:#070C18;--superficie:#0D1526;--card:#111D33;--blueLt:#3D72D4;
+  --texto:#E8EDF5;--muted:#8494AD;--error:#EF4444;
+  --borde:rgba(61,114,212,.45);--bordeSutil:rgba(61,114,212,.14);--bordeMedio:rgba(61,114,212,.30);
+  --precio:#8AB2FF;--m3pri:#D0BCFF;--m3onpri:#381E72;--m3sel:#4A4458;--m3out:#938F99;--m3surf:#1D1B20;
+  --ok:#4ADE80;--okbg:rgba(74,222,128,.12);--warn:#FBBF24;--warnbg:rgba(251,191,36,.10);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fondo);color:var(--texto);font:14px/1.45 Roboto,"Segoe UI",system-ui,sans-serif;padding:20px 16px 40px;max-width:1280px;margin:0 auto;-webkit-text-size-adjust:100%}
+h1{font-size:20px;font-weight:700;margin:0 0 4px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 18px;max-width:760px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:22px;align-items:start}
+.caso{font-size:12px;color:var(--muted);letter-spacing:.3px;margin:0 0 8px;text-transform:uppercase}
+.dialog{background:var(--superficie);border-radius:28px;padding:24px 22px 18px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.dialog h2{font-size:24px;font-weight:400;margin:0 0 14px}
+.field{margin:10px 0 0;border-bottom:1px solid var(--m3out);padding:6px 0 7px;min-height:56px}
+.field label{display:block;font-size:13px;color:var(--muted)}
+.field .v{font-size:16px;min-height:22px;display:flex;justify-content:space-between;align-items:center}
+.field .v .sfx{color:var(--muted);font-size:15px}
+.field .v .ar{color:var(--muted);font-size:12px}
+.field.focus{border-bottom:2px solid var(--m3pri)}
+.field.focus label{color:var(--m3pri)}
+.field.dis{opacity:.45}
+.field.fijo .v{color:var(--muted)}
+.help{font-size:13px;line-height:1.4;color:var(--muted);margin-top:4px}
+.help.eq{color:var(--precio)}
+.help.alarma{color:var(--warn);font-weight:600}
+.row{display:flex;gap:12px}.row>*{flex:1}
+.seg{display:flex;border:1px solid var(--m3out);border-radius:999px;overflow:hidden;margin-top:14px}
+.seg span{flex:1;text-align:center;padding:12px 6px;font-size:14px;font-weight:500;min-height:44px}
+.seg span+span{border-left:1px solid var(--m3out)}
+.seg .on{background:var(--m3sel)}
+.switch{display:flex;justify-content:space-between;align-items:center;padding:12px 0 2px;font-size:14px}
+.sw{width:52px;height:32px;border-radius:16px;border:2px solid var(--m3out);position:relative;background:#36343B;flex:none}
+.sw:after{content:"";position:absolute;width:16px;height:16px;border-radius:50%;background:var(--m3out);top:6px;left:6px}
+.menu{background:#211F26;border-radius:4px;box-shadow:0 6px 18px rgba(0,0,0,.5);margin:4px 0 0 auto;width:62%;padding:6px 0}
+.menu div{padding:12px 14px;font-size:15px;min-height:44px}
+.menu .sel{background:#36343B}
+.menu .sep{border-top:1px solid #3a3740;color:var(--m3pri)}
+.chip{display:inline-block;border:1px solid var(--m3out);border-radius:8px;padding:8px 12px;margin:0 6px 6px 0;font-size:13px;background:var(--m3surf)}
+.pv{background:var(--card);border:1px solid var(--bordeSutil);border-radius:10px;padding:10px 12px;margin-top:12px}
+.pv .t{font-size:13px;font-weight:600;margin-bottom:6px}
+.pv .m{font-size:13px;color:var(--muted)}
+.aviso{background:var(--warnbg);border:1px solid rgba(251,191,36,.35);color:var(--warn);border-radius:10px;padding:10px 12px;font-size:13px;margin-top:10px}
+.actions{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-top:20px}
+.falta{margin-right:auto;color:var(--warn);font-size:13px;font-weight:600}
+.tb{color:var(--muted);padding:12px 14px;font-weight:500}
+.eb{background:var(--m3surf);color:var(--m3pri);padding:12px 22px;border-radius:999px;font-weight:500;box-shadow:0 1px 3px rgba(0,0,0,.4)}
+.eb.dis{background:rgba(230,224,233,.12);color:rgba(230,224,233,.38);box-shadow:none}
+.card{background:var(--card);border:1px solid var(--borde);border-radius:16px;overflow:hidden;margin-top:12px}
+.card .img{height:80px;background:#0b1424;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px}
+.card .b{padding:12px 14px}
+.card .n{font-size:16px;font-weight:600}
+.card .p{color:var(--precio);font-size:15px;font-weight:700;margin:4px 0 8px}
+.card .d{color:var(--muted);font-size:13px;margin:3px 0}
+.ic{display:inline-block;width:14px;height:14px;vertical-align:-2px;margin-right:4px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.disp{display:inline-block;margin-top:8px;font-size:12px;color:var(--ok);background:var(--okbg);border:1px solid rgba(74,222,128,.35);border-radius:999px;padding:3px 10px}
+.etq{font-size:13px;color:var(--muted);margin:14px 0 6px}
+.ant{color:var(--error);text-decoration:line-through}
+h3{font-size:16px;margin:34px 0 10px}
+@media (max-width:480px){body{padding:16px}.dialog{padding:20px 16px 14px;border-radius:24px}.dialog h2{font-size:22px}.row{gap:8px}.menu{width:80%}.actions{flex-wrap:wrap}.falta{flex-basis:100%}}
+@media (min-width:1100px){.sub{font-size:14px}}
+</style>
+</head>
+<body>
+<h1>Bloque A · medida y tarjeta</h1>
+<p class="sub">Con el estilo de tu panel. Cambios: ya no existe «Unidad de venta»; el precio se pone «Por» una cantidad típica; la tarjeta muestra el precio como lo escribió el vendedor (+ «/ kg» si la cuenta es exacta); los precios van con punto; el botón Guardar dice qué falta.</p>
+
+<div class="grid">
+
+<!-- 1 -->
+<div>
+<p class="caso">1 · Peso, una sola medida activa — jamonada por ¼ kg</p>
+<div class="dialog">
+  <h2>Agregar producto</h2>
+  <div class="field"><label>Nombre del producto *</label><div class="v">Jamonada</div></div>
+  <div class="field"><label>Categoría *</label><div class="v">Abarrotes <span class="ar">▼</span></div></div>
+  <div class="seg"><span>Por presentación</span><span class="on">Por medida</span></div>
+  <div class="field"><label>Qué mides *</label><div class="v">Peso <span class="ar">▼</span></div></div>
+  <div class="help">Tu unidad habitual de peso es <b>kg</b> (se cambia en Configuración → Medidas).</div>
+  <div class="row">
+    <div class="field"><label>Precio S/ *</label><div class="v">3.00</div></div>
+    <div class="field focus"><label>Por *</label><div class="v">¼ kg <span class="ar">▼</span></div></div>
+  </div>
+  <div class="menu"><div>1 kg</div><div>½ kg</div><div class="sel">¼ kg</div><div>100 g</div><div class="sep">Otra cantidad…</div></div>
+  <div class="help eq">= S/ 12.00 por kg</div>
+  <div class="field"><label>Stock *</label><div class="v">16.65 <span class="sfx">kg</span></div></div>
+  <div class="pv"><div class="t">Así lo ve tu cliente</div>
+    <span class="chip">¼ kg · S/ 3.00</span><span class="chip">½ kg · S/ 6.00</span><span class="chip">1 kg · S/ 12.00</span>
+    <div class="m">Desde 100 g, de 50 en 50 g</div></div>
+  <div class="actions"><span class="tb">Cancelar</span><span class="eb">Guardar producto</span></div>
+</div>
+<p class="etq">Tarjeta en Productos (después de guardar)</p>
+<div class="card"><div class="img">foto</div><div class="b"><div class="n">Jamonada</div><div class="p">S/ 3.00 / ¼ kg · S/ 12.00 / kg</div><div class="d"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/></svg>Stock: 16.65 kg</div><div class="d"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12V4h8l10 10-8 8z"/><path d="M7.5 7.5h.01"/></svg>Abarrotes</div><span class="disp">Disponible</span></div></div>
+</div>
+
+<!-- 2 -->
+<div>
+<p class="caso">2 · «Otra cantidad» — queso por 300 g, y el error de S/ 12 por gramo</p>
+<div class="dialog">
+  <h2>Agregar producto</h2>
+  <div class="field"><label>Nombre del producto *</label><div class="v">Queso andino</div></div>
+  <div class="seg"><span>Por presentación</span><span class="on">Por medida</span></div>
+  <div class="field"><label>Qué mides *</label><div class="v">Peso <span class="ar">▼</span></div></div>
+  <div class="row">
+    <div class="field"><label>Precio S/ *</label><div class="v">5.00</div></div>
+    <div class="field"><label>Por *</label><div class="v">Otra cantidad <span class="ar">▼</span></div></div>
+  </div>
+  <div class="row">
+    <div class="field focus"><label>Cantidad *</label><div class="v">300</div></div>
+    <div class="field"><label>Unidad</label><div class="v">g <span class="ar">▼</span></div></div>
+  </div>
+  <div class="help eq">S/ 5.00 por 300 g = S/ 16.66 por kg (se cobra siempre hacia abajo)</div>
+  <hr style="border:0;border-top:1px dashed var(--bordeMedio);margin:18px 0 6px">
+  <div class="help" style="margin-bottom:2px">Y si el vendedor se equivoca (S/ 12 por <b>1 g</b>):</div>
+  <div class="row">
+    <div class="field"><label>Precio S/ *</label><div class="v">12.00</div></div>
+    <div class="field"><label>Por *</label><div class="v">Otra cantidad <span class="ar">▼</span></div></div>
+  </div>
+  <div class="row">
+    <div class="field"><label>Cantidad *</label><div class="v">1</div></div>
+    <div class="field"><label>Unidad</label><div class="v">g <span class="ar">▼</span></div></div>
+  </div>
+  <div class="help alarma"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18h.01"/></svg>= S/ 12000.00 por kg. ¿Es correcto?</div>
+  <div class="actions"><span class="tb">Cancelar</span><span class="eb">Guardar producto</span></div>
+</div>
+<p class="etq">Tarjeta (el primer caso)</p>
+<div class="card"><div class="img">foto</div><div class="b"><div class="n">Queso andino</div><div class="p">S/ 5.00 / 300 g</div><div class="d"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/></svg>Stock: 4 kg</div><div class="d"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12V4h8l10 10-8 8z"/><path d="M7.5 7.5h.01"/></svg>Lácteos</div><span class="disp">Disponible</span></div></div>
+<p class="etq">No se agrega «/ kg» porque 5.00 ÷ 300 g × 1000 no es exacto (16.666…). Nada se redondea en pantalla.</p>
+</div>
+
+<!-- 3 -->
+<div>
+<p class="caso">3 · Varias medidas activas (Bodega: peso y volumen)</p>
+<div class="dialog">
+  <h2>Agregar producto</h2>
+  <div class="field"><label>Nombre del producto *</label><div class="v">Aceite a granel</div></div>
+  <div class="field"><label>Categoría *</label><div class="v">Abarrotes <span class="ar">▼</span></div></div>
+  <div class="seg"><span>Por presentación</span><span class="on">Por medida</span></div>
+  <div class="field focus"><label>Qué mides *</label><div class="v"><span style="color:var(--muted)">Elige…</span> <span class="ar">▼</span></div></div>
+  <div class="menu" style="width:55%"><div>Peso</div><div>Volumen</div></div>
+  <div class="row">
+    <div class="field dis"><label>Precio S/ *</label><div class="v">&nbsp;</div></div>
+    <div class="field dis"><label>Por *</label><div class="v">Elige qué mides <span class="ar">▼</span></div></div>
+  </div>
+  <div class="actions"><span class="falta">Falta: qué mides</span><span class="tb">Cancelar</span><span class="eb dis">Guardar producto</span></div>
+</div>
+<p class="etq">Orden de «Falta:» → nombre · categoría · presentación/formato o qué mides · precio · cantidad de «otra cantidad» · stock · mínimo/incremento propios. Muestra solo el primero que falta.</p>
+</div>
+
+<!-- 4 -->
+<div>
+<p class="caso">4 · Medida desactivada después — editar un producto existente</p>
+<div class="dialog">
+  <h2>Editar producto</h2>
+  <div class="field"><label>Nombre del producto *</label><div class="v">Arroz</div></div>
+  <div class="seg"><span>Por presentación</span><span class="on">Por medida</span></div>
+  <div class="field fijo"><label>Qué mides</label><div class="v">Peso <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></div></div>
+  <div class="aviso">Desactivaste «Peso» en Configuración → Medidas. Este producto sigue vendiéndose por peso en kg; puedes cambiar nombre, precio y stock. Para cambiar la unidad o la regla, vuelve a activar Peso.</div>
+  <div class="row">
+    <div class="field"><label>Precio S/ *</label><div class="v">4.50</div></div>
+    <div class="field"><label>Por *</label><div class="v">1 kg <span class="ar">▼</span></div></div>
+  </div>
+  <div class="field"><label>Stock *</label><div class="v">25 <span class="sfx">kg</span></div></div>
+  <div class="actions"><span class="tb">Cancelar</span><span class="eb">Guardar producto</span></div>
+</div>
+<p class="etq">Nada se borra ni se cambia solo: familia y unidad del producto quedan como estaban.</p>
+</div>
+
+<!-- 5 -->
+<div>
+<p class="caso">5 · Unidad habitual «g» (especias) — el stock se escribe en gramos</p>
+<div class="dialog">
+  <h2>Agregar producto</h2>
+  <div class="field"><label>Nombre del producto *</label><div class="v">Comino molido</div></div>
+  <div class="seg"><span>Por presentación</span><span class="on">Por medida</span></div>
+  <div class="field"><label>Qué mides *</label><div class="v">Peso <span class="ar">▼</span></div></div>
+  <div class="help">Tu unidad habitual de peso es <b>g</b>.</div>
+  <div class="row">
+    <div class="field"><label>Precio S/ *</label><div class="v">2.00</div></div>
+    <div class="field"><label>Por *</label><div class="v">100 g <span class="ar">▼</span></div></div>
+  </div>
+  <div class="help eq">= S/ 20.00 por kg</div>
+  <div class="field"><label>Stock *</label><div class="v">1500 <span class="sfx">g</span></div></div>
+  <div class="actions"><span class="tb">Cancelar</span><span class="eb">Guardar producto</span></div>
+</div>
+<p class="etq">El menú «Por» es el mismo para todos (1 kg, ½ kg, ¼ kg, 100 g). Solo cambia la unidad del stock.</p>
+<div class="card"><div class="img">foto</div><div class="b"><div class="n">Comino molido</div><div class="p">S/ 2.00 / 100 g · S/ 20.00 / kg</div><div class="d"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/></svg>Stock: 1500 g</div><div class="d"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12V4h8l10 10-8 8z"/><path d="M7.5 7.5h.01"/></svg>Especias</div><span class="disp">Disponible</span></div></div>
+</div>
+
+<!-- 6 -->
+<div>
+<p class="caso">6 · Otras medidas — menú «Por» por familia</p>
+<div class="dialog">
+  <div class="field"><label>Volumen (unidad habitual L)</label><div class="v">1 L · ½ L · ¼ L · 100 ml · Otra cantidad…</div></div>
+  <div class="field"><label>Longitud (unidad habitual m)</label><div class="v">1 m · ½ m · 10 cm · Otra cantidad…</div></div>
+  <div class="field"><label>Área (unidad habitual m²)</label><div class="v">1 m² · Otra cantidad…</div></div>
+</div>
+<p class="etq">Tarjetas — los demás casos</p>
+<div class="card"><div class="img">foto</div><div class="b"><div class="n">Cerveza</div><div class="p">S/ 8.50 / botella</div><div class="d"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/></svg>Stock: 12 botellas</div><div class="d"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12V4h8l10 10-8 8z"/><path d="M7.5 7.5h.01"/></svg>Bebidas</div><span class="disp">Disponible</span></div></div>
+<div class="card"><div class="img">foto</div><div class="b"><div class="n">Tela popelina</div><div class="p">S/ 12.00 / m</div><div class="d"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/></svg>Stock ilimitado</div><div class="d"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12V4h8l10 10-8 8z"/><path d="M7.5 7.5h.01"/></svg>Telas</div><span class="disp">Disponible</span></div></div>
+<div class="card"><div class="img">foto</div><div class="b"><div class="n">Huevos (producto antiguo)</div><div class="p">S/ 16.50</div><div class="d"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/></svg>Stock: 12 · Saco</div><div class="d"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12V4h8l10 10-8 8z"/><path d="M7.5 7.5h.01"/></svg>Abarrotes</div><span class="disp">Disponible</span></div></div>
+<p class="etq">Producto antiguo (sin migrar): se muestra como hasta hoy, con el precio real y su unidad.</p>
+</div>
+
+</div>
+</body>
+</html>
