@@ -1,5 +1,9 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:mobile/features/negocio/domain/models/catalogo_venta/catalogo_venta_persistido.dart';
 import 'package:mobile/features/negocio/domain/models/catalogo_venta/formato_presentacion.dart';
 import 'package:mobile/features/negocio/domain/models/catalogo_venta/opcion_presentacion.dart';
@@ -7,6 +11,8 @@ import 'package:mobile/features/negocio/domain/models/catalogo_venta/unidad_regi
 import 'package:mobile/features/productos/domain/models/familia_unidad.dart';
 import 'package:mobile/features/productos/domain/models/producto.dart';
 import 'package:mobile/features/productos/presentation/providers/productos_provider.dart';
+import 'package:mobile/features/productos/presentation/widgets/formulario/foto_modelo.dart';
+import 'package:mobile/features/productos/presentation/widgets/formulario/foto_producto.dart';
 import 'package:mobile/features/productos/presentation/widgets/formulario_producto.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:provider/provider.dart';
@@ -149,6 +155,7 @@ Producto capturarProductoGuardado(ProductosProviderMock provider) {
           captureAny(),
           imagenBytes: any(named: 'imagenBytes'),
           nombreArchivo: any(named: 'nombreArchivo'),
+          fotosModelos: any(named: 'fotosModelos'),
         ),
       ).captured.single
       as Producto;
@@ -160,7 +167,30 @@ Producto capturarProductoCreado(ProductosProviderMock provider) {
           captureAny(),
           imagenBytes: any(named: 'imagenBytes'),
           nombreArchivo: any(named: 'nombreArchivo'),
+          fotosModelos: any(named: 'fotosModelos'),
         ),
       ).captured.single
       as Producto;
+}
+
+/// Un PNG de 1 × 1 píxel: una imagen válida que se puede dibujar.
+final Uint8List _png1x1 = base64Decode(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+);
+
+/// Cambia el selector de galería del sistema por uno que siempre entrega una
+/// foto. Se deshace solo al terminar la prueba.
+void usarSelectorDeFotosFalso() {
+  elegirFotoParaPruebas = () async =>
+      XFile.fromData(_png1x1, name: 'foto.png', mimeType: 'image/png');
+  addTearDown(() => elegirFotoParaPruebas = null);
+}
+
+/// Toca la foto de cada modelo que haya en pantalla (la foto es obligatoria).
+Future<void> ponerFotos(WidgetTester tester) async {
+  final cuantas = find.byType(FotoModelo).evaluate().length;
+  for (var i = 0; i < cuantas; i++) {
+    await tester.tap(find.byType(FotoModelo).at(i));
+    await tester.pumpAndSettle();
+  }
 }

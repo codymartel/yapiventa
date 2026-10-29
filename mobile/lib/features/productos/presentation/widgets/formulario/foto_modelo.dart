@@ -43,26 +43,29 @@ class FotoModelo extends StatelessWidget {
           child: fotoNuevaBytes != null
               ? Image.memory(fotoNuevaBytes!, fit: BoxFit.cover)
               : (urlImagen.isNotEmpty
-                    ? Image.network(urlImagen, fit: BoxFit.cover)
-                    : Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.add_photo_alternate_outlined,
-                            size: 20,
-                            color: AppColors.muted,
-                          ),
-                          Text(
-                            'foto',
-                            style: TextStyle(
-                              color: AppColors.muted,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ],
-                      )),
+                    ? Image.network(
+                        urlImagen,
+                        fit: BoxFit.cover,
+                        // Si la foto guardada no carga, se ofrece elegir otra.
+                        errorBuilder: (_, _, _) => _invitacion(),
+                      )
+                    : _invitacion()),
         ),
       ),
+    );
+  }
+
+  Widget _invitacion() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          Icons.add_photo_alternate_outlined,
+          size: 20,
+          color: AppColors.muted,
+        ),
+        Text('foto *', style: TextStyle(color: AppColors.muted, fontSize: 11)),
+      ],
     );
   }
 }

@@ -1,9 +1,13 @@
-import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../../../core/theme/app_colors.dart';
+
+/// Reemplaza la galería en las pruebas (el selector real es del sistema).
+@visibleForTesting
+Future<XFile?> Function()? elegirFotoParaPruebas;
 
 /// Abre la galería y entrega la foto elegida. Lo usan la foto del producto y
 /// la de cada modelo.
@@ -12,10 +16,12 @@ Future<void> elegirFotoDeGaleria(
   void Function(XFile archivo, Uint8List bytes) onFotoElegida,
 ) async {
   try {
-    final archivo = await ImagePicker().pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 70,
-    );
+    final archivo =
+        await (elegirFotoParaPruebas?.call() ??
+            ImagePicker().pickImage(
+              source: ImageSource.gallery,
+              imageQuality: 70,
+            ));
     if (archivo == null) return;
 
     final bytes = await archivo.readAsBytes();

@@ -21,6 +21,7 @@ import '../../domain/models/producto.dart';
 // stock. Lo usa FormularioProductoController.
 //
 // REGLAS:
+//   - La foto de cada modelo es obligatoria (sin foto principal aparte).
 //   - El modelo NO tiene stock propio: su total se calcula con candado.
 //   - Por presentación cada modelo tiene sus filas (talla, formato…). Por
 //     medida cada modelo tiene UNA fila: su precio y su stock.
@@ -69,6 +70,10 @@ class ModeloEditable {
   final String? cloudinaryPublicId;
   Uint8List? fotoNuevaBytes;
   String? fotoNuevaNombre;
+
+  /// Con variables la foto de cada modelo es obligatoria: no hay foto
+  /// principal, la portada sale de la del primero.
+  bool get tieneFoto => fotoNuevaBytes != null || urlImagen.isNotEmpty;
 
   void dispose() {
     nombreCtrl.dispose();
@@ -330,6 +335,7 @@ class FormularioModelosController extends ChangeNotifier {
     for (final modelo in modelos) {
       final nombre = modelo.nombreCtrl.text.trim();
       if (nombre.isEmpty) return 'Falta: nombre del $palabra';
+      if (!modelo.tieneFoto) return 'Falta: foto de $nombre';
       if (modelo.filas.isEmpty) return 'Falta: $fila de $nombre';
       for (final f in modelo.filas) {
         final etiqueta = f.etiquetaCtrl.text.trim();

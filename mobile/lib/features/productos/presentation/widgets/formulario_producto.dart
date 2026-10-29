@@ -86,19 +86,22 @@ class _FormularioProductoState extends State<FormularioProducto> {
     if (!_form.camposOk) return;
     _form.guardando = true;
     final nuevo = _form.construirProducto();
+    // Con variables no hay foto principal: la portada sale del primer modelo.
+    final fotoPrincipal = _form.modelos.usa ? null : _form.fotoNuevaBytes;
+    final nombreFoto = _form.modelos.usa ? null : _form.fotoNueva?.name;
 
     final provider = context.read<ProductosProvider>();
     final exito = widget.producto == null
         ? await provider.crearProducto(
             nuevo,
-            imagenBytes: _form.fotoNuevaBytes,
-            nombreArchivo: _form.fotoNueva?.name,
+            imagenBytes: fotoPrincipal,
+            nombreArchivo: nombreFoto,
             fotosModelos: _form.fotosModelos,
           )
         : await provider.guardarProducto(
             nuevo,
-            imagenBytes: _form.fotoNuevaBytes,
-            nombreArchivo: _form.fotoNueva?.name,
+            imagenBytes: fotoPrincipal,
+            nombreArchivo: nombreFoto,
             fotosModelos: _form.fotosModelos,
           );
 
@@ -230,13 +233,15 @@ class _FormularioProductoState extends State<FormularioProducto> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        FotoProducto(
-          fotoNuevaBytes: form.fotoNuevaBytes,
-          urlImagenActual: form.urlImagenActual,
-          habilitada: !form.guardando,
-          onFotoElegida: form.elegirFoto,
-        ),
-        const SizedBox(height: 14),
+        if (!form.modelos.usa) ...[
+          FotoProducto(
+            fotoNuevaBytes: form.fotoNuevaBytes,
+            urlImagenActual: form.urlImagenActual,
+            habilitada: !form.guardando,
+            onFotoElegida: form.elegirFoto,
+          ),
+          const SizedBox(height: 14),
+        ],
         TextField(
           controller: form.nombreCtrl,
           onChanged: (_) => form.trasCambioTexto(),

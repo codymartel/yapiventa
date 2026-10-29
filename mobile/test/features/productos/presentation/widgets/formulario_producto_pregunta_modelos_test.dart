@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mobile/features/productos/presentation/widgets/formulario/foto_modelo.dart';
+import 'package:mobile/features/productos/presentation/widgets/formulario/foto_producto.dart';
 import 'package:mocktail/mocktail.dart';
 
 import 'formulario_producto_helpers.dart';
@@ -76,6 +78,32 @@ void main() {
       await montar(tester, formulario(rubro: 'Ropa'));
 
       expect(find.byKey(const Key('ayuda-presentacion-modelos')), findsNothing);
+    });
+
+    testWidgets(
+      'con variables no hay foto principal: cada modelo tiene la suya',
+      (tester) async {
+        await montar(tester, formulario(rubro: 'Ropa'));
+        expect(find.byType(FotoProducto), findsOneWidget);
+        expect(find.byType(FotoModelo), findsNothing);
+
+        await decirSi(tester);
+
+        expect(find.byType(FotoProducto), findsNothing);
+        expect(find.byType(FotoModelo), findsOneWidget);
+        expect(find.text('foto *'), findsOneWidget);
+      },
+    );
+
+    testWidgets('al volver a No reaparece la foto principal', (tester) async {
+      await montar(tester, formulario(rubro: 'Ropa'));
+      await decirSi(tester);
+
+      await tester.tap(find.text('No'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(FotoProducto), findsOneWidget);
+      expect(find.byType(FotoModelo), findsNothing);
     });
 
     testWidgets('al tocar una sugerencia se llena la palabra', (tester) async {

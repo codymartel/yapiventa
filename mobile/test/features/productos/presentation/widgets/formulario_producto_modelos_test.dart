@@ -7,12 +7,14 @@ import 'package:mobile/features/productos/domain/models/estructura_producto.dart
 import 'package:mobile/features/productos/domain/models/familia_unidad.dart';
 import 'package:mobile/features/productos/domain/models/modo_venta.dart';
 import 'package:mobile/features/productos/domain/models/producto.dart';
+import 'package:mobile/features/productos/presentation/widgets/formulario/foto_producto.dart';
 import 'package:mocktail/mocktail.dart';
 
 import 'formulario_producto_helpers.dart';
 
 void main() {
   setUpAll(() => registerFallbackValue(ProductoFake()));
+  setUp(usarSelectorDeFotosFalso);
 
   ProductosProviderMock providerQueGuarda() {
     final provider = ProductosProviderMock();
@@ -84,6 +86,7 @@ void main() {
       await escribir(tester, 'Nombre del color *', 'Rojo', indice: 1);
       await escribir(tester, 'Stock', '2', indice: 2);
       await escribir(tester, 'Stock', '5', indice: 3);
+      await ponerFotos(tester);
     }
 
     testWidgets('guarda modelos, filas, precio desde y stock total', (
@@ -114,6 +117,27 @@ void main() {
       expect((datos['modelos'] as List), hasLength(2));
     });
 
+    testWidgets('una foto principal elegida antes del Sí no se sube', (
+      tester,
+    ) async {
+      final provider = providerQueGuarda();
+      await montar(tester, formulario(provider: provider, rubro: 'Ropa'));
+      await tester.tap(find.byType(FotoProducto));
+      await tester.pumpAndSettle();
+
+      await armarPolo(tester);
+      await guardar(tester);
+
+      verify(
+        () => provider.crearProducto(
+          any(),
+          imagenBytes: null,
+          nombreArchivo: null,
+          fotosModelos: any(named: 'fotosModelos'),
+        ),
+      ).called(1);
+    });
+
     testWidgets('el total del modelo se suma solo, con candado', (
       tester,
     ) async {
@@ -141,6 +165,9 @@ void main() {
       expect(falta(tester), 'Falta: nombre del color');
 
       await escribir(tester, 'Nombre del color *', 'Azul');
+      expect(falta(tester), 'Falta: foto de Azul');
+
+      await ponerFotos(tester);
       expect(falta(tester), 'Falta: nombre de talla de Azul');
 
       await escribir(tester, 'Talla', 'S');
@@ -170,6 +197,7 @@ void main() {
       await escribir(tester, 'Talla', 'm', indice: 1);
       await escribir(tester, 'Precio S/', '35', indice: 1);
       await escribir(tester, 'Stock', '2', indice: 1);
+      await ponerFotos(tester);
 
       expect(find.textContaining('dos veces'), findsOneWidget);
       expect(falta(tester), startsWith('Revisa:'));
@@ -191,6 +219,7 @@ void main() {
       await escribir(tester, 'Nombre del color *', 'Azul');
       await escribir(tester, 'Talla', 'S');
       await escribir(tester, 'Precio S/', '35');
+      await ponerFotos(tester);
 
       expect(falta(tester), 'Falta: stock de Azul · S');
       await tester.tap(find.widgetWithText(SwitchListTile, 'Stock infinito'));
@@ -219,6 +248,7 @@ void main() {
       await elegirEnDropdown(tester, 'Formato', '625 ml');
       await escribir(tester, 'Precio S/', '2.5');
       await escribir(tester, 'Stock', '24');
+      await ponerFotos(tester);
       await guardar(tester);
 
       final producto = capturarProductoCreado(provider);
@@ -240,6 +270,7 @@ void main() {
       await tester.tap(find.byKey(const Key('sugerencia-Sabor')));
       await tester.pump();
       await escribir(tester, 'Nombre del sabor *', 'Inca Kola');
+      await ponerFotos(tester);
 
       expect(falta(tester), 'Falta: nombre de formato de Inca Kola');
     });
@@ -272,6 +303,7 @@ void main() {
       await escribir(tester, 'Nombre del tipo *', 'Andino', indice: 1);
       await escribir(tester, 'Precio S/ por 1 kg', '24', indice: 1);
       await escribir(tester, 'Stock', '2.5', indice: 1);
+      await ponerFotos(tester);
 
       expect(falta(tester), isNull);
       await guardar(tester);
@@ -321,6 +353,7 @@ void main() {
         ModeloProducto(
           id: 'azul',
           nombre: 'Azul',
+          urlImagen: 'https://img.test/azul.jpg',
           filas: [
             FilaVenta(id: 's', etiqueta: 'S', precioCentavos: 3500, stock: 4),
             FilaVenta(id: 'm', etiqueta: 'M', precioCentavos: 3500, stock: 6),

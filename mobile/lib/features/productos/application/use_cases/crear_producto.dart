@@ -4,6 +4,7 @@ import '../../../../core/services/subidor_de_imagenes.dart';
 import '../../domain/models/foto_nueva.dart';
 import '../../domain/models/producto.dart';
 import '../../domain/repositories/repositorio_productos.dart';
+import '../services/portada_producto.dart';
 import 'subir_fotos_modelos.dart';
 
 class CrearProducto {
@@ -47,14 +48,18 @@ class CrearProducto {
             fotos: fotosModelos,
           );
 
+    // Con modelos la portada es la foto del primero (no hay foto principal).
+    final portada = PortadaProducto.deModelos(modelos);
+
     final productoParaGuardar = producto.copyWith(
       id: '',
       modelos: modelos,
       // El negocioId lo aporta quien crea el provider (ya resuelto al iniciar
       // sesión) y se estampa en ProductosRepository sin releer users/{uid}.
-      urlImagen: imagenSubida?.url ?? producto.urlImagen,
-      cloudinaryPublicId:
-          imagenSubida?.identificador ?? producto.cloudinaryPublicId,
+      urlImagen: portada?.urlImagen ?? imagenSubida?.url ?? producto.urlImagen,
+      cloudinaryPublicId: portada != null
+          ? portada.cloudinaryPublicId
+          : imagenSubida?.identificador ?? producto.cloudinaryPublicId,
     );
 
     return _repositorioProductos.crearProducto(negocioId, productoParaGuardar);

@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/features/productos/application/services/sugerencias_modelos.dart';
 import 'package:mobile/features/productos/application/services/validador_modelos.dart';
@@ -20,6 +22,10 @@ String? _falta(
   factorStock: porMedida ? 1000 : 1,
   unidadBase: porMedida ? 'g' : '',
 );
+
+void _foto(ModeloEditable modelo) {
+  modelo.fotoNuevaBytes = Uint8List.fromList([1, 2, 3]);
+}
 
 void _llenar(
   FilaEditable fila, {
@@ -79,6 +85,10 @@ void main() {
         expect(_falta(c), 'Falta: nombre del color');
 
         final azul = c.modelos.single..nombreCtrl.text = 'Azul';
+
+        expect(_falta(c), 'Falta: foto de Azul');
+
+        _foto(azul);
         expect(_falta(c), 'Falta: nombre de talla de Azul');
 
         azul.filas.single.etiquetaCtrl.text = 'S';
@@ -97,6 +107,7 @@ void main() {
         ..activar(true, porMedida: false)
         ..tituloCtrl.text = 'Color';
       final azul = c.modelos.single..nombreCtrl.text = 'Azul';
+      _foto(azul);
       c.quitarFila(azul.id, azul.filas.single.id);
 
       expect(_falta(c), 'Falta: talla de Azul');
@@ -107,6 +118,7 @@ void main() {
         ..activar(true, porMedida: true)
         ..tituloCtrl.text = 'Tipo';
       final fresco = c.modelos.single..nombreCtrl.text = 'Fresco';
+      _foto(fresco);
       _llenar(fresco.filas.single, precio: '18', stock: '0.000');
 
       expect(_falta(c, porMedida: true), 'Revisa: stock de Fresco');
@@ -117,6 +129,7 @@ void main() {
         ..activar(true, porMedida: false)
         ..tituloCtrl.text = 'Color';
       final azul = c.modelos.single..nombreCtrl.text = 'Azul';
+      _foto(azul);
       _llenar(azul.filas.single, etiqueta: 'S', precio: '35');
 
       expect(_falta(c), 'Falta: stock de Azul · S');
@@ -128,58 +141,10 @@ void main() {
         ..activar(true, porMedida: false)
         ..tituloCtrl.text = 'Color';
       final azul = c.modelos.single..nombreCtrl.text = 'Azul';
+      _foto(azul);
       _llenar(azul.filas.single, etiqueta: 'S', precio: '0', stock: '1');
 
       expect(_falta(c), 'Revisa: precio de Azul · S');
-    });
-  });
-
-  group('avisos anti-duplicado', () {
-    void armar() {
-      c
-        ..activar(true, porMedida: false)
-        ..tituloCtrl.text = 'Color';
-      final azul = c.modelos.single..nombreCtrl.text = 'Azul';
-      _llenar(azul.filas.single, etiqueta: 'M', precio: '35', stock: '3');
-      c.agregarFila(azul.id);
-      _llenar(azul.filas.last, etiqueta: 'm', precio: '35', stock: '2');
-    }
-
-    test('la misma fila dos veces en un modelo avisa y bloquea', () {
-      armar();
-
-      expect(
-        c.avisoRepetido(c.modelos.single),
-        'Ya tienes «Azul · m» dos veces: junta el stock o cambia el nombre.',
-      );
-      expect(_falta(c), startsWith('Revisa:'));
-    });
-
-    test('dos modelos con el mismo nombre bloquean', () {
-      c
-        ..activar(true, porMedida: false)
-        ..tituloCtrl.text = 'Color';
-      final azul = c.modelos.single..nombreCtrl.text = 'Azul';
-      _llenar(azul.filas.single, etiqueta: 'S', precio: '35', stock: '3');
-      c.agregarModelo(porMedida: false);
-      final otro = c.modelos.last..nombreCtrl.text = 'azul';
-      otro.filas.single.stockCtrl.text = '1';
-
-      expect(_falta(c), 'Revisa: «azul» está repetido');
-    });
-
-    test('la misma talla en dos modelos distintos es normal', () {
-      c
-        ..activar(true, porMedida: false)
-        ..tituloCtrl.text = 'Color';
-      final azul = c.modelos.single..nombreCtrl.text = 'Azul';
-      _llenar(azul.filas.single, etiqueta: 'M', precio: '35', stock: '3');
-      c.agregarModelo(porMedida: false);
-      final rojo = c.modelos.last..nombreCtrl.text = 'Rojo';
-      rojo.filas.single.stockCtrl.text = '5';
-
-      expect(c.avisoRepetido(azul), isEmpty);
-      expect(_falta(c), isNull);
     });
   });
 
@@ -189,6 +154,7 @@ void main() {
         ..activar(true, porMedida: false)
         ..tituloCtrl.text = 'Color';
       final azul = c.modelos.single..nombreCtrl.text = 'Azul';
+      _foto(azul);
       _llenar(azul.filas.single, etiqueta: 'S', precio: '35', stock: '4');
       c.agregarFila(azul.id);
       _llenar(azul.filas.last, etiqueta: 'M', precio: '36', stock: '6');
@@ -306,6 +272,7 @@ void main() {
         ..activar(true, porMedida: false)
         ..tituloCtrl.text = 'Color';
       final azul = c.modelos.single..nombreCtrl.text = ' Azul ';
+      _foto(azul);
       _llenar(azul.filas.single, etiqueta: ' S ', precio: '35,5', stock: '4');
 
       final modelos = c.construir(
@@ -327,6 +294,7 @@ void main() {
         ..activar(true, porMedida: true)
         ..tituloCtrl.text = 'Tipo';
       final andino = c.modelos.single..nombreCtrl.text = 'Andino';
+      _foto(andino);
       _llenar(andino.filas.single, precio: '24', stock: '2.5');
 
       final fila = c

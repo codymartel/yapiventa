@@ -13,6 +13,7 @@ import 'formulario_producto_helpers.dart';
 /// presentaciones?
 void main() {
   setUpAll(() => registerFallbackValue(ProductoFake()));
+  setUp(usarSelectorDeFotosFalso);
 
   ProductosProviderMock providerQueGuarda() {
     final provider = ProductosProviderMock();
@@ -104,6 +105,7 @@ void main() {
             await escribir(tester, 'Precio S/', '10');
             await escribir(tester, 'Stock', '3');
 
+            await ponerFotos(tester);
             expect(falta(tester), isNull, reason: 'debería poder guardarse');
             await tester.tap(
               find.widgetWithText(ElevatedButton, 'Guardar producto'),
@@ -190,6 +192,7 @@ void main() {
               await tester.pump();
               await escribir(tester, 'Stock', '2');
 
+              await ponerFotos(tester);
               expect(falta(tester), isNull, reason: 'debería poder guardarse');
               await tester.tap(
                 find.widgetWithText(ElevatedButton, 'Guardar producto'),
