@@ -10,13 +10,19 @@ import 'formato_entradas.dart';
 /// unidad). Debajo se muestra siempre cuánto sale el kg, para que un error
 /// como S/ 12 por 1 g salte a la vista.
 class SelectorPorMedida extends StatelessWidget {
-  const SelectorPorMedida({super.key, required this.medida});
+  const SelectorPorMedida({
+    super.key,
+    required this.medida,
+    this.conPrecio = true,
+  });
 
   /// Valor del menú que significa "Otra cantidad…".
   static const _otra = -1;
-  static const _alarma = Color(0xFFFBBF24);
-
   final FormularioMedidaController medida;
+
+  /// false con modelos: cada modelo tiene su precio; acá solo se elige la
+  /// cantidad que cubre.
+  final bool conPrecio;
 
   @override
   Widget build(BuildContext context) {
@@ -30,20 +36,22 @@ class SelectorPorMedida extends StatelessWidget {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: TextField(
-                key: const Key('precio-medida'),
-                controller: medida.precioCtrl,
-                onChanged: (_) => medida.trasCambioTexto(),
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
+            if (conPrecio) ...[
+              Expanded(
+                child: TextField(
+                  key: const Key('precio-medida'),
+                  controller: medida.precioCtrl,
+                  onChanged: (_) => medida.trasCambioTexto(),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  inputFormatters: const [FormatoPrecio()],
+                  style: TextStyle(color: AppColors.texto),
+                  decoration: const InputDecoration(labelText: 'Precio S/ *'),
                 ),
-                inputFormatters: const [FormatoPrecio()],
-                style: TextStyle(color: AppColors.texto),
-                decoration: const InputDecoration(labelText: 'Precio S/ *'),
               ),
-            ),
-            const SizedBox(width: 10),
+              const SizedBox(width: 10),
+            ],
             Expanded(
               child: DropdownButtonFormField<int>(
                 key: ValueKey(
@@ -54,7 +62,9 @@ class SelectorPorMedida extends StatelessWidget {
                     ? null
                     : (medida.otraCantidad ? _otra : medida.porBase),
                 isExpanded: true,
-                decoration: const InputDecoration(labelText: 'Por *'),
+                decoration: InputDecoration(
+                  labelText: conPrecio ? 'Por *' : 'Cada precio es por *',
+                ),
                 hint: const Text('Elige qué mides'),
                 items: [
                   for (final tipica in medida.opcionesPor)
@@ -94,7 +104,7 @@ class SelectorPorMedida extends StatelessWidget {
             esAlarma ? '⚠ $equivalencia. ¿Es correcto?' : equivalencia,
             key: const Key('equivalencia-medida'),
             style: TextStyle(
-              color: esAlarma ? _alarma : AppColors.muted,
+              color: esAlarma ? AppColors.aviso : AppColors.muted,
               fontSize: 13,
               fontWeight: esAlarma ? FontWeight.w600 : FontWeight.w400,
             ),

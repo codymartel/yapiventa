@@ -4,15 +4,19 @@ import 'package:flutter/widgets.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../negocio/domain/models/catalogo_venta/catalogo_venta_persistido.dart';
+import '../../../negocio/domain/models/catalogo_venta/formato_presentacion.dart';
 import '../../../negocio/domain/models/catalogo_venta/opcion_presentacion.dart';
 import '../../application/services/constructor_producto.dart';
 import '../../application/services/entrada_numerica.dart';
 import '../../application/services/lectura_unidades_producto.dart';
+import '../../application/services/sugerencias_modelos.dart';
 import '../../domain/models/familia_unidad.dart';
+import '../../domain/models/foto_nueva.dart';
 import '../../domain/models/formato_elegido.dart';
 import '../../domain/models/modo_venta.dart';
 import '../../domain/models/producto.dart';
 import 'formulario_medida_controller.dart';
+import 'formulario_modelos_controller.dart';
 
 // ═════════════════════════════════════════════════════════════════════════
 // FormularioProductoController
@@ -31,12 +35,15 @@ import 'formulario_medida_controller.dart';
 //   4. Los productos legacy (sin presentacionId) NO están obligados a
 //      migrar: se guardan Como Están. Migrar es obligatorio solo para
 //      productos nuevos o cuando la persona completa la sección del modo.
+//   5. Con variables ([modelos].usa) el precio y el stock se escriben en las
+//      filas de cada modelo, no en los campos simples del modo.
 // ═════════════════════════════════════════════════════════════════════════
 class FormularioProductoController extends ChangeNotifier {
   FormularioProductoController({
     required this.producto,
     required this.categoriasDisponibles,
     required this.catalogoVenta,
+    this.rubro = '',
   }) {
     nombreCtrl = TextEditingController(text: producto?.nombre ?? '');
     descripcionCtrl = TextEditingController(text: producto?.descripcion ?? '');
@@ -55,12 +62,30 @@ class FormularioProductoController extends ChangeNotifier {
       medidasActivas: () => medidasActivas,
       medidasDelCatalogo: () => medidasDelCatalogo,
     )..addListener(notifyListeners);
+    modelos =
+        FormularioModelosController(sugerencia: SugerenciasModelos.de(rubro))
+          ..addListener(() {
+            medida.conModelos = modelos.usa;
+            notifyListeners();
+          });
     _precargarDesde(producto);
+    final guardado = producto;
+    if (guardado != null && guardado.tieneModelos) {
+      modelos.precargar(
+        guardado,
+        factorStock: LecturaUnidadesProducto.factorDe(guardado.medidaUnidad),
+      );
+      medida.conModelos = true;
+    }
   }
 
   /// Producto editado (null si es nuevo).
   final Producto? producto;
   final List<String> categoriasDisponibles;
+
+  /// Rubro del negocio: solo decide qué palabras se sugieren para nombrar
+  /// lo que cambia (Color, Aroma, Sabor…).
+  final String rubro;
 
   /// Catálogo de venta del negocio. Puede llegar después (reintento): el
   /// widget lo actualiza al reconstruirse, sin volver a precargar.
@@ -68,6 +93,9 @@ class FormularioProductoController extends ChangeNotifier {
 
   /// Estado del modo "Por medida".
   late final FormularioMedidaController medida;
+
+  /// Estado de las variables: modelos con foto y sus filas con stock.
+  late final FormularioModelosController modelos;
 
   late final TextEditingController nombreCtrl;
   late final TextEditingController descripcionCtrl;
@@ -214,6 +242,11 @@ class FormularioProductoController extends ChangeNotifier {
     );
   }
 
+  /// Los formatos de la presentación elegida (para elegir el tamaño de cada
+  /// fila de un modelo). Vacío si no hay presentación.
+  List<FormatoPresentacion> get formatosDePresentacion =>
+      _presentacionElegida?.formatos ?? const [];
+
   /// "por unidad", "por botella (500 ml)"; '' sin presentación elegida.
   String get textoPrecioPresentacion {
     final elegida = _presentacionElegida;
@@ -249,10 +282,33 @@ class FormularioProductoController extends ChangeNotifier {
   bool get _stockPresentacionValido =>
       esStockInfinito || (int.tryParse(stockPresentacionCtrl.text) ?? -1) >= 0;
 
+  bool get _porMedida => modoVista == ModoVenta.medida;
+  int get _factorStock => LecturaUnidadesProducto.factorDe(medida.unidad);
+
+  String? get _faltaModelos => modelos.queFalta(
+    porMedida: _porMedida,
+    stockInfinito: esStockInfinito,
+    factorStock: _factorStock,
+    unidadBase: medida.unidadBaseNombre,
+  );
+
+  /// Con variables: la medida o la presentación están elegidas y todos los
+  /// modelos tienen sus filas con precio y stock.
+  bool get _camposOkConModelos {
+    if (_porMedida) {
+      if (!medida.vistaValida(stockInfinito: esStockInfinito)) return false;
+      if (!medidaCompleta) return false;
+    } else if (_presentacionElegida == null) {
+      return false;
+    }
+    return _faltaModelos == null;
+  }
+
   bool get camposOk {
     if (_guardando) return false;
     if (nombreCtrl.text.trim().isEmpty) return false;
     if (categoria.isEmpty) return false;
+    if (modelos.usa) return _camposOkConModelos;
 
     if (modoVista == ModoVenta.medida) {
       if (!medida.vistaValida(stockInfinito: esStockInfinito)) return false;
@@ -277,6 +333,19 @@ class FormularioProductoController extends ChangeNotifier {
     if (camposOk || _guardando) return null;
     if (nombreCtrl.text.trim().isEmpty) return 'Falta: nombre del producto';
     if (categoria.isEmpty) return 'Falta: categoría';
+
+    if (modelos.usa) {
+      if (_porMedida) {
+        final faltaMedida = medida.queFalta(
+          stockInfinito: esStockInfinito,
+          exigirTodo: true,
+        );
+        if (faltaMedida != null) return faltaMedida;
+      } else if (_presentacionElegida == null) {
+        return 'Falta: presentación';
+      }
+      return _faltaModelos;
+    }
 
     if (modoVista == ModoVenta.medida) {
       return medida.queFalta(
@@ -327,6 +396,7 @@ class FormularioProductoController extends ChangeNotifier {
 
   void _aplicarPresentacion(String id) {
     presentacionId = id;
+    modelos.limpiarFormatos();
     formato = null;
     formatoEtiqueta = '';
     final presentaciones = presentacionesActivas.where(
@@ -370,6 +440,9 @@ class FormularioProductoController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Las fotos nuevas de los modelos, por id de modelo, para subirlas.
+  Map<String, FotoNueva> get fotosModelos => modelos.fotosNuevas;
+
   /// Arma el Producto con lo escrito (ConstructorProducto).
   Producto construirProducto() {
     final elegido = formato;
@@ -400,6 +473,13 @@ class FormularioProductoController extends ChangeNotifier {
         precioPresentacionCentavos: textoACentavos(precioPresentacionCtrl.text),
         stockPresentacion: int.tryParse(stockPresentacionCtrl.text) ?? 0,
         precioVisibleCentavos: precioVisibleCentavos,
+        tituloModelos: modelos.usa ? modelos.tituloCtrl.text.trim() : '',
+        tituloFilas: modelos.usa ? modelos.tituloFilas : '',
+        modelos: modelos.construir(
+          porMedida: _porMedida,
+          factorStock: _factorStock,
+          unidadBase: medida.unidadBaseNombre,
+        ),
       ),
     );
   }
@@ -407,6 +487,7 @@ class FormularioProductoController extends ChangeNotifier {
   @override
   void dispose() {
     medida.dispose();
+    modelos.dispose();
     nombreCtrl.dispose();
     descripcionCtrl.dispose();
     stockPresentacionCtrl.dispose();

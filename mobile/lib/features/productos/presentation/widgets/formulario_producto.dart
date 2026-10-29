@@ -3,12 +3,15 @@ import 'package:provider/provider.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../negocio/domain/models/catalogo_venta/catalogo_venta_persistido.dart';
+import '../../application/services/lectura_unidades_producto.dart';
 import '../../domain/models/modo_venta.dart';
 import '../../domain/models/producto.dart';
 import '../providers/formulario_producto_controller.dart';
 import '../providers/productos_provider.dart';
 import 'formulario/foto_producto.dart';
+import 'formulario/lista_modelos_producto.dart';
 import 'formulario/mensaje_catalogo.dart';
+import 'formulario/pregunta_modelos_producto.dart';
 import 'formulario/seccion_medida_producto.dart';
 import 'formulario/seccion_presentacion_producto.dart';
 import 'formulario/selector_modo_venta.dart';
@@ -31,6 +34,10 @@ class FormularioProducto extends StatefulWidget {
 
   /// Catálogo de venta del negocio (presentaciones y medidas activas).
   final CatalogoVentaPersistido? catalogoVenta;
+
+  /// Rubro del negocio: decide las palabras que se sugieren para nombrar lo
+  /// que cambia (Color, Aroma, Sabor…).
+  final String rubro;
   final bool cargandoVenta;
   final String? ventaErrorMessage;
   final Future<void> Function()? onReintentarVenta;
@@ -43,6 +50,7 @@ class FormularioProducto extends StatefulWidget {
     this.producto,
     required this.categoriasDisponibles,
     required this.catalogoVenta,
+    this.rubro = '',
     this.cargandoVenta = false,
     this.ventaErrorMessage,
     this.onReintentarVenta,
@@ -59,6 +67,7 @@ class _FormularioProductoState extends State<FormularioProducto> {
     producto: widget.producto,
     categoriasDisponibles: widget.categoriasDisponibles,
     catalogoVenta: widget.catalogoVenta,
+    rubro: widget.rubro,
   );
 
   @override
@@ -84,11 +93,13 @@ class _FormularioProductoState extends State<FormularioProducto> {
             nuevo,
             imagenBytes: _form.fotoNuevaBytes,
             nombreArchivo: _form.fotoNueva?.name,
+            fotosModelos: _form.fotosModelos,
           )
         : await provider.guardarProducto(
             nuevo,
             imagenBytes: _form.fotoNuevaBytes,
             nombreArchivo: _form.fotoNueva?.name,
+            fotosModelos: _form.fotosModelos,
           );
 
     if (!mounted) return;
@@ -146,8 +157,8 @@ class _FormularioProductoState extends State<FormularioProducto> {
                   child: Text(
                     falta,
                     key: const Key('falta-para-guardar'),
-                    style: const TextStyle(
-                      color: Color(0xFFFBBF24),
+                    style: TextStyle(
+                      color: AppColors.aviso,
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                     ),
@@ -250,15 +261,22 @@ class _FormularioProductoState extends State<FormularioProducto> {
           onCambio: form.cambiarModo,
         ),
         const SizedBox(height: 14),
+        PreguntaModelosProducto(
+          modelos: form.modelos,
+          porMedida: form.modoVista == ModoVenta.medida,
+        ),
+        const SizedBox(height: 14),
         if (form.modoVista == ModoVenta.medida)
           SeccionMedidaProducto(
             medida: form.medida,
             stockInfinito: form.esStockInfinito,
             etiquetaGuardada: form.etiquetaLegacy,
             onStockInfinitoCambiado: form.cambiarStockInfinito,
+            conModelos: form.modelos.usa,
           )
         else
           SeccionPresentacionProducto(
+            conModelos: form.modelos.usa,
             presentaciones: form.presentacionesActivas,
             presentacionId: form.presentacionId,
             formatoEtiqueta: form.formatoEtiqueta,
@@ -273,6 +291,20 @@ class _FormularioProductoState extends State<FormularioProducto> {
             onStockInfinitoCambiado: form.cambiarStockInfinito,
             onCambioTexto: form.trasCambioTexto,
           ),
+        if (form.modelos.usa) ...[
+          const SizedBox(height: 14),
+          ListaModelosProducto(
+            modelos: form.modelos,
+            porMedida: form.modoVista == ModoVenta.medida,
+            stockInfinito: form.esStockInfinito,
+            habilitada: !form.guardando,
+            formatos: form.formatosDePresentacion,
+            referencia: form.medida.referenciaEtiqueta,
+            unidad: form.medida.unidad,
+            factorStock: LecturaUnidadesProducto.factorDe(form.medida.unidad),
+            unidadBase: form.medida.unidadBaseNombre,
+          ),
+        ],
         const SizedBox(height: 10),
         TextField(
           controller: form.descripcionCtrl,

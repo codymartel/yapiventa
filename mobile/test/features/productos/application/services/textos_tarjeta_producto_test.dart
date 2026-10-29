@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/features/productos/application/services/textos_tarjeta_producto.dart';
+import 'package:mobile/features/productos/domain/models/estructura_producto.dart';
 import 'package:mobile/features/productos/domain/models/familia_unidad.dart';
 import 'package:mobile/features/productos/domain/models/modo_venta.dart';
 import 'package:mobile/features/productos/domain/models/producto.dart';
@@ -164,6 +165,95 @@ void main() {
       ).copyWith(unidadMedidaNombre: 'kg');
       expect(TextosTarjetaProducto.unidadAntigua(producto), isEmpty);
       expect(TextosTarjetaProducto.lineaUnidadAntigua(producto), isEmpty);
+    });
+  });
+
+  group('con modelos', () {
+    Producto polo({List<int> precios = const [3500, 3500, 3800]}) => Producto(
+      negocioId: 'n1',
+      nombre: 'Polo básico',
+      presentacionId: 'unidad',
+      tituloModelos: 'Color',
+      modelos: [
+        ModeloProducto(
+          id: 'azul',
+          nombre: 'Azul',
+          filas: [
+            for (var i = 0; i < precios.length; i++)
+              FilaVenta(
+                id: 'f$i',
+                etiqueta: 'T$i',
+                precioCentavos: precios[i],
+                stock: 4,
+              ),
+          ],
+        ),
+        const ModeloProducto(
+          id: 'rojo',
+          nombre: 'Rojo',
+          filas: [FilaVenta(id: 'f', precioCentavos: 3500, stock: 2)],
+        ),
+      ],
+    );
+
+    test('precios distintos se muestran como «desde»', () {
+      expect(TextosTarjetaProducto.precio(polo()), 'desde S/ 35.00 / unidad');
+    });
+
+    test('si todas las filas cuestan lo mismo no dice «desde»', () {
+      expect(
+        TextosTarjetaProducto.precio(polo(precios: [3500, 3500])),
+        'S/ 35.00 / unidad',
+      );
+    });
+
+    test('el stock es la suma de las filas y dice cuántos colores', () {
+      // 3 filas × 4 + 2 = 14 unidades en 2 colores.
+      expect(TextosTarjetaProducto.stock(polo()), '14 unidades · 2 colores');
+    });
+
+    test('con un solo modelo usa el singular', () {
+      final uno = polo().copyWith(modelos: [polo().modelos.first]);
+      expect(TextosTarjetaProducto.stock(uno), '12 unidades · 1 color');
+    });
+
+    test('la palabra la pone el vendedor: aromas, sabores…', () {
+      final aromas = polo().copyWith(tituloModelos: 'Aroma');
+      expect(TextosTarjetaProducto.stock(aromas), contains('2 aromas'));
+      final sinPalabra = polo().copyWith(tituloModelos: '');
+      expect(TextosTarjetaProducto.stock(sinPalabra), contains('2 modelos'));
+    });
+
+    test('con stock ilimitado no muestra cantidades', () {
+      final infinito = polo().copyWith(esStockInfinito: true);
+      expect(TextosTarjetaProducto.stock(infinito), 'ilimitado');
+    });
+
+    test('por medida suma el stock base de todos los modelos', () {
+      final queso = Producto(
+        negocioId: 'n1',
+        nombre: 'Queso',
+        modoVenta: ModoVenta.medida,
+        medidaFamilia: FamiliaUnidad.peso,
+        medidaUnidad: 'kg',
+        cantidadReferenciaBase: 1000,
+        tituloModelos: 'Tipo',
+        modelos: const [
+          ModeloProducto(
+            id: 'a',
+            nombre: 'Fresco',
+            filas: [FilaVenta(id: 'f', precioCentavos: 1800, stockBase: 4000)],
+          ),
+          ModeloProducto(
+            id: 'b',
+            nombre: 'Andino',
+            filas: [FilaVenta(id: 'f', precioCentavos: 2400, stockBase: 2500)],
+          ),
+        ],
+      );
+
+      expect(TextosTarjetaProducto.stock(queso), '6.5 kg · 2 tipos');
+      expect(TextosTarjetaProducto.precio(queso), 'desde S/ 18.00 / kg');
     });
   });
 }

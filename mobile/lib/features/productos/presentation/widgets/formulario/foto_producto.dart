@@ -5,6 +5,30 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../../../core/theme/app_colors.dart';
 
+/// Abre la galería y entrega la foto elegida. Lo usan la foto del producto y
+/// la de cada modelo.
+Future<void> elegirFotoDeGaleria(
+  BuildContext context,
+  void Function(XFile archivo, Uint8List bytes) onFotoElegida,
+) async {
+  try {
+    final archivo = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 70,
+    );
+    if (archivo == null) return;
+
+    final bytes = await archivo.readAsBytes();
+    if (!context.mounted) return;
+    onFotoElegida(archivo, bytes);
+  } catch (e) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('No se pudo leer la foto: $e')));
+  }
+}
+
 /// Recuadro de la foto del producto: muestra la foto nueva, la guardada o
 /// una invitación a elegir una. Al tocarlo abre la galería.
 class FotoProducto extends StatelessWidget {
@@ -21,29 +45,12 @@ class FotoProducto extends StatelessWidget {
   final bool habilitada;
   final void Function(XFile archivo, Uint8List bytes) onFotoElegida;
 
-  Future<void> _elegirFoto(BuildContext context) async {
-    try {
-      final archivo = await ImagePicker().pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 70,
-      );
-      if (archivo == null) return;
-
-      final bytes = await archivo.readAsBytes();
-      if (!context.mounted) return;
-      onFotoElegida(archivo, bytes);
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('No se pudo leer la foto: $e')));
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: habilitada ? () => _elegirFoto(context) : null,
+      onTap: habilitada
+          ? () => elegirFotoDeGaleria(context, onFotoElegida)
+          : null,
       child: Container(
         height: 160,
         decoration: BoxDecoration(

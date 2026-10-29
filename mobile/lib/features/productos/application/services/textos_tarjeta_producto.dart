@@ -4,6 +4,7 @@ import '../../domain/models/producto.dart';
 import 'cantidades_tipicas.dart';
 import 'entrada_numerica.dart';
 import 'lectura_unidades_producto.dart';
+import 'totales_producto.dart';
 
 // ═════════════════════════════════════════════════════════════════════════
 // TextosTarjetaProducto
@@ -18,22 +19,59 @@ import 'lectura_unidades_producto.dart';
 //                    " · S/ 12.00 / kg" (el precio por la unidad grande).
 //   - presentación → "S/ 8.50 / botella (625 ml)".
 //   - antiguo      → "S/ 16.50".
+//   - con modelos  → "desde S/ 35.00" si los precios de las filas difieren.
 // ═════════════════════════════════════════════════════════════════════════
 class TextosTarjetaProducto {
   TextosTarjetaProducto._();
 
   static String precio(Producto producto) {
-    final precio = 'S/ ${centavosATexto(producto.precioCentavos)}';
-    if (producto.esPorMedida) return _precioMedida(producto, precio);
+    final desde = producto.tieneModelos
+        ? TotalesProducto.precioDesdeCentavos(producto.modelos)
+        : producto.precioCentavos;
+    final precio = 'S/ ${centavosATexto(desde)}';
+    final texto = producto.esPorMedida
+        ? _precioMedida(producto, desde, precio)
+        : _conSufijoPresentacion(producto, precio);
+    return _preciosDistintos(producto) ? 'desde $texto' : texto;
+  }
+
+  static String _conSufijoPresentacion(Producto producto, String precio) {
     final sufijo = _sufijoPresentacion(producto);
     return sufijo.isEmpty ? precio : '$precio / $sufijo';
+  }
+
+  /// true si las filas de los modelos no cuestan todas lo mismo.
+  static bool _preciosDistintos(Producto producto) {
+    final precios = {
+      for (final modelo in producto.modelos)
+        for (final fila in modelo.filas)
+          if (fila.precioCentavos > 0) fila.precioCentavos,
+    };
+    return precios.length > 1;
   }
 
   /// Stock con su unidad: "16.65 kg", "12 botellas", "7 uds." o "ilimitado".
   static String stock(Producto producto) {
     if (producto.esStockInfinito) return 'ilimitado';
+    if (producto.tieneModelos) {
+      return '${_stockSinModelos(producto)} · ${_cuantosModelos(producto)}';
+    }
+    return _stockSinModelos(producto);
+  }
+
+  /// "2 colores", "1 aroma": cuántos modelos, con la palabra del vendedor.
+  static String _cuantosModelos(Producto producto) {
+    final palabra = producto.tituloModelos.trim().toLowerCase();
+    final cantidad = producto.modelos.length;
+    final nombre = palabra.isEmpty ? 'modelo' : palabra;
+    return '$cantidad ${cantidad == 1 ? nombre : LecturaUnidadesProducto.plural(nombre)}';
+  }
+
+  static String _stockSinModelos(Producto producto) {
     if (producto.esPorMedida) {
-      final base = producto.stockBase;
+      final base = producto.tieneModelos
+          ? TotalesProducto.stockBaseTotal(producto.modelos)
+          : producto.stockBase;
       final factor = LecturaUnidadesProducto.factorDe(producto.medidaUnidad);
       if (base != null && factor > 0) {
         return '${baseATextoVisual(base, factor)} ${producto.medidaUnidad}';
@@ -43,9 +81,12 @@ class TextosTarjetaProducto {
           : producto.medidaUnidad;
       return '${producto.stock} $unidad';
     }
+    final unidades = producto.tieneModelos
+        ? TotalesProducto.stockTotal(producto.modelos)
+        : producto.stock;
     final nombre = CatalogoVentaGlobal.nombres[producto.presentacionId];
-    if (nombre == null) return '${producto.stock} uds.';
-    return '${producto.stock} ${LecturaUnidadesProducto.plural(nombre)}';
+    if (nombre == null) return '$unidades uds.';
+    return '$unidades ${LecturaUnidadesProducto.plural(nombre)}';
   }
 
   /// Unidad propia de un producto antiguo (sin presentación ni medida);
@@ -64,7 +105,7 @@ class TextosTarjetaProducto {
     return '$unidad · fracción: ${producto.fraccionesSeleccionadas.first}';
   }
 
-  static String _precioMedida(Producto producto, String precio) {
+  static String _precioMedida(Producto producto, int centavos, String precio) {
     final familia = producto.medidaFamilia;
     final referencia = producto.cantidadReferenciaBase;
     if (familia == null || referencia <= 0) return precio;
@@ -76,7 +117,7 @@ class TextosTarjetaProducto {
 
     final texto =
         '$precio / ${CantidadesTipicas.etiqueta(familia, referencia)}';
-    final porGrande = producto.precioCentavos * factor;
+    final porGrande = centavos * factor;
     if (porGrande % referencia != 0) return texto;
     return '$texto · S/ ${centavosATexto(porGrande ~/ referencia)} / '
         '${grande.nombre}';

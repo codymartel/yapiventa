@@ -28,6 +28,7 @@ class SeccionPresentacionProducto extends StatelessWidget {
     required this.onFormatoCambiado,
     required this.onStockInfinitoCambiado,
     required this.onCambioTexto,
+    this.conModelos = false,
   });
 
   final List<OpcionPresentacion> presentaciones;
@@ -51,6 +52,10 @@ class SeccionPresentacionProducto extends StatelessWidget {
   /// bot�n Guardar debe estar habilitado.
   final VoidCallback onCambioTexto;
 
+  /// Con modelos el formato, el precio y el stock se escriben en las filas de
+  /// cada modelo: acá queda solo la presentación y el stock infinito.
+  final bool conModelos;
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -72,24 +77,26 @@ class SeccionPresentacionProducto extends StatelessWidget {
           },
         ),
         const SizedBox(height: 10),
-        _FormatosPresentacion(
-          presentaciones: presentaciones,
-          presentacionId: presentacionId,
-          formatoEtiqueta: formatoEtiqueta,
-          onFormatoCambiado: onFormatoCambiado,
-        ),
-        const SizedBox(height: 10),
-        TextField(
-          controller: precioController,
-          onChanged: (_) => onCambioTexto(),
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          inputFormatters: const [FormatoPrecio()],
-          style: TextStyle(color: AppColors.texto),
-          decoration: InputDecoration(
-            labelText: 'Precio S/ *',
-            suffixText: textoPrecio.isEmpty ? null : textoPrecio,
+        if (!conModelos) ...[
+          _FormatosPresentacion(
+            presentaciones: presentaciones,
+            presentacionId: presentacionId,
+            formatoEtiqueta: formatoEtiqueta,
+            onFormatoCambiado: onFormatoCambiado,
           ),
-        ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: precioController,
+            onChanged: (_) => onCambioTexto(),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: const [FormatoPrecio()],
+            style: TextStyle(color: AppColors.texto),
+            decoration: InputDecoration(
+              labelText: 'Precio S/ *',
+              suffixText: textoPrecio.isEmpty ? null : textoPrecio,
+            ),
+          ),
+        ],
         const SizedBox(height: 6),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
@@ -97,7 +104,7 @@ class SeccionPresentacionProducto extends StatelessWidget {
           value: stockInfinito,
           onChanged: onStockInfinitoCambiado,
         ),
-        if (!stockInfinito)
+        if (!stockInfinito && !conModelos)
           TextField(
             controller: stockController,
             onChanged: (_) => onCambioTexto(),

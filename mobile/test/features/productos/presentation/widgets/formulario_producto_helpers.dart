@@ -85,6 +85,7 @@ Widget formulario({
   Future<void> Function()? onReintentarVenta,
   ProductosProvider? provider,
   List<String> categorias = const ['Bebidas'],
+  String rubro = '',
 }) {
   final contenido = Scaffold(
     body: FormularioProducto(
@@ -96,6 +97,7 @@ Widget formulario({
       cargandoVenta: cargandoVenta,
       ventaErrorMessage: ventaErrorMessage,
       onReintentarVenta: onReintentarVenta,
+      rubro: rubro,
       onCancelar: () {},
     ),
   );

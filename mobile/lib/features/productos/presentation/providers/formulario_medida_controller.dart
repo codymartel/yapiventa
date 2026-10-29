@@ -66,6 +66,10 @@ class FormularioMedidaController extends ChangeNotifier {
   /// true: el producto usa su propio mínimo e incremento.
   bool reglaPropia = false;
 
+  /// true: el producto tiene modelos. El precio y el stock se escriben en
+  /// cada modelo (FormularioModelosController), no acá.
+  bool conModelos = false;
+
   /// Precarga desde un producto guardado por medida.
   void precargar(Producto producto) {
     familia = producto.medidaFamilia;
@@ -183,6 +187,9 @@ class FormularioMedidaController extends ChangeNotifier {
     if (familia == null || unidad.isEmpty) return false;
     final ref = referencia;
     if (ref == null || !ref.esValida) return false;
+    if (conModelos) {
+      return !reglaPropia || (minimoPropio != null && incrementoPropio != null);
+    }
     final centavos = precioCentavos;
     if (centavos == null || centavos <= 0) return false;
     if (reglaPropia && (minimoPropio == null || incrementoPropio == null)) {
@@ -197,6 +204,11 @@ class FormularioMedidaController extends ChangeNotifier {
   /// inválido bloquea aunque el producto sea legacy; los campos vacíos, en
   /// cambio, permiten guardar sin migrar.
   bool vistaValida({required bool stockInfinito}) {
+    if (conModelos) {
+      return !otraCantidad ||
+          referenciaCtrl.text.trim().isEmpty ||
+          (referencia?.esValida ?? false);
+    }
     if (precioCtrl.text.trim().isNotEmpty) {
       final centavos = precioCentavos;
       if (centavos == null || centavos <= 0) return false;
@@ -222,11 +234,14 @@ class FormularioMedidaController extends ChangeNotifier {
   String? queFalta({required bool stockInfinito, required bool exigirTodo}) {
     if (exigirTodo && familia == null) return 'Falta: qué mides';
 
-    final precio = precioCtrl.text.trim();
-    if (precio.isEmpty) {
-      if (exigirTodo) return 'Falta: precio';
-    } else if ((precioCentavos ?? 0) <= 0) {
-      return 'Revisa: precio';
+    // Con modelos el precio se escribe en cada modelo, no acá.
+    if (!conModelos) {
+      final precio = precioCtrl.text.trim();
+      if (precio.isEmpty) {
+        if (exigirTodo) return 'Falta: precio';
+      } else if ((precioCentavos ?? 0) <= 0) {
+        return 'Revisa: precio';
+      }
     }
 
     if (otraCantidad) {
@@ -238,7 +253,7 @@ class FormularioMedidaController extends ChangeNotifier {
       }
     }
 
-    if (!stockInfinito) {
+    if (!stockInfinito && !conModelos) {
       final texto = stockCtrl.text.trim();
       if (texto.isEmpty) {
         if (exigirTodo) return 'Falta: stock';
@@ -257,6 +272,7 @@ class FormularioMedidaController extends ChangeNotifier {
   /// kg", o "≈" si la cuenta no es exacta (se muestra hacia abajo). Vacío si
   /// el precio ya es por esa unidad o falta algo.
   String get equivalencia {
+    if (conModelos) return '';
     final elegida = familia;
     final centavos = precioCentavos;
     final ref = referencia;
@@ -268,6 +284,14 @@ class FormularioMedidaController extends ChangeNotifier {
     final signo = porGrande % ref.base! == 0 ? '=' : '≈';
     return '$signo S/ ${centavosATexto(porGrande ~/ ref.base!)} '
         'por ${grande.nombre}';
+  }
+
+  /// Lo que cubre el precio, como se lee: "¼ kg". Vacío si falta algo.
+  String get referenciaEtiqueta {
+    final elegida = familia;
+    final ref = referencia;
+    if (elegida == null || ref == null || !ref.esValida) return '';
+    return CantidadesTipicas.etiqueta(elegida, ref.base!);
   }
 
   /// "Otra cantidad" es donde se cuelan los errores (S/ 12 por 1 g): la

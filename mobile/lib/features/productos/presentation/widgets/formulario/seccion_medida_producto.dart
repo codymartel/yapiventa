@@ -21,12 +21,17 @@ class SeccionMedidaProducto extends StatelessWidget {
     required this.stockInfinito,
     required this.etiquetaGuardada,
     required this.onStockInfinitoCambiado,
+    this.conModelos = false,
   });
 
   final FormularioMedidaController medida;
   final bool stockInfinito;
   final String etiquetaGuardada;
   final ValueChanged<bool> onStockInfinitoCambiado;
+
+  /// Con modelos el precio y el stock se escriben en cada modelo: acá solo
+  /// quedan qué se mide, cuánto cubre cada precio y la regla de venta.
+  final bool conModelos;
 
   @override
   Widget build(BuildContext context) {
@@ -69,7 +74,7 @@ class SeccionMedidaProducto extends StatelessWidget {
           ),
         ],
         const SizedBox(height: 10),
-        SelectorPorMedida(medida: medida),
+        SelectorPorMedida(medida: medida, conPrecio: !conModelos),
         const SizedBox(height: 10),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
@@ -77,7 +82,7 @@ class SeccionMedidaProducto extends StatelessWidget {
           value: stockInfinito,
           onChanged: onStockInfinitoCambiado,
         ),
-        if (!stockInfinito)
+        if (!stockInfinito && !conModelos)
           TextField(
             key: const Key('stock-medida'),
             controller: medida.stockCtrl,
@@ -94,7 +99,7 @@ class SeccionMedidaProducto extends StatelessWidget {
         const SizedBox(height: 10),
         _ReglaDeVenta(medida: medida),
         const SizedBox(height: 10),
-        VistaPreviaMedidaProducto(medida: medida),
+        if (!conModelos) VistaPreviaMedidaProducto(medida: medida),
         if (etiquetaGuardada.isNotEmpty) ...[
           const SizedBox(height: 10),
           AvisoAmarillo(

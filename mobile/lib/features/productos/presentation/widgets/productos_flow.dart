@@ -164,6 +164,7 @@ class _ProductosFlowState extends State<ProductosFlow> {
           producto: producto,
           categoriasDisponibles: catalogo.categorias,
           catalogoVenta: _catalogoProvider?.catalogoVenta,
+          rubro: catalogo.rubro,
           cargandoVenta: _catalogoProvider?.cargandoVenta ?? false,
           ventaErrorMessage: _catalogoProvider?.ventaErrorMessage,
           onReintentarVenta: _catalogoProvider == null

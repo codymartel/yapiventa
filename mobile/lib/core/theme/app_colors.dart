@@ -17,6 +17,9 @@ class AppColors {
   static const dim = Color(0xFF2A3A55);
   static const error = Color(0xFFEF4444);
 
+  /// Ámbar de los avisos que no bloquean: "Falta: …", equivalencias dudosas.
+  static const aviso = Color(0xFFFBBF24);
+
   // En Kotlin usabas .copy(alpha = 0.18f). En Flutter es .withValues(alpha: ...)
   static Color border = blueLt.withValues(alpha: 0.45);
 
