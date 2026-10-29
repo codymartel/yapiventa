@@ -4,6 +4,7 @@ import '../../application/use_cases/crear_producto.dart';
 import '../../application/use_cases/editar_producto.dart';
 import '../../application/use_cases/eliminar_producto.dart';
 import '../../application/use_cases/obtener_pagina_productos.dart';
+import '../../domain/models/foto_nueva.dart';
 import '../../domain/models/pagina_productos.dart';
 import '../../domain/models/producto.dart';
 
@@ -243,6 +244,7 @@ class ProductosProvider extends ChangeNotifier {
     Producto producto, {
     Uint8List? imagenBytes,
     String? nombreArchivo,
+    Map<String, FotoNueva> fotosModelos = const {},
   }) async {
     if (_creandoProducto) return false;
 
@@ -256,6 +258,7 @@ class ProductosProvider extends ChangeNotifier {
         producto: producto,
         imagenBytes: imagenBytes,
         nombreArchivo: nombreArchivo,
+        fotosModelos: fotosModelos,
       );
 
       final indiceExistente = _productos.indexWhere(
@@ -281,12 +284,14 @@ class ProductosProvider extends ChangeNotifier {
     Producto producto, {
     Uint8List? imagenBytes,
     String? nombreArchivo,
+    Map<String, FotoNueva> fotosModelos = const {},
   }) async {
     if (producto.id.isEmpty) {
       return crearProducto(
         producto,
         imagenBytes: imagenBytes,
         nombreArchivo: nombreArchivo,
+        fotosModelos: fotosModelos,
       );
     }
     if (_editandoProducto) return false;
@@ -301,6 +306,7 @@ class ProductosProvider extends ChangeNotifier {
         producto: producto,
         imagenBytes: imagenBytes,
         nombreArchivo: nombreArchivo,
+        fotosModelos: fotosModelos,
       );
       final indiceExistente = _productos.indexWhere(
         (productoCargado) => productoCargado.id == productoGuardado.id,

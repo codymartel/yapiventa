@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../domain/models/modo_venta.dart';
 import '../../domain/models/producto.dart';
+import 'estructura_producto_mapper.dart';
 import 'lectura_firestore.dart';
 import 'vista_legacy_producto.dart';
 
@@ -19,6 +20,11 @@ import 'vista_legacy_producto.dart';
 // del catálogo global se resuelve su presentacionId; si no ("kg"), se
 // conserva como etiquetaUnidad para no perderlo al reescribir. Nunca se
 // inventa el tamaño físico: formatoValorBase queda en 0.
+//
+// MODELOS (variables): viajan embebidos en el mismo documento
+// (EstructuraProductoMapper). Con modelos, precioCentavos / stock / stockBase
+// del producto son los totales DERIVADOS que arma ConstructorProducto, así
+// que la vista legacy (VistaLegacyProducto) sigue funcionando sin cambios.
 // ═════════════════════════════════════════════════════════════════════════
 
 abstract final class ProductoFirestoreMapper {
@@ -79,6 +85,9 @@ abstract final class ProductoFirestoreMapper {
       unidadMedidaNombre: unidad,
       fraccionesSeleccionadas: const [],
       fechaVencimiento: (data['fechaVencimiento'] as Timestamp?)?.toDate(),
+      tituloModelos: LecturaFirestore.texto(data['tituloModelos']),
+      tituloFilas: LecturaFirestore.texto(data['tituloFilas']),
+      modelos: EstructuraProductoMapper.modelosDesde(data['modelos']),
     );
   }
 
@@ -127,6 +136,9 @@ abstract final class ProductoFirestoreMapper {
       fraccionesSeleccionadas:
           (data['fraccionesSeleccionadas'] as List?)?.cast<String>() ?? [],
       fechaVencimiento: (data['fechaVencimiento'] as Timestamp?)?.toDate(),
+      tituloModelos: LecturaFirestore.texto(data['tituloModelos']),
+      tituloFilas: LecturaFirestore.texto(data['tituloFilas']),
+      modelos: EstructuraProductoMapper.modelosDesde(data['modelos']),
     );
   }
 
@@ -161,6 +173,9 @@ abstract final class ProductoFirestoreMapper {
       'stockBase': producto.stockBase,
       'minimoBase': producto.minimoBase,
       'incrementoBase': producto.incrementoBase,
+      'tituloModelos': producto.tituloModelos,
+      'tituloFilas': producto.tituloFilas,
+      'modelos': EstructuraProductoMapper.modelosAMapas(producto.modelos),
     };
   }
 }

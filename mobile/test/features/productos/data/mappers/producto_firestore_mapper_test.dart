@@ -67,6 +67,9 @@ void main() {
       'stockBase',
       'minimoBase',
       'incrementoBase',
+      'tituloModelos',
+      'tituloFilas',
+      'modelos',
     });
     expect(datos['fechaVencimiento'], isA<Timestamp>());
     expect((datos['fechaVencimiento'] as Timestamp).toDate(), fecha);

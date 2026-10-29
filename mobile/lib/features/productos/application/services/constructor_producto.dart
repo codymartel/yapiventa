@@ -1,6 +1,8 @@
+import '../../domain/models/estructura_producto.dart';
 import '../../domain/models/familia_unidad.dart';
 import '../../domain/models/modo_venta.dart';
 import '../../domain/models/producto.dart';
+import 'totales_producto.dart';
 
 // ═════════════════════════════════════════════════════════════════════════
 // ConstructorProducto
@@ -9,6 +11,9 @@ import '../../domain/models/producto.dart';
 // en enteros, nunca double). Función pura, sin Flutter.
 //
 //   - Medida completa       → producto por medida.
+//   - Con modelos           → el precio "desde" y el stock total se CALCULAN
+//                             desde las filas (TotalesProducto), no se leen
+//                             de los campos simples.
 //   - Presentación completa → producto por presentación.
 //   - Ninguna completa      → se guarda Como Está (legacy sin migrar).
 // ═════════════════════════════════════════════════════════════════════════
@@ -40,6 +45,9 @@ class DatosFormularioProducto {
     this.precioPresentacionCentavos,
     this.stockPresentacion = 0,
     this.precioVisibleCentavos,
+    this.tituloModelos = '',
+    this.tituloFilas = '',
+    this.modelos = const [],
   });
 
   /// Producto editado (null si es nuevo).
@@ -73,6 +81,12 @@ class DatosFormularioProducto {
 
   /// Precio escrito en el modo que se ve (para guardar un legacy sin migrar).
   final int? precioVisibleCentavos;
+
+  /// Variables: la palabra del vendedor para lo que cambia ("Color"), la de
+  /// las filas ("Talla") y los modelos ya armados. Vacío = producto simple.
+  final String tituloModelos;
+  final String tituloFilas;
+  final List<ModeloProducto> modelos;
 }
 
 class ConstructorProducto {
@@ -101,11 +115,45 @@ class ConstructorProducto {
         medidaFamilia: datos.medidaFamilia,
         medidaUnidad: datos.medidaUnidad,
         cantidadReferenciaBase: datos.referenciaBase!,
-        precioCentavos: datos.precioMedidaCentavos!,
-        stockBase: datos.esStockInfinito ? null : datos.stockMedidaBase!,
+        precioCentavos: datos.modelos.isEmpty
+            ? datos.precioMedidaCentavos!
+            : TotalesProducto.precioDesdeCentavos(datos.modelos),
+        stockBase: datos.esStockInfinito
+            ? null
+            : (datos.modelos.isEmpty
+                  ? datos.stockMedidaBase!
+                  : TotalesProducto.stockBaseTotal(datos.modelos)),
         minimoBase: datos.minimoBase,
         incrementoBase: datos.incrementoBase,
         stock: anterior?.stock ?? 0,
+        tituloModelos: datos.tituloModelos,
+        tituloFilas: datos.tituloFilas,
+        modelos: datos.modelos,
+      );
+    }
+
+    if (datos.modo == ModoVenta.presentacion &&
+        datos.modelos.isNotEmpty &&
+        datos.presentacionId.isNotEmpty) {
+      return Producto(
+        id: id,
+        negocioId: negocioId,
+        nombre: datos.nombre,
+        descripcion: datos.descripcion,
+        categoria: datos.categoria,
+        disponible: disponible,
+        tieneDelivery: datos.tieneDelivery,
+        urlImagen: datos.urlImagen,
+        cloudinaryPublicId: anterior?.cloudinaryPublicId,
+        fechaVencimiento: anterior?.fechaVencimiento,
+        esStockInfinito: datos.esStockInfinito,
+        modoVenta: ModoVenta.presentacion,
+        presentacionId: datos.presentacionId,
+        precioCentavos: TotalesProducto.precioDesdeCentavos(datos.modelos),
+        stock: TotalesProducto.stockTotal(datos.modelos),
+        tituloModelos: datos.tituloModelos,
+        tituloFilas: datos.tituloFilas,
+        modelos: datos.modelos,
       );
     }
 

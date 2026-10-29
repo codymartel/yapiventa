@@ -1,8 +1,10 @@
 import 'dart:typed_data';
 
 import '../../../../core/services/subidor_de_imagenes.dart';
+import '../../domain/models/foto_nueva.dart';
 import '../../domain/models/producto.dart';
 import '../../domain/repositories/repositorio_productos.dart';
+import 'subir_fotos_modelos.dart';
 
 class EditarProducto {
   final RepositorioProductos _repositorioProductos;
@@ -16,6 +18,7 @@ class EditarProducto {
     required Producto producto,
     Uint8List? imagenBytes,
     String? nombreArchivo,
+    Map<String, FotoNueva> fotosModelos = const {},
   }) async {
     if (producto.id.trim().isEmpty) {
       throw ArgumentError('El producto debe tener un identificador.');
@@ -33,7 +36,19 @@ class EditarProducto {
       );
     }
 
+    // Sin fotos nuevas de modelos no se espera nada: el guardado sigue igual
+    // de directo que antes.
+    final modelos = fotosModelos.isEmpty
+        ? producto.modelos
+        : await subirFotosModelos(
+            subidor: _subidorDeImagenes,
+            uid: uid,
+            modelos: producto.modelos,
+            fotos: fotosModelos,
+          );
+
     final productoParaGuardar = producto.copyWith(
+      modelos: modelos,
       // El negocioId lo aporta quien crea el provider (ya resuelto al iniciar
       // sesión) y se estampa en ProductosRepository sin releer users/{uid}.
       urlImagen: imagenSubida?.url ?? producto.urlImagen,
@@ -41,10 +56,7 @@ class EditarProducto {
           imagenSubida?.identificador ?? producto.cloudinaryPublicId,
     );
 
-    await _repositorioProductos.guardarProducto(
-      negocioId,
-      productoParaGuardar,
-    );
+    await _repositorioProductos.guardarProducto(negocioId, productoParaGuardar);
     return productoParaGuardar;
   }
 }

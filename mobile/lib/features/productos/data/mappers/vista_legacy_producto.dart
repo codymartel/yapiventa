@@ -69,6 +69,8 @@ abstract final class VistaLegacyProducto {
 
   static List<String> fracciones(Producto producto) {
     if (producto.esPorMedida) return const [];
+    // Con modelos el tamaño real está en cada fila: se listan los distintos.
+    if (producto.tieneModelos) return _formatosDeFilas(producto);
     final etiqueta = _etiquetaFormato(
       producto.formatoValorBase,
       producto.formatoFamilia,
@@ -77,6 +79,23 @@ abstract final class VistaLegacyProducto {
     if (etiqueta != null) return [etiqueta];
     // Sin formato conocido (productos legacy leídos): se conserva la lista.
     return producto.fraccionesSeleccionadas;
+  }
+
+  static List<String> _formatosDeFilas(Producto producto) {
+    final etiquetas = <String>[];
+    for (final modelo in producto.modelos) {
+      for (final fila in modelo.filas) {
+        final etiqueta = _etiquetaFormato(
+          fila.formatoValorBase,
+          fila.formatoFamilia,
+          fila.formatoUnidad,
+        );
+        if (etiqueta != null && !etiquetas.contains(etiqueta)) {
+          etiquetas.add(etiqueta);
+        }
+      }
+    }
+    return etiquetas;
   }
 
   // ── Aritmética entera ─────────────────────────────────────────────────

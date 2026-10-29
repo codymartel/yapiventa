@@ -27,6 +27,7 @@
 // existen porque la web pública y el formulario viejo todavía los leen.
 // ═════════════════════════════════════════════════════════════════════════
 
+import 'estructura_producto.dart';
 import 'familia_unidad.dart';
 import 'modo_venta.dart';
 
@@ -86,6 +87,15 @@ class Producto {
   /// (ej. "kg"). Sin ella, reescribir el producto perdería la etiqueta.
   final String etiquetaUnidad;
 
+  /// Variables del producto (paso 3). [modelos] vacío = producto simple, como
+  /// siempre. Con modelos, [tituloModelos] es la palabra del vendedor ("Color",
+  /// "Aroma") y [tituloFilas] la de sus filas ("Talla", "Formato"); el stock
+  /// vive en las filas y [precioCentavos] / [stock] / [stockBase] guardan los
+  /// totales DERIVADOS (precio "desde" y suma) para quien aún los lee.
+  final String tituloModelos;
+  final String tituloFilas;
+  final List<ModeloProducto> modelos;
+
   final bool esStockInfinito;
   final String descripcion;
   final String categoria;
@@ -124,7 +134,13 @@ class Producto {
     this.minimoBase,
     this.incrementoBase,
     this.etiquetaUnidad = '',
+    this.tituloModelos = '',
+    this.tituloFilas = '',
+    this.modelos = const [],
   });
+
+  /// true si el producto tiene modelos (variables).
+  bool get tieneModelos => modelos.isNotEmpty;
 
   /// true si el producto se vende por medida (peso, volumen, longitud, área).
   bool get esPorMedida => modoVenta == ModoVenta.medida;
@@ -158,6 +174,9 @@ class Producto {
     int? minimoBase,
     int? incrementoBase,
     String? etiquetaUnidad,
+    String? tituloModelos,
+    String? tituloFilas,
+    List<ModeloProducto>? modelos,
   }) {
     return Producto(
       id: id ?? this.id,
@@ -190,6 +209,9 @@ class Producto {
       minimoBase: minimoBase ?? this.minimoBase,
       incrementoBase: incrementoBase ?? this.incrementoBase,
       etiquetaUnidad: etiquetaUnidad ?? this.etiquetaUnidad,
+      tituloModelos: tituloModelos ?? this.tituloModelos,
+      tituloFilas: tituloFilas ?? this.tituloFilas,
+      modelos: modelos ?? this.modelos,
     );
   }
 }
