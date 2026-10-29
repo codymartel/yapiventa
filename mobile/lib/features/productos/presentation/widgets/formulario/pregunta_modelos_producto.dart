@@ -86,7 +86,7 @@ class PreguntaModelosProducto extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               'Si lo que cambia necesita su propia foto, es un modelo. Si solo '
-              'cambia cuánto hay (talla, tamaño), va en las filas de cada modelo.',
+              'cambia cuánto hay (talla, tamaño), va dentro de cada modelo.',
               style: TextStyle(color: AppColors.muted, fontSize: 13),
             ),
           ] else

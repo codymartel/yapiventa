@@ -76,6 +76,16 @@ class SeccionPresentacionProducto extends StatelessWidget {
             if (valor != null) onPresentacionCambiada(valor);
           },
         ),
+        if (conModelos)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(
+              'Una sola para todo el producto. Lo que cambia dentro de cada '
+              'modelo se elige más abajo.',
+              key: const Key('ayuda-presentacion-modelos'),
+              style: TextStyle(color: AppColors.muted, fontSize: 13),
+            ),
+          ),
         const SizedBox(height: 10),
         if (!conModelos) ...[
           _FormatosPresentacion(

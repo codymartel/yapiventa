@@ -143,7 +143,7 @@ class ListaModelosProducto extends StatelessWidget {
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           Text(
-            'Título de las filas:',
+            'Dentro de cada ${modelos.tituloCtrl.text.trim().isEmpty ? 'modelo' : modelos.tituloCtrl.text.trim().toLowerCase()} cambia:',
             style: TextStyle(color: AppColors.muted, fontSize: 13),
           ),
           const SizedBox(width: 8),
