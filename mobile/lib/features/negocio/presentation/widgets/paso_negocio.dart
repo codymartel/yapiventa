@@ -519,7 +519,7 @@ class _PasoNegocioState extends State<PasoNegocio> {
   InputDecoration _decoracion(String hint, [IconData? icono]) =>
       InputDecoration(
         hintText: hint,
-        hintStyle: const TextStyle(color: AppColors.dim, fontSize: 15),
+        hintStyle: const TextStyle(color: AppColors.hint, fontSize: 15),
         filled: true,
         fillColor: AppColors.superficie,
         isDense: true,

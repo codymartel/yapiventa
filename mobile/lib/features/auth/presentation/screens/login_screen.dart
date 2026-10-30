@@ -344,7 +344,7 @@ class _ContenidoLogin extends StatelessWidget {
           alignment: Alignment.centerLeft,
           child: Text(
             'Gratis para siempre',
-            style: TextStyle(fontSize: 11, color: AppColors.dim),
+            style: TextStyle(fontSize: 12, color: AppColors.hint),
           ),
         ),
       ],

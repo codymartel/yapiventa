@@ -13,9 +13,21 @@ class AppColors {
   static const blue = Color(0xFF2457B3);
   static const blueLt = Color(0xFF3D72D4);
   static const texto = Color(0xFFE8EDF5);
-  static const muted = Color(0xFF8494AD);
+  static const muted = Color(0xFF9AA9C2);
+
+  /// Solo para bordes y rellenos. Sobre el fondo da 1,7:1: NUNCA como texto
+  /// (para textos de ayuda y placeholders usar [hint]).
   static const dim = Color(0xFF2A3A55);
-  static const error = Color(0xFFEF4444);
+
+  /// Texto de ayuda y placeholders: 5,3:1 sobre [card], 6,1:1 sobre [fondo].
+  static const hint = Color(0xFF8191AA);
+
+  /// Azul legible como texto o precio (7,9:1 sobre [card]). [blue] y [blueLt]
+  /// quedan para fondos de botón y bordes.
+  static const azulTexto = Color(0xFF8AB2FF);
+
+  static const error = Color(0xFFF87171);
+  static const ok = Color(0xFF4ADE80);
 
   /// Ámbar de los avisos que no bloquean: "Falta: …", equivalencias dudosas.
   static const aviso = Color(0xFFFBBF24);

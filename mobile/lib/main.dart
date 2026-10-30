@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'core/theme/app_colors.dart';
+import 'core/theme/app_theme.dart';
 import 'features/auth/data/auth_repository.dart';
 import 'features/auth/data/user_repository.dart';
 import 'features/auth/domain/politica_acceso.dart';
@@ -77,7 +78,7 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         title: 'YapiVenta',
         debugShowCheckedModeBanner: false,
-        theme: ThemeData.dark(),
+        theme: AppTheme.oscuro,
         initialRoute: initialRoute,
         onGenerateInitialRoutes: (rutaInicial) => [
           _crearRuta(

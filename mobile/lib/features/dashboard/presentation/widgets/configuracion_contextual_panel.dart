@@ -159,7 +159,7 @@ class _ContenidoPaso extends StatelessWidget {
                 Text(
                   datos.cierre!,
                   style: TextStyle(
-                    color: AppColors.dim,
+                    color: AppColors.hint,
                     fontSize: compacto ? 12 : 12.5,
                     height: 1.35,
                   ),

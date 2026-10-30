@@ -141,7 +141,7 @@ class DashboardSidebar extends StatelessWidget {
                     icono,
                     size: 18,
                     color: !habilitado
-                        ? AppColors.dim
+                        ? AppColors.hint
                         : (activo ? AppColors.blueLt : AppColors.muted),
                   ),
                   const SizedBox(width: 10),
@@ -152,7 +152,7 @@ class DashboardSidebar extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: !habilitado
-                            ? AppColors.dim
+                            ? AppColors.hint
                             : (activo ? AppColors.texto : AppColors.muted),
                         fontSize: 13,
                         fontWeight: activo ? FontWeight.w600 : FontWeight.w500,
@@ -165,7 +165,7 @@ class DashboardSidebar extends StatelessWidget {
                     const Icon(
                       Icons.lock_outline,
                       size: 12,
-                      color: AppColors.dim,
+                      color: AppColors.hint,
                     )
                   else if (activo)
                     Container(

@@ -129,7 +129,7 @@ class _VerificacionEmailScreenState extends State<VerificacionEmailScreen> {
                         ? 'Reenviar correo (${authProvider.bloqueoBoton}s)'
                         : 'Reenviar correo',
                     style: TextStyle(
-                      color: puedeReenviar ? AppColors.blueLt : AppColors.dim,
+                      color: puedeReenviar ? AppColors.blueLt : AppColors.hint,
                     ),
                   ),
                 ),

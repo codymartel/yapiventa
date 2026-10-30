@@ -170,7 +170,7 @@ class _LoginFormScreenState extends State<LoginFormScreen> {
                           decoration: InputDecoration(
                             hintText: 'tucorreo@ejemplo.com',
                             hintStyle: TextStyle(
-                              color: AppColors.dim,
+                              color: AppColors.hint,
                               fontSize: 14,
                             ),
                             filled: true,
@@ -225,7 +225,7 @@ class _LoginFormScreenState extends State<LoginFormScreen> {
                           decoration: InputDecoration(
                             hintText: '••••••••',
                             hintStyle: TextStyle(
-                              color: AppColors.dim,
+                              color: AppColors.hint,
                               fontSize: 14,
                             ),
                             filled: true,
@@ -320,8 +320,8 @@ class _LoginFormScreenState extends State<LoginFormScreen> {
                               child: Text(
                                 'o continúa con',
                                 style: TextStyle(
-                                  color: AppColors.dim,
-                                  fontSize: 11,
+                                  color: AppColors.hint,
+                                  fontSize: 12,
                                 ),
                               ),
                             ),

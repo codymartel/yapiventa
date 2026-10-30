@@ -225,8 +225,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           style: TextStyle(
                             color: _aceptoTerminos
                                 ? AppColors.blueLt
-                                : AppColors.dim,
-                            fontSize: 11,
+                                : AppColors.hint,
+                            fontSize: 12,
                           ),
                         ),
 
@@ -241,8 +241,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               child: Text(
                                 'o con correo',
                                 style: TextStyle(
-                                  color: AppColors.dim,
-                                  fontSize: 11,
+                                  color: AppColors.hint,
+                                  fontSize: 12,
                                 ),
                               ),
                             ),
@@ -269,7 +269,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           decoration: InputDecoration(
                             hintText: 'tucorreo@ejemplo.com',
                             hintStyle: TextStyle(
-                              color: AppColors.dim,
+                              color: AppColors.hint,
                               fontSize: 14,
                             ),
                             filled: true,
@@ -324,7 +324,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           decoration: InputDecoration(
                             hintText: 'Mínimo 6 caracteres',
                             hintStyle: TextStyle(
-                              color: AppColors.dim,
+                              color: AppColors.hint,
                               fontSize: 14,
                             ),
                             filled: true,

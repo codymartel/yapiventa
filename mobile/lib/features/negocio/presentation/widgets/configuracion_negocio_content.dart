@@ -205,7 +205,7 @@ class _BotonVolver extends StatelessWidget {
               child: Icon(
                 Icons.arrow_back,
                 size: 18,
-                color: habilitado ? AppColors.muted : AppColors.dim,
+                color: habilitado ? AppColors.muted : AppColors.hint,
               ),
             ),
           ),
@@ -412,7 +412,7 @@ class _CeldaPaso extends StatelessWidget {
                 height: 1.15,
                 color: activo
                     ? AppColors.texto
-                    : (completado ? AppColors.muted : AppColors.dim),
+                    : (completado ? AppColors.muted : AppColors.hint),
                 fontWeight: activo ? FontWeight.w600 : FontWeight.w500,
               ),
             ),
@@ -470,7 +470,7 @@ class _InsigniaPaso extends StatelessWidget {
           fontWeight: FontWeight.w700,
           color: activo
               ? Colors.white
-              : (completado ? AppColors.muted : AppColors.dim),
+              : (completado ? AppColors.muted : AppColors.hint),
         ),
       ),
     );
@@ -573,7 +573,7 @@ class _BarraAcciones extends StatelessWidget {
         minimumSize: const Size(0, 44),
         padding: const EdgeInsets.symmetric(horizontal: 18),
         foregroundColor: AppColors.texto,
-        disabledForegroundColor: AppColors.dim,
+        disabledForegroundColor: AppColors.hint,
         side: BorderSide(color: AppColors.bordeMedio),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
