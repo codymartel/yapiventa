@@ -1,6 +1,6 @@
 # Plano del producto — diseño acordado y próximos pasos
 
-Documento vivo. Resume lo que se decidió con el usuario sobre el **producto** (panel del vendedor) para retomarlo en una conversación nueva. Leer antes de trabajar en productos. Última actualización: 2026-10-29.
+Documento vivo. Resume lo que se decidió con el usuario sobre el **producto** (panel del vendedor) para retomarlo en una conversación nueva. Leer antes de trabajar en productos. Última actualización: 2026-10-30.
 
 > El producto es el punto donde todo choca (presentación, medida, modelos, extras, combos, stock). Primero se cierra esto; lo demás (cambio de rubro, web pública, pedidos) son agregados que leen lo que ya existe.
 
@@ -104,6 +104,8 @@ Hoy solo "Otros" puede crearlas (`permitePersonalizadas`). Acordado: **todos los
 
 **Con variables no choca:** la presentación es una sola para todo el producto («Jaba de 30») y las variables van dentro (Tipo: Rosados / Blancos), con el stock en jabas dentro de cada una. Una jaba de 30 y una de 15 son **una sola presentación («Jaba») con dos formatos** (30 unidades y 15 unidades): en el producto, cada fila elige su formato. Comprobado en el panel real con «Huevos de granja» (2026-10-29).
 
+**Hecho 2026-10-30** (`dd9a3ad`, `c334243`, `1030906`): los 6 rubros pueden crear presentaciones; el formulario enlaza a Configuración → Catálogo y **conserva el borrador**; en Configuración, «Guardar y volver al producto» reabre el formulario con lo escrito y el catálogo releído (1 lectura). Decidido: el enlace ya no avisa que se pierde lo escrito.
+
 ### 3.8 Guía con ejemplo por rubro (en gris, enseña sin texto)
 | Rubro | 📷 Modelos | 📦 Se vende en | ➕ Extras |
 |---|---|---|---|
@@ -125,7 +127,7 @@ Un nivel de modelos y una lista de filas; una foto por modelo; extras sin stock;
 2. ~~**Especificación técnica del modelo de datos**~~ (hecho para modelos y filas: ver 2b; extras y combos se especifican en sus pasos).
 3. ~~**Modelos + Se vende en**~~ (hecho 2026-10-28, falta desplegar; el «No» con varias filas queda pendiente).
 4. **Extras** ← siguiente.
-5. **Presentaciones propias en todos los rubros** (se crean en Configuración → Catálogo; el formulario solo avisa y enlaza).
+5. ~~**Presentaciones propias en todos los rubros**~~ (hecho 2026-10-30: se crean en Configuración → Catálogo; el formulario enlaza y conserva el borrador).
 6. **Combos**.
 7. **Tienda pública (`web/`) — AL FINAL, con todo listo** (acordado 2026-10-29): cuando estén variables, extras, presentaciones propias y combos, se hace una sola vez para que el cliente pueda comprar con todo. Ver notas abajo.
 8. Después: stock en pedidos (descontar al confirmar, transacciones, cancelar devuelve lo descontado), cambio de rubro, moneda por país.
