@@ -63,7 +63,7 @@ void main() {
 
     Future<void> abrirMedida(WidgetTester tester, Widget widget) async {
       await montar(tester, widget);
-      await tester.tap(find.text('Por medida'));
+      await tester.tap(find.text('Lo peso'));
       await tester.pumpAndSettle();
     }
 

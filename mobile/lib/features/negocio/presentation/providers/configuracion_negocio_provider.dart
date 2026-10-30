@@ -1041,7 +1041,7 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
   bool presentacionEsPersonalizada(String id) =>
       presentacionPorId(id)?.personalizada ?? false;
 
-  /// Solo el rubro "Otros" admite presentaciones personalizadas.
+  /// Todos los rubros admiten presentaciones personalizadas.
   bool get puedeCrearPresentacionesPersonalizadas =>
       PresetsVenta.obtener(rubro).permitePersonalizadas;
 
@@ -1144,9 +1144,8 @@ class ConfiguracionNegocioProvider extends ChangeNotifier {
     );
   }
 
-  /// Agrega una presentación personalizada con sus formatos. Solo en rubros
-  /// que permiten personalizadas ("Otros"). Rechaza nombres ya usados y
-  /// formatos duplicados normalizados.
+  /// Agrega una presentación personalizada con sus formatos. Rechaza nombres
+  /// ya usados y formatos duplicados normalizados.
   void agregarPresentacionPersonalizada({
     required String nombre,
     required List<FormatoPresentacion> formatos,

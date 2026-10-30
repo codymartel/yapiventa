@@ -138,8 +138,8 @@ void main() {
       expect(preset.tieneMedidasActivas, isTrue);
     });
 
-    test('no admite presentaciones personalizadas', () {
-      expect(preset.permitePersonalizadas, isFalse);
+    test('admite presentaciones personalizadas', () {
+      expect(preset.permitePersonalizadas, isTrue);
     });
 
     test('presentaciones inactivas: plato, porción, vaso, jarra, set y frasco',
@@ -207,8 +207,8 @@ void main() {
       expect(preset.tieneMedidasActivas, isFalse);
     });
 
-    test('no admite presentaciones personalizadas', () {
-      expect(preset.permitePersonalizadas, isFalse);
+    test('admite presentaciones personalizadas', () {
+      expect(preset.permitePersonalizadas, isTrue);
     });
 
     test('presentaciones inactivas: lata, bolsa, par, set, conjunto y frasco',
@@ -259,8 +259,8 @@ void main() {
       }
     });
 
-    test('no admite presentaciones personalizadas', () {
-      expect(preset.permitePersonalizadas, isFalse);
+    test('admite presentaciones personalizadas', () {
+      expect(preset.permitePersonalizadas, isTrue);
     });
 
     test('presentaciones inactivas: botella, vaso, porción, plato y set', () {
@@ -307,8 +307,8 @@ void main() {
       expect(preset.tieneMedidasActivas, isFalse);
     });
 
-    test('no admite presentaciones personalizadas', () {
-      expect(preset.permitePersonalizadas, isFalse);
+    test('admite presentaciones personalizadas', () {
+      expect(preset.permitePersonalizadas, isTrue);
     });
 
     test('presentaciones inactivas: plato, combo, botella, vaso y frasco', () {
@@ -411,8 +411,8 @@ void main() {
       }
     });
 
-    test('no admite presentaciones personalizadas', () {
-      expect(preset.permitePersonalizadas, isFalse);
+    test('admite presentaciones personalizadas', () {
+      expect(preset.permitePersonalizadas, isTrue);
     });
   });
 
@@ -456,7 +456,7 @@ void main() {
       }
     });
 
-    test('es el único rubro que admite presentaciones personalizadas', () {
+    test('todos los rubros admiten presentaciones personalizadas', () {
       expect(preset.permitePersonalizadas, isTrue);
       for (final rubro in [
         'Bodega',
@@ -465,7 +465,7 @@ void main() {
         'Accesorios y regalos',
         'Belleza y cuidado personal',
       ]) {
-        expect(PresetsVenta.obtener(rubro).permitePersonalizadas, isFalse,
+        expect(PresetsVenta.obtener(rubro).permitePersonalizadas, isTrue,
             reason: rubro);
       }
     });

@@ -313,7 +313,7 @@ class TarjetaPresentacion extends StatelessWidget {
     final visibles = formatos.take(_maxFormatos).toList();
     final restantes = formatos.length - visibles.length;
     final etiquetas = <String>[
-      for (final formato in visibles) formato.etiqueta,
+      for (final formato in visibles) formato.textoVisible,
       if (restantes > 0) '+$restantes',
     ].join(' · ');
     final lineaUnidades = _lineaFamiliaYUnidades(formatos);

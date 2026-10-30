@@ -16,12 +16,12 @@ void main() {
       (tester) async {
         await montar(tester, formulario());
 
-        expect(find.text('Por presentación'), findsOneWidget);
-        expect(find.text('Por medida'), findsOneWidget);
+        expect(find.text('Lo cuento'), findsOneWidget);
+        expect(find.text('Lo peso'), findsOneWidget);
         expect(find.byKey(const Key('aviso-medida-inactiva')), findsOneWidget);
 
         // Tocar el segmento apagado no cambia de modo.
-        await tester.tap(find.text('Por medida'));
+        await tester.tap(find.text('Lo peso'));
         await tester.pumpAndSettle();
         expect(find.text('Qué mides *'), findsNothing);
       },
@@ -32,9 +32,63 @@ void main() {
     ) async {
       await montar(tester, formulario(catalogoVenta: catalogoConMedida()));
 
-      expect(find.text('Por presentación'), findsOneWidget);
-      expect(find.text('Por medida'), findsOneWidget);
+      expect(find.text('Lo cuento'), findsOneWidget);
+      expect(find.text('Lo peso'), findsOneWidget);
       expect(find.byKey(const Key('aviso-medida-inactiva')), findsNothing);
+    });
+  });
+
+  group('jerga y navegación', () {
+    testWidgets('pregunta «¿Lo cuentas o lo pesas?» sin decir presentación', (
+      tester,
+    ) async {
+      await montar(tester, formulario());
+
+      expect(find.text('¿Lo cuentas o lo pesas?'), findsOneWidget);
+      expect(find.text('Por presentación'), findsNothing);
+      expect(find.text('Por medida'), findsNothing);
+    });
+
+    testWidgets('sin a dónde ir no se pinta el enlace a Configuración', (
+      tester,
+    ) async {
+      await montar(tester, formulario());
+
+      expect(
+        find.byKey(const Key('crear-presentacion-en-catalogo')),
+        findsNothing,
+      );
+    });
+
+    testWidgets('el enlace avisa y, si acepta, cierra y abre Configuración', (
+      tester,
+    ) async {
+      var cerrado = 0;
+      var abierto = 0;
+      await montar(
+        tester,
+        formulario(onCancelar: () => cerrado++, onAbrirCatalogo: () => abierto++),
+      );
+
+      expect(
+        find.textContaining('¿No ves tu presentación? Créala en Configuración'),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const Key('crear-presentacion-en-catalogo')));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('lo que escribiste se perderá'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('quedarme-en-formulario')));
+      await tester.pumpAndSettle();
+      expect(cerrado, 0);
+      expect(abierto, 0);
+
+      await tester.tap(find.byKey(const Key('crear-presentacion-en-catalogo')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('salir-a-catalogo')));
+      await tester.pumpAndSettle();
+      expect(cerrado, 1);
+      expect(abierto, 1);
     });
   });
 

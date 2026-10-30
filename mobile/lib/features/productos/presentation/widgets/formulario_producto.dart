@@ -45,6 +45,10 @@ class FormularioProducto extends StatefulWidget {
   final VoidCallback onCancelar;
   final VoidCallback? onGuardado;
 
+  /// Abre Configuración → Catálogo para crear una presentación propia. Null
+  /// donde no hay a dónde ir: el enlace no aparece.
+  final VoidCallback? onAbrirCatalogo;
+
   const FormularioProducto({
     super.key,
     this.producto,
@@ -56,6 +60,7 @@ class FormularioProducto extends StatefulWidget {
     this.onReintentarVenta,
     required this.onCancelar,
     this.onGuardado,
+    this.onAbrirCatalogo,
   });
 
   @override
@@ -80,6 +85,41 @@ class _FormularioProductoState extends State<FormularioProducto> {
   void dispose() {
     _form.dispose();
     super.dispose();
+  }
+
+  /// Salir del formulario descarta lo escrito: se avisa antes de ir.
+  Future<void> _irACatalogo() async {
+    final salir = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.superficie,
+        title: Text(
+          'Crear una presentación',
+          style: TextStyle(color: AppColors.texto),
+        ),
+        content: Text(
+          'Vas a salir de este formulario y lo que escribiste se perderá. '
+          'Después de crear tu presentación, vuelve a agregar el producto.',
+          style: TextStyle(color: AppColors.muted),
+        ),
+        actions: [
+          TextButton(
+            key: const Key('quedarme-en-formulario'),
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Seguir aquí'),
+          ),
+          ElevatedButton(
+            key: const Key('salir-a-catalogo'),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Ir a Configuración'),
+          ),
+        ],
+      ),
+    );
+    if (salir != true || !mounted) return;
+    final abrir = widget.onAbrirCatalogo;
+    widget.onCancelar();
+    abrir?.call();
   }
 
   Future<void> _guardar() async {
@@ -295,6 +335,9 @@ class _FormularioProductoState extends State<FormularioProducto> {
             onFormatoCambiado: form.cambiarFormato,
             onStockInfinitoCambiado: form.cambiarStockInfinito,
             onCambioTexto: form.trasCambioTexto,
+            onAbrirCatalogo: widget.onAbrirCatalogo == null
+                ? null
+                : _irACatalogo,
           ),
         if (form.modelos.usa) ...[
           const SizedBox(height: 14),

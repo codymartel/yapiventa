@@ -92,6 +92,8 @@ Widget formulario({
   ProductosProvider? provider,
   List<String> categorias = const ['Bebidas'],
   String rubro = '',
+  VoidCallback? onAbrirCatalogo,
+  VoidCallback? onCancelar,
 }) {
   final contenido = Scaffold(
     body: FormularioProducto(
@@ -104,7 +106,8 @@ Widget formulario({
       ventaErrorMessage: ventaErrorMessage,
       onReintentarVenta: onReintentarVenta,
       rubro: rubro,
-      onCancelar: () {},
+      onCancelar: onCancelar ?? () {},
+      onAbrirCatalogo: onAbrirCatalogo,
     ),
   );
   return MaterialApp(

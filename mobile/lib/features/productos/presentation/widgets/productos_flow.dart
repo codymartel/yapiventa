@@ -46,6 +46,10 @@ class ProductosFlow extends StatefulWidget {
   final VoidCallback? onVolver;
   final ValueChanged<String>? onElegirPlantilla;
   final VoidCallback? onProgressChanged;
+
+  /// Lleva a Configuración → Catálogo (presentaciones propias). Null: el
+  /// formulario no muestra el enlace.
+  final VoidCallback? onAbrirCatalogo;
   final ProductosDependencies? productosDependencies;
   final CatalogoNegocioDependencies? catalogoDependencies;
   final bool mostrarPanelesLaterales;
@@ -58,6 +62,7 @@ class ProductosFlow extends StatefulWidget {
     this.onVolver,
     this.onElegirPlantilla,
     this.onProgressChanged,
+    this.onAbrirCatalogo,
     this.productosDependencies,
     this.catalogoDependencies,
     this.mostrarPanelesLaterales = true,
@@ -172,6 +177,7 @@ class _ProductosFlowState extends State<ProductosFlow> {
               : () => _catalogoProvider!.reintentarVenta(),
           onCancelar: () => Navigator.of(dialogContext).pop(),
           onGuardado: widget.onProgressChanged,
+          onAbrirCatalogo: widget.onAbrirCatalogo,
         ),
       ),
     );

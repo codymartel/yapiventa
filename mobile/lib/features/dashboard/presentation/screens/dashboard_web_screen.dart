@@ -331,6 +331,19 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
     );
   }
 
+  /// Desde el formulario de producto: Configuración → Catálogo → Unidades de
+  /// venta, donde se crean las presentaciones propias.
+  void _abrirUnidadesDeVenta() {
+    if (!mounted) return;
+    DashboardWebScreen.navegadorInicioClave.currentState?.popUntil(
+      (ruta) => ruta.isFirst,
+    );
+    _abrirConfiguracion(context, widget.progreso);
+    _providerConfiguracion
+      ?..irAPaso(1)
+      ..cambiarCatalogoPestana(1);
+  }
+
   void _abrirProductos(
     BuildContext rutaContexto,
     ProgresoConfiguracion progreso,
@@ -409,6 +422,7 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
       },
       onElegirPlantilla: (_) => _abrirPlantilla(context, widget.progreso),
       onProgressChanged: widget.recargarProgreso,
+      onAbrirCatalogo: _abrirUnidadesDeVenta,
       productosDependencies: widget.productosDependencies,
       catalogoDependencies: widget.catalogoDependencies,
       mostrarPanelesLaterales: false,

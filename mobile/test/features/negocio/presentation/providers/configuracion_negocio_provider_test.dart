@@ -656,7 +656,7 @@ void main() {
       expect(provider.presentacionPorId('par'), isNotNull);
     });
 
-    test('crea presentación personalizada solo en rubros permitidos', () {
+    test('crea presentación personalizada en cualquier rubro', () {
       final otros = crearProvider(rubro: 'Otros');
       otros.agregarPresentacionPersonalizada(
         nombre: 'Caja premio',
@@ -675,8 +675,9 @@ void main() {
         nombre: 'Caja premio',
         formatos: [conteo(1)],
       );
-      expect(bodega.errorCatalogo, contains('no admite'));
-      expect(bodega.presentaciones, hasLength(6));
+      expect(bodega.errorCatalogo, isNull);
+      expect(bodega.presentaciones, hasLength(7));
+      expect(bodega.presentacionPorId('personalizada-1')?.nombre, 'Caja premio');
     });
 
     test('rechaza personalizada con nombre duplicado', () {

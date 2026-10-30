@@ -286,7 +286,7 @@ void main() {
         tester,
         formulario(provider: provider, catalogoVenta: catalogoConMedida()),
       );
-      await tester.tap(find.text('Por medida'));
+      await tester.tap(find.text('Lo peso'));
       await tester.pumpAndSettle();
       await escribirNombre(tester, 'Queso');
       await decirSi(tester);
@@ -330,7 +330,7 @@ void main() {
       tester,
     ) async {
       await montar(tester, formulario(catalogoVenta: catalogoConMedida()));
-      await tester.tap(find.text('Por medida'));
+      await tester.tap(find.text('Lo peso'));
       await tester.pumpAndSettle();
       await decirSi(tester);
 

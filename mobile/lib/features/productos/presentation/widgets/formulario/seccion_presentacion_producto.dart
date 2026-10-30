@@ -29,6 +29,7 @@ class SeccionPresentacionProducto extends StatelessWidget {
     required this.onStockInfinitoCambiado,
     required this.onCambioTexto,
     this.conModelos = false,
+    this.onAbrirCatalogo,
   });
 
   final List<OpcionPresentacion> presentaciones;
@@ -56,6 +57,10 @@ class SeccionPresentacionProducto extends StatelessWidget {
   /// cada modelo: acá queda solo la presentación y el stock infinito.
   final bool conModelos;
 
+  /// Lleva a Configuración → Catálogo → Unidades de venta, donde se crean las
+  /// presentaciones propias. Null: no hay a dónde ir y el enlace no se pinta.
+  final VoidCallback? onAbrirCatalogo;
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -76,6 +81,18 @@ class SeccionPresentacionProducto extends StatelessWidget {
             if (valor != null) onPresentacionCambiada(valor);
           },
         ),
+        if (onAbrirCatalogo != null)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              key: const Key('crear-presentacion-en-catalogo'),
+              onPressed: onAbrirCatalogo,
+              child: const Text(
+                '¿No ves tu presentación? Créala en Configuración → Catálogo',
+                style: TextStyle(fontSize: 13),
+              ),
+            ),
+          ),
         if (conModelos)
           Padding(
             padding: const EdgeInsets.only(top: 6),
@@ -168,7 +185,7 @@ class _FormatosPresentacion extends StatelessWidget {
       return Padding(
         padding: const EdgeInsets.only(bottom: 10),
         child: Text(
-          'Formato: ${formatos.first.etiqueta}',
+          'Formato: ${formatos.first.textoVisible}',
           style: TextStyle(color: AppColors.muted, fontSize: 12),
         ),
       );
@@ -181,7 +198,7 @@ class _FormatosPresentacion extends StatelessWidget {
         for (final formato in formatos)
           DropdownMenuItem<String>(
             value: formato.etiqueta,
-            child: Text(formato.etiqueta),
+            child: Text(formato.textoVisible),
           ),
       ],
       onChanged: (etiqueta) {

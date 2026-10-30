@@ -537,7 +537,7 @@ class _FilaFormatoExistente extends StatelessWidget {
         children: [
           Expanded(
             child: Text(
-              formato.etiqueta,
+              formato.textoVisible,
               key: Key('formato-existente-${formato.etiqueta}'),
               style: const TextStyle(color: AppColors.texto, fontSize: 13),
             ),
@@ -545,7 +545,7 @@ class _FilaFormatoExistente extends StatelessWidget {
           IconButton(
             key: Key('eliminar-formato-${formato.etiqueta}'),
             tooltip: puedeEliminar
-                ? 'Quitar ${formato.etiqueta}'
+                ? 'Quitar ${formato.textoVisible}'
                 : 'No puedes quitar el único formato',
             onPressed: puedeEliminar ? onEliminar : null,
             icon: Icon(
@@ -587,7 +587,7 @@ class PrevisualizacionPresentacion extends StatelessWidget {
     final formato = formatos.last;
     final tieneConteoUnitario =
         formato.familia == FamiliaUnidad.conteo && formato.valorBase == 1;
-    final titulo = tieneConteoUnitario ? nombre : '$nombre ${formato.etiqueta}';
+    final titulo = tieneConteoUnitario ? nombre : '$nombre ${formato.textoVisible}';
     final lineaContenido = switch (formato.familia) {
       FamiliaUnidad.conteo => null,
       FamiliaUnidad.volumen => 'El contenido no se descontará en ml.',

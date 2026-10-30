@@ -72,6 +72,15 @@ class FormatoPresentacion {
     unidadVisible,
   );
 
+  /// Cómo se lee en pantalla: igual que [etiqueta], pero el conteo va en
+  /// plural ("30 unidades"). La [etiqueta] sigue siendo la clave guardada.
+  String get textoVisible {
+    if (familia != FamiliaUnidad.conteo || unidadVisible.nombre != 'unidad') {
+      return etiqueta;
+    }
+    return '$valorBase ${valorBase == 1 ? 'unidad' : 'unidades'}';
+  }
+
   /// Igualdad por la cantidad normalizada (familia + valorBase en base).
   bool esMismoFormato(FormatoPresentacion otro) =>
       otro.familia == familia && otro.valorBase == valorBase;

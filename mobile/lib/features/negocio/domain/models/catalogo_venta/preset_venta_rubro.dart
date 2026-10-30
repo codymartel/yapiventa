@@ -39,8 +39,9 @@ class PresetVentaRubro {
   final List<OpcionPresentacion> presentaciones;
   final List<ConfiguracionMedida> medidas;
 
-  /// Solo "Otros" admite presentaciones personalizadas; el resto no. Nunca
-  /// implica familias, unidades ni conversiones nuevas (registro cerrado).
+  /// Todos los rubros admiten presentaciones personalizadas (Jaba, Saco…).
+  /// Nunca implica familias, unidades ni conversiones nuevas (registro
+  /// cerrado).
   final bool permitePersonalizadas;
 
   final Map<String, EstadoVenta> _estadosPorId;
@@ -64,7 +65,7 @@ class PresetVentaRubro {
     required List<String> categorias,
     required Map<String, PresentacionACrear> presentaciones,
     required List<ConfiguracionMedida> medidas,
-    bool permitePersonalizadas = false,
+    bool permitePersonalizadas = true,
   }) {
     if (rubro.trim().isEmpty) {
       throw ArgumentError.value(rubro, 'rubro', 'El rubro no puede estar vacío.');
@@ -388,7 +389,6 @@ class PresetsVenta {
           _medidaInactiva(FamiliaUnidad.longitud),
           _medidaInactiva(FamiliaUnidad.area),
         ],
-        permitePersonalizadas: true,
       ),
     };
   }

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../../../../core/theme/app_colors.dart';
 import '../../../../negocio/domain/models/catalogo_venta/formato_presentacion.dart';
-import '../../../domain/models/familia_unidad.dart';
 import '../../../domain/models/formato_elegido.dart';
 import '../../providers/formulario_modelos_controller.dart';
 import 'formato_entradas.dart';
@@ -86,14 +85,8 @@ class FilaModeloProducto extends StatelessWidget {
   }
 
   /// Cómo se lee un formato en la lista: «de 30 unidades», «de 500 ml».
-  static String textoFormato(FormatoPresentacion formato) {
-    final esUnidad =
-        formato.familia == FamiliaUnidad.conteo &&
-        formato.unidadVisible.nombre == 'unidad';
-    if (!esUnidad) return 'de ${formato.etiqueta}';
-    final n = formato.valorBase;
-    return 'de $n ${n == 1 ? 'unidad' : 'unidades'}';
-  }
+  static String textoFormato(FormatoPresentacion formato) =>
+      'de ${formato.textoVisible}';
 
   Widget _etiqueta() {
     if (formatos.length > 1) {

@@ -27,7 +27,7 @@ void main() {
         formulario(provider: provider, catalogoVenta: catalogoConMedida()),
       );
 
-      await tester.tap(find.text('Por medida'));
+      await tester.tap(find.text('Lo peso'));
       await tester.pumpAndSettle();
       await tester.enterText(campo('Nombre del producto *'), 'Arroz');
       await elegirEnDropdown(tester, 'Qué mides *', 'Peso');
@@ -211,7 +211,7 @@ void main() {
         formulario(provider: provider, catalogoVenta: catalogoConMedida()),
       );
 
-      await tester.tap(find.text('Por medida'));
+      await tester.tap(find.text('Lo peso'));
       await tester.pumpAndSettle();
       await tester.enterText(campo('Nombre del producto *'), 'Arroz');
       await tester.enterText(campo('Precio S/ *'), '4,50');
@@ -290,7 +290,7 @@ void main() {
         formulario(provider: provider, catalogoVenta: catalogoConMedida()),
       );
 
-      await tester.tap(find.text('Por medida'));
+      await tester.tap(find.text('Lo peso'));
       await tester.pumpAndSettle();
       await tester.enterText(campo('Nombre del producto *'), 'Arroz');
       await tester.enterText(campo('Precio S/ *'), '4,50');
@@ -323,7 +323,7 @@ void main() {
     ) async {
       await montar(tester, formulario(catalogoVenta: catalogoConRapidas()));
 
-      await tester.tap(find.text('Por medida'));
+      await tester.tap(find.text('Lo peso'));
       await tester.pumpAndSettle();
       await tester.enterText(campo('Precio S/ *'), '4,50');
       await tester.pump();

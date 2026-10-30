@@ -52,7 +52,7 @@ void main() {
   Finder editor() => find.byKey(const Key('editor-presentacion'));
 
   // ── 1. Sección en Bodega ───────────────────────────────────────────────
-  testWidgets('Bodega muestra obligatorias sin opciones ni nueva', (
+  testWidgets('Bodega muestra obligatorias y deja crear su propia presentación', (
     tester,
   ) async {
     await mostrarPaso(tester);
@@ -61,8 +61,7 @@ void main() {
     expect(find.text('Presentaciones'), findsWidgets);
     expect(find.text('Obligatorias'), findsOneWidget);
     expect(find.text('Más opciones'), findsNothing);
-    expect(find.text('Presentaciones personalizadas'), findsNothing);
-    expect(find.byKey(const Key('boton-nueva-presentacion')), findsNothing);
+    expect(find.byKey(const Key('boton-nueva-presentacion')), findsOneWidget);
     expect(find.text('6 activas'), findsOneWidget);
     expect(find.byKey(const Key('presentacion-card-unidad')), findsOneWidget);
     expect(find.byKey(const Key('presentacion-card-botella')), findsOneWidget);
@@ -357,8 +356,8 @@ void main() {
     await tester.tap(find.byKey(const Key('boton-agregar-formato')));
     await tester.pumpAndSettle();
 
-    expect(find.text('10 unidad'), findsOneWidget);
-    expect(find.text('Canasto 10 unidad'), findsOneWidget);
+    expect(find.text('10 unidades'), findsOneWidget);
+    expect(find.text('Canasto 10 unidades'), findsOneWidget);
 
     await tester.tap(find.widgetWithText(ElevatedButton, 'Guardar'));
     await tester.pumpAndSettle();

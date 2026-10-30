@@ -167,7 +167,7 @@ void main() {
                 ),
               );
 
-              await tester.tap(find.text('Por medida'));
+              await tester.tap(find.text('Lo peso'));
               await tester.pumpAndSettle();
               await escribir(tester, 'Nombre del producto *', 'A granel');
               if (medidasActivas.length > 1) {

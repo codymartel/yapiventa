@@ -25,13 +25,13 @@ class SelectorModoVenta extends StatelessWidget {
   final ValueChanged<ModoVenta> onCambio;
 
   static String etiqueta(ModoVenta modo) => switch (modo) {
-    ModoVenta.presentacion => 'Por presentación',
-    ModoVenta.medida => 'Por medida',
+    ModoVenta.presentacion => 'Lo cuento',
+    ModoVenta.medida => 'Lo peso',
   };
 
   static String descripcion(ModoVenta modo) => switch (modo) {
     ModoVenta.presentacion => 'Se cuentan unidades, pares, botellas…',
-    ModoVenta.medida => 'Se vende por peso, volumen… al granel',
+    ModoVenta.medida => 'Se vende por kilos, litros, metros… al granel',
   };
 
   @override
@@ -48,6 +48,17 @@ class SelectorModoVenta extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Text(
+            '¿Lo cuentas o lo pesas?',
+            style: TextStyle(
+              color: AppColors.texto,
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ),
         SegmentedButton<ModoVenta>(
           segments: [
             for (final modo in modosDisponibles)
