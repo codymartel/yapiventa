@@ -25,6 +25,7 @@
 // - NO toca repositorios, Firestore ni Cloudinary.
 // ═════════════════════════════════════════════════════════════════════════
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -34,6 +35,7 @@ import '../../../negocio/domain/models/catalogo_negocio.dart';
 import '../../../negocio/presentation/providers/catalogo_negocio_provider.dart';
 import '../../domain/models/producto.dart';
 import '../../productos_dependencies.dart';
+import '../providers/formulario_producto_controller.dart';
 import '../providers/productos_provider.dart';
 import 'dialogo_eliminar_producto.dart';
 import 'formulario_producto.dart';
@@ -50,6 +52,10 @@ class ProductosFlow extends StatefulWidget {
   /// Lleva a Configuración → Catálogo (presentaciones propias). Null: el
   /// formulario no muestra el enlace.
   final VoidCallback? onAbrirCatalogo;
+
+  /// Avisa que se volvió de Configuración con «Guardar y volver al producto»:
+  /// se reabre el formulario que quedó a medias.
+  final ValueListenable<int>? volverAlProducto;
   final ProductosDependencies? productosDependencies;
   final CatalogoNegocioDependencies? catalogoDependencies;
   final bool mostrarPanelesLaterales;
@@ -63,6 +69,7 @@ class ProductosFlow extends StatefulWidget {
     this.onElegirPlantilla,
     this.onProgressChanged,
     this.onAbrirCatalogo,
+    this.volverAlProducto,
     this.productosDependencies,
     this.catalogoDependencies,
     this.mostrarPanelesLaterales = true,
@@ -76,9 +83,21 @@ class _ProductosFlowState extends State<ProductosFlow> {
   ProductosProvider? _provider;
   CatalogoNegocioProvider? _catalogoProvider;
 
+  /// Se marca al ir a Configuración desde el formulario: al volver, el
+  /// catálogo de venta se relee una vez para ver lo que se creó allá.
+  bool _catalogoDesactualizado = false;
+
+  /// Formulario a medias mientras se está en Configuración. Este flujo es su
+  /// dueño: lo destruye al reabrirlo y cerrarlo, o al empezar uno nuevo.
+  FormularioProductoController? _borrador;
+
+  /// El diálogo abierto lo dejó en [_borrador] en vez de destruirlo.
+  bool _borradorConservado = false;
+
   @override
   void initState() {
     super.initState();
+    widget.volverAlProducto?.addListener(_reanudarBorrador);
     final uid = widget.uid;
 
     final catalogoDependencies =
@@ -108,7 +127,17 @@ class _ProductosFlowState extends State<ProductosFlow> {
   }
 
   @override
+  void didUpdateWidget(covariant ProductosFlow oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.volverAlProducto == widget.volverAlProducto) return;
+    oldWidget.volverAlProducto?.removeListener(_reanudarBorrador);
+    widget.volverAlProducto?.addListener(_reanudarBorrador);
+  }
+
+  @override
   void dispose() {
+    widget.volverAlProducto?.removeListener(_reanudarBorrador);
+    _borrador?.dispose();
     _provider?.dispose();
     _catalogoProvider?.dispose();
     super.dispose();
@@ -154,19 +183,49 @@ class _ProductosFlowState extends State<ProductosFlow> {
     widget.onElegirPlantilla?.call(rubro.isEmpty ? 'Otros' : rubro);
   }
 
-  Future<void> _abrirFormulario({Producto? producto}) {
+  /// El formulario se fue a Configuración: queda guardado a medias.
+  void _guardarBorradorEIr(FormularioProductoController formulario) {
+    if (!identical(_borrador, formulario)) _borrador?.dispose();
+    _borrador = formulario;
+    _borradorConservado = true;
+    _catalogoDesactualizado = true;
+    widget.onAbrirCatalogo?.call();
+  }
+
+  /// Se volvió de Configuración: relee el catálogo (1 lectura) y reabre el
+  /// formulario con lo que el vendedor había escrito.
+  Future<void> _reanudarBorrador() async {
+    final borrador = _borrador;
+    if (borrador == null) return;
+    await _abrirFormulario(borrador: borrador);
+  }
+
+  Future<void> _abrirFormulario({
+    Producto? producto,
+    FormularioProductoController? borrador,
+  }) async {
     final provider = _provider;
     final catalogo = _catalogoProvider?.catalogo;
-    if (provider == null || catalogo == null) {
-      return Future<void>.value();
+    if (provider == null || catalogo == null) return;
+    // Un formulario nuevo descarta el borrador que hubiera quedado.
+    if (borrador == null && _borrador != null) {
+      _borrador!.dispose();
+      _borrador = null;
     }
-    return showDialog<void>(
+    if (_catalogoDesactualizado) {
+      _catalogoDesactualizado = false;
+      await _catalogoProvider?.recargarVenta();
+      if (!mounted) return;
+    }
+    _borradorConservado = false;
+    await showDialog<void>(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => ChangeNotifierProvider.value(
         value: provider,
         child: FormularioProducto(
-          producto: producto,
+          producto: borrador?.producto ?? producto,
+          borrador: borrador,
           categoriasDisponibles: catalogo.categorias,
           catalogoVenta: _catalogoProvider?.catalogoVenta,
           rubro: catalogo.rubro,
@@ -177,10 +236,17 @@ class _ProductosFlowState extends State<ProductosFlow> {
               : () => _catalogoProvider!.reintentarVenta(),
           onCancelar: () => Navigator.of(dialogContext).pop(),
           onGuardado: widget.onProgressChanged,
-          onAbrirCatalogo: widget.onAbrirCatalogo,
+          onAbrirCatalogo: widget.onAbrirCatalogo == null
+              ? null
+              : _guardarBorradorEIr,
         ),
       ),
     );
+    // Cerrado sin ir a Configuración: el borrador reabierto ya no sirve.
+    if (borrador != null && !_borradorConservado) {
+      if (identical(_borrador, borrador)) _borrador = null;
+      borrador.dispose();
+    }
   }
 
   Future<void> _confirmarEliminacion(String productoId) async {

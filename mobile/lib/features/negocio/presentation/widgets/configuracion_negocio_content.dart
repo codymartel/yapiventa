@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../providers/configuracion_negocio_provider.dart';
+import 'boton_volver_al_producto.dart';
 import 'paso_negocio.dart';
 import 'paso_catalogo.dart';
 import 'paso_logistica.dart';
@@ -35,12 +36,17 @@ class ConfiguracionNegocioContent extends StatelessWidget {
   final VoidCallback onVolver;
   final VoidCallback onFinalizar;
 
+  /// Solo si se llegó desde el formulario de un producto: en el paso Catálogo
+  /// aparece «Guardar y volver al producto».
+  final VoidCallback? onVolverAlProducto;
+
   const ConfiguracionNegocioContent({
     super.key,
     required this.uid,
     required this.rubro,
     required this.onVolver,
     required this.onFinalizar,
+    this.onVolverAlProducto,
   });
 
   static const _nombresPasos = ['Negocio', 'Catálogo', 'Logística', 'Pagos'];
@@ -146,6 +152,23 @@ class ConfiguracionNegocioContent extends StatelessWidget {
                 ],
               ),
             ),
+
+            if (onVolverAlProducto != null && p.pasoActual == 1)
+              Padding(
+                padding: EdgeInsets.fromLTRB(
+                  paddingHorizontal,
+                  8,
+                  paddingHorizontal,
+                  0,
+                ),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: BotonVolverAlProducto(
+                    uid: uid,
+                    onVolverAlProducto: onVolverAlProducto!,
+                  ),
+                ),
+              ),
 
             // ── NAVEGACIÓN entre pasos ───────────────────────────────────
             // Vive en el flujo de la columna, nunca superpuesto: no puede

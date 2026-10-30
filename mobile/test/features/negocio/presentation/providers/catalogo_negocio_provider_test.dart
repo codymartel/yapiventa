@@ -186,6 +186,46 @@ void main() {
       expect(conVenta.ventaErrorMessage, isNull);
       expect(repository.llamadasVenta, 2);
     });
+
+    test('recargarVenta relee aunque ya esté en memoria: 1 lectura', () async {
+      final conVenta = CatalogoNegocioProvider(
+        uid: 'usuario-1',
+        obtenerCatalogoNegocio: ObtenerCatalogoNegocio(repository),
+        obtenerCatalogoVenta: ObtenerCatalogoVenta(repository),
+      );
+      addTearDown(conVenta.dispose);
+
+      repository.respuestaVenta = venta();
+      await conVenta.cargarVenta();
+      await conVenta.cargarVenta();
+      expect(repository.llamadasVenta, 1);
+
+      final nueva = venta();
+      repository.respuestaVenta = nueva;
+      await conVenta.recargarVenta();
+
+      expect(repository.llamadasVenta, 2);
+      expect(conVenta.catalogoVenta, same(nueva));
+    });
+
+    test('recargarVenta conserva el catálogo anterior si falla', () async {
+      final conVenta = CatalogoNegocioProvider(
+        uid: 'usuario-1',
+        obtenerCatalogoNegocio: ObtenerCatalogoNegocio(repository),
+        obtenerCatalogoVenta: ObtenerCatalogoVenta(repository),
+      );
+      addTearDown(conVenta.dispose);
+
+      final original = venta();
+      repository.respuestaVenta = original;
+      await conVenta.cargarVenta();
+
+      repository.errorVenta = Exception('sin red');
+      await conVenta.recargarVenta();
+
+      expect(conVenta.catalogoVenta, same(original));
+      expect(conVenta.ventaErrorMessage, contains('sin red'));
+    });
   });
 }
 

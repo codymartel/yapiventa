@@ -10,6 +10,7 @@ import 'package:mobile/features/negocio/domain/models/catalogo_venta/opcion_pres
 import 'package:mobile/features/negocio/domain/models/catalogo_venta/unidad_registrada.dart';
 import 'package:mobile/features/productos/domain/models/familia_unidad.dart';
 import 'package:mobile/features/productos/domain/models/producto.dart';
+import 'package:mobile/features/productos/presentation/providers/formulario_producto_controller.dart';
 import 'package:mobile/features/productos/presentation/providers/productos_provider.dart';
 import 'package:mobile/features/productos/presentation/widgets/formulario/foto_modelo.dart';
 import 'package:mobile/features/productos/presentation/widgets/formulario/foto_producto.dart';
@@ -92,8 +93,9 @@ Widget formulario({
   ProductosProvider? provider,
   List<String> categorias = const ['Bebidas'],
   String rubro = '',
-  VoidCallback? onAbrirCatalogo,
+  ValueChanged<FormularioProductoController>? onAbrirCatalogo,
   VoidCallback? onCancelar,
+  FormularioProductoController? borrador,
 }) {
   final contenido = Scaffold(
     body: FormularioProducto(
@@ -108,6 +110,7 @@ Widget formulario({
       rubro: rubro,
       onCancelar: onCancelar ?? () {},
       onAbrirCatalogo: onAbrirCatalogo,
+      borrador: borrador,
     ),
   );
   return MaterialApp(

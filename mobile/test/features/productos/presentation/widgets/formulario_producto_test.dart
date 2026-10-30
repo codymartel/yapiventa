@@ -4,6 +4,7 @@ import 'package:mobile/features/productos/data/mappers/producto_firestore_mapper
 import 'package:mobile/features/productos/domain/models/familia_unidad.dart';
 import 'package:mobile/features/productos/domain/models/modo_venta.dart';
 import 'package:mobile/features/productos/domain/models/producto.dart';
+import 'package:mobile/features/productos/presentation/providers/formulario_producto_controller.dart';
 import 'package:mocktail/mocktail.dart';
 import 'formulario_producto_helpers.dart';
 
@@ -60,15 +61,20 @@ void main() {
       );
     });
 
-    testWidgets('el enlace avisa y, si acepta, cierra y abre Configuración', (
+    testWidgets('el enlace cierra el diálogo y entrega el formulario', (
       tester,
     ) async {
       var cerrado = 0;
-      var abierto = 0;
+      FormularioProductoController? entregado;
       await montar(
         tester,
-        formulario(onCancelar: () => cerrado++, onAbrirCatalogo: () => abierto++),
+        formulario(
+          onCancelar: () => cerrado++,
+          onAbrirCatalogo: (form) => entregado = form,
+        ),
       );
+      await tester.enterText(find.byType(TextField).first, 'Polo');
+      await tester.pump();
 
       expect(
         find.textContaining('¿No ves tu presentación? Créala en Configuración'),
@@ -76,19 +82,26 @@ void main() {
       );
       await tester.tap(find.byKey(const Key('crear-presentacion-en-catalogo')));
       await tester.pumpAndSettle();
-      expect(find.textContaining('lo que escribiste se perderá'), findsOneWidget);
 
-      await tester.tap(find.byKey(const Key('quedarme-en-formulario')));
-      await tester.pumpAndSettle();
-      expect(cerrado, 0);
-      expect(abierto, 0);
-
-      await tester.tap(find.byKey(const Key('crear-presentacion-en-catalogo')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('salir-a-catalogo')));
-      await tester.pumpAndSettle();
       expect(cerrado, 1);
-      expect(abierto, 1);
+      expect(entregado, isNotNull);
+      expect(entregado!.nombreCtrl.text, 'Polo');
+      entregado!.dispose();
+    });
+
+    testWidgets('un borrador reabierto conserva lo que se había escrito', (
+      tester,
+    ) async {
+      final borrador = FormularioProductoController(
+        producto: null,
+        categoriasDisponibles: const ['Bebidas'],
+        catalogoVenta: catalogoConPresentaciones(),
+      )..nombreCtrl.text = 'Polo a medias';
+      addTearDown(borrador.dispose);
+
+      await montar(tester, formulario(borrador: borrador));
+
+      expect(find.text('Polo a medias'), findsOneWidget);
     });
   });
 

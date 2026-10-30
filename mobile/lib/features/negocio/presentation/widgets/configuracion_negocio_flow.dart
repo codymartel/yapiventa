@@ -37,6 +37,10 @@ class ConfiguracionNegocioFlow extends StatefulWidget {
   /// acceso.recargar()). Se espera con la interacción aún bloqueada.
   final Future<void> Function(String uid, String? negocioId)? onRecargarProgreso;
 
+  /// Solo si se llegó desde el formulario de un producto (ver
+  /// [ConfiguracionNegocioContent.onVolverAlProducto]).
+  final VoidCallback? onVolverAlProducto;
+
   const ConfiguracionNegocioFlow({
     super.key,
     required this.uid,
@@ -44,6 +48,7 @@ class ConfiguracionNegocioFlow extends StatefulWidget {
     required this.onVolver,
     required this.onCompletado,
     this.onRecargarProgreso,
+    this.onVolverAlProducto,
   });
 
   @override
@@ -93,6 +98,7 @@ class _ConfiguracionNegocioFlowState extends State<ConfiguracionNegocioFlow> {
           rubro: p.rubro,
           onVolver: widget.onVolver,
           onFinalizar: _finalizar,
+          onVolverAlProducto: widget.onVolverAlProducto,
         ),
       ),
     );

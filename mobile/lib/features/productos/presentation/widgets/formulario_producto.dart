@@ -45,9 +45,14 @@ class FormularioProducto extends StatefulWidget {
   final VoidCallback onCancelar;
   final VoidCallback? onGuardado;
 
-  /// Abre Configuración → Catálogo para crear una presentación propia. Null
-  /// donde no hay a dónde ir: el enlace no aparece.
-  final VoidCallback? onAbrirCatalogo;
+  /// Va a Configuración → Catálogo (presentaciones propias) y entrega el
+  /// formulario tal como está, para reabrirlo al volver. Null donde no hay a
+  /// dónde ir: el enlace no aparece.
+  final ValueChanged<FormularioProductoController>? onAbrirCatalogo;
+
+  /// Formulario a medias que se reabre al volver de Configuración. Quien lo
+  /// pasa es su dueño: este widget no lo destruye.
+  final FormularioProductoController? borrador;
 
   const FormularioProducto({
     super.key,
@@ -61,6 +66,7 @@ class FormularioProducto extends StatefulWidget {
     required this.onCancelar,
     this.onGuardado,
     this.onAbrirCatalogo,
+    this.borrador,
   });
 
   @override
@@ -68,12 +74,25 @@ class FormularioProducto extends StatefulWidget {
 }
 
 class _FormularioProductoState extends State<FormularioProducto> {
-  late final FormularioProductoController _form = FormularioProductoController(
-    producto: widget.producto,
-    categoriasDisponibles: widget.categoriasDisponibles,
-    catalogoVenta: widget.catalogoVenta,
-    rubro: widget.rubro,
-  );
+  late final FormularioProductoController _form =
+      widget.borrador ??
+      FormularioProductoController(
+        producto: widget.producto,
+        categoriasDisponibles: widget.categoriasDisponibles,
+        catalogoVenta: widget.catalogoVenta,
+        rubro: widget.rubro,
+      );
+
+  /// Se marca al ir a Configuración: el formulario sigue vivo fuera de este
+  /// diálogo y su dueño lo destruye.
+  bool _conservar = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Un borrador reabierto puede traer un catálogo anterior.
+    _form.catalogoVenta = widget.catalogoVenta;
+  }
 
   @override
   void didUpdateWidget(covariant FormularioProducto oldWidget) {
@@ -83,43 +102,18 @@ class _FormularioProductoState extends State<FormularioProducto> {
 
   @override
   void dispose() {
-    _form.dispose();
+    if (widget.borrador == null && !_conservar) _form.dispose();
     super.dispose();
   }
 
-  /// Salir del formulario descarta lo escrito: se avisa antes de ir.
-  Future<void> _irACatalogo() async {
-    final salir = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: AppColors.superficie,
-        title: Text(
-          'Crear una presentación',
-          style: TextStyle(color: AppColors.texto),
-        ),
-        content: Text(
-          'Vas a salir de este formulario y lo que escribiste se perderá. '
-          'Después de crear tu presentación, vuelve a agregar el producto.',
-          style: TextStyle(color: AppColors.muted),
-        ),
-        actions: [
-          TextButton(
-            key: const Key('quedarme-en-formulario'),
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Seguir aquí'),
-          ),
-          ElevatedButton(
-            key: const Key('salir-a-catalogo'),
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Ir a Configuración'),
-          ),
-        ],
-      ),
-    );
-    if (salir != true || !mounted) return;
+  /// Cierra el diálogo sin perder lo escrito: el flujo guarda el formulario y
+  /// lo reabre cuando se vuelve de Configuración.
+  void _irACatalogo() {
     final abrir = widget.onAbrirCatalogo;
+    if (abrir == null || _form.guardando) return;
+    _conservar = true;
     widget.onCancelar();
-    abrir?.call();
+    abrir(_form);
   }
 
   Future<void> _guardar() async {

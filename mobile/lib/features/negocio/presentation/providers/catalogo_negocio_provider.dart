@@ -97,6 +97,15 @@ class CatalogoNegocioProvider extends ChangeNotifier {
     return cargarVenta();
   }
 
+  /// Vuelve a leer el catálogo de venta aunque ya esté en memoria (cambió en
+  /// Configuración: una presentación nueva). Es 1 lectura; si falla, se
+  /// conserva el catálogo anterior.
+  Future<void> recargarVenta() {
+    final useCase = _obtenerCatalogoVenta;
+    if (useCase == null) return Future.value();
+    return _cargaVentaEnCurso ??= _cargarVenta(useCase);
+  }
+
   Future<void> _cargarVenta(ObtenerCatalogoVenta useCase) async {
     _cargandoVenta = true;
     _ventaErrorMessage = null;
