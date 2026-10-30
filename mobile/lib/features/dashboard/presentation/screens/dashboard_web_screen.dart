@@ -65,11 +65,17 @@ class DashboardWebScreen extends StatefulWidget {
   State<DashboardWebScreen> createState() => _DashboardWebScreenState();
 }
 
+enum _Seccion { inicio, rubro, configuracion, productos, plantilla }
+
 class _DashboardWebScreenState extends State<DashboardWebScreen> {
-  bool _rubroAbierta = false;
-  bool _configuracionAbierta = false;
-  bool _productosAbierta = false;
-  bool _plantillaAbierta = false;
+  /// Sección activa. Una sola variable en vez de una bandera por sección:
+  /// así nunca quedan dos abiertas a la vez.
+  _Seccion _seccion = _Seccion.inicio;
+
+  bool get _rubroAbierta => _seccion == _Seccion.rubro;
+  bool get _configuracionAbierta => _seccion == _Seccion.configuracion;
+  bool get _productosAbierta => _seccion == _Seccion.productos;
+  bool get _plantillaAbierta => _seccion == _Seccion.plantilla;
 
   /// Se marca en la primera visita para montar la rama Productos de forma
   /// perezosa: al entrar al dashboard no existe ninguna instancia del flow.
@@ -79,6 +85,13 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
   /// (y, con ella, el provider y la carga inicial) una sola vez. Mientras el
   /// usuario esté en Plantilla, la rama se mantiene viva vía Offstage.
   bool _plantillaVisitada = false;
+
+  /// Configuración se abrió desde el formulario de un producto: muestra
+  /// «Guardar y volver al producto».
+  bool _vieneDeProducto = false;
+
+  /// Cada +1 le dice a Productos que reabra el formulario que quedó a medias.
+  final ValueNotifier<int> _volverAlProducto = ValueNotifier<int>(0);
   late String _rubroContextual;
   ConfiguracionNegocioProvider? _providerConfiguracion;
   late final NavigatorObserver _observadorInterno;
@@ -91,10 +104,7 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
     _progresoNotifier = ValueNotifier<ProgresoConfiguracion>(widget.progreso);
     _observadorInterno = _ObservadorRutasInternas(() {
       if (!mounted || (!_rubroAbierta && !_configuracionAbierta)) return;
-      setState(() {
-        _rubroAbierta = false;
-        _configuracionAbierta = false;
-      });
+      setState(() => _seccion = _Seccion.inicio);
     });
   }
 
@@ -116,6 +126,7 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
   @override
   void dispose() {
     _providerConfiguracion?.dispose();
+    _volverAlProducto.dispose();
     _progresoNotifier.dispose();
     super.dispose();
   }
@@ -221,6 +232,9 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
               negocioId: widget.negocioId,
               onVolver: () => _regresarAInicio(rutaContexto),
               onCompletado: () => _regresarAInicio(rutaContexto),
+              onVolverAlProducto: _vieneDeProducto
+                  ? _volverAlProductoDesdeConfiguracion
+                  : null,
               onRecargarProgreso: widget.recargarProgreso == null
                   ? null
                   : (uid, negocioId) => widget.recargarProgreso!(),
@@ -293,10 +307,7 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
     }
     setState(() {
       _rubroContextual = _rubroCompatible(progreso.catalogo.rubro);
-      _productosAbierta = false;
-      _rubroAbierta = true;
-      _configuracionAbierta = false;
-      _plantillaAbierta = false;
+      _seccion = _Seccion.rubro;
     });
     Navigator.of(rutaContexto).pushNamed(RutasAcceso.rubro);
   }
@@ -321,10 +332,7 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
       repository: rutaContexto.read<NegocioRepository>(),
     );
     setState(() {
-      _productosAbierta = false;
-      _configuracionAbierta = true;
-      _rubroAbierta = false;
-      _plantillaAbierta = false;
+      _seccion = _Seccion.configuracion;
     });
     DashboardWebScreen.navegadorInicioClave.currentState!.pushNamed(
       RutasAcceso.negocio,
@@ -338,25 +346,39 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
     DashboardWebScreen.navegadorInicioClave.currentState?.popUntil(
       (ruta) => ruta.isFirst,
     );
+    _vieneDeProducto = true;
     _abrirConfiguracion(context, widget.progreso);
     _providerConfiguracion
       ?..irAPaso(1)
       ..cambiarCatalogoPestana(1);
   }
 
+  /// «Guardar y volver al producto»: cierra Configuración, abre Productos y le
+  /// avisa que reabra el formulario que quedó a medias.
+  void _volverAlProductoDesdeConfiguracion() {
+    if (!mounted) return;
+    DashboardWebScreen.navegadorInicioClave.currentState?.popUntil(
+      (ruta) => ruta.isFirst,
+    );
+    setState(() {
+      _vieneDeProducto = false;
+      _seccion = _Seccion.productos;
+      _productosVisitada = true;
+    });
+    _volverAlProducto.value++;
+  }
+
   void _abrirProductos(
     BuildContext rutaContexto,
     ProgresoConfiguracion progreso,
   ) {
+    _vieneDeProducto = false;
     if (!PoliticaAcceso.permite(RutasAcceso.productos, progreso)) {
       _mostrarBloqueado(rutaContexto);
       return;
     }
     setState(() {
-      _productosAbierta = true;
-      _configuracionAbierta = false;
-      _rubroAbierta = false;
-      _plantillaAbierta = false;
+      _seccion = _Seccion.productos;
       _productosVisitada = true;
     });
   }
@@ -367,10 +389,7 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
       return;
     }
     setState(() {
-      _productosAbierta = false;
-      _configuracionAbierta = false;
-      _rubroAbierta = false;
-      _plantillaAbierta = true;
+      _seccion = _Seccion.plantilla;
       _plantillaVisitada = true;
     });
   }
@@ -395,20 +414,14 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
   void _volverDesdePlantilla() {
     if (!mounted) return;
     setState(() {
-      _plantillaAbierta = false;
-      _productosAbierta = true;
+      _seccion = _Seccion.productos;
       _productosVisitada = true;
     });
   }
 
   void _completarPlantilla() {
     if (!mounted) return;
-    setState(() {
-      _plantillaAbierta = false;
-      _productosAbierta = false;
-      _configuracionAbierta = false;
-      _rubroAbierta = false;
-    });
+    setState(() => _seccion = _Seccion.inicio);
   }
 
   Widget _crearRamaProductos() {
@@ -418,11 +431,12 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
       catalogoInicial: widget.progreso.catalogo,
       onVolver: () {
         if (!mounted) return;
-        setState(() => _productosAbierta = false);
+        if (_productosAbierta) setState(() => _seccion = _Seccion.inicio);
       },
       onElegirPlantilla: (_) => _abrirPlantilla(context, widget.progreso),
       onProgressChanged: widget.recargarProgreso,
       onAbrirCatalogo: _abrirUnidadesDeVenta,
+      volverAlProducto: _volverAlProducto,
       productosDependencies: widget.productosDependencies,
       catalogoDependencies: widget.catalogoDependencies,
       mostrarPanelesLaterales: false,
@@ -437,10 +451,7 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
     switch (destino) {
       case DashboardDestination.inicio:
         if (_productosAbierta || _plantillaAbierta) {
-          setState(() {
-            _productosAbierta = false;
-            _plantillaAbierta = false;
-          });
+          setState(() => _seccion = _Seccion.inicio);
         }
         return;
       case DashboardDestination.productos:
