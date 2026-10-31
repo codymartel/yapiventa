@@ -60,6 +60,10 @@ class FormularioProducto extends StatefulWidget {
   /// combo y se calcula su stock.
   final List<Producto> productosParaCombo;
 
+  /// En celular el formulario es una hoja grande que sube desde abajo, con los
+  /// botones fijos al pie; en PC, un diálogo centrado.
+  final bool enHoja;
+
   const FormularioProducto({
     super.key,
     this.producto,
@@ -74,6 +78,7 @@ class FormularioProducto extends StatefulWidget {
     this.onAbrirCatalogo,
     this.borrador,
     this.productosParaCombo = const [],
+    this.enHoja = false,
   });
 
   @override
@@ -173,6 +178,9 @@ class _FormularioProductoState extends State<FormularioProducto> {
     }
   }
 
+  String get _titulo =>
+      widget.producto == null ? 'Agregar producto' : 'Editar producto';
+
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
@@ -182,64 +190,154 @@ class _FormularioProductoState extends State<FormularioProducto> {
         final falta = _form.queFalta;
         return PopScope(
           canPop: !guardando,
-          child: AlertDialog(
-            backgroundColor: AppColors.superficie,
-            title: Text(
-              widget.producto == null ? 'Agregar producto' : 'Editar producto',
-              style: TextStyle(color: AppColors.texto),
-            ),
-            content: SizedBox(
-              width: 460,
-              child: AbsorbPointer(
-                absorbing: guardando,
-                child: SingleChildScrollView(child: _cuerpo()),
+          child: widget.enHoja
+              ? _hoja(guardando, falta)
+              : _dialogo(guardando, falta),
+        );
+      },
+    );
+  }
+
+  Widget _textoFalta(String falta) => Text(
+    falta,
+    key: const Key('falta-para-guardar'),
+    style: TextStyle(
+      color: AppColors.aviso,
+      fontSize: 13,
+      fontWeight: FontWeight.w600,
+    ),
+  );
+
+  Widget _contenidoBotonGuardar(bool guardando) {
+    if (!guardando) return const Text('Guardar producto');
+    return const Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: 18,
+          height: 18,
+          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+        ),
+        SizedBox(width: 8),
+        Text('Guardando...'),
+      ],
+    );
+  }
+
+  /// PC: el diálogo centrado de siempre.
+  Widget _dialogo(bool guardando, String? falta) {
+    return AlertDialog(
+      backgroundColor: AppColors.superficie,
+      title: Text(_titulo, style: TextStyle(color: AppColors.texto)),
+      content: SizedBox(
+        width: 460,
+        child: AbsorbPointer(
+          absorbing: guardando,
+          child: SingleChildScrollView(child: _cuerpo()),
+        ),
+      ),
+      actions: [
+        if (falta != null)
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 260),
+            child: _textoFalta(falta),
+          ),
+        TextButton(
+          onPressed: guardando ? null : widget.onCancelar,
+          child: Text('Cancelar', style: TextStyle(color: AppColors.muted)),
+        ),
+        ElevatedButton(
+          onPressed: _form.camposOk ? _guardar : null,
+          child: _contenidoBotonGuardar(guardando),
+        ),
+      ],
+    );
+  }
+
+  /// Celular: una hoja grande con título, cuerpo que se desplaza y los botones
+  /// fijos al pie (siempre a la vista, sin buscarlos al final del formulario).
+  Widget _hoja(bool guardando, String? falta) {
+    return Column(
+      key: const Key('formulario-en-hoja'),
+      children: [
+        Container(
+          width: 36,
+          height: 4,
+          margin: const EdgeInsets.only(top: 10, bottom: 10),
+          decoration: BoxDecoration(
+            color: AppColors.dim,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              _titulo,
+              style: TextStyle(
+                color: AppColors.texto,
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
               ),
             ),
-            actions: [
+          ),
+        ),
+        Expanded(
+          child: AbsorbPointer(
+            absorbing: guardando,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+              child: _cuerpo(),
+            ),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 14),
+          decoration: BoxDecoration(
+            border: Border(top: BorderSide(color: AppColors.bordeSutil)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
               if (falta != null)
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 260),
-                  child: Text(
-                    falta,
-                    key: const Key('falta-para-guardar'),
-                    style: TextStyle(
-                      color: AppColors.aviso,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: _textoFalta(falta),
+                ),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      key: const Key('cancelar-formulario'),
+                      style: TextButton.styleFrom(
+                        minimumSize: const Size(0, 48),
+                      ),
+                      onPressed: guardando ? null : widget.onCancelar,
+                      child: Text(
+                        'Cancelar',
+                        style: TextStyle(color: AppColors.muted),
+                      ),
                     ),
                   ),
-                ),
-              TextButton(
-                onPressed: guardando ? null : widget.onCancelar,
-                child: Text(
-                  'Cancelar',
-                  style: TextStyle(color: AppColors.muted),
-                ),
-              ),
-              ElevatedButton(
-                onPressed: _form.camposOk ? _guardar : null,
-                child: guardando
-                    ? const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          ),
-                          SizedBox(width: 8),
-                          Text('Guardando...'),
-                        ],
-                      )
-                    : const Text('Guardar producto'),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size(0, 48),
+                      ),
+                      onPressed: _form.camposOk ? _guardar : null,
+                      child: _contenidoBotonGuardar(guardando),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
-        );
-      },
+        ),
+      ],
     );
   }
 

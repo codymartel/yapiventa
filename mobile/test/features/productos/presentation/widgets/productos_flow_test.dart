@@ -256,6 +256,41 @@ void main() {
     expect(find.byType(FormularioProducto), findsOneWidget);
   });
 
+  testWidgets('en celular el formulario sube como hoja grande desde abajo', (
+    tester,
+  ) async {
+    await cargarFlujo(tester, tamano: const Size(430, 900));
+
+    await tester.tap(find.byType(FloatingActionButton));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('formulario-en-hoja')), findsOneWidget);
+    expect(find.byType(BottomSheet), findsOneWidget);
+    expect(find.byType(AlertDialog), findsNothing);
+    // Ocupa casi toda la pantalla (no un recuadro angosto).
+    final alto = tester
+        .getSize(find.byKey(const Key('formulario-en-hoja')))
+        .height;
+    final ancho = tester
+        .getSize(find.byKey(const Key('formulario-en-hoja')))
+        .width;
+    expect(alto, greaterThan(900 * 0.8));
+    expect(ancho, 430);
+  });
+
+  testWidgets('en PC el formulario sigue siendo un diálogo centrado', (
+    tester,
+  ) async {
+    await cargarFlujo(tester, tamano: const Size(1280, 900));
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Agregar producto'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AlertDialog), findsOneWidget);
+    expect(find.byKey(const Key('formulario-en-hoja')), findsNothing);
+    expect(find.byType(BottomSheet), findsNothing);
+  });
+
   testWidgets('propaga el rubro al elegir plantilla', (tester) async {
     final rubros = <String>[];
     await cargarFlujo(

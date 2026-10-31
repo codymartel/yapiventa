@@ -97,6 +97,7 @@ Widget formulario({
   VoidCallback? onCancelar,
   FormularioProductoController? borrador,
   List<Producto> productosParaCombo = const [],
+  bool enHoja = false,
 }) {
   final contenido = Scaffold(
     body: FormularioProducto(
@@ -113,6 +114,7 @@ Widget formulario({
       onAbrirCatalogo: onAbrirCatalogo,
       borrador: borrador,
       productosParaCombo: productosParaCombo,
+      enHoja: enHoja,
     ),
   );
   return MaterialApp(
@@ -208,6 +210,7 @@ Future<void> ponerFotos(WidgetTester tester) async {
 /// modelo ([ponerFotos]).
 Future<void> ponerFotoDelProducto(WidgetTester tester) async {
   usarSelectorDeFotosFalso();
+  await tester.ensureVisible(find.byType(FotoProducto));
   await tester.tap(find.byType(FotoProducto));
   await tester.pumpAndSettle();
 }

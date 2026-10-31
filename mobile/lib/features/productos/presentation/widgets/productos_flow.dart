@@ -38,6 +38,7 @@ import '../../productos_dependencies.dart';
 import '../providers/formulario_producto_controller.dart';
 import '../providers/productos_provider.dart';
 import 'dialogo_eliminar_producto.dart';
+import 'formulario/hoja_o_dialogo.dart' show anchoEditorEnDialogo;
 import 'formulario_producto.dart';
 import 'productos_content.dart';
 
@@ -200,6 +201,45 @@ class _ProductosFlowState extends State<ProductosFlow> {
     await _abrirFormulario(borrador: borrador);
   }
 
+  /// El formulario: una hoja grande desde abajo en celular (menos de 900 px) o
+  /// un diálogo centrado en PC. No se cierra tocando afuera ni arrastrando:
+  /// así no se pierde lo escrito por un toque.
+  Future<void> _mostrarFormulario(
+    Widget Function(BuildContext ventanaContext, bool enHoja) construir,
+  ) {
+    final ancho = MediaQuery.sizeOf(context).width;
+    if (ancho >= anchoEditorEnDialogo) {
+      return showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => construir(dialogContext, false),
+      );
+    }
+    return showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      isDismissible: false,
+      enableDrag: false,
+      backgroundColor: AppColors.superficie,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (hojaContext) {
+        final media = MediaQuery.of(hojaContext);
+        final libre =
+            media.size.height - media.viewPadding.top - media.viewInsets.bottom;
+        return Padding(
+          padding: EdgeInsets.only(bottom: media.viewInsets.bottom),
+          child: SizedBox(
+            height: (libre * 0.97).clamp(320.0, double.infinity),
+            child: construir(hojaContext, true),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> _abrirFormulario({
     Producto? producto,
     FormularioProductoController? borrador,
@@ -218,14 +258,13 @@ class _ProductosFlowState extends State<ProductosFlow> {
       if (!mounted) return;
     }
     _borradorConservado = false;
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => ChangeNotifierProvider.value(
+    await _mostrarFormulario(
+      (ventanaContext, enHoja) => ChangeNotifierProvider.value(
         value: provider,
         child: FormularioProducto(
           producto: borrador?.producto ?? producto,
           borrador: borrador,
+          enHoja: enHoja,
           productosParaCombo: provider.productosCargados,
           categoriasDisponibles: catalogo.categorias,
           catalogoVenta: _catalogoProvider?.catalogoVenta,
@@ -235,7 +274,7 @@ class _ProductosFlowState extends State<ProductosFlow> {
           onReintentarVenta: _catalogoProvider == null
               ? null
               : () => _catalogoProvider!.reintentarVenta(),
-          onCancelar: () => Navigator.of(dialogContext).pop(),
+          onCancelar: () => Navigator.of(ventanaContext).pop(),
           onGuardado: widget.onProgressChanged,
           onAbrirCatalogo: widget.onAbrirCatalogo == null
               ? null
