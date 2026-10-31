@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import 'mosaico_fotos.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../application/services/textos_tarjeta_producto.dart';
 import '../../domain/models/producto.dart';
@@ -24,6 +26,11 @@ class ProductoCard extends StatelessWidget {
   final bool esCuadricula;
   final bool cambiandoDisponibilidad;
 
+  /// Los productos cargados en el panel: el stock de un combo se calcula de
+  /// sus partes. [palabraCombo] es la palabra del rubro («Kit»).
+  final List<Producto> conocidos;
+  final String palabraCombo;
+
   const ProductoCard({
     super.key,
     required this.producto,
@@ -32,6 +39,8 @@ class ProductoCard extends StatelessWidget {
     required this.onToggleDisponible,
     this.esCuadricula = false,
     this.cambiandoDisponibilidad = false,
+    this.conocidos = const [],
+    this.palabraCombo = 'Combo',
   });
 
   @override
@@ -71,7 +80,17 @@ class ProductoCard extends StatelessWidget {
                         errorBuilder: (_, _, _) =>
                             Icon(Icons.image_outlined, color: AppColors.border),
                       )
-                    : Icon(Icons.image_outlined, color: AppColors.border),
+                    : (producto.esCombo
+                          ? MosaicoFotos(
+                              key: const Key('mosaico-combo'),
+                              urls: [
+                                for (final p in producto.partes) p.urlImagen,
+                              ],
+                            )
+                          : Icon(
+                              Icons.image_outlined,
+                              color: AppColors.border,
+                            )),
               ),
               const SizedBox(width: 12),
 
@@ -90,6 +109,15 @@ class ProductoCard extends StatelessWidget {
                         fontSize: 14,
                       ),
                     ),
+                    if (producto.esCombo)
+                      Text(
+                        TextosTarjetaProducto.etiquetaCombo(
+                          producto,
+                          palabraCombo,
+                        ),
+                        key: const Key('etiqueta-combo'),
+                        style: TextStyle(color: _textoSecundario, fontSize: 12),
+                      ),
                     const SizedBox(height: 3),
                     Row(
                       children: [
@@ -110,7 +138,10 @@ class ProductoCard extends StatelessWidget {
                           child: Text(
                             producto.esStockInfinito
                                 ? '∞'
-                                : TextosTarjetaProducto.stock(producto),
+                                : TextosTarjetaProducto.stock(
+                                    producto,
+                                    conocidos: conocidos,
+                                  ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
@@ -197,7 +228,13 @@ class ProductoCard extends StatelessWidget {
                           semanticLabel: 'Imagen de ${producto.nombre}',
                           errorBuilder: (_, _, _) => _imagenVacia(),
                         )
-                      : _imagenVacia(),
+                      : (producto.esCombo
+                            ? MosaicoFotos(
+                                urls: [
+                                  for (final p in producto.partes) p.urlImagen,
+                                ],
+                              )
+                            : _imagenVacia()),
                 ),
               ),
             ),
@@ -275,7 +312,7 @@ class ProductoCard extends StatelessWidget {
   String _stockYUnidad() {
     final stock = producto.esStockInfinito
         ? 'Stock ilimitado'
-        : 'Stock: ${TextosTarjetaProducto.stock(producto)}';
+        : 'Stock: ${TextosTarjetaProducto.stock(producto, conocidos: conocidos)}';
     final unidadAntigua = TextosTarjetaProducto.unidadAntigua(producto);
     if (unidadAntigua.isEmpty) return stock;
     return '$stock · $unidadAntigua';

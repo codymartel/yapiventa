@@ -178,6 +178,7 @@ void main() {
         ),
       ).thenAnswer((_) async => true);
       await montar(tester, formulario(provider: provider));
+      await ponerFotoDelProducto(tester);
 
       await tester.enterText(campo('Nombre del producto *'), 'Cerveza');
       await tester.enterText(campo('Precio S/ *'), '8,50');
@@ -264,6 +265,7 @@ void main() {
           categorias: const ['Abarrotes'],
         ),
       );
+      await ponerFotoDelProducto(tester);
 
       await tester.enterText(campo('Precio S/ *'), '4,00');
       await tester.tap(find.widgetWithText(ElevatedButton, 'Guardar producto'));

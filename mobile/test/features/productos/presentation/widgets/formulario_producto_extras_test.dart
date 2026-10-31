@@ -137,6 +137,7 @@ void main() {
       ),
     ).thenAnswer((_) async => true);
     await montar(tester, formulario(provider: provider, rubro: 'Restaurante'));
+    await ponerFotoDelProducto(tester);
 
     await tester.enterText(campo('Nombre del producto *'), 'Pollo a la brasa');
     await tester.enterText(campo('Precio S/ *'), '18');

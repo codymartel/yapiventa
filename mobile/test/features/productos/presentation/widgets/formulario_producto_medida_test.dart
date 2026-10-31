@@ -26,6 +26,7 @@ void main() {
         tester,
         formulario(provider: provider, catalogoVenta: catalogoConMedida()),
       );
+      await ponerFotoDelProducto(tester);
 
       await tester.tap(find.text('Lo peso'));
       await tester.pumpAndSettle();
@@ -89,6 +90,7 @@ void main() {
           catalogoVenta: catalogoConMedida(),
         ),
       );
+      await ponerFotoDelProducto(tester);
 
       // 0,05 kg = 50 g: menos del mínimo (100 g) y no alineado al
       // incremento (50 g desde 100 g). Se guarda igual.
@@ -210,6 +212,7 @@ void main() {
         tester,
         formulario(provider: provider, catalogoVenta: catalogoConMedida()),
       );
+      await ponerFotoDelProducto(tester);
 
       await tester.tap(find.text('Lo peso'));
       await tester.pumpAndSettle();
@@ -289,6 +292,7 @@ void main() {
         tester,
         formulario(provider: provider, catalogoVenta: catalogoConMedida()),
       );
+      await ponerFotoDelProducto(tester);
 
       await tester.tap(find.text('Lo peso'));
       await tester.pumpAndSettle();

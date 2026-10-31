@@ -96,6 +96,7 @@ Widget formulario({
   ValueChanged<FormularioProductoController>? onAbrirCatalogo,
   VoidCallback? onCancelar,
   FormularioProductoController? borrador,
+  List<Producto> productosParaCombo = const [],
 }) {
   final contenido = Scaffold(
     body: FormularioProducto(
@@ -111,6 +112,7 @@ Widget formulario({
       onCancelar: onCancelar ?? () {},
       onAbrirCatalogo: onAbrirCatalogo,
       borrador: borrador,
+      productosParaCombo: productosParaCombo,
     ),
   );
   return MaterialApp(
@@ -199,4 +201,13 @@ Future<void> ponerFotos(WidgetTester tester) async {
     await tester.tap(find.byType(FotoModelo).at(i));
     await tester.pumpAndSettle();
   }
+}
+
+/// Pone la foto del producto (la foto es obligatoria): elige una con el
+/// selector falso. Para productos simples y combos; con variables va una por
+/// modelo ([ponerFotos]).
+Future<void> ponerFotoDelProducto(WidgetTester tester) async {
+  usarSelectorDeFotosFalso();
+  await tester.tap(find.byType(FotoProducto));
+  await tester.pumpAndSettle();
 }

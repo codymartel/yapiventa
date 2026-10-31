@@ -50,6 +50,9 @@ class DatosFormularioProducto {
     this.tituloFilas = '',
     this.modelos = const [],
     this.extras = const [],
+    this.partes = const [],
+    this.precioComboCentavos,
+    this.sumaPartesCentavos = 0,
   });
 
   /// Producto editado (null si es nuevo).
@@ -93,6 +96,12 @@ class DatosFormularioProducto {
 
   /// Extras del producto. Un producto por medida no los guarda.
   final List<ExtraProducto> extras;
+
+  /// Combo: sus partes, el precio que fijó el encargado y lo que sumaban las
+  /// partes en ese momento. Sin partes = producto normal.
+  final List<ParteCombo> partes;
+  final int? precioComboCentavos;
+  final int sumaPartesCentavos;
 }
 
 class ConstructorProducto {
@@ -103,6 +112,34 @@ class ConstructorProducto {
     final id = anterior?.id ?? '';
     final negocioId = anterior?.negocioId ?? '';
     final disponible = anterior?.disponible ?? true;
+
+    if (datos.partes.isNotEmpty) {
+      // Un combo no tiene stock propio (se calcula de las partes), su precio
+      // lo fija el encargado y se guarda como una unidad entera.
+      return Producto(
+        id: id,
+        negocioId: negocioId,
+        nombre: datos.nombre,
+        descripcion: datos.descripcion,
+        categoria: datos.categoria,
+        disponible: disponible,
+        tieneDelivery: datos.tieneDelivery,
+        urlImagen: datos.urlImagen,
+        cloudinaryPublicId: anterior?.cloudinaryPublicId,
+        fechaVencimiento: anterior?.fechaVencimiento,
+        modoVenta: ModoVenta.presentacion,
+        presentacionId: 'unidad',
+        presentacionNombre: 'Unidad',
+        formatoValorBase: 1,
+        formatoFamilia: FamiliaUnidad.conteo,
+        formatoUnidad: 'unidad',
+        precioCentavos: datos.precioComboCentavos ?? 0,
+        stock: 0,
+        extras: datos.extras,
+        partes: datos.partes,
+        sumaPartesCentavos: datos.sumaPartesCentavos,
+      );
+    }
 
     if (datos.modo == ModoVenta.medida && datos.medidaCompleta) {
       return Producto(

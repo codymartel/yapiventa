@@ -9,12 +9,14 @@ import '../../../negocio/domain/models/catalogo_venta/opcion_presentacion.dart';
 import '../../application/services/constructor_producto.dart';
 import '../../application/services/entrada_numerica.dart';
 import '../../application/services/lectura_unidades_producto.dart';
+import '../../application/services/sugerencias_combo.dart';
 import '../../application/services/sugerencias_extras.dart';
 import '../../application/services/sugerencias_modelos.dart';
 import '../../domain/models/foto_nueva.dart';
 import '../../domain/models/formato_elegido.dart';
 import '../../domain/models/modo_venta.dart';
 import '../../domain/models/producto.dart';
+import 'formulario_combo_controller.dart';
 import 'formulario_extras_controller.dart';
 import 'formulario_medida_controller.dart';
 import 'formulario_modelos_controller.dart';
@@ -46,6 +48,7 @@ class FormularioProductoController extends ChangeNotifier {
     required this.categoriasDisponibles,
     required this.catalogoVenta,
     this.rubro = '',
+    this.productosParaCombo = const [],
   }) {
     nombreCtrl = TextEditingController(text: producto?.nombre ?? '');
     descripcionCtrl = TextEditingController(text: producto?.descripcion ?? '');
@@ -73,9 +76,15 @@ class FormularioProductoController extends ChangeNotifier {
     extras = FormularioExtrasController(
       sugerencias: SugerenciasExtras.de(rubro),
     )..addListener(notifyListeners);
+    combo = FormularioComboController(
+      nombre: SugerenciasCombo.de(rubro),
+      productos: productosParaCombo,
+      idPropio: producto?.id ?? '',
+    )..addListener(notifyListeners);
     _precargarDesde(producto);
     final guardado = producto;
     if (guardado != null) extras.precargar(guardado);
+    if (guardado != null) combo.precargar(guardado);
     if (guardado != null && guardado.tieneModelos) {
       modelos.precargar(
         guardado,
@@ -88,6 +97,10 @@ class FormularioProductoController extends ChangeNotifier {
   /// Producto editado (null si es nuevo).
   final Producto? producto;
   final List<String> categoriasDisponibles;
+
+  /// Los productos cargados en el panel: de aquí se eligen las partes de un
+  /// combo (y se calcula su stock).
+  final List<Producto> productosParaCombo;
 
   /// Rubro del negocio: solo decide qué palabras se sugieren para nombrar
   /// lo que cambia (Color, Aroma, Sabor…).
@@ -105,6 +118,9 @@ class FormularioProductoController extends ChangeNotifier {
 
   /// Extras: lo que el cliente puede agregar. No aplican a «Lo peso».
   late final FormularioExtrasController extras;
+
+  /// Combo: varios productos en uno, con precio propio y stock calculado.
+  late final FormularioComboController combo;
 
   late final TextEditingController nombreCtrl;
   late final TextEditingController descripcionCtrl;
@@ -272,14 +288,31 @@ class FormularioProductoController extends ChangeNotifier {
     return _faltaModelos == null;
   }
 
+  /// La foto es obligatoria. Con variables la tiene cada modelo; un combo
+  /// puede usar la imagen conjunta de las fotos de sus productos.
+  bool get _fotoOk =>
+      fotoNuevaBytes != null ||
+      urlImagenActual.isNotEmpty ||
+      (combo.usa && combo.fotosDeLasPartes.isNotEmpty);
+
+  String? get _faltaFoto {
+    if (modelos.usa || _fotoOk) return null;
+    return combo.usa
+        ? 'Falta: foto del ${combo.nombre.palabra}'
+        : 'Falta: foto del producto';
+  }
+
   /// Los extras no aplican a «Lo peso»: ahí no se piden ni se guardan.
-  String? get _faltaExtras => _porMedida ? null : extras.queFalta();
+  String? get _faltaExtras =>
+      _porMedida && !combo.usa ? null : extras.queFalta();
 
   bool get camposOk {
     if (_guardando) return false;
     if (nombreCtrl.text.trim().isEmpty) return false;
     if (categoria.isEmpty) return false;
+    if (_faltaFoto != null) return false;
     if (_faltaExtras != null) return false;
+    if (combo.usa) return combo.queFalta() == null;
     if (modelos.usa) return _camposOkConModelos;
 
     if (modoVista == ModoVenta.medida) {
@@ -307,6 +340,13 @@ class FormularioProductoController extends ChangeNotifier {
   }
 
   String? get _faltaCampos {
+    final foto = _faltaFoto;
+    if (foto != null) return foto;
+    if (nombreCtrl.text.trim().isNotEmpty &&
+        categoria.isNotEmpty &&
+        combo.usa) {
+      return combo.queFalta();
+    }
     if (nombreCtrl.text.trim().isEmpty) return 'Falta: nombre del producto';
     if (categoria.isEmpty) return 'Falta: categoría';
 
@@ -425,7 +465,10 @@ class FormularioProductoController extends ChangeNotifier {
         precioPresentacionCentavos: textoACentavos(precioPresentacionCtrl.text),
         stockPresentacion: int.tryParse(stockPresentacionCtrl.text) ?? 0,
         precioVisibleCentavos: precioVisibleCentavos,
-        extras: _porMedida ? const [] : extras.construir(),
+        extras: _porMedida && !combo.usa ? const [] : extras.construir(),
+        partes: combo.construir(),
+        precioComboCentavos: combo.precioCentavos,
+        sumaPartesCentavos: combo.sumaParaGuardar,
         tituloModelos: modelos.usa ? modelos.tituloCtrl.text.trim() : '',
         tituloFilas: modelos.usa ? modelos.tituloFilas : '',
         modelos: modelos.construir(
@@ -442,6 +485,7 @@ class FormularioProductoController extends ChangeNotifier {
     medida.dispose();
     modelos.dispose();
     extras.dispose();
+    combo.dispose();
     nombreCtrl.dispose();
     descripcionCtrl.dispose();
     presentacion.dispose();

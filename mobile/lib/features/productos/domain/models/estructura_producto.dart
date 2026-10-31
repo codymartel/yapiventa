@@ -1,7 +1,7 @@
 import 'familia_unidad.dart';
 
 // ═════════════════════════════════════════════════════════════════════════
-// FilaVenta + ModeloProducto + ExtraProducto
+// FilaVenta + ModeloProducto + ExtraProducto + ParteCombo
 // ═════════════════════════════════════════════════════════════════════════
 // La estructura de un producto con variables (paso 3 del plano):
 //
@@ -114,4 +114,44 @@ class ExtraProducto {
   final String id;
   final String nombre;
   final int precioCentavos;
+}
+
+/// Una parte de un combo: un producto (y, si tiene variables, su modelo y su
+/// fila) por una cantidad entera. El combo NO tiene stock propio: se calcula
+/// de las partes. [nombre] es el texto guardado («Polo · Azul · M») para
+/// mostrarlo sin leer el producto original.
+class ParteCombo {
+  const ParteCombo({
+    required this.productoId,
+    this.modeloId = '',
+    this.filaId = '',
+    required this.cantidad,
+    this.nombre = '',
+    this.urlImagen = '',
+  });
+
+  /// Cuántas partes puede tener un combo.
+  static const int maximo = 10;
+
+  final String productoId;
+  final String modeloId;
+  final String filaId;
+  final int cantidad;
+  final String nombre;
+
+  /// La foto de ese producto cuando se agregó al combo: sirve para mostrar su
+  /// miniatura y el mosaico del combo sin leer el producto original.
+  final String urlImagen;
+
+  /// Identifica la línea: la misma parte no se repite, se suma su cantidad.
+  String get clave => '$productoId|$modeloId|$filaId';
+
+  ParteCombo conCantidad(int nueva) => ParteCombo(
+    productoId: productoId,
+    modeloId: modeloId,
+    filaId: filaId,
+    cantidad: nueva,
+    nombre: nombre,
+    urlImagen: urlImagen,
+  );
 }

@@ -105,6 +105,14 @@ class Producto {
   /// Solo en productos que se cuentan; un producto por medida no los tiene.
   final List<ExtraProducto> extras;
 
+  /// Combo: los productos que lo forman. Vacío = producto normal. El combo no
+  /// tiene stock propio: se calcula de las partes (CalculoCombo).
+  final List<ParteCombo> partes;
+
+  /// Lo que sumaban las partes cuando el encargado fijó el precio del combo:
+  /// sirve para avisar si después cambian. 0 si no es un combo.
+  final int sumaPartesCentavos;
+
   final bool esStockInfinito;
   final String descripcion;
   final String categoria;
@@ -148,7 +156,12 @@ class Producto {
     this.tituloFilas = '',
     this.modelos = const [],
     this.extras = const [],
+    this.partes = const [],
+    this.sumaPartesCentavos = 0,
   });
+
+  /// true si el producto es un combo (varios productos en uno).
+  bool get esCombo => partes.isNotEmpty;
 
   /// true si el producto tiene modelos (variables).
   bool get tieneModelos => modelos.isNotEmpty;
@@ -190,6 +203,8 @@ class Producto {
     String? tituloFilas,
     List<ModeloProducto>? modelos,
     List<ExtraProducto>? extras,
+    List<ParteCombo>? partes,
+    int? sumaPartesCentavos,
   }) {
     return Producto(
       id: id ?? this.id,
@@ -227,6 +242,8 @@ class Producto {
       tituloFilas: tituloFilas ?? this.tituloFilas,
       modelos: modelos ?? this.modelos,
       extras: extras ?? this.extras,
+      partes: partes ?? this.partes,
+      sumaPartesCentavos: sumaPartesCentavos ?? this.sumaPartesCentavos,
     );
   }
 }

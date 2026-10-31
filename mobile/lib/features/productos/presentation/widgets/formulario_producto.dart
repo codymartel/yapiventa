@@ -12,6 +12,7 @@ import 'formulario/foto_producto.dart';
 import 'formulario/lista_modelos_producto.dart';
 import 'formulario/mensaje_catalogo.dart';
 import 'formulario/pregunta_modelos_producto.dart';
+import 'formulario/seccion_combo_producto.dart';
 import 'formulario/seccion_extras_producto.dart';
 import 'formulario/seccion_medida_producto.dart';
 import 'formulario/seccion_presentacion_producto.dart';
@@ -55,6 +56,10 @@ class FormularioProducto extends StatefulWidget {
   /// pasa es su dueño: este widget no lo destruye.
   final FormularioProductoController? borrador;
 
+  /// Los productos cargados en el panel: de aquí se eligen las partes de un
+  /// combo y se calcula su stock.
+  final List<Producto> productosParaCombo;
+
   const FormularioProducto({
     super.key,
     this.producto,
@@ -68,6 +73,7 @@ class FormularioProducto extends StatefulWidget {
     this.onGuardado,
     this.onAbrirCatalogo,
     this.borrador,
+    this.productosParaCombo = const [],
   });
 
   @override
@@ -82,6 +88,7 @@ class _FormularioProductoState extends State<FormularioProducto> {
         categoriasDisponibles: widget.categoriasDisponibles,
         catalogoVenta: widget.catalogoVenta,
         rubro: widget.rubro,
+        productosParaCombo: widget.productosParaCombo,
       );
 
   /// Se marca al ir a Configuración: el formulario sigue vivo fuera de este
@@ -274,6 +281,10 @@ class _FormularioProductoState extends State<FormularioProducto> {
             urlImagenActual: form.urlImagenActual,
             habilitada: !form.guardando,
             onFotoElegida: form.elegirFoto,
+            mosaico: form.combo.usa ? form.combo.fotosDeLasPartes : const [],
+            textoVacio: form.combo.usa
+                ? 'Foto del ${form.combo.nombre.palabra} *\ntoca para elegir'
+                : 'Foto del producto *\ntoca para elegir',
           ),
           const SizedBox(height: 14),
         ],
@@ -295,61 +306,64 @@ class _FormularioProductoState extends State<FormularioProducto> {
           onChanged: (v) => form.cambiarCategoria(v ?? ''),
         ),
         const SizedBox(height: 14),
-        SelectorModoVenta(
-          modosDisponibles: form.modosDisponibles,
-          seleccionado: form.modoVista,
-          onCambio: form.cambiarModo,
-        ),
-        const SizedBox(height: 14),
-        PreguntaModelosProducto(
-          modelos: form.modelos,
-          porMedida: form.modoVista == ModoVenta.medida,
-        ),
-        const SizedBox(height: 14),
-        if (form.modoVista == ModoVenta.medida)
-          SeccionMedidaProducto(
-            medida: form.medida,
-            stockInfinito: form.esStockInfinito,
-            etiquetaGuardada: form.etiquetaLegacy,
-            onStockInfinitoCambiado: form.cambiarStockInfinito,
-            conModelos: form.modelos.usa,
-          )
-        else
-          SeccionPresentacionProducto(
-            conModelos: form.modelos.usa,
-            presentaciones: form.presentacionesActivas,
-            presentacionId: form.presentacionId,
-            formatoEtiqueta: form.formatoEtiqueta,
-            textoPrecio: form.textoPrecioPresentacion,
-            unidadStock: form.unidadStockPresentacion,
-            precioController: form.precioPresentacionCtrl,
-            stockController: form.stockPresentacionCtrl,
-            stockInfinito: form.esStockInfinito,
-            etiquetaGuardada: form.etiquetaLegacy,
-            onPresentacionCambiada: form.cambiarPresentacion,
-            onFormatoCambiado: form.cambiarFormato,
-            onStockInfinitoCambiado: form.cambiarStockInfinito,
-            onCambioTexto: form.trasCambioTexto,
-            onAbrirCatalogo: widget.onAbrirCatalogo == null
-                ? null
-                : _irACatalogo,
+        SeccionComboProducto(combo: form.combo),
+        if (!form.combo.usa) ...[
+          SelectorModoVenta(
+            modosDisponibles: form.modosDisponibles,
+            seleccionado: form.modoVista,
+            onCambio: form.cambiarModo,
           ),
-        if (form.modelos.usa) ...[
           const SizedBox(height: 14),
-          ListaModelosProducto(
+          PreguntaModelosProducto(
             modelos: form.modelos,
             porMedida: form.modoVista == ModoVenta.medida,
-            stockInfinito: form.esStockInfinito,
-            habilitada: !form.guardando,
-            formatos: form.formatosDePresentacion,
-            nombreEnvase: form.nombrePresentacion,
-            referencia: form.medida.referenciaEtiqueta,
-            unidad: form.medida.unidad,
-            factorStock: LecturaUnidadesProducto.factorDe(form.medida.unidad),
-            unidadBase: form.medida.unidadBaseNombre,
           ),
+          const SizedBox(height: 14),
+          if (form.modoVista == ModoVenta.medida)
+            SeccionMedidaProducto(
+              medida: form.medida,
+              stockInfinito: form.esStockInfinito,
+              etiquetaGuardada: form.etiquetaLegacy,
+              onStockInfinitoCambiado: form.cambiarStockInfinito,
+              conModelos: form.modelos.usa,
+            )
+          else
+            SeccionPresentacionProducto(
+              conModelos: form.modelos.usa,
+              presentaciones: form.presentacionesActivas,
+              presentacionId: form.presentacionId,
+              formatoEtiqueta: form.formatoEtiqueta,
+              textoPrecio: form.textoPrecioPresentacion,
+              unidadStock: form.unidadStockPresentacion,
+              precioController: form.precioPresentacionCtrl,
+              stockController: form.stockPresentacionCtrl,
+              stockInfinito: form.esStockInfinito,
+              etiquetaGuardada: form.etiquetaLegacy,
+              onPresentacionCambiada: form.cambiarPresentacion,
+              onFormatoCambiado: form.cambiarFormato,
+              onStockInfinitoCambiado: form.cambiarStockInfinito,
+              onCambioTexto: form.trasCambioTexto,
+              onAbrirCatalogo: widget.onAbrirCatalogo == null
+                  ? null
+                  : _irACatalogo,
+            ),
+          if (form.modelos.usa) ...[
+            const SizedBox(height: 14),
+            ListaModelosProducto(
+              modelos: form.modelos,
+              porMedida: form.modoVista == ModoVenta.medida,
+              stockInfinito: form.esStockInfinito,
+              habilitada: !form.guardando,
+              formatos: form.formatosDePresentacion,
+              nombreEnvase: form.nombrePresentacion,
+              referencia: form.medida.referenciaEtiqueta,
+              unidad: form.medida.unidad,
+              factorStock: LecturaUnidadesProducto.factorDe(form.medida.unidad),
+              unidadBase: form.medida.unidadBaseNombre,
+            ),
+          ],
         ],
-        if (form.modoVista != ModoVenta.medida) ...[
+        if (form.modoVista != ModoVenta.medida || form.combo.usa) ...[
           const SizedBox(height: 14),
           SeccionExtrasProducto(extras: form.extras),
         ],

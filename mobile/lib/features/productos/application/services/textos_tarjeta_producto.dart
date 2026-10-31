@@ -1,6 +1,7 @@
 import '../../../negocio/domain/models/catalogo_venta/catalogo_venta_global.dart';
 import '../../domain/models/familia_unidad.dart';
 import '../../domain/models/producto.dart';
+import 'calculo_combo.dart';
 import 'cantidades_tipicas.dart';
 import 'entrada_numerica.dart';
 import 'lectura_unidades_producto.dart';
@@ -25,6 +26,10 @@ class TextosTarjetaProducto {
   TextosTarjetaProducto._();
 
   static String precio(Producto producto) {
+    // Un combo tiene su precio propio, sin «/ unidad» ni «desde».
+    if (producto.esCombo) {
+      return 'S/ ${centavosATexto(producto.precioCentavos)}';
+    }
     final desde = producto.tieneModelos
         ? TotalesProducto.precioDesdeCentavos(producto.modelos)
         : producto.precioCentavos;
@@ -51,12 +56,38 @@ class TextosTarjetaProducto {
   }
 
   /// Stock con su unidad: "16.65 kg", "12 botellas", "7 uds." o "ilimitado".
-  static String stock(Producto producto) {
+  static String stock(
+    Producto producto, {
+    List<Producto> conocidos = const [],
+  }) {
+    if (producto.esCombo) return _stockCombo(producto, conocidos);
     if (producto.esStockInfinito) return 'ilimitado';
     if (producto.tieneModelos) {
       return '${_stockSinModelos(producto)} · ${_cuantosModelos(producto)}';
     }
     return _stockSinModelos(producto);
+  }
+
+  /// «Kit · 2 productos»: la palabra del rubro y cuántos productos lleva.
+  static String etiquetaCombo(Producto producto, String palabra) {
+    final cantidad = producto.partes.length;
+    return '$palabra · $cantidad ${cantidad == 1 ? 'producto' : 'productos'}';
+  }
+
+  /// El stock de un combo se calcula de sus partes (con los productos ya
+  /// cargados): «Quedan 4 · limita: Gaseosa», «Agotado · sin Papas».
+  static String _stockCombo(Producto combo, List<Producto> conocidos) {
+    final resultado = CalculoCombo.calcular(combo.partes, (id) {
+      for (final producto in conocidos) {
+        if (producto.id == id) return producto;
+      }
+      return null;
+    });
+    if (resultado.sinDatos) return '—';
+    if (resultado.ilimitado) return 'ilimitado';
+    if (resultado.agotado) return 'Agotado · sin ${resultado.limita}';
+    if (resultado.stock == null) return '—';
+    return 'Quedan ${resultado.stock} · limita: ${resultado.limita}';
   }
 
   /// "2 colores", "1 aroma": cuántos modelos, con la palabra del vendedor.

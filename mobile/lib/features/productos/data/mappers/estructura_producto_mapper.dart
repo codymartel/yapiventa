@@ -92,6 +92,53 @@ abstract final class EstructuraProductoMapper {
     return extras;
   }
 
+  /// Partes de un combo: `partes: [{productoId, modeloId, filaId, cantidad,
+  /// nombre}]`. Lectura defensiva: sin producto o con cantidad menor que 1 se
+  /// ignora, y nunca pasa del máximo.
+  static List<ParteCombo> partesDesde(Object? valor) {
+    if (valor is! List) return const [];
+    final partes = <ParteCombo>[];
+    for (final dato in valor) {
+      if (partes.length >= ParteCombo.maximo) break;
+      if (dato is! Map) continue;
+      final mapa = Map<String, dynamic>.from(dato);
+      final productoId = LecturaFirestore.texto(mapa['productoId']);
+      final cantidad = LecturaFirestore.entero(mapa['cantidad']);
+      if (productoId.isEmpty || cantidad < 1) continue;
+      partes.add(
+        ParteCombo(
+          productoId: productoId,
+          modeloId: LecturaFirestore.texto(mapa['modeloId']),
+          filaId: LecturaFirestore.texto(mapa['filaId']),
+          cantidad: cantidad,
+          nombre: LecturaFirestore.texto(mapa['nombre']),
+          urlImagen: LecturaFirestore.texto(mapa['urlImagen']),
+        ),
+      );
+    }
+    return partes;
+  }
+
+  static List<Map<String, dynamic>> partesAMapas(List<ParteCombo> partes) {
+    return [
+      for (final parte in partes)
+        {
+          'productoId': parte.productoId,
+          'modeloId': parte.modeloId,
+          'filaId': parte.filaId,
+          'cantidad': parte.cantidad,
+          'nombre': parte.nombre,
+          'urlImagen': parte.urlImagen,
+        },
+    ];
+  }
+
+  /// Los ids de los productos que usa un combo, sin repetir: sirve para saber
+  /// qué producto está dentro de algún combo.
+  static List<String> idsDeProductos(List<ParteCombo> partes) => [
+    ...{for (final parte in partes) parte.productoId},
+  ];
+
   static List<Map<String, dynamic>> extrasAMapas(List<ExtraProducto> extras) {
     return [
       for (final extra in extras)

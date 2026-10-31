@@ -21,6 +21,22 @@ void main() {
     expect(repositorioProductos.ultimoProductoId, 'producto-1');
   });
 
+  test('no elimina un producto que está dentro de un combo', () async {
+    repositorioProductos.comboQueUsa = 'Combo familiar';
+
+    await expectLater(
+      eliminarProducto(negocioId: 'negocio-1', productoId: 'producto-1'),
+      throwsA(
+        isA<ProductoEnComboException>().having(
+          (e) => e.nombreCombo,
+          'nombreCombo',
+          'Combo familiar',
+        ),
+      ),
+    );
+    expect(repositorioProductos.llamadasEliminar, 0);
+  });
+
   test('no elimina si el identificador es vacío', () async {
     expect(
       () => eliminarProducto(negocioId: 'negocio-1', productoId: ' '),
@@ -32,6 +48,14 @@ void main() {
 }
 
 class _RepositorioProductosFake implements RepositorioProductos {
+  String? comboQueUsa;
+
+  @override
+  Future<String?> nombreDelComboQueUsa(
+    String negocioId,
+    String productoId,
+  ) async => comboQueUsa;
+
   int llamadasEliminar = 0;
   String? ultimoNegocioId;
   String? ultimoProductoId;

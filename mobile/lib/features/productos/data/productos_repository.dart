@@ -125,6 +125,18 @@ class ProductosRepository implements RepositorioProductos {
   }
 
   @override
+  Future<String?> nombreDelComboQueUsa(
+    String negocioId,
+    String productoId,
+  ) async {
+    final consulta = await _coleccionProductos(
+      negocioId,
+    ).where('partesProductoIds', arrayContains: productoId).limit(1).get();
+    if (consulta.docs.isEmpty) return null;
+    return consulta.docs.first.data()['nombre'] as String? ?? 'un combo';
+  }
+
+  @override
   Future<void> toggleDisponible(
     String negocioId,
     String productoId,

@@ -1,9 +1,9 @@
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../../../../core/theme/app_colors.dart';
+import '../mosaico_fotos.dart';
 
 /// Reemplaza la galería en las pruebas (el selector real es del sistema).
 @visibleForTesting
@@ -44,12 +44,21 @@ class FotoProducto extends StatelessWidget {
     required this.urlImagenActual,
     required this.habilitada,
     required this.onFotoElegida,
+    this.textoVacio = 'Foto del producto *\ntoca para elegir',
+    this.mosaico = const [],
   });
 
   final Uint8List? fotoNuevaBytes;
   final String urlImagenActual;
   final bool habilitada;
   final void Function(XFile archivo, Uint8List bytes) onFotoElegida;
+
+  /// Lo que se lee cuando todavía no hay foto.
+  final String textoVacio;
+
+  /// Las fotos de los productos de un combo: sin foto propia se muestran
+  /// juntas como imagen conjunta.
+  final List<String> mosaico;
 
   @override
   Widget build(BuildContext context) {
@@ -68,13 +77,42 @@ class FotoProducto extends StatelessWidget {
             ? Image.memory(fotoNuevaBytes!, fit: BoxFit.cover)
             : (urlImagenActual.isNotEmpty
                   ? Image.network(urlImagenActual, fit: BoxFit.cover)
-                  : Center(
-                      child: Text(
-                        'Foto del producto (opcional)\ntoca para elegir',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: AppColors.muted, fontSize: 12),
-                      ),
-                    )),
+                  : (mosaico.isNotEmpty
+                        ? Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              MosaicoFotos(urls: mosaico),
+                              Positioned(
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                child: Container(
+                                  padding: const EdgeInsets.all(6),
+                                  color: Colors.black54,
+                                  child: const Text(
+                                    'Imagen conjunta de tus productos · '
+                                    'toca para subir una foto propia',
+                                    key: Key('imagen-conjunta'),
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )
+                        : Center(
+                            child: Text(
+                              textoVacio,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: AppColors.muted,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ))),
       ),
     );
   }

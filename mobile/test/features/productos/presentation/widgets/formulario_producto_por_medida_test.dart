@@ -63,6 +63,7 @@ void main() {
 
     Future<void> abrirMedida(WidgetTester tester, Widget widget) async {
       await montar(tester, widget);
+      await ponerFotoDelProducto(tester);
       await tester.tap(find.text('Lo peso'));
       await tester.pumpAndSettle();
     }
@@ -244,6 +245,7 @@ void main() {
           catalogoVenta: desactivada,
         ),
       );
+      await ponerFotoDelProducto(tester);
 
       expect(find.byKey(const Key('medida-fija')), findsOneWidget);
       expect(find.byKey(const Key('aviso-medida-desactivada')), findsOneWidget);
@@ -301,6 +303,7 @@ void main() {
       tester,
     ) async {
       await montar(tester, formulario());
+      await ponerFotoDelProducto(tester);
 
       expect(falta(tester), 'Falta: nombre del producto');
       await tester.enterText(campo('Nombre del producto *'), 'Cerveza');

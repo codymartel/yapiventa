@@ -14,6 +14,10 @@ abstract class RepositorioProductos {
 
   Future<void> eliminarProducto(String negocioId, String productoId);
 
+  /// El nombre de un combo que usa este producto, o null si ninguno. Es 1
+  /// consulta (límite 1) y sirve para no borrar lo que está dentro de un combo.
+  Future<String?> nombreDelComboQueUsa(String negocioId, String productoId);
+
   Future<void> toggleDisponible(
     String negocioId,
     String productoId,

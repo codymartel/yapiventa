@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YapiVenta · combos</title>
+<style>
+:root{--fondo:#070C18;--sup:#0D1526;--card:#111D33;--texto:#E8EDF5;--muted:#9AA9C2;--dim:#2A3A55;--azul:#3D72D4;--precio:#8AB2FF;
+--borde:rgba(61,114,212,.30);--warn:#FBBF24;--m3out:#938F99;--m3sel:#4A4458;--ok:#4ADE80;--err:#F87171}
+*{box-sizing:border-box}
+body{margin:0;background:#04070f;color:var(--texto);font:14px/1.4 system-ui,Roboto,sans-serif;padding:24px 16px 40px}
+h1{font-size:20px;margin:0 0 4px}
+h2{font-size:15px;margin:30px 0 10px;color:var(--precio)}
+p.s{color:var(--muted);margin:0 0 14px;max-width:900px}
+.fila{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start}
+.mov{width:300px;height:640px;background:var(--fondo);border:1px solid #1d2a44;border-radius:26px;position:relative;overflow:hidden}
+.pc{width:640px;max-width:100%;height:520px;background:var(--fondo);border:1px solid #1d2a44;border-radius:10px;position:relative;overflow:hidden}
+.pc .menu{position:absolute;left:0;top:0;bottom:0;width:110px;background:var(--sup);padding:12px;color:var(--muted);font-size:12px}
+.vel{position:absolute;inset:0;background:rgba(0,0,0,.6)}
+.dlg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:440px;max-width:92%;background:var(--sup);border:1px solid var(--borde);border-radius:16px;padding:16px}
+.hoja{position:absolute;left:0;right:0;bottom:0;background:var(--sup);border-top:1px solid var(--borde);border-radius:20px 20px 0 0;padding:10px 16px 16px}
+.asa{width:36px;height:4px;border-radius:2px;background:#3a4a68;margin:0 auto 10px}
+.t{font-weight:700;font-size:16px;margin-bottom:8px}
+.form{padding:14px 14px 0}.pc .form{padding-left:124px;padding-right:14px}
+.tt{font-size:18px;margin:0 0 8px}
+.cmp{border-bottom:1px solid var(--m3out);padding:4px 0 6px;margin-top:6px}
+.cmp label{display:block;font-size:12px;color:var(--muted)}
+.q{background:var(--card);border:1px solid var(--borde);border-radius:14px;padding:12px;margin-top:10px}
+.pregunta{font-size:14px;font-weight:500}.pregunta span{color:var(--muted);font-weight:400}
+.seg{display:flex;border:1px solid var(--m3out);border-radius:999px;overflow:hidden;margin:8px 0 2px}
+.seg span{flex:1;text-align:center;padding:10px 6px;font-size:14px;font-weight:500;min-height:44px;display:flex;align-items:center;justify-content:center}
+.seg span+span{border-left:1px solid var(--m3out)}.seg .on{background:var(--m3sel)}
+.parte{display:flex;gap:10px;align-items:center;padding:9px 0;border-top:1px solid var(--dim)}
+.parte .foto{width:44px;height:44px;border-radius:8px;background:var(--dim);flex:none}
+.parte .n{flex:1;font-size:14px}.parte .n small{display:block;color:var(--muted);font-size:12px}
+.parte .c{color:var(--precio);font-weight:500;white-space:nowrap}
+.x{color:var(--muted);font-size:18px;width:32px;text-align:center}
+.add{display:block;color:var(--azul);font-size:14px;font-weight:500;padding:10px 2px;min-height:44px}
+.suma{background:rgba(74,222,128,.10);border:1px solid rgba(74,222,128,.35);border-radius:12px;padding:10px 12px;font-size:13px;margin-top:10px}
+.suma b{color:var(--ok)}
+.stock{display:flex;justify-content:space-between;align-items:center;margin-top:10px;font-size:14px;border:1px solid var(--borde);border-radius:12px;padding:10px 12px}
+.stock .n{color:var(--ok);font-weight:700}
+.stock small{color:var(--muted);display:block;font-size:12px}
+.bt{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
+.b{padding:10px 16px;border-radius:999px;font-size:14px;min-height:44px;display:flex;align-items:center;justify-content:center}
+.b1{background:#2457B3;color:#fff}.b2{color:var(--precio)}.mov .b{flex:1}
+.item{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--dim)}
+.item .foto{width:40px;height:40px;border-radius:8px;background:var(--dim);flex:none}
+.item .n{flex:1}.item small{display:block;color:var(--muted);font-size:12px}
+.step{display:flex;align-items:center;gap:8px}.step span{display:inline-flex;width:34px;height:34px;border:1px solid var(--m3out);border-radius:999px;align-items:center;justify-content:center}
+.chip{display:inline-block;border:1px solid var(--m3out);border-radius:999px;padding:7px 12px;font-size:13px;margin:6px 6px 0 0}.chip.on{background:var(--m3sel)}
+.tarj{background:var(--card);border:1px solid var(--borde);border-radius:14px;padding:12px;display:flex;gap:12px;align-items:center;margin-bottom:10px;max-width:520px}
+.tarj .foto{width:76px;height:76px;border-radius:10px;background:var(--dim);flex:none}
+.tarj .pr{color:var(--precio);font-size:18px;font-weight:700}
+.tarj .tag{display:inline-block;font-size:12px;border-radius:999px;padding:2px 9px;background:rgba(208,188,255,.14);color:#D0BCFF;margin-left:6px}
+.tarj .st{font-size:13px;color:var(--muted)}.tarj .st.w{color:var(--warn)}.tarj .st.r{color:var(--err)}
+.nota{background:var(--card);border:1px solid var(--borde);border-radius:12px;padding:12px 14px;font-size:13px;max-width:900px;color:var(--muted)}
+.nota b{color:var(--texto)}
+</style>
+</head>
+<body>
+<h1>Combos · varios productos en uno</h1>
+<p class="s">Un combo es un producto más, con su <b>precio propio</b> y su foto. Se arma eligiendo productos que ya tienes, con la cantidad de cada uno. Su <b>stock se calcula solo</b> (candado): el menor entre lo que hay de cada parte. En esta versión solo se define y se ve; <b>vender y descontar</b> va con los pedidos. Celular: hoja desde abajo. PC: diálogo centrado.</p>
+
+<h2>1 · El formulario con «¿Es un combo?» en Sí</h2>
+<div class="fila">
+  <div class="mov">
+    <div class="form">
+      <div class="tt">Agregar producto</div>
+      <div class="cmp"><label>Nombre del producto *</label>Combo familiar</div>
+      <div class="q"><div class="pregunta">¿Es un combo? <span>varios productos juntos</span></div>
+        <div class="seg"><span class="on">Sí</span><span>No</span></div></div>
+      <div class="q" style="padding:6px 12px">
+        <div class="pregunta" style="padding-top:6px">Qué incluye <span>· 3 productos</span></div>
+        <div class="parte"><div class="foto"></div><div class="n">Pollo a la brasa ¼<small>S/ 18.00</small></div><div class="c">× 1</div></div>
+        <div class="parte"><div class="foto"></div><div class="n">Papas<small>S/ 6.00</small></div><div class="c">× 1</div></div>
+        <div class="parte"><div class="foto"></div><div class="n">Gaseosa 500 ml<small>S/ 4.00</small></div><div class="c">× 2</div></div>
+        <span class="add">+ Agregar producto al combo</span>
+      </div>
+      <div class="suma">Suma de las partes: <b>S/ 32.00</b></div>
+      <div class="cmp"><label>Precio del combo S/ *</label>28.00</div>
+      <div class="suma" style="background:rgba(61,114,212,.12);border-color:var(--borde)">El cliente ahorra <b>S/ 4.00</b> · <span style="color:var(--azul)">Usar la suma</span></div>
+      <div class="stock"><div>Stock del combo 🔒<small>limita: Gaseosa 500 ml</small></div><div class="n">4</div></div>
+    </div>
+  </div>
+  <div class="pc">
+    <div class="menu">Inicio<br>Pedidos<br><b style="color:var(--texto)">Productos</b><br>Configuración</div>
+    <div class="form">
+      <div class="tt">Agregar producto</div>
+      <div class="cmp"><label>Nombre del producto *</label>Combo familiar</div>
+      <div class="q"><div class="pregunta">¿Es un combo? <span>varios productos juntos</span></div>
+        <div class="seg" style="max-width:260px"><span class="on">Sí</span><span>No</span></div></div>
+      <div class="q" style="padding:6px 12px">
+        <div class="pregunta" style="padding-top:6px">Qué incluye <span>· 3 productos</span></div>
+        <div class="parte"><div class="foto"></div><div class="n">Pollo a la brasa ¼<small>S/ 18.00</small></div><div class="c">× 1</div><div class="x">✕</div></div>
+        <div class="parte"><div class="foto"></div><div class="n">Papas<small>S/ 6.00</small></div><div class="c">× 1</div><div class="x">✕</div></div>
+        <div class="parte"><div class="foto"></div><div class="n">Gaseosa 500 ml<small>S/ 4.00</small></div><div class="c">× 2</div><div class="x">✕</div></div>
+        <span class="add">+ Agregar producto al combo</span>
+      </div>
+      <div class="suma">Suma de las partes: <b>S/ 32.00</b> · precio del combo <b>S/ 28.00</b> · el cliente ahorra <b>S/ 4.00</b></div>
+    </div>
+  </div>
+</div>
+
+<h2>2 · «Agregar producto al combo»: elegir y poner la cantidad</h2>
+<div class="fila">
+  <div class="mov" style="height:560px">
+    <div class="vel"></div>
+    <div class="hoja">
+      <div class="asa"></div>
+      <div class="t">Agregar al combo</div>
+      <div class="item"><div class="foto"></div><div class="n">Pollo a la brasa<small>S/ 18.00 · stock 10</small></div><div class="step"><span>−</span><b>1</b><span>+</span></div></div>
+      <div class="item"><div class="foto"></div><div class="n">Papas<small>S/ 6.00 · stock 7</small></div><div class="step"><span>−</span><b>1</b><span>+</span></div></div>
+      <div class="item"><div class="foto"></div><div class="n">Polo básico<small>Elige: Azul · M</small></div><div class="x">›</div></div>
+      <div class="ayuda" style="color:var(--muted);font-size:13px;margin-top:6px">Solo productos que se cuentan. Sin combos dentro de combos.</div>
+      <div class="bt"><span class="b b2">Cancelar</span><span class="b b1">Agregar</span></div>
+    </div>
+  </div>
+  <div class="pc" style="height:480px">
+    <div class="menu">Inicio<br>Pedidos<br><b style="color:var(--texto)">Productos</b><br>Configuración</div>
+    <div class="vel"></div>
+    <div class="dlg">
+      <div class="t">Agregar al combo</div>
+      <div class="item"><div class="foto"></div><div class="n">Pollo a la brasa<small>S/ 18.00 · stock 10</small></div><div class="step"><span>−</span><b>1</b><span>+</span></div></div>
+      <div class="item"><div class="foto"></div><div class="n">Papas<small>S/ 6.00 · stock 7</small></div><div class="step"><span>−</span><b>1</b><span>+</span></div></div>
+      <div class="item"><div class="foto"></div><div class="n">Polo básico<small>Elige: Azul · M</small></div><div class="x">›</div></div>
+      <div class="ayuda" style="color:var(--muted);font-size:13px;margin-top:6px">Solo productos que se cuentan. Sin combos dentro de combos.</div>
+      <div class="bt"><span class="b b2">Cancelar</span><span class="b b1">Agregar</span></div>
+    </div>
+  </div>
+</div>
+
+<h2>3 · La tarjeta en la lista</h2>
+<div class="tarj"><div class="foto"></div><div><b>Combo familiar</b> <span class="tag">Combo · 3 productos</span><div class="pr">S/ 28.00</div><div class="st">Quedan 4 · limita: Gaseosa 500 ml</div></div></div>
+<div class="tarj"><div class="foto"></div><div><b>Combo pareja</b> <span class="tag">Combo · 2 productos</span><div class="pr">S/ 15.00</div><div class="st r">Agotado · sin Papas</div></div></div>
+
+<h2>4 · Reglas y números</h2>
+<div class="nota">
+<b>Precio</b>: el combo tiene el suyo, en céntimos enteros. La suma de las partes es ayuda: (1800 × 1) + (600 × 1) + (400 × 2) = 3200 → S/ 32.00. Con precio 2800, el cliente ahorra 400 → S/ 4.00. Si el precio es mayor que la suma, no se muestra «ahorra».<br><br>
+<b>Stock calculado</b> (con candado): para cada parte, su stock entre la cantidad que lleva, con piso: Pollo 10 ÷ 1 = 10 · Papas 7 ÷ 1 = 7 · Gaseosa 9 ÷ 2 = 4. El combo tiene <b>4</b>, y la parte que limita es la Gaseosa. Una parte con stock infinito no limita; si todas son infinitas, el combo también.<br><br>
+<b>Qué entra</b>: solo productos que se cuentan («Lo cuento», con o sin variables; con variables se elige modelo y fila). No entran productos por medida ni otros combos. Máximo 10 partes.<br><br>
+<b>Qué no hace todavía</b>: vender el combo y descontar cada parte (todo o nada, en una transacción) va con el paso de pedidos. Tampoco hay «elige Inca o Coca» dentro del combo: son dos combos.<br><br>
+<b>Borrar</b>: un producto usado en un combo no se puede borrar hasta quitarlo del combo.
+</div>
+</body>
+</html>

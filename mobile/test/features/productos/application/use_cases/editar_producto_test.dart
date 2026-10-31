@@ -83,6 +83,12 @@ void main() {
 }
 
 class _RepositorioProductosFake implements RepositorioProductos {
+  @override
+  Future<String?> nombreDelComboQueUsa(
+    String negocioId,
+    String productoId,
+  ) async => null;
+
   int llamadasGuardado = 0;
   String? ultimoNegocioId;
   Producto? ultimoProducto;

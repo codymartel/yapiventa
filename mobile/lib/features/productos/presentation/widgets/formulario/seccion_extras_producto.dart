@@ -5,10 +5,7 @@ import '../../../application/services/entrada_numerica.dart';
 import '../../../domain/models/estructura_producto.dart';
 import '../../providers/formulario_extras_controller.dart';
 import 'formato_entradas.dart';
-
-/// Desde este ancho el editor de extras es un diálogo centrado; por debajo,
-/// una hoja que sube desde abajo (mismo patrón de las demás ventanas).
-const double anchoEditorEnDialogo = 900;
+import 'hoja_o_dialogo.dart';
 
 /// «➕ Extras · 2 extras ›»: una sola línea en el formulario. Al tocarla se
 /// abre el editor. Los extras se guardan al dar «Guardar producto».
@@ -70,69 +67,15 @@ Future<void> abrirEditorExtras(
   FormularioExtrasController extras,
 ) {
   final copia = extras.copiar();
-  final ancho = MediaQuery.sizeOf(context).width;
-
-  void cancelar(BuildContext contexto) {
-    extras.restaurar(copia);
-    Navigator.of(contexto).pop();
-  }
-
-  if (ancho >= anchoEditorEnDialogo) {
-    return showDialog<void>(
-      context: context,
-      builder: (dialogContext) => Dialog(
-        backgroundColor: AppColors.superficie,
-        insetPadding: const EdgeInsets.all(24),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 460),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: _EditorExtras(
-              extras: extras,
-              onListo: () => Navigator.of(dialogContext).pop(),
-              onCancelar: () => cancelar(dialogContext),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  return showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
-    backgroundColor: AppColors.superficie,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
-    builder: (sheetContext) => Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.viewInsetsOf(sheetContext).bottom,
-      ),
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 36,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 10),
-              decoration: BoxDecoration(
-                color: AppColors.dim,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            _EditorExtras(
-              extras: extras,
-              onListo: () => Navigator.of(sheetContext).pop(),
-              onCancelar: () => cancelar(sheetContext),
-            ),
-          ],
-        ),
-      ),
+  return abrirHojaODialogo(
+    context,
+    construir: (contexto) => _EditorExtras(
+      extras: extras,
+      onListo: () => Navigator.of(contexto).pop(),
+      onCancelar: () {
+        extras.restaurar(copia);
+        Navigator.of(contexto).pop();
+      },
     ),
   );
 }

@@ -226,6 +226,7 @@ class _ProductosFlowState extends State<ProductosFlow> {
         child: FormularioProducto(
           producto: borrador?.producto ?? producto,
           borrador: borrador,
+          productosParaCombo: provider.productosCargados,
           categoriasDisponibles: catalogo.categorias,
           catalogoVenta: _catalogoProvider?.catalogoVenta,
           rubro: catalogo.rubro,
@@ -259,7 +260,17 @@ class _ProductosFlowState extends State<ProductosFlow> {
 
     if (confirmar == true) {
       final eliminado = await provider.eliminarProducto(productoId);
-      if (eliminado) widget.onProgressChanged?.call();
+      if (eliminado) {
+        widget.onProgressChanged?.call();
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              provider.errorMessage ?? 'No se pudo eliminar el producto.',
+            ),
+          ),
+        );
+      }
     }
   }
 }

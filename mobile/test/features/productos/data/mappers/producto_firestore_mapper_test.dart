@@ -72,6 +72,9 @@ void main() {
       'tituloFilas',
       'modelos',
       'extras',
+      'partes',
+      'partesProductoIds',
+      'sumaPartesCentavos',
     });
     expect(datos['fechaVencimiento'], isA<Timestamp>());
     expect((datos['fechaVencimiento'] as Timestamp).toDate(), fecha);

@@ -27,6 +27,12 @@ class _Subidor implements SubidorDeImagenes {
 }
 
 class _Repositorio implements RepositorioProductos {
+  @override
+  Future<String?> nombreDelComboQueUsa(
+    String negocioId,
+    String productoId,
+  ) async => null;
+
   Producto? guardado;
 
   @override

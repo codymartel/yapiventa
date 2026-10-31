@@ -26,6 +26,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/encabezado_pantalla.dart';
 import '../../../negocio/presentation/providers/catalogo_negocio_provider.dart';
 import '../../domain/models/producto.dart';
+import '../../application/services/sugerencias_combo.dart';
 import '../providers/productos_provider.dart';
 import 'producto_card.dart';
 import 'productos_contextual_panel.dart';
@@ -289,6 +290,10 @@ class ProductosContent extends StatelessWidget {
       producto: producto,
       esCuadricula: esCuadricula,
       cambiandoDisponibilidad: cambiandoDisponibilidad,
+      conocidos: provider.productosCargados,
+      palabraCombo: SugerenciasCombo.de(
+        catalogoProvider.catalogo?.rubro ?? '',
+      ).capitalizada,
       onEditar: catalogoProvider.disponible && accionesHabilitadas
           ? () => onEditar?.call(producto)
           : null,

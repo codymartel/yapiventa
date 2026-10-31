@@ -113,6 +113,9 @@ class ProductosProvider extends ChangeNotifier {
   bool get minimoAlcanzado => totalProductos >= _minimoProductos;
   bool get limiteAlcanzado => totalProductos >= _limiteProductos;
 
+  /// Todos los productos cargados hasta ahora (de aquí se arman los combos).
+  List<Producto> get productosCargados => List.unmodifiable(_productos);
+
   List<Producto> get productosFiltrados {
     final cache = _productosFiltradosCache;
     if (cache != null) return cache;
@@ -332,6 +335,19 @@ class ProductosProvider extends ChangeNotifier {
 
   Future<bool> eliminarProducto(String productoId) async {
     _errorMessage = null;
+    // Si ya está cargado el combo que lo usa, se avisa sin leer nada.
+    final enMemoria = _productos
+        .where(
+          (producto) =>
+              producto.esCombo &&
+              producto.partes.any((parte) => parte.productoId == productoId),
+        )
+        .firstOrNull;
+    if (enMemoria != null) {
+      _errorMessage = _avisoEnCombo(enMemoria.nombre);
+      _notificar();
+      return false;
+    }
     _notificar();
     try {
       await _eliminarProducto(negocioId: negocioId, productoId: productoId);
@@ -339,12 +355,19 @@ class ProductosProvider extends ChangeNotifier {
       _invalidarProductosFiltrados();
       _notificar();
       return true;
+    } on ProductoEnComboException catch (error) {
+      _errorMessage = _avisoEnCombo(error.nombreCombo);
+      _notificar();
+      return false;
     } catch (_) {
       _errorMessage = 'No se pudo eliminar el producto.';
       _notificar();
       return false;
     }
   }
+
+  String _avisoEnCombo(String nombre) =>
+      'No se puede eliminar: está en «$nombre». Quítalo de ahí primero.';
 
   Future<bool> toggleDisponible(String productoId, bool disponible) async {
     if (!_productosCambiandoDisponibilidad.add(productoId)) return false;
