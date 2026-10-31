@@ -10,13 +10,13 @@ import '../../application/services/constructor_producto.dart';
 import '../../application/services/entrada_numerica.dart';
 import '../../application/services/lectura_unidades_producto.dart';
 import '../../application/services/sugerencias_modelos.dart';
-import '../../domain/models/familia_unidad.dart';
 import '../../domain/models/foto_nueva.dart';
 import '../../domain/models/formato_elegido.dart';
 import '../../domain/models/modo_venta.dart';
 import '../../domain/models/producto.dart';
 import 'formulario_medida_controller.dart';
 import 'formulario_modelos_controller.dart';
+import 'formulario_presentacion_controller.dart';
 
 // ═════════════════════════════════════════════════════════════════════════
 // FormularioProductoController
@@ -47,13 +47,13 @@ class FormularioProductoController extends ChangeNotifier {
   }) {
     nombreCtrl = TextEditingController(text: producto?.nombre ?? '');
     descripcionCtrl = TextEditingController(text: producto?.descripcion ?? '');
-    stockPresentacionCtrl = TextEditingController(
-      text: (producto?.stock ?? 0) > 0 ? producto!.stock.toString() : '',
-    );
-    precioPresentacionCtrl = TextEditingController(
-      text: (producto?.precio ?? 0) > 0
+    presentacion = FormularioPresentacionController(
+      presentacionesActivas: () => presentacionesActivas,
+      alCambiarPresentacion: () => modelos.limpiarFormatos(),
+      precio: (producto?.precio ?? 0) > 0
           ? centavosATexto(producto!.precioCentavos)
           : '',
+      stock: (producto?.stock ?? 0) > 0 ? producto!.stock.toString() : '',
     );
     esStockInfinito = producto?.esStockInfinito ?? false;
     tieneDelivery = producto?.tieneDelivery ?? true;
@@ -99,17 +99,20 @@ class FormularioProductoController extends ChangeNotifier {
 
   late final TextEditingController nombreCtrl;
   late final TextEditingController descripcionCtrl;
-  late final TextEditingController stockPresentacionCtrl;
-  late final TextEditingController precioPresentacionCtrl;
+
+  /// Estado de «Lo cuento»: presentación, formato, precio y stock simples.
+  late final FormularioPresentacionController presentacion;
+
+  TextEditingController get stockPresentacionCtrl => presentacion.stockCtrl;
+  TextEditingController get precioPresentacionCtrl => presentacion.precioCtrl;
 
   late bool esStockInfinito;
   late bool tieneDelivery;
   String categoria = '';
 
   ModoVenta? modoVista;
-  String presentacionId = '';
-  String formatoEtiqueta = '';
-  FormatoElegido? formato;
+  String get presentacionId => presentacion.id;
+  String get formatoEtiqueta => presentacion.formatoEtiqueta;
 
   String urlImagenActual = '';
   XFile? fotoNueva;
@@ -148,19 +151,7 @@ class FormularioProductoController extends ChangeNotifier {
     }
 
     modoVista = ModoVenta.presentacion;
-    presentacionId = producto.presentacionId;
-    if (presentacionId.isNotEmpty && producto.formatoValorBase > 0) {
-      final etiqueta = LecturaUnidadesProducto.etiquetaFormatoGuardado(
-        producto,
-        presentacionesActivas,
-      );
-      formatoEtiqueta = etiqueta ?? '';
-      formato = FormatoElegido(
-        valorBase: producto.formatoValorBase,
-        familia: producto.formatoFamilia?.name ?? '',
-        unidad: producto.formatoUnidad,
-      );
-    }
+    presentacion.precargar(producto);
 
     // Etiqueta legacy tipo kg/g/L/ml: se SUGIERE el modo medida, sin
     // migrar nada (los campos de medida quedan vacíos a propósito).
@@ -178,7 +169,7 @@ class FormularioProductoController extends ChangeNotifier {
     if (!esNuevo) return;
     if (modoVista == ModoVenta.presentacion && presentacionId.isEmpty) {
       final activas = presentacionesActivas;
-      if (activas.isNotEmpty) _aplicarPresentacion(activas.first.id);
+      if (activas.isNotEmpty) presentacion.aplicar(activas.first.id);
     }
     if (modoVista == ModoVenta.medida) medida.sugerirFamilia();
   }
@@ -223,55 +214,20 @@ class FormularioProductoController extends ChangeNotifier {
 
   // ── Presentación ──────────────────────────────────────────────────────
 
-  OpcionPresentacion? get _presentacionElegida {
-    for (final presentacion in presentacionesActivas) {
-      if (presentacion.id == presentacionId) return presentacion;
-    }
-    return null;
-  }
-
-  bool get presentacionCompleta {
-    final elegida = _presentacionElegida;
-    final elegido = formato;
-    if (elegida == null || elegido == null) return false;
-    return elegida.formatos.any(
-      (candidato) =>
-          candidato.valorBase == elegido.valorBase &&
-          candidato.familia.name == elegido.familia &&
-          candidato.unidadVisible.nombre == elegido.unidad,
-    );
-  }
+  bool get presentacionCompleta => presentacion.completa;
 
   /// Los formatos de la presentación elegida (para elegir el tamaño de cada
   /// fila de un modelo). Vacío si no hay presentación.
-  List<FormatoPresentacion> get formatosDePresentacion =>
-      _presentacionElegida?.formatos ?? const [];
+  List<FormatoPresentacion> get formatosDePresentacion => presentacion.formatos;
 
   /// Nombre de la presentación elegida ("Jaba"); '' si no hay.
-  String get nombrePresentacion => _presentacionElegida?.nombre ?? '';
+  String get nombrePresentacion => presentacion.nombre;
 
   /// "por unidad", "por botella (500 ml)"; '' sin presentación elegida.
-  String get textoPrecioPresentacion {
-    final elegida = _presentacionElegida;
-    if (elegida == null) return '';
-    final elegido = formato;
-    return LecturaUnidadesProducto.textoPorPresentacion(
-      nombre: elegida.nombre,
-      formatoEtiqueta: formatoEtiqueta,
-      formatoEsUnaUnidad:
-          elegido == null ||
-          (elegido.familia == FamiliaUnidad.conteo.name &&
-              elegido.valorBase == 1),
-    );
-  }
+  String get textoPrecioPresentacion => presentacion.textoPrecio;
 
   /// En qué se cuenta el stock: "unidades", "botellas"…
-  String get unidadStockPresentacion {
-    final elegida = _presentacionElegida;
-    return elegida == null
-        ? ''
-        : LecturaUnidadesProducto.plural(elegida.nombre);
-  }
+  String get unidadStockPresentacion => presentacion.unidadStock;
 
   // ── Validación ────────────────────────────────────────────────────────
 
@@ -301,7 +257,7 @@ class FormularioProductoController extends ChangeNotifier {
     if (_porMedida) {
       if (!medida.vistaValida(stockInfinito: esStockInfinito)) return false;
       if (!medidaCompleta) return false;
-    } else if (_presentacionElegida == null) {
+    } else if (presentacion.elegida == null) {
       return false;
     }
     return _faltaModelos == null;
@@ -344,7 +300,7 @@ class FormularioProductoController extends ChangeNotifier {
           exigirTodo: true,
         );
         if (faltaMedida != null) return faltaMedida;
-      } else if (_presentacionElegida == null) {
+      } else if (presentacion.elegida == null) {
         return 'Falta: presentación';
       }
       return _faltaModelos;
@@ -359,7 +315,7 @@ class FormularioProductoController extends ChangeNotifier {
 
     // Un producto antiguo puede guardarse sin presentación (regla 4).
     if (esNuevo) {
-      if (_presentacionElegida == null) return 'Falta: presentación';
+      if (presentacion.elegida == null) return 'Falta: presentación';
       if (!presentacionCompleta) return 'Falta: formato';
     }
     final centavos = precioVisibleCentavos;
@@ -393,37 +349,12 @@ class FormularioProductoController extends ChangeNotifier {
   }
 
   void cambiarPresentacion(String id) {
-    _aplicarPresentacion(id);
+    presentacion.aplicar(id);
     notifyListeners();
   }
 
-  void _aplicarPresentacion(String id) {
-    presentacionId = id;
-    modelos.limpiarFormatos();
-    formato = null;
-    formatoEtiqueta = '';
-    final presentaciones = presentacionesActivas.where(
-      (presentacion) => presentacion.id == id,
-    );
-    if (presentaciones.isEmpty) return;
-    final formatos = presentaciones.first.formatos;
-    if (formatos.length == 1) {
-      formatoEtiqueta = formatos.first.etiqueta;
-      formato = FormatoElegido(
-        valorBase: formatos.first.valorBase,
-        familia: formatos.first.familia.name,
-        unidad: formatos.first.unidadVisible.nombre,
-      );
-    }
-  }
-
   void cambiarFormato(FormatoElegido elegido) {
-    formato = elegido;
-    formatoEtiqueta = LecturaUnidadesProducto.etiquetaDeFormato(
-      valorBase: elegido.valorBase,
-      familiaNombre: elegido.familia,
-      unidadNombre: elegido.unidad,
-    );
+    presentacion.elegirFormato(elegido);
     notifyListeners();
   }
 
@@ -448,7 +379,7 @@ class FormularioProductoController extends ChangeNotifier {
 
   /// Arma el Producto con lo escrito (ConstructorProducto).
   Producto construirProducto() {
-    final elegido = formato;
+    final elegido = presentacion.formato;
     final reglaPropia = medida.reglaPropia;
     return ConstructorProducto.construir(
       DatosFormularioProducto(
@@ -494,8 +425,7 @@ class FormularioProductoController extends ChangeNotifier {
     modelos.dispose();
     nombreCtrl.dispose();
     descripcionCtrl.dispose();
-    stockPresentacionCtrl.dispose();
-    precioPresentacionCtrl.dispose();
+    presentacion.dispose();
     super.dispose();
   }
 }
