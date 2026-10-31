@@ -1,6 +1,6 @@
 # Plano del producto — diseño acordado y próximos pasos
 
-Documento vivo. Resume lo que se decidió con el usuario sobre el **producto** (panel del vendedor) para retomarlo en una conversación nueva. Leer antes de trabajar en productos. Última actualización: 2026-10-30.
+Documento vivo. Resume lo que se decidió con el usuario sobre el **producto** (panel del vendedor) para retomarlo en una conversación nueva. Leer antes de trabajar en productos. Última actualización: 2026-10-30 (tarde).
 
 > El producto es el punto donde todo choca (presentación, medida, modelos, extras, combos, stock). Primero se cierra esto; lo demás (cambio de rubro, web pública, pedidos) son agregados que leen lo que ya existe.
 
@@ -90,7 +90,10 @@ Categoría · forma de venta (**presentación** o **medida**, una sola para todo
 Hecho: `extras` en el documento del producto, línea en el formulario y editor en hoja desde abajo (celular) / diálogo (PC). **No en «Lo peso»**. Maqueta: `docs/maquetas/extras_producto_app.html`. Falta: elegirlos en la tienda y sumarlos al carrito: (precio de la fila + extras elegidos) × cantidad, en céntimos enteros.
 Texto con precio opcional (+ S/). **No descuentan stock** (por ahora). Van en el formulario, no en la descripción (el cliente los elige y llegan al pedido). La descripción queda para texto que solo se lee.
 
-### 3.6 Combos (simples)
+### 3.6 Combos (HECHO 2026-10-30, `97e2e87`; falta la tienda)
+Hecho: combo con precio propio (arranca con la suma, lo decide el encargado), stock calculado de las partes (sin stock propio), palabra por rubro, selector en hoja/diálogo, miniaturas e imagen conjunta, foto propia opcional, bloqueo al borrar. **La foto es obligatoria en todo producto.** Falta: vender y descontar (con pedidos), leer partes no cargadas y la tienda. Maqueta: `docs/maquetas/combos_producto_app.html`.
+
+Diseño acordado original:
 - Producto propio con **su foto y su precio**.
 - Lista de **productos fijos**: cada línea apunta a "producto · modelo · fila" × cantidad, con su foto.
 - Extras de texto (no tocan stock).
@@ -129,8 +132,8 @@ Un nivel de modelos y una lista de filas; una foto por modelo; extras sin stock;
 3. ~~**Modelos + Se vende en**~~ (hecho 2026-10-28, falta desplegar; el «No» con varias filas queda pendiente).
 4. ~~**Extras**~~ (hecho 2026-10-30; falta la tienda).
 5. ~~**Presentaciones propias en todos los rubros**~~ (hecho 2026-10-30: se crean en Configuración → Catálogo; el formulario enlaza y conserva el borrador).
-6. **Combos** ← siguiente (precio propio con la suma de las partes como ayuda; sin extras por medida).
-7. **Tienda pública (`web/`) — AL FINAL, con todo listo** (acordado 2026-10-29): cuando estén variables, extras, presentaciones propias y combos, se hace una sola vez para que el cliente pueda comprar con todo. Ver notas abajo.
+6. ~~**Combos**~~ (hecho 2026-10-30; falta la tienda).
+7. **Tienda pública (`web/`) ← siguiente, con todo listo** (acordado 2026-10-29): cuando estén variables, extras, presentaciones propias y combos, se hace una sola vez para que el cliente pueda comprar con todo. Ver notas abajo.
 8. Después: stock en pedidos (descontar al confirmar, transacciones, cancelar devuelve lo descontado), cambio de rubro, moneda por país.
 
 ### Notas para cuando toque la tienda (investigado 2026-10-29)
