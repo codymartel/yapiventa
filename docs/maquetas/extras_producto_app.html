@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YapiVenta · extras del producto</title>
+<style>
+:root{--fondo:#070C18;--sup:#0D1526;--card:#111D33;--texto:#E8EDF5;--muted:#9AA9C2;--dim:#2A3A55;--azul:#3D72D4;--precio:#8AB2FF;
+--borde:rgba(61,114,212,.30);--warn:#FBBF24;--m3out:#938F99;--m3sel:#4A4458}
+*{box-sizing:border-box}
+body{margin:0;background:#04070f;color:var(--texto);font:14px/1.4 system-ui,Roboto,sans-serif;padding:24px 16px 40px}
+h1{font-size:20px;margin:0 0 4px}
+h2{font-size:15px;margin:30px 0 10px;color:var(--precio)}
+p.s{color:var(--muted);margin:0 0 14px;max-width:880px}
+.fila{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start}
+/* marcos */
+.mov{width:300px;height:560px;background:var(--fondo);border:1px solid #1d2a44;border-radius:26px;position:relative;overflow:hidden}
+.pc{width:620px;max-width:100%;height:470px;background:var(--fondo);border:1px solid #1d2a44;border-radius:10px;position:relative;overflow:hidden}
+.pc .menu{position:absolute;left:0;top:0;bottom:0;width:110px;background:var(--sup);padding:12px;color:var(--muted);font-size:12px}
+.vel{position:absolute;inset:0;background:rgba(0,0,0,.6)}
+/* diálogo PC y hoja celular */
+.dlg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:420px;max-width:92%;background:var(--sup);border:1px solid var(--borde);border-radius:16px;padding:16px}
+.hoja{position:absolute;left:0;right:0;bottom:0;background:var(--sup);border-top:1px solid var(--borde);border-radius:20px 20px 0 0;padding:10px 16px 16px}
+.asa{width:36px;height:4px;border-radius:2px;background:#3a4a68;margin:0 auto 10px}
+.t{font-weight:700;font-size:16px;margin-bottom:8px}
+.pregunta{font-size:14px;font-weight:500}
+.pregunta span{color:var(--muted);font-weight:400}
+.seg{display:flex;border:1px solid var(--m3out);border-radius:999px;overflow:hidden;margin:8px 0 4px}
+.seg span{flex:1;text-align:center;padding:11px 6px;font-size:14px;font-weight:500;min-height:44px;display:flex;align-items:center;justify-content:center}
+.seg span+span{border-left:1px solid var(--m3out)}
+.seg .on{background:var(--m3sel)}
+.ayuda{color:var(--muted);font-size:13px;margin:4px 0 0}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.chip{border:1px solid var(--m3out);border-radius:999px;padding:9px 13px;font-size:13px;min-height:40px;display:flex;align-items:center}
+.chip b{color:var(--precio);font-weight:500;margin-left:4px}
+.ex{display:grid;grid-template-columns:1fr 100px 40px;gap:8px;align-items:end;margin-top:8px}
+.campo{border-bottom:1px solid var(--m3out);padding:4px 0 5px;min-height:46px}
+.campo label{display:block;font-size:12px;color:var(--muted)}
+.campo .v{font-size:15px}
+.x{height:44px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:18px}
+.mov .ex{grid-template-columns:1fr 84px 36px}
+.add{display:block;color:var(--azul);font-size:14px;font-weight:500;padding:10px 2px;min-height:44px}
+.bt{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
+.b{padding:10px 16px;border-radius:999px;font-size:14px;min-height:44px;display:flex;align-items:center;justify-content:center}
+.b1{background:#2457B3;color:#fff}.b2{color:var(--precio)}
+.mov .b{flex:1}
+/* formulario de fondo */
+.form{padding:14px 14px 0}
+.form .tt{font-size:18px;margin:0 0 8px}
+.cmp{border-bottom:1px solid var(--m3out);padding:4px 0 6px;margin-top:6px}
+.cmp label{display:block;font-size:12px;color:var(--muted)}
+.fl{background:var(--card);border:1px solid var(--borde);border-radius:14px;padding:12px 14px;margin-top:12px;display:flex;align-items:center;gap:10px;font-size:15px;font-weight:500}
+.fl .n{margin-left:auto;color:var(--precio);font-size:13px;font-weight:400}
+.pc .form{padding-left:124px}
+.falta{color:var(--warn);font-size:13px;font-weight:600;margin-right:auto;align-self:center}
+.nota{background:var(--card);border:1px solid var(--borde);border-radius:12px;padding:12px 14px;font-size:13px;max-width:880px;color:var(--muted)}
+.nota b{color:var(--texto)}
+</style>
+</head>
+<body>
+<h1>Extras del producto · hoja desde abajo (celular) y diálogo (PC)</h1>
+<p class="s">En el formulario queda <b>una sola línea</b>: «➕ Extras · 2 extras ›». Al tocarla se abre el editor: en celular (menos de 900 px) <b>sube desde abajo</b>; en PC (900 px o más) es un diálogo centrado. Mismo contenido, botones de 44 px, textos de 13 px o más. Solo opcionales, máximo 10, sin stock.</p>
+
+<h2>1 · El formulario del producto con la línea de extras</h2>
+<div class="fila">
+  <div class="mov">
+    <div class="form">
+      <div class="tt">Editar producto</div>
+      <div class="cmp"><label>Nombre del producto *</label>Pollo a la brasa</div>
+      <div class="cmp"><label>Categoría *</label>Platos</div>
+      <div class="fl">➕ Extras <span class="n">2 extras ›</span></div>
+      <div class="cmp" style="margin-top:14px"><label>Descripción (opcional)</label>&nbsp;</div>
+    </div>
+  </div>
+  <div class="pc">
+    <div class="menu">Inicio<br>Pedidos<br><b style="color:var(--texto)">Productos</b><br>Configuración</div>
+    <div class="form" style="padding-right:14px">
+      <div class="tt">Editar producto</div>
+      <div class="cmp"><label>Nombre del producto *</label>Pollo a la brasa</div>
+      <div class="cmp"><label>Categoría *</label>Platos</div>
+      <div class="fl">➕ Extras <span class="n">2 extras ›</span></div>
+      <div class="cmp" style="margin-top:14px"><label>Descripción (opcional)</label>&nbsp;</div>
+    </div>
+  </div>
+</div>
+
+<h2>2 · Al tocar la línea: el editor de extras (con «Sí»)</h2>
+<div class="fila">
+  <div class="mov">
+    <div class="vel"></div>
+    <div class="hoja">
+      <div class="asa"></div>
+      <div class="t">Extras</div>
+      <div class="pregunta">¿El cliente puede agregar algo extra? <span>con ají, + papas…</span></div>
+      <div class="seg"><span class="on">Sí</span><span>No</span></div>
+      <div class="ayuda">Toca uno para agregarlo, o escribe el tuyo.</div>
+      <div class="chips"><span class="chip">+ Con ají</span><span class="chip">+ Papas <b>S/ 6</b></span><span class="chip">+ Ensalada <b>S/ 4</b></span></div>
+      <div class="ex"><div class="campo"><label>Extra</label><div class="v">Con ají</div></div><div class="campo"><label>Precio S/</label><div class="v">—</div></div><div class="x">✕</div></div>
+      <div class="ex"><div class="campo"><label>Extra</label><div class="v">Papas</div></div><div class="campo"><label>Precio S/</label><div class="v">6.00</div></div><div class="x">✕</div></div>
+      <span class="add">+ Agregar otro extra · 2 de 10</span>
+      <div class="bt"><span class="b b2">Cancelar</span><span class="b b1">Listo</span></div>
+    </div>
+  </div>
+  <div class="pc">
+    <div class="menu">Inicio<br>Pedidos<br><b style="color:var(--texto)">Productos</b><br>Configuración</div>
+    <div class="vel"></div>
+    <div class="dlg">
+      <div class="t">Extras</div>
+      <div class="pregunta">¿El cliente puede agregar algo extra? <span>con ají, + papas…</span></div>
+      <div class="seg" style="max-width:260px"><span class="on">Sí</span><span>No</span></div>
+      <div class="ayuda">Toca uno para agregarlo, o escribe el tuyo.</div>
+      <div class="chips"><span class="chip">+ Con ají</span><span class="chip">+ Papas <b>S/ 6</b></span><span class="chip">+ Ensalada <b>S/ 4</b></span></div>
+      <div class="ex"><div class="campo"><label>Extra</label><div class="v">Con ají</div></div><div class="campo"><label>Precio S/</label><div class="v">—</div></div><div class="x">✕</div></div>
+      <div class="ex"><div class="campo"><label>Extra</label><div class="v">Papas</div></div><div class="campo"><label>Precio S/</label><div class="v">6.00</div></div><div class="x">✕</div></div>
+      <span class="add">+ Agregar otro extra · 2 de 10</span>
+      <div class="bt"><span class="b b2">Cancelar</span><span class="b b1">Listo</span></div>
+    </div>
+  </div>
+</div>
+
+<h2>3 · Con «No» (por defecto) y un aviso</h2>
+<div class="fila">
+  <div class="mov" style="height:300px">
+    <div class="vel"></div>
+    <div class="hoja">
+      <div class="asa"></div>
+      <div class="t">Extras</div>
+      <div class="pregunta">¿El cliente puede agregar algo extra? <span>bordado, estampado…</span></div>
+      <div class="seg"><span>Sí</span><span class="on">No</span></div>
+      <div class="ayuda">Sin extras: se vende tal cual.</div>
+      <div class="bt"><span class="b b2">Cancelar</span><span class="b b1">Listo</span></div>
+    </div>
+  </div>
+  <div class="nota" style="flex:1;min-width:280px">
+    <b>Avisos</b> (siempre el primero que falta, en amarillo, como hoy): «Falta: nombre del extra» · «Revisa: precio de Papas» (0 o negativo) · «Revisa: «Papas» está repetido». El aviso aparece también en el pie del formulario del producto.<br><br>
+    <b>Reglas</b>: la fila vacía se ignora al guardar. Con «No» los extras escritos no se guardan, pero siguen en la hoja si vuelves a tocar «Sí» antes de guardar el producto. «Listo» solo cierra la hoja: los extras se guardan al dar «Guardar producto».<br><br>
+    <b>Cuenta para el cliente</b> (se hace con la tienda, al final): S/ 18.00 + S/ 6.00 = S/ 24.00, en céntimos enteros (1800 + 600 = 2400). Con 2 unidades: (1800 + 600) × 2 = 4800.
+  </div>
+</div>
+</body>
+</html>
