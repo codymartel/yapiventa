@@ -71,6 +71,7 @@ void main() {
       'tituloModelos',
       'tituloFilas',
       'modelos',
+      'extras',
     });
     expect(datos['fechaVencimiento'], isA<Timestamp>());
     expect((datos['fechaVencimiento'] as Timestamp).toDate(), fecha);

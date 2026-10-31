@@ -101,6 +101,10 @@ class Producto {
   final String tituloFilas;
   final List<ModeloProducto> modelos;
 
+  /// Lo que el cliente puede agregar (extras): sin stock, con precio opcional.
+  /// Solo en productos que se cuentan; un producto por medida no los tiene.
+  final List<ExtraProducto> extras;
+
   final bool esStockInfinito;
   final String descripcion;
   final String categoria;
@@ -143,6 +147,7 @@ class Producto {
     this.tituloModelos = '',
     this.tituloFilas = '',
     this.modelos = const [],
+    this.extras = const [],
   });
 
   /// true si el producto tiene modelos (variables).
@@ -184,6 +189,7 @@ class Producto {
     String? tituloModelos,
     String? tituloFilas,
     List<ModeloProducto>? modelos,
+    List<ExtraProducto>? extras,
   }) {
     return Producto(
       id: id ?? this.id,
@@ -220,6 +226,7 @@ class Producto {
       tituloModelos: tituloModelos ?? this.tituloModelos,
       tituloFilas: tituloFilas ?? this.tituloFilas,
       modelos: modelos ?? this.modelos,
+      extras: extras ?? this.extras,
     );
   }
 }

@@ -13,6 +13,7 @@ import 'lectura_firestore.dart';
 //       filas: [ { id, etiqueta, precioCentavos, stock, stockBase?,
 //                  formatoValorBase, formatoFamilia, formatoUnidad } ] }
 //   ]
+//   extras: [ { id, nombre, precioCentavos } ]
 //
 // La lectura es defensiva: lo que no se entiende se ignora, nunca rompe el
 // producto. Sin 'modelos' (producto simple o antiguo) devuelve [].
@@ -61,6 +62,45 @@ abstract final class EstructuraProductoMapper {
       );
     }
     return filas;
+  }
+
+  /// Extras del producto: `extras: [{id, nombre, precioCentavos}]`. Lectura
+  /// defensiva: sin nombre se ignora, y nunca pasa del máximo.
+  static List<ExtraProducto> extrasDesde(Object? valor) {
+    if (valor is! List) return const [];
+    final extras = <ExtraProducto>[];
+    for (
+      var i = 0;
+      i < valor.length && extras.length < ExtraProducto.maximo;
+      i++
+    ) {
+      final dato = valor[i];
+      if (dato is! Map) continue;
+      final mapa = Map<String, dynamic>.from(dato);
+      final nombre = LecturaFirestore.texto(mapa['nombre']).trim();
+      if (nombre.isEmpty) continue;
+      final id = LecturaFirestore.texto(mapa['id']);
+      final precio = LecturaFirestore.entero(mapa['precioCentavos']);
+      extras.add(
+        ExtraProducto(
+          id: id.isEmpty ? 'e$i' : id,
+          nombre: nombre,
+          precioCentavos: precio < 0 ? 0 : precio,
+        ),
+      );
+    }
+    return extras;
+  }
+
+  static List<Map<String, dynamic>> extrasAMapas(List<ExtraProducto> extras) {
+    return [
+      for (final extra in extras)
+        {
+          'id': extra.id,
+          'nombre': extra.nombre,
+          'precioCentavos': extra.precioCentavos,
+        },
+    ];
   }
 
   static List<Map<String, dynamic>> modelosAMapas(

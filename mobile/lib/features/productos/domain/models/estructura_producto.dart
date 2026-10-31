@@ -1,7 +1,7 @@
 import 'familia_unidad.dart';
 
 // ═════════════════════════════════════════════════════════════════════════
-// FilaVenta + ModeloProducto
+// FilaVenta + ModeloProducto + ExtraProducto
 // ═════════════════════════════════════════════════════════════════════════
 // La estructura de un producto con variables (paso 3 del plano):
 //
@@ -96,4 +96,22 @@ class ModeloProducto {
       filas: filas ?? this.filas,
     );
   }
+}
+
+/// Algo que el cliente puede agregar a un producto («con ají», «+ papas
+/// S/ 6»). Es del producto entero, no de cada modelo. NO tiene stock: no se
+/// cuenta ni se descuenta. Precio en céntimos enteros; 0 = gratis.
+class ExtraProducto {
+  const ExtraProducto({
+    required this.id,
+    required this.nombre,
+    this.precioCentavos = 0,
+  });
+
+  /// Cuántos extras puede tener un producto.
+  static const int maximo = 10;
+
+  final String id;
+  final String nombre;
+  final int precioCentavos;
 }

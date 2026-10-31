@@ -9,11 +9,13 @@ import '../../../negocio/domain/models/catalogo_venta/opcion_presentacion.dart';
 import '../../application/services/constructor_producto.dart';
 import '../../application/services/entrada_numerica.dart';
 import '../../application/services/lectura_unidades_producto.dart';
+import '../../application/services/sugerencias_extras.dart';
 import '../../application/services/sugerencias_modelos.dart';
 import '../../domain/models/foto_nueva.dart';
 import '../../domain/models/formato_elegido.dart';
 import '../../domain/models/modo_venta.dart';
 import '../../domain/models/producto.dart';
+import 'formulario_extras_controller.dart';
 import 'formulario_medida_controller.dart';
 import 'formulario_modelos_controller.dart';
 import 'formulario_presentacion_controller.dart';
@@ -68,8 +70,12 @@ class FormularioProductoController extends ChangeNotifier {
             medida.conModelos = modelos.usa;
             notifyListeners();
           });
+    extras = FormularioExtrasController(
+      sugerencias: SugerenciasExtras.de(rubro),
+    )..addListener(notifyListeners);
     _precargarDesde(producto);
     final guardado = producto;
+    if (guardado != null) extras.precargar(guardado);
     if (guardado != null && guardado.tieneModelos) {
       modelos.precargar(
         guardado,
@@ -96,6 +102,9 @@ class FormularioProductoController extends ChangeNotifier {
 
   /// Estado de las variables: modelos con foto y sus filas con stock.
   late final FormularioModelosController modelos;
+
+  /// Extras: lo que el cliente puede agregar. No aplican a «Lo peso».
+  late final FormularioExtrasController extras;
 
   late final TextEditingController nombreCtrl;
   late final TextEditingController descripcionCtrl;
@@ -263,10 +272,14 @@ class FormularioProductoController extends ChangeNotifier {
     return _faltaModelos == null;
   }
 
+  /// Los extras no aplican a «Lo peso»: ahí no se piden ni se guardan.
+  String? get _faltaExtras => _porMedida ? null : extras.queFalta();
+
   bool get camposOk {
     if (_guardando) return false;
     if (nombreCtrl.text.trim().isEmpty) return false;
     if (categoria.isEmpty) return false;
+    if (_faltaExtras != null) return false;
     if (modelos.usa) return _camposOkConModelos;
 
     if (modoVista == ModoVenta.medida) {
@@ -290,6 +303,10 @@ class FormularioProductoController extends ChangeNotifier {
   /// mides → precio → cantidad de «Otra cantidad» → stock → regla propia.
   String? get queFalta {
     if (camposOk || _guardando) return null;
+    return _faltaCampos ?? _faltaExtras;
+  }
+
+  String? get _faltaCampos {
     if (nombreCtrl.text.trim().isEmpty) return 'Falta: nombre del producto';
     if (categoria.isEmpty) return 'Falta: categoría';
 
@@ -408,6 +425,7 @@ class FormularioProductoController extends ChangeNotifier {
         precioPresentacionCentavos: textoACentavos(precioPresentacionCtrl.text),
         stockPresentacion: int.tryParse(stockPresentacionCtrl.text) ?? 0,
         precioVisibleCentavos: precioVisibleCentavos,
+        extras: _porMedida ? const [] : extras.construir(),
         tituloModelos: modelos.usa ? modelos.tituloCtrl.text.trim() : '',
         tituloFilas: modelos.usa ? modelos.tituloFilas : '',
         modelos: modelos.construir(
@@ -423,6 +441,7 @@ class FormularioProductoController extends ChangeNotifier {
   void dispose() {
     medida.dispose();
     modelos.dispose();
+    extras.dispose();
     nombreCtrl.dispose();
     descripcionCtrl.dispose();
     presentacion.dispose();

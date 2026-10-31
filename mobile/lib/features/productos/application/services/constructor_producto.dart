@@ -49,6 +49,7 @@ class DatosFormularioProducto {
     this.tituloModelos = '',
     this.tituloFilas = '',
     this.modelos = const [],
+    this.extras = const [],
   });
 
   /// Producto editado (null si es nuevo).
@@ -89,6 +90,9 @@ class DatosFormularioProducto {
   final String tituloModelos;
   final String tituloFilas;
   final List<ModeloProducto> modelos;
+
+  /// Extras del producto. Un producto por medida no los guarda.
+  final List<ExtraProducto> extras;
 }
 
 class ConstructorProducto {
@@ -157,6 +161,7 @@ class ConstructorProducto {
         tituloModelos: datos.tituloModelos,
         tituloFilas: datos.tituloFilas,
         modelos: datos.modelos,
+        extras: datos.extras,
       );
     }
 
@@ -183,6 +188,7 @@ class ConstructorProducto {
         formatoUnidad: datos.formatoUnidad,
         precioCentavos: datos.precioPresentacionCentavos!,
         stock: datos.stockPresentacion,
+        extras: datos.extras,
       );
     }
 
@@ -206,6 +212,7 @@ class ConstructorProducto {
           datos.precioVisibleCentavos ?? anterior?.precioCentavos ?? 0,
       stock: anterior?.stock ?? 0,
       fraccionesSeleccionadas: anterior?.fraccionesSeleccionadas ?? const [],
+      extras: datos.extras,
     );
   }
 }

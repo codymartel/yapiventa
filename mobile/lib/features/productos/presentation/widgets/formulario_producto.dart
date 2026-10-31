@@ -12,6 +12,7 @@ import 'formulario/foto_producto.dart';
 import 'formulario/lista_modelos_producto.dart';
 import 'formulario/mensaje_catalogo.dart';
 import 'formulario/pregunta_modelos_producto.dart';
+import 'formulario/seccion_extras_producto.dart';
 import 'formulario/seccion_medida_producto.dart';
 import 'formulario/seccion_presentacion_producto.dart';
 import 'formulario/selector_modo_venta.dart';
@@ -347,6 +348,10 @@ class _FormularioProductoState extends State<FormularioProducto> {
             factorStock: LecturaUnidadesProducto.factorDe(form.medida.unidad),
             unidadBase: form.medida.unidadBaseNombre,
           ),
+        ],
+        if (form.modoVista != ModoVenta.medida) ...[
+          const SizedBox(height: 14),
+          SeccionExtrasProducto(extras: form.extras),
         ],
         const SizedBox(height: 10),
         TextField(

@@ -88,6 +88,7 @@ abstract final class ProductoFirestoreMapper {
       tituloModelos: LecturaFirestore.texto(data['tituloModelos']),
       tituloFilas: LecturaFirestore.texto(data['tituloFilas']),
       modelos: EstructuraProductoMapper.modelosDesde(data['modelos']),
+      extras: EstructuraProductoMapper.extrasDesde(data['extras']),
     );
   }
 
@@ -140,6 +141,7 @@ abstract final class ProductoFirestoreMapper {
       tituloModelos: LecturaFirestore.texto(data['tituloModelos']),
       tituloFilas: LecturaFirestore.texto(data['tituloFilas']),
       modelos: EstructuraProductoMapper.modelosDesde(data['modelos']),
+      extras: EstructuraProductoMapper.extrasDesde(data['extras']),
     );
   }
 
@@ -178,6 +180,7 @@ abstract final class ProductoFirestoreMapper {
       'tituloModelos': producto.tituloModelos,
       'tituloFilas': producto.tituloFilas,
       'modelos': EstructuraProductoMapper.modelosAMapas(producto.modelos),
+      'extras': EstructuraProductoMapper.extrasAMapas(producto.extras),
     };
   }
 }
