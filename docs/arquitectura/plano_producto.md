@@ -1,6 +1,6 @@
 # Plano del producto — diseño acordado y próximos pasos
 
-Documento vivo. Resume lo que se decidió con el usuario sobre el **producto** (panel del vendedor) para retomarlo en una conversación nueva. Leer antes de trabajar en productos. Última actualización: 2026-10-30 (tarde).
+Documento vivo. Resume lo que se decidió con el usuario sobre el **producto** (panel del vendedor) para retomarlo en una conversación nueva. Leer antes de trabajar en productos. Última actualización: 2026-10-31.
 
 > El producto es el punto donde todo choca (presentación, medida, modelos, extras, combos, stock). Primero se cierra esto; lo demás (cambio de rubro, web pública, pedidos) son agregados que leen lo que ya existe.
 
@@ -133,7 +133,7 @@ Un nivel de modelos y una lista de filas; una foto por modelo; extras sin stock;
 4. ~~**Extras**~~ (hecho 2026-10-30; falta la tienda).
 5. ~~**Presentaciones propias en todos los rubros**~~ (hecho 2026-10-30: se crean en Configuración → Catálogo; el formulario enlaza y conserva el borrador).
 6. ~~**Combos**~~ (hecho 2026-10-30; falta la tienda).
-7. **Tienda pública (`web/`) ← siguiente, con todo listo** (acordado 2026-10-29): cuando estén variables, extras, presentaciones propias y combos, se hace una sola vez para que el cliente pueda comprar con todo. Ver notas abajo.
+7. **Pedidos de punta a punta + tienda pública funcional (`web/`) ← siguiente** (decidido 2026-10-31: primero función; el rediseño de las 4 plantillas va después del lanzamiento) (acordado 2026-10-29): cuando estén variables, extras, presentaciones propias y combos, se hace una sola vez para que el cliente pueda comprar con todo. Ver notas abajo.
 8. Después: stock en pedidos (descontar al confirmar, transacciones, cancelar devuelve lo descontado), cambio de rubro, moneda por país.
 
 ### Notas para cuando toque la tienda (investigado 2026-10-29)
@@ -161,3 +161,18 @@ Un nivel de modelos y una lista de filas; una foto por modelo; extras sin stock;
 | `formulario_producto_app.html` | Parcial: jamonada por ¼ kg vigente; la presentación propia (jaba) se crea ahora en Configuración, no en el formulario; versiones y combo reemplazados |
 | `stock_precio_versiones_combo_app.html`, `pollo_y_combo_app.html` | Superadas (combos con elecciones; tabla color × talla) |
 | `versiones_y_fotos_app.html`, `versiones_tallas_opciones_app.html`, `formulario_producto.html` | Superadas (etapas previas del diseño) |
+
+## 7. Hoja de ruta a Play Store (decidida 2026-10-31)
+Estado estimado (no medido): productos ~90 %, Negocio/Configuración funciona, dashboard con ceros, **Pedidos 0 %**, **Reclamaciones 0 %**, Ventas/Plan/Ayuda «próximamente», tienda pública ~35 % (solo productos simples; el pedido solo abre WhatsApp y no se guarda), Android sin probar (`applicationId` de ejemplo). En total ~45–50 % de algo publicable.
+
+Orden: (1) Pedidos de punta a punta; (2) Reclamaciones; (3) dashboard real y cerrar Negocio/Configuración; (4) Android + política de privacidad + borrar cuenta + prueba cerrada; (5) tras el lanzamiento: rediseño de plantillas, planes, IA (Blaze).
+
+### Pedidos de punta a punta (por especificar)
+- **Tienda**: carrito por producto·modelo·fila + extras; cuentas en céntimos enteros con las fórmulas del panel ((precio de la fila + extras) × cantidad; combo: precio propio); reglas de peso (mínimo e incremento); crea el pedido en Firestore y abre WhatsApp con el resumen.
+- **Panel**: lista de pedidos nuevos con estados; confirmar descuenta stock en una **transacción** (suma del carrito por producto base; combos descuentan cada parte; todo o nada); cancelar devuelve lo que se descontó, no recalcula.
+- **Seguridad**: reglas de Firestore que validen la creación anónima del pedido + App Check contra bots.
+- **Lecturas**: el panel escucha pedidos nuevos (1 listener acotado); la tienda no agrega lecturas (misma consulta única).
+- Ver evaluación en la bitácora 2026-10-30: la tienda actual calcula con decimales, no lee modelos/extras/combos, ve los combos con stock 0.
+
+### Reclamaciones
+Libro de Reclamaciones (Perú): formulario público + lista y respuesta en el panel. Confirmar campos y plazos con INDECOPI antes de construir.

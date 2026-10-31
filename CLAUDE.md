@@ -6,7 +6,7 @@ App para que pequeños negocios de Latinoamérica (bodegas, restaurantes, ropa, 
 | Carpeta | Qué es |
 |---|---|
 | `mobile/` | App Flutter (móvil y **panel web** del vendedor). Firebase Auth + Firestore, `provider` |
-| `web/` | **Tienda pública**: HTML/CSS/JS estático, sin build. Moldes en `web/public/moldes/`. **No se toca salvo que el usuario lo pida** |
+| `web/` | **Tienda pública**: HTML/CSS/JS estático, sin build. Moldes en `web/public/moldes/`. **No se toca salvo que el usuario lo pida** (desde 2026-10-31 se trabaja la fase Pedidos) |
 | `docs/arquitectura/` | `00_PROGRESO.md` y **`plano_producto.md` (diseño acordado del producto y próximos pasos: leerlo antes de trabajar en productos)** |
 | `docs/maquetas/` | Maquetas HTML aprobadas (estilo del panel) |
 | `docs/bitacora/` | Una entrada por día (`AAAA-MM-DD.md`) |
@@ -62,7 +62,23 @@ Tienda pública (desde `web/`): `firebase deploy --only hosting:tienda`.
 - `git mv` deja el renombre preparado: revisar `git diff --cached` antes de cada commit para que no se cuele en otro.
 - `flutter analyze` tiene 10 avisos previos (no son del trabajo actual).
 - Los precios se muestran con coma (`centavosATexto`: S/ 12,00); la tarjeta de producto usa punto. Pendiente unificar (ver `plano_producto.md`).
-- Archivos grandes conocidos: `configuracion_negocio_provider.dart` (~1 770 líneas), `paso_catalogo.dart` (~1 200), `productos_content.dart` (~560).
+- Archivos grandes conocidos: `configuracion_negocio_provider.dart` (~1 770 líneas), `paso_catalogo.dart` (~1 200), `productos_content.dart` (~560), `formulario_producto_controller.dart` (~480: vigilar, ya se dividió una vez).
+- **`dart format` solo sobre los archivos propios**: sobre carpetas reformatea archivos ajenos (se revierten con `git checkout -- <archivo>`, nunca el `GeneratedPluginRegistrant.swift`).
+- Heredocs de bash con comillas fallan: para editar muchos archivos usar la herramienta Edit o un script Python guardado con Write en el scratchpad, nunca en la raíz del repo.
+- El sistema bloquea `git checkout --` (descartar cambios): no insistir; dejar el archivo sin incluir en el commit.
+- Navegador integrado: la emulación de 375 px recorta las capturas; probar con el panel a ~800 px (menos de 900 px ya activa el modo celular). El selector de fotos es del sistema: la foto la elige el usuario.
+
+## Estado del proyecto (actualizar al cerrar cada sesión)
+Leer `docs/arquitectura/plano_producto.md` (sección 7: hoja de ruta) y la última bitácora de `docs/bitacora/`.
+**Hecho (panel desplegado en https://yapiventa.web.app, 2026-10-31):** productos con variables (modelos con foto obligatoria + filas «Se vende en»), **extras** (opcionales, sin stock, no en «Lo peso»), **combos** (precio propio, stock calculado de las partes, palabra por rubro, imagen conjunta), presentaciones propias en los 6 rubros con enlace a Configuración y «Guardar y volver al producto», **foto obligatoria** en todo producto y **formulario en hoja grande desde abajo en celular** (<900 px; diálogo en PC). Un producto = un documento; la vista legacy (`precio`, `stock`, `unidadMedidaNombre`) se deriva en el mapper.
+**Prioridad decidida 2026-10-31: llegar a un MVP publicable en Play Store** (función antes que diseño). En este orden:
+1. **Pedidos de punta a punta**: la tienda (`web/`) guarda el pedido en Firestore y abre WhatsApp; el panel lo lista y cambia su estado (nuevo → confirmado → entregado / cancelado); **confirmar descuenta el stock en una transacción desde el panel** (sin Cloud Functions, plan Spark); cancelar devuelve lo descontado. La tienda debe leer variables, extras, combos y cantidades por peso, con cuentas en **céntimos enteros** (hoy lee solo `precio` y `stock` y calcula con decimales de JS).
+2. **Reclamaciones** (Libro de Reclamaciones: formulario en la tienda + lista y respuesta en el panel). Verificar requisitos y plazos con INDECOPI antes de construir.
+3. **Dashboard con datos reales** (hoy muestra ceros) y cerrar **Negocio / Configuración**.
+4. **Android**: cambiar `applicationId` (hoy `com.example.mobile`), firmar, probar en teléfonos reales, política de privacidad, borrar cuenta. Una cuenta personal nueva de Play puede exigir prueba cerrada (~12 testers, ~14 días): verificar en la documentación oficial.
+5. **Después del lanzamiento**: rediseño de las 4 plantillas (`web/public/moldes/`: galería, cristal, neón, sabroso), planes de pago, IA (la llave de la API no puede ir en el cliente: requiere Cloud Functions → plan Blaze).
+Otros pendientes: leer partes de combos no cargadas (la lista carga 10 por página; hoy la tarjeta muestra «—»), tarjeta nueva (`docs/maquetas/diseno_producto_app.html`), textos en singular («1 color», «6 unidad»), pruebas de uso por rubro, push a GitHub (los commits desde `96dad0d` están solo en local).
+**Código Kotlin original:** el usuario pasará lo que hizo en Kotlin (pedidos, quejas, etc.) para analizarlo y migrarlo a Flutter: **leerlo antes de diseñar**. Las carpetas `mobile/lib/features/{pedidos,quejas,caja,stock,colaboradores,planes,marketing,encuestas}` están vacías (archivos sin contenido).
 
 ## Git
 Conventional Commits en español (`feat(productos): ...`, `fix(medidas): ...`, `refactor(...)`, `docs: bitacora AAAA-MM-DD`). Se trabaja en `main`. Commit, push y deploy solo cuando el usuario lo pida.
