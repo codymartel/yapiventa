@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YapiVenta · pedidos en PC</title>
+<style>
+:root{--fondo:#070C18;--sup:#0D1526;--card:#111D33;--texto:#E8EDF5;--muted:#9AA9C2;--dim:#2A3A55;--azul:#3D72D4;--precio:#8AB2FF;--borde:rgba(61,114,212,.30);--warn:#FBBF24;--ok:#4ADE80;--err:#F87171;--m3out:#938F99}
+*{box-sizing:border-box}
+body{margin:0;background:#04070f;color:var(--texto);font:14px/1.4 system-ui,Roboto,sans-serif;padding:24px 16px 40px}
+h1{font-size:20px;margin:0 0 4px}
+p.s{color:var(--muted);margin:0 0 16px;max-width:960px}
+.pc{width:1240px;max-width:100%;height:700px;background:var(--fondo);border:1px solid #1d2a44;border-radius:12px;display:flex;overflow:hidden}
+.menu{width:160px;background:var(--sup);padding:16px 14px;color:var(--muted);font-size:14px;line-height:2.3;flex:none}
+.menu b.l{color:var(--texto);font-size:16px;display:block;margin-bottom:8px}
+.menu .on{color:var(--precio);font-weight:700;background:rgba(61,114,212,.15);border-radius:10px;padding:0 10px;margin:0 -10px}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.head{display:flex;align-items:center;gap:12px;padding:14px 18px 8px}
+.head h2{margin:0;font-size:20px}
+.live{margin-left:auto;font-size:12px;color:var(--ok);font-weight:600}
+.met{display:flex;gap:10px;padding:0 18px 10px}
+.met div{flex:1;background:var(--card);border:1px solid var(--borde);border-radius:12px;padding:8px 12px;font-size:11px;color:var(--muted)}
+.met b{display:block;font-size:20px;color:var(--texto)}
+.cuerpo{flex:1;display:flex;min-height:0;border-top:1px solid var(--dim)}
+.tabla{flex:1;padding:12px 14px;min-width:0;overflow:hidden}
+.filtros{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+.busca{border:1px solid var(--m3out);border-radius:999px;padding:8px 14px;color:var(--muted);font-size:13px;width:230px}
+.tab{border-radius:999px;padding:7px 12px;font-size:12px;background:var(--card);color:var(--muted)}
+.tab.on{background:#2457B3;color:#fff;font-weight:600}
+.reloj{margin-left:auto;color:var(--precio);font-size:12px;border:1px solid var(--borde);border-radius:999px;padding:7px 12px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.04em;padding:6px 8px;border-bottom:1px solid var(--dim)}
+td{padding:9px 8px;border-bottom:1px solid rgba(42,58,85,.5);white-space:nowrap}
+tr.sel td{background:rgba(61,114,212,.16)}
+tr.sel td:first-child{box-shadow:inset 3px 0 0 var(--azul)}
+.cb{display:inline-block;width:14px;height:14px;border:1.5px solid var(--m3out);border-radius:4px;vertical-align:middle}
+.pill{display:inline-block;border-radius:6px;padding:1px 7px;font-size:11px;font-weight:700}
+.p-n{background:rgba(251,191,36,.15);color:var(--warn)}
+.p-c{background:rgba(96,165,250,.15);color:#60A5FA}
+.p-x{background:rgba(248,113,113,.15);color:var(--err)}
+.p-e{background:rgba(74,222,128,.15);color:var(--ok)}
+.p-g{background:rgba(255,255,255,.07);color:var(--muted)}
+.num{text-align:right;font-weight:700;color:var(--precio)}
+.cl{color:var(--muted);font-size:11px}
+.lote{margin-top:10px;display:flex;gap:8px;align-items:center;font-size:12px;color:var(--muted)}
+.lote .b{border:1px solid var(--borde);border-radius:999px;padding:6px 12px;color:var(--precio)}
+.det{width:400px;flex:none;border-left:1px solid var(--dim);padding:14px 16px;overflow:hidden;background:rgba(13,21,38,.5)}
+.cab{display:flex;gap:10px;align-items:center}
+.av{width:38px;height:38px;border-radius:50%;background:rgba(251,191,36,.18);color:var(--warn);display:flex;align-items:center;justify-content:center;font-weight:800;flex:none}
+.cab h3{margin:0;font-size:17px}.cab h3 small{color:var(--muted);font-size:11px}
+.sub{font-size:11px;color:var(--muted);margin-top:2px}
+.prog{display:flex;align-items:center;margin:10px 0 2px}
+.prog i{width:10px;height:10px;border-radius:50%;background:var(--dim);flex:none}
+.prog i.h{background:var(--azul)}
+.prog u{flex:1;height:2px;background:var(--dim)}
+.etq{display:flex;justify-content:space-between;font-size:10px;color:var(--muted)}
+.sec{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin:12px 0 4px}
+.lin{display:flex;gap:8px;background:var(--card);border-radius:10px;padding:7px 10px;margin-top:5px;font-size:12px;align-items:center}
+.lin .q{background:rgba(61,114,212,.25);color:var(--precio);border-radius:6px;padding:1px 6px;font-weight:700;font-size:11px}
+.lin .r{margin-left:auto;font-weight:600}
+.lin small{display:block;font-size:11px}
+.si{color:var(--ok)}.no{color:var(--err)}
+.cuenta{background:var(--card);border-radius:10px;padding:8px 10px;font-size:12px}
+.cuenta div{display:flex;justify-content:space-between;padding:2px 0;color:var(--muted)}
+.cuenta .t{color:var(--texto);font-weight:800;font-size:15px;border-top:1px solid var(--dim);margin-top:4px;padding-top:6px}
+.cuenta .t span:last-child{color:var(--ok)}
+.hist{font-size:11px;color:var(--muted);line-height:1.7}
+.hist b{color:var(--texto);font-weight:600}
+.bts{display:flex;gap:8px;margin-top:12px}
+.btn{display:flex;align-items:center;justify-content:center;min-height:44px;border-radius:999px;font-weight:700;padding:0 14px;font-size:13px;white-space:nowrap}
+.b1{background:#2457B3;color:#fff;flex:1}
+.b2{border:1px solid var(--m3out);color:var(--precio);font-weight:500}
+.b3{color:var(--err);font-weight:500}
+.nota{background:var(--card);border:1px solid var(--borde);border-radius:12px;padding:12px 14px;font-size:13px;max-width:1240px;color:var(--muted);margin-top:14px}
+.nota b{color:var(--texto)}
+</style>
+</head>
+<body>
+<h1>Pedidos en computadora (900 px o más) — versión con más funciones</h1>
+<p class="s">Arriba los números del día, al centro una <b>tabla</b> con todos los pedidos abiertos, a la derecha el <b>detalle</b> del seleccionado (Rosa, borde azul) con el stock al lado de lo pedido.</p>
+
+<div class="pc">
+  <div class="menu"><b class="l">YapiVenta</b>Inicio<br>Productos<br><span class="on">Pedidos ●</span><br>Ventas<br>Reclamos<br>Negocio</div>
+
+  <div class="main">
+    <div class="head"><h2>Pedidos</h2><span class="live">● En vivo</span></div>
+    <div class="met">
+      <div><b style="color:var(--warn)">2</b>Nuevos</div>
+      <div><b style="color:#60A5FA">3</b>Activos</div>
+      <div><b style="color:var(--warn)">S/ 61,90</b>Por cobrar</div>
+      <div><b style="color:var(--err)">1</b>Vencidos (+12 h)</div>
+    </div>
+
+    <div class="cuerpo">
+      <div class="tabla">
+        <div class="filtros">
+          <span class="busca">🔍 Clave o cliente</span>
+          <span class="tab on">Nuevos 2</span><span class="tab">Activos 3</span><span class="tab">Por cobrar 2</span><span class="tab">Reembolsos</span>
+          <span class="reloj">🕘 Historial</span>
+        </div>
+        <table>
+          <tr><th></th><th>Clave</th><th>Cliente</th><th>Hora</th><th>Entrega</th><th>Pago</th><th>Estado</th><th style="text-align:right">Total</th></tr>
+          <tr class="sel"><td><span class="cb"></span></td><td>7GHMHF</td><td>Rosa Quispe</td><td>16:12</td><td>🚚 Delivery</td><td><span class="pill p-g">Yape · sin cobrar</span></td><td><span class="pill p-n">Nuevo</span></td><td class="num">S/ 18,40</td></tr>
+          <tr><td><span class="cb"></span></td><td>K3M9TA</td><td>Juan Paredes</td><td>15:55</td><td>📍 Recojo</td><td><span class="pill p-g">Efectivo</span></td><td><span class="pill p-n">Nuevo</span></td><td class="num">S/ 12,50</td></tr>
+          <tr><td><span class="cb"></span></td><td>X8D4LQ</td><td>Luis Vega</td><td>15:20</td><td>🚚 Delivery</td><td><span class="pill p-e">Plin · pagado</span></td><td><span class="pill p-c">Confirmado</span></td><td class="num">S/ 32,00</td></tr>
+          <tr><td><span class="cb"></span></td><td>R5T2NB</td><td>Ana Ríos</td><td>14:48</td><td>📍 Recojo</td><td><span class="pill p-g">Efectivo</span></td><td><span class="pill p-c">Confirmado</span></td><td class="num">S/ 14,00</td></tr>
+          <tr><td><span class="cb"></span></td><td>B7W1CE</td><td>Pedro Salas</td><td>13:30</td><td>🚚 Delivery</td><td><span class="pill p-g">Yape · sin cobrar</span></td><td><span class="pill p-c">En camino</span></td><td class="num">S/ 29,40</td></tr>
+          <tr><td><span class="cb"></span></td><td>P2QW8D</td><td>María Soto</td><td>ayer 21:10</td><td>📍 Recojo</td><td><span class="pill p-g">Efectivo</span></td><td><span class="pill p-x">Vencido</span></td><td class="num">S/ 9,00</td></tr>
+        </table>
+        <div class="lote"><span>Seleccionados: 0</span><span class="b">Confirmar seleccionados</span><span class="b">Cancelar vencidos (1)</span></div>
+      </div>
+
+      <div class="det">
+        <div class="cab"><div class="av">R</div><div><h3>Rosa Quispe <small>7GHMHF</small></h3><div class="sub">📞 987 654 321 · 🚚 Av. Los Olivos 245, Zona Norte</div></div></div>
+        <div class="prog"><i class="h"></i><u></u><i></i><u></u><i></i><u></u><i></i></div>
+        <div class="etq"><span style="color:var(--warn);font-weight:700">Nuevo</span><span>Confirmado</span><span>En camino</span><span>Entregado</span></div>
+
+        <div class="sec">Productos y stock disponible</div>
+        <div class="lin"><span class="q">350 g</span><div>Queso andino<small class="si">hay 1 200 g ✓ alcanza</small></div><span class="r">S/ 8,40</span></div>
+        <div class="lin"><span class="q">×2</span><div>Gaseosa Inca · 500 ml<small class="no">hay 1 ✗ faltan 1</small></div><span class="r">S/ 7,00</span></div>
+
+        <div class="sec">Cuenta</div>
+        <div class="cuenta"><div><span>Subtotal</span><span>S/ 15,40</span></div><div><span>Delivery · Zona Norte</span><span>S/ 3,00</span></div><div class="t"><span>TOTAL</span><span>S/ 18,40</span></div></div>
+
+        <div class="sec">Historial del pedido</div>
+        <div class="hist"><b>16:12</b> llegó desde la tienda<br><b>16:12</b> Yape · sin cobrar</div>
+
+        <div class="bts"><div class="btn b1" style="background:#3a4a68;color:#9AA9C2">Confirmar (falta stock)</div><div class="btn b2">💬 WhatsApp</div></div>
+        <div class="bts" style="margin-top:6px"><div class="btn b2" style="flex:1">Corregir stock en Productos</div><div class="btn b3">Cancelar</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="nota"><b>Qué gana la PC:</b> los números del día arriba; todos los pedidos abiertos en una tabla (ordenable por hora o total); casillas para confirmar varios o cancelar los vencidos; el stock al lado de cada producto antes de confirmar (aquí la gaseosa Inca no alcanza, así que «Confirmar» está bloqueado y hay un acceso directo a Productos); historial de cambios; y WhatsApp con el mensaje ya escrito. En celular esto se reparte en pantallas separadas y el stock solo se avisa al fallar.</div>
+</body>
+</html>

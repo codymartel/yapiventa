@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YapiVenta · pedidos del panel</title>
+<style>
+:root{--fondo:#070C18;--sup:#0D1526;--card:#111D33;--texto:#E8EDF5;--muted:#9AA9C2;--dim:#2A3A55;--azul:#3D72D4;--precio:#8AB2FF;
+--borde:rgba(61,114,212,.30);--sutil:rgba(61,114,212,.14);--warn:#FBBF24;--ok:#4ADE80;--err:#F87171;--m3out:#938F99;--m3sel:#4A4458}
+*{box-sizing:border-box}
+body{margin:0;background:#04070f;color:var(--texto);font:14px/1.4 system-ui,Roboto,sans-serif;padding:24px 16px 40px}
+h1{font-size:20px;margin:0 0 4px}
+h2{font-size:15px;margin:30px 0 10px;color:var(--precio)}
+p.s{color:var(--muted);margin:0 0 14px;max-width:880px}
+.fila{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start}
+.col{display:flex;flex-direction:column;gap:6px}
+.cap{font-size:12px;color:var(--muted);max-width:300px}
+.mov{width:300px;height:600px;background:var(--fondo);border:1px solid #1d2a44;border-radius:26px;position:relative;overflow:hidden}
+.pc{width:760px;max-width:100%;height:470px;background:var(--fondo);border:1px solid #1d2a44;border-radius:10px;position:relative;overflow:hidden}
+.pc .menu{position:absolute;left:0;top:0;bottom:0;width:120px;background:var(--sup);padding:12px;color:var(--muted);font-size:12px;line-height:2}
+.pc .menu b{color:var(--texto)}
+.pc .cont{margin-left:120px;padding:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.top{padding:12px 14px 6px;font-size:18px;font-weight:700;display:flex;align-items:center;gap:8px}
+.top small{font-size:11px;font-weight:600;border-radius:999px;padding:2px 8px}
+.bg-n{background:var(--warn);color:#201800}
+.live{margin-left:auto;font-size:11px;color:var(--ok);font-weight:600}
+.met{display:flex;gap:6px;padding:4px 14px}
+.met div{flex:1;background:var(--card);border-radius:12px;padding:6px 4px;text-align:center;font-size:10px;color:var(--muted)}
+.met b{display:block;font-size:15px}
+.busca{margin:8px 14px 0;border:1px solid var(--m3out);border-radius:999px;padding:9px 14px;color:var(--muted);font-size:13px}
+.tabs{display:flex;gap:6px;padding:8px 14px;overflow:hidden;white-space:nowrap}
+.tab{border-radius:999px;padding:7px 12px;font-size:12px;background:var(--card);color:var(--muted);min-height:34px;display:flex;align-items:center}
+.tab.on{background:#2457B3;color:#fff;font-weight:600}
+.ped{background:var(--card);border:1px solid var(--borde);border-radius:16px;margin:8px 14px;padding:10px 12px}
+.pc .ped{margin:0}
+.ped.nuevo{border-color:rgba(251,191,36,.6)}
+.ph{display:flex;gap:10px;align-items:flex-start}
+.av{width:36px;height:36px;border-radius:50%;background:rgba(251,191,36,.18);color:var(--warn);display:flex;align-items:center;justify-content:center;font-weight:800;flex:none}
+.pn{font-weight:700;font-size:14px}
+.pn small{color:var(--muted);font-weight:600;font-size:10px;margin-left:4px}
+.sub{font-size:11px;color:var(--muted);margin-top:2px}
+.tot{margin-left:auto;font-weight:800;color:var(--precio);font-size:14px;white-space:nowrap}
+.pill{display:inline-block;border-radius:6px;padding:1px 6px;font-size:10px;font-weight:700;margin-right:4px}
+.p-n{background:rgba(251,191,36,.15);color:var(--warn)}
+.p-c{background:rgba(96,165,250,.15);color:#60A5FA}
+.p-l{background:rgba(52,211,153,.15);color:#34D399}
+.p-e{background:rgba(74,222,128,.15);color:var(--ok)}
+.p-x{background:rgba(248,113,113,.15);color:var(--err)}
+.p-g{background:rgba(255,255,255,.07);color:var(--muted)}
+.lin{display:flex;gap:8px;background:var(--fondo);border-radius:10px;padding:7px 10px;margin-top:5px;font-size:12px;align-items:center}
+.lin .q{background:rgba(61,114,212,.25);color:var(--precio);border-radius:6px;padding:1px 6px;font-weight:700;font-size:11px}
+.lin .r{margin-left:auto;font-weight:600}
+.lin small{display:block;color:var(--muted);font-size:10px}
+.cuenta{background:var(--fondo);border-radius:10px;padding:8px 10px;margin-top:6px;font-size:12px}
+.cuenta div{display:flex;justify-content:space-between;padding:2px 0;color:var(--muted)}
+.cuenta .t{color:var(--texto);font-weight:800;font-size:14px;border-top:1px solid var(--dim);margin-top:4px;padding-top:6px}
+.cuenta .t span:last-child{color:var(--ok)}
+.prog{display:flex;align-items:center;margin:8px 0 2px}
+.prog i{width:9px;height:9px;border-radius:50%;background:var(--dim);flex:none}
+.prog i.h{background:var(--azul)}
+.prog u{flex:1;height:2px;background:var(--dim)}
+.prog u.h{background:var(--azul)}
+.btn{display:flex;align-items:center;justify-content:center;min-height:46px;border-radius:999px;font-weight:700;font-size:14px;margin-top:8px;padding:0 12px;text-align:center}
+.b1{background:#2457B3;color:#fff}
+.b2{border:1px solid var(--m3out);color:var(--precio);font-weight:500}
+.b3{color:var(--err);font-weight:500;min-height:40px}
+.vel{position:absolute;inset:0;background:rgba(0,0,0,.62)}
+.hoja{position:absolute;left:0;right:0;bottom:0;background:var(--sup);border-top:1px solid var(--borde);border-radius:20px 20px 0 0;padding:10px 16px 16px}
+.asa{width:36px;height:4px;border-radius:2px;background:#3a4a68;margin:0 auto 10px}
+.hoja .tt{font-weight:700;font-size:16px;margin-bottom:6px}
+.aviso{border-radius:12px;padding:9px 11px;font-size:12px;margin-top:8px;line-height:1.35}
+.a-w{background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.4);color:var(--warn)}
+.a-o{background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.35);color:var(--ok)}
+.a-e{background:rgba(248,113,113,.08);border:1px solid rgba(248,113,113,.4);color:var(--err)}
+.a-i{background:var(--card);border:1px solid var(--borde);color:var(--muted)}
+.aviso b{color:var(--texto)}
+.sw{display:flex;gap:10px;align-items:center;margin-top:8px;background:var(--card);border-radius:12px;padding:10px 12px;font-size:13px}
+.sw small{display:block;color:var(--muted);font-size:11px}
+.sw .k{margin-left:auto;width:42px;height:24px;border-radius:12px;background:var(--azul);position:relative;flex:none}
+.sw .k:after{content:"";position:absolute;right:3px;top:3px;width:18px;height:18px;border-radius:50%;background:#fff}
+.dia{background:var(--card);border:1px solid var(--sutil);border-radius:16px;margin:8px 14px;padding:10px 12px}
+.dia .ph .av{background:rgba(61,114,212,.18);color:var(--precio);border-radius:10px}
+.fh{display:flex;gap:8px;align-items:center;font-size:12px;border-top:1px solid var(--dim);padding:7px 0 0;margin-top:7px}
+.fh .h{color:var(--muted);width:36px;font-size:11px;font-weight:700}
+.fh .m{margin-left:auto;font-weight:700}
+.nota{background:var(--card);border:1px solid var(--borde);border-radius:12px;padding:12px 14px;font-size:13px;max-width:880px;color:var(--muted)}
+.nota b{color:var(--texto)}
+/* tienda */
+.tienda{background:#fff;color:#1a1a1a;height:100%;padding:18px 16px}
+.tienda h3{margin:6px 0;font-size:18px}
+.tienda .clave{font-size:30px;font-weight:800;letter-spacing:3px;background:#f2f4f8;border-radius:12px;text-align:center;padding:10px;margin:10px 0}
+.tienda .wa{background:#25D366;color:#fff;text-align:center;border-radius:999px;padding:13px;font-weight:700;margin-top:12px}
+.tienda p{color:#555;font-size:13px;margin:6px 0}
+</style>
+</head>
+<body>
+<h1>Pedidos del panel — cómo se verá</h1>
+<p class="s">Maqueta fija (no se toca). Ejemplo: una <b>bodega</b>. Cliente <b>Rosa Quispe</b> pide <b>350 g de queso andino</b> (S/ 24,00 el kg → S/ 8,40), <b>2 gaseosas Inca 500 ml</b> (S/ 3,50 c/u → S/ 7,00) y delivery S/ 3,00. Total <b>S/ 18,40</b>. Estados: Nuevo → Confirmado → Listo para recoger / En camino → Entregado, o Cancelado.</p>
+
+<h2>1 · Lista de pedidos en el celular y qué hace cada paso</h2>
+<div class="fila">
+
+<div class="col"><div class="mov">
+  <div class="top">Pedidos <small class="bg-n">2 nuevos</small><span class="live">● En vivo</span></div>
+  <div class="met"><div><b style="color:var(--warn)">2</b>Nuevos</div><div><b style="color:#60A5FA">1</b>Activos</div><div><b style="color:var(--ok)">14</b>Entregados</div></div>
+  <div class="busca">🔍 Buscar por clave, ej. 7GHMHF</div>
+  <div class="tabs"><span class="tab on">Nuevos 2</span><span class="tab">Activos 1</span><span class="tab">Por cobrar 1</span><span class="tab">Entregados</span></div>
+  <div class="ped nuevo"><div class="ph"><div class="av">R</div><div><div class="pn">Rosa Quispe<small>7GHMHF</small></div>
+    <div class="sub"><span class="pill p-n">Nuevo</span><span class="pill p-g">🚚 Delivery</span>hace 4 min</div>
+    <div class="sub">350 g Queso andino, 2× Inca 500 ml</div></div><div class="tot">S/ 18,40</div></div></div>
+  <div class="ped nuevo"><div class="ph"><div class="av">J</div><div><div class="pn">Juan Paredes<small>K3M9TA</small></div>
+    <div class="sub"><span class="pill p-n">Nuevo</span><span class="pill p-g">📍 Recojo</span>hace 21 min</div>
+    <div class="sub">1 kg Arroz, 1× Aceite 1 L</div></div><div class="tot">S/ 12,50</div></div></div>
+  <div class="ped" style="border-color:rgba(251,191,36,.6)"><div class="ph"><div class="av" style="background:rgba(248,113,113,.15);color:var(--err)">M</div><div><div class="pn">María Soto<small>P2QW8D</small></div>
+    <div class="sub"><span class="pill p-x">Vencido</span>hace 13 h sin confirmar</div></div><div class="tot">S/ 9,00</div></div></div>
+  <div class="btn b2" style="margin:8px 14px 0;min-height:40px;font-size:12px">Cancelar 1 pedido vencido</div>
+</div><div class="cap">Lista activa: solo pedidos que siguen abiertos. Los vencidos (más de 12 h sin confirmar) se marcan y se cancelan con un botón; no se borran solos.</div></div>
+
+<div class="col"><div class="mov" style="overflow-y:auto">
+  <div class="top" style="font-size:16px">Pedido 7GHMHF</div>
+  <div class="ped nuevo" style="margin-top:2px">
+    <div class="ph"><div class="av">R</div><div><div class="pn">Rosa Quispe</div><div class="sub">📞 987 654 321 · 🚚 Delivery</div><div class="sub">📍 Av. Los Olivos 245, Zona Norte</div></div></div>
+    <div class="prog"><i class="h"></i><u></u><i></i><u></u><i></i><u></u><i></i></div>
+    <div class="sub" style="display:flex;justify-content:space-between"><span style="color:var(--warn);font-weight:700">Nuevo</span><span>Confirmado · En camino · Entregado</span></div>
+    <div class="lin"><span class="q">350 g</span><div>Queso andino<small>S/ 24,00 el kg</small></div><span class="r">S/ 8,40</span></div>
+    <div class="lin"><span class="q">×2</span><div>Gaseosa Inca · 500 ml<small>S/ 3,50 c/u</small></div><span class="r">S/ 7,00</span></div>
+    <div class="cuenta"><div><span>Subtotal</span><span>S/ 15,40</span></div><div><span>Delivery · Zona Norte</span><span>S/ 3,00</span></div><div class="t"><span>TOTAL</span><span>S/ 18,40</span></div></div>
+    <div class="sub" style="margin-top:6px">💳 Yape · <span style="color:var(--warn)">Sin cobrar</span></div>
+    <div class="aviso a-i">Al confirmar se descuenta: <b>Queso andino 350 g</b> · <b>Inca 500 ml ×2</b></div>
+    <div class="btn b1">Confirmar pedido</div>
+    <div class="btn b2" style="min-height:42px">Abrir WhatsApp con Rosa</div>
+    <div class="btn b3">Cancelar pedido</div>
+  </div>
+</div><div class="cap">Detalle. Los productos con modelo y fila se leen «Polo básico · Luna · M». El botón principal siempre es el siguiente paso.</div></div>
+
+<div class="col"><div class="mov">
+  <div class="top" style="font-size:16px">Pedido 7GHMHF</div>
+  <div class="ped nuevo"><div class="ph"><div class="av">R</div><div><div class="pn">Rosa Quispe</div><div class="sub"><span class="pill p-n">Nuevo</span>S/ 18,40</div></div></div></div>
+  <div class="vel"></div>
+  <div class="hoja">
+    <div class="asa"></div>
+    <div class="tt">No alcanza el stock</div>
+    <div class="aviso a-e"><b>Queso andino:</b> pides 350 g y quedan <b>200 g</b>.<br>No se descontó nada.</div>
+    <div class="aviso a-i">Opciones: corrige el stock en Productos, o cancela el pedido y avisa a Rosa.</div>
+    <div class="btn b1">Entendido</div>
+    <div class="btn b2" style="min-height:42px">Ir a Productos</div>
+  </div>
+</div><div class="cap">Confirmar con stock insuficiente: se bloquea todo, no se descuenta ni la mitad (transacción).</div></div>
+
+</div>
+
+<h2>2 · Avanzar, cobrar, cancelar</h2>
+<div class="fila">
+
+<div class="col"><div class="mov">
+  <div class="top" style="font-size:16px">Pedido 7GHMHF</div>
+  <div class="ped"><div class="ph"><div class="av" style="background:rgba(96,165,250,.18);color:#60A5FA">R</div><div><div class="pn">Rosa Quispe</div><div class="sub"><span class="pill p-c">Confirmado</span>S/ 18,40</div></div></div></div>
+  <div class="vel"></div>
+  <div class="hoja">
+    <div class="asa"></div>
+    <div class="tt">Marcar entregado</div>
+    <div class="sub">¿Ya cobraste los <b style="color:var(--texto)">S/ 18,40</b> a Rosa?</div>
+    <div class="btn b1">Sí, cobrado y entregado</div>
+    <div class="btn b2" style="min-height:42px">Entregado, aún sin cobrar</div>
+    <div class="btn b3">Volver</div>
+  </div>
+</div><div class="cap">Ya no se bloquea si no está pagado: en delivery muchos pagan al recibir.</div></div>
+
+<div class="col"><div class="mov">
+  <div class="top" style="font-size:16px">Pedido 7GHMHF</div>
+  <div class="ped"><div class="ph"><div class="av" style="background:rgba(96,165,250,.18);color:#60A5FA">R</div><div><div class="pn">Rosa Quispe</div><div class="sub"><span class="pill p-c">Confirmado</span><span class="pill p-e">Pagado</span></div></div></div></div>
+  <div class="vel"></div>
+  <div class="hoja">
+    <div class="asa"></div>
+    <div class="tt">Cancelar pedido</div>
+    <div class="aviso a-o">Se devolverá al stock exactamente lo que se descontó:<br><b>Queso andino 350 g</b> · <b>Inca 500 ml ×2</b></div>
+    <div class="sw"><div>Rosa ya pagó S/ 18,40<small>Márcalo para acordarte de devolverle el dinero</small></div><span class="k"></span></div>
+    <div class="aviso a-w">Cancelar no se puede deshacer.</div>
+    <div class="btn b1" style="background:#B3302A">Cancelar pedido</div>
+    <div class="btn b2" style="min-height:42px">Volver</div>
+  </div>
+</div><div class="cap">Cancelar un confirmado: devuelve lo guardado en el pedido (no recalcula). Si estaba pagado, queda una marca «reembolso pendiente».</div></div>
+
+<div class="col"><div class="mov">
+  <div class="top">Pedidos <small class="bg-n">1 nuevo</small></div>
+  <div class="tabs"><span class="tab">Nuevos</span><span class="tab">Activos</span><span class="tab">Por cobrar</span><span class="tab on">Reembolsos 1</span></div>
+  <div class="ped" style="border-color:rgba(248,113,113,.5)"><div class="ph"><div class="av" style="background:rgba(206,147,216,.18);color:#CE93D8">R</div><div><div class="pn">Rosa Quispe<small>7GHMHF</small></div>
+    <div class="sub"><span class="pill p-x">Cancelado</span><span class="pill" style="background:rgba(206,147,216,.15);color:#CE93D8">Reembolso pendiente</span></div></div><div class="tot" style="color:#CE93D8">S/ 18,40</div></div>
+    <div class="sub" style="margin-top:6px">Pagó por Yape · devolver a 987 654 321</div>
+    <div class="btn b1" style="background:#8E5AA3">Ya devolví el dinero</div>
+  </div>
+  <div class="aviso a-i" style="margin:8px 14px">El pedido no se borra: queda en el historial como «Cancelado · reembolsado».</div>
+</div><div class="cap">Reembolsos: marca, no estado. Al pulsar el botón solo cambia la marca; el registro se conserva.</div></div>
+
+</div>
+
+<h2>3 · Historial por día (se abre desde el reloj)</h2>
+<div class="fila">
+<div class="col"><div class="mov">
+  <div class="top">Historial</div>
+  <div class="dia"><div class="ph"><div class="av">📅</div><div><div class="pn">Sábado 31 oct</div><div class="sub">9 pedidos · ✅ 8 · ✕ 1</div></div><div class="tot" style="color:var(--ok)">S/ 214,60</div></div>
+    <div class="fh"><span class="h">18:20</span>Rosa Quispe <span class="pill p-e">Entregado</span><span class="m">S/ 18,40</span></div>
+    <div class="fh"><span class="h">16:05</span>Luis Vega <span class="pill p-e">Entregado</span><span class="m">S/ 32,00</span></div>
+    <div class="fh"><span class="h">11:40</span>Ana Ríos <span class="pill p-x">Cancelado</span><span class="m">S/ 9,50</span></div>
+    <div class="sub" style="text-align:center;margin-top:6px">▾</div></div>
+  <div class="dia"><div class="ph"><div class="av">📅</div><div><div class="pn">Viernes 30 oct</div><div class="sub">12 pedidos · ✅ 12</div></div><div class="tot" style="color:var(--ok)">S/ 301,80</div></div></div>
+  <div class="dia"><div class="ph"><div class="av">📅</div><div><div class="pn">Jueves 29 oct</div><div class="sub">7 pedidos · ✅ 6 · ✕ 1</div></div><div class="tot" style="color:var(--ok)">S/ 158,20</div></div></div>
+  <div class="btn b2" style="margin:8px 14px;min-height:40px;font-size:12px">Cargar más días</div>
+</div><div class="cap">Se cargan 20 pedidos a la vez, solo al abrir el historial. «Entregados» suma solo lo entregado. Sin botón de borrar.</div></div>
+
+<div class="col"><div class="mov">
+  <div class="top">Pedidos</div>
+  <div class="ped" style="margin-top:80px;text-align:center;padding:26px 14px">
+    <div style="font-size:30px">🛍️</div>
+    <div class="pn" style="margin-top:6px">Aún no hay pedidos nuevos</div>
+    <div class="sub">Cuando un cliente pida desde tu tienda, aparecerá aquí al instante.</div>
+  </div>
+  <div class="aviso a-w" style="margin:10px 14px">☁️ Sin conexión: mostrando lo guardado. Los cambios se enviarán al volver la red.</div>
+</div><div class="cap">Vacío y sin conexión.</div></div>
+</div>
+
+<h2>4 · Panel en PC (≥ 900 px): lista y detalle lado a lado</h2>
+<div class="pc">
+  <div class="menu"><b>YapiVenta</b><br>Inicio<br>Productos<br><b style="color:var(--precio)">Pedidos ●</b><br>Ventas<br>Negocio</div>
+  <div class="cont">
+    <div>
+      <div class="top" style="padding:0 0 6px">Pedidos <small class="bg-n">2 nuevos</small></div>
+      <div class="tabs" style="padding:4px 0"><span class="tab on">Nuevos 2</span><span class="tab">Activos 1</span><span class="tab">Por cobrar</span></div>
+      <div class="ped nuevo" style="margin:6px 0"><div class="ph"><div class="av">R</div><div><div class="pn">Rosa Quispe<small>7GHMHF</small></div><div class="sub"><span class="pill p-n">Nuevo</span><span class="pill p-g">🚚</span>hace 4 min</div></div><div class="tot">S/ 18,40</div></div></div>
+      <div class="ped" style="margin:6px 0"><div class="ph"><div class="av">J</div><div><div class="pn">Juan Paredes<small>K3M9TA</small></div><div class="sub"><span class="pill p-n">Nuevo</span><span class="pill p-g">📍</span>hace 21 min</div></div><div class="tot">S/ 12,50</div></div></div>
+    </div>
+    <div class="ped nuevo">
+      <div class="pn">Rosa Quispe · 7GHMHF</div><div class="sub">📞 987 654 321 · 📍 Av. Los Olivos 245</div>
+      <div class="lin"><span class="q">350 g</span><div>Queso andino</div><span class="r">S/ 8,40</span></div>
+      <div class="lin"><span class="q">×2</span><div>Gaseosa Inca · 500 ml</div><span class="r">S/ 7,00</span></div>
+      <div class="cuenta"><div><span>Delivery</span><span>S/ 3,00</span></div><div class="t"><span>TOTAL</span><span>S/ 18,40</span></div></div>
+      <div class="btn b1">Confirmar pedido</div>
+      <div class="btn b3">Cancelar pedido</div>
+    </div>
+  </div>
+</div>
+
+<h2>5 · Lo que ve el cliente en la tienda al pedir (galería)</h2>
+<div class="fila">
+<div class="col"><div class="mov" style="background:#fff"><div class="tienda">
+  <h3>¡Pedido enviado! ✅</h3>
+  <p>Guarda tu clave para consultar tu pedido con la bodega:</p>
+  <div class="clave">7GHMHF</div>
+  <p><b>Total: S/ 18,40</b><br>350 g Queso andino · 2× Inca 500 ml · Delivery</p>
+  <p>Ahora envía el resumen por WhatsApp para que te confirmen.</p>
+  <div class="wa">Abrir WhatsApp</div>
+</div></div><div class="cap">El pedido ya quedó guardado aunque el cliente no pulse WhatsApp. El cliente no puede leerlo después: la clave y WhatsApp son su comprobante.</div></div>
+</div>
+
+<h2>Qué cambió respecto al Kotlin</h2>
+<div class="nota"><b>5 estados</b> (sin «En preparación» ni «Por reembolsar»; el reembolso es una marca). <b>Nada se borra</b>: ni entregados, ni reembolsados, ni vencidos. <b>Dinero en céntimos enteros</b> con coma en pantalla. <b>Confirmar descuenta</b> y <b>cancelar devuelve exactamente lo descontado</b>. <b>Entregar</b> pregunta «¿cobraste?» en vez de bloquear. <b>Historial por páginas</b>, no un listener de todo.</div>
+</body>
+</html>

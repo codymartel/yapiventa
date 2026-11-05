@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YapiVenta · pedidos en todos los tamaños</title>
+<style>
+:root{--fondo:#070C18;--sup:#0D1526;--card:#111D33;--texto:#E8EDF5;--muted:#9AA9C2;--dim:#2A3A55;--azul:#3D72D4;--azb:#2457B3;--precio:#8AB2FF;--borde:rgba(61,114,212,.30);--warn:#FBBF24;--ok:#4ADE80;--err:#F87171;--m3out:#938F99}
+*{box-sizing:border-box}
+body{margin:0;background:#04070f;color:var(--texto);font:14px/1.4 system-ui,Roboto,sans-serif;padding:24px 16px 48px}
+h1{font-size:22px;margin:0 0 4px}
+h2{font-size:16px;margin:34px 0 4px;color:var(--precio)}
+p.s{color:var(--muted);margin:0 0 12px;max-width:1000px}
+.fila{display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start}
+.cap{font-size:12px;color:var(--muted);max-width:380px;margin-top:6px}
+.w{overflow:hidden;border:1px solid #1d2a44;border-radius:14px;background:var(--fondo)}
+.s{transform-origin:0 0;position:relative;overflow:hidden;background:var(--fondo)}
+.row{display:flex}.col{display:flex;flex-direction:column}.fl{flex:1;min-width:0}
+.i{width:1em;height:1em;vertical-align:-.13em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.bar{display:flex;align-items:center;gap:10px;background:var(--sup);border-bottom:1px solid var(--dim)}
+.tt{font-weight:700}
+.badge{background:var(--warn);color:#201800;border-radius:999px;padding:2px 9px;font-size:.75em;font-weight:700}
+.live{margin-left:auto;color:var(--ok);font-size:.8em;font-weight:600;white-space:nowrap}
+.met{display:flex;gap:8px}
+.met div{flex:1;background:var(--card);border:1px solid var(--borde);border-radius:12px;padding:6px 10px;font-size:.78em;color:var(--muted)}
+.met b{display:block;font-size:1.4em;color:var(--texto)}
+.tabs{display:flex;gap:6px;overflow:hidden;white-space:nowrap}
+.tab{border-radius:999px;padding:8px 14px;background:var(--card);color:var(--muted);font-size:.86em;min-height:40px;display:flex;align-items:center;gap:6px}
+.tab.on{background:var(--azb);color:#fff;font-weight:600}
+.ped{background:var(--card);border:1px solid var(--borde);border-radius:14px;padding:10px 12px}
+.ped.n{border-color:rgba(251,191,36,.55)}
+.ped.sel{border:2px solid var(--azul)}
+.ph{display:flex;gap:10px;align-items:flex-start}
+.av{width:36px;height:36px;border-radius:50%;background:rgba(251,191,36,.18);color:var(--warn);display:flex;align-items:center;justify-content:center;font-weight:800;flex:none}
+.pn{font-weight:700}.pn small{color:var(--muted);font-size:.72em;margin-left:4px}
+.sub{font-size:.78em;color:var(--muted);margin-top:2px}
+.tot{margin-left:auto;font-weight:800;color:var(--precio);white-space:nowrap}
+.pill{display:inline-block;border-radius:6px;padding:1px 7px;font-size:.72em;font-weight:700;margin-right:4px}
+.p-n{background:rgba(251,191,36,.15);color:var(--warn)}.p-c{background:rgba(96,165,250,.15);color:#60A5FA}
+.p-e{background:rgba(74,222,128,.15);color:var(--ok)}.p-x{background:rgba(248,113,113,.15);color:var(--err)}
+.p-g{background:rgba(255,255,255,.07);color:var(--muted)}
+.lin{display:flex;gap:8px;background:var(--fondo);border-radius:10px;padding:8px 10px;margin-top:6px;align-items:center;font-size:.9em}
+.lin .q{background:rgba(61,114,212,.25);color:var(--precio);border-radius:6px;padding:1px 7px;font-weight:700;font-size:.85em}
+.lin .r{margin-left:auto;font-weight:600}
+.lin small{display:block;color:var(--muted);font-size:.8em}
+.si{color:var(--ok)}.no{color:var(--err)}
+.cuenta{background:var(--card);border-radius:10px;padding:8px 10px;font-size:.9em}
+.cuenta div{display:flex;justify-content:space-between;padding:2px 0;color:var(--muted)}
+.cuenta .t{color:var(--texto);font-weight:800;font-size:1.15em;border-top:1px solid var(--dim);margin-top:4px;padding-top:6px}
+.cuenta .t span:last-child{color:var(--ok)}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;min-height:48px;border-radius:999px;font-weight:700;padding:0 16px;white-space:nowrap}
+.b1{background:var(--azb);color:#fff}.b2{border:1px solid var(--m3out);color:var(--precio);font-weight:500}.b3{color:var(--err);font-weight:500}
+.sec{font-size:.74em;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin:10px 0 2px}
+.vel{position:absolute;inset:0;background:rgba(0,0,0,.6)}
+.hoja{position:absolute;left:0;right:0;bottom:0;background:var(--sup);border-top:1px solid var(--borde);border-radius:20px 20px 0 0;padding:8px 16px 14px}
+.asa{width:36px;height:4px;border-radius:2px;background:#3a4a68;margin:0 auto 8px}
+.rail{width:72px;background:var(--sup);border-right:1px solid var(--dim);display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 0;color:var(--muted);font-size:22px}
+.rail span{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center}
+.rail .on{background:rgba(61,114,212,.18);color:var(--precio)}
+.menu{width:200px;background:var(--sup);border-right:1px solid var(--dim);padding:16px 14px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
+.menu b{color:var(--texto);font-size:1.15em;margin-bottom:10px}
+.menu span{display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;min-height:44px}
+.menu .on{color:var(--precio);font-weight:700;background:rgba(61,114,212,.15)}
+/* PC */
+.kpi{display:flex;gap:10px;padding:12px 20px}
+.kpi div{flex:1;background:var(--card);border:1px solid var(--borde);border-radius:12px;padding:10px 12px;font-size:12px;color:var(--muted)}
+.kpi b{display:block;font-size:24px;line-height:1.15;color:var(--texto);font-variant-numeric:tabular-nums}
+.kpi small{display:block;font-size:11px;margin-top:2px}
+.busca{display:flex;align-items:center;gap:8px;border:1px solid var(--m3out);border-radius:999px;padding:0 14px;min-height:40px;color:var(--muted);width:340px;font-size:13px}
+.chipb{border:1px solid var(--borde);border-radius:999px;padding:0 14px;min-height:40px;display:flex;align-items:center;gap:6px;color:var(--precio);font-size:13px;white-space:nowrap}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em;padding:8px;border-bottom:1px solid var(--dim);white-space:nowrap}
+td{padding:8px;border-bottom:1px solid rgba(42,58,85,.5);vertical-align:middle}
+td.nw{white-space:nowrap}
+tr.sel td{background:rgba(61,114,212,.16)}tr.sel td:first-child{box-shadow:inset 3px 0 0 var(--azul)}
+.num{text-align:right;font-weight:700;color:var(--precio);white-space:nowrap;font-variant-numeric:tabular-nums}
+.cb{display:inline-block;width:16px;height:16px;border:1.5px solid var(--m3out);border-radius:4px;vertical-align:middle}
+.td2{line-height:1.3}.td2 small{display:block;color:var(--muted);font-size:11px}
+.rojo{color:var(--err);font-weight:700}.amb{color:var(--warn);font-weight:700}
+.prep{background:var(--card);border:1px solid var(--borde);border-radius:12px;padding:10px 12px;margin-top:10px}
+.prep .ch{display:inline-block;background:var(--fondo);border-radius:8px;padding:4px 10px;margin:4px 6px 0 0;font-size:12px}
+.prep .ch b{color:var(--precio)}
+.prog{display:flex;align-items:center;margin:10px 0 2px}
+.prog i{width:10px;height:10px;border-radius:50%;background:var(--dim);flex:none}.prog i.h{background:var(--azul)}
+.prog u{flex:1;height:2px;background:var(--dim)}.prog u.h{background:var(--azul)}
+.etq{display:flex;justify-content:space-between;font-size:10px;color:var(--muted)}
+.dato{display:flex;gap:10px;align-items:flex-start;font-size:12.5px;padding:4px 0}
+.dato .i{color:var(--muted);margin-top:2px;font-size:14px}
+.hist{font-size:11.5px;color:var(--muted);line-height:1.7}.hist b{color:var(--texto);font-weight:600}
+/* TV */
+.tv{font-size:26px}
+.tvc{background:var(--card);border:2px solid var(--borde);border-radius:18px;padding:16px 20px;margin-bottom:14px}
+.tvc.foco{outline:5px solid #fff;outline-offset:3px}
+.tvc .top{display:flex;align-items:baseline;gap:12px}
+.tvc .clave{font-size:38px;font-weight:800;letter-spacing:2px}
+.tvc .tm{margin-left:auto;font-size:26px;font-weight:700}
+.tvc .cli{font-size:26px;font-weight:700;margin-top:2px;display:flex;gap:10px;align-items:center}
+.tvc .it{font-size:24px;color:var(--muted);margin-top:4px;line-height:1.35}
+.tvc .pie{display:flex;align-items:center;gap:10px;margin-top:8px;font-size:24px}
+.tvc .pie b{margin-left:auto;color:var(--precio);font-size:32px}
+.cabcol{font-size:28px;font-weight:800;margin:0 0 12px;display:flex;align-items:center;gap:12px}
+.cabcol i{font-style:normal;background:var(--dim);border-radius:999px;padding:0 14px;font-size:24px}
+.tvk{background:var(--card);border:1px solid var(--borde);border-radius:18px;padding:16px 20px;margin-bottom:14px}
+.tvk .k{display:flex;justify-content:space-between;align-items:baseline;font-size:24px;color:var(--muted);padding:4px 0}
+.tvk .k b{font-size:40px;color:var(--texto);font-variant-numeric:tabular-nums}
+.tvk h4{margin:0 0 6px;font-size:24px;color:var(--precio);text-transform:uppercase;letter-spacing:.04em}
+.tvk .pr{display:flex;justify-content:space-between;font-size:24px;padding:3px 0;border-bottom:1px solid rgba(42,58,85,.5)}
+.tvk .pr b{color:var(--precio)}
+.ayuda{display:flex;gap:34px;font-size:22px;color:var(--muted);padding:0 48px;border-top:1px solid var(--dim);background:var(--sup);align-items:center}
+.ayuda b{color:var(--texto);background:var(--dim);border-radius:8px;padding:2px 12px;margin-right:8px}
+.tvkpi{display:flex;gap:16px;padding:16px 40px}
+.tvkpi div{flex:1;background:var(--card);border:1px solid var(--borde);border-radius:16px;padding:12px 18px;font-size:22px;color:var(--muted)}
+.tvkpi b{display:block;font-size:44px;line-height:1.1;color:var(--texto);font-variant-numeric:tabular-nums}
+.tvkpi small{display:block;font-size:20px;margin-top:2px}
+.tvt{background:var(--card);border:1px solid var(--borde);border-radius:16px;padding:6px 10px}
+.tvt table{font-size:24px}
+.tvt th{font-size:18px;padding:12px}
+.tvt td{padding:0 12px;height:68px;white-space:nowrap}
+.tvt td small{font-size:20px}
+.tvt tr.foco td{background:rgba(61,114,212,.18);outline:none}
+.tvt tr.foco td:first-child{box-shadow:inset 0 0 0 0}
+.tvt tr.foco{outline:5px solid #fff;outline-offset:-3px;border-radius:10px}
+.tvt .pill{font-size:20px;padding:2px 12px}
+table.r{max-width:1260px;font-size:13px;margin-top:10px}
+table.r th,table.r td{white-space:normal;vertical-align:top;border:1px solid var(--dim);padding:8px 10px;color:var(--texto);background:transparent}
+table.r th{background:var(--card);color:var(--precio);text-transform:none;font-size:13px;letter-spacing:0}
+.nota{background:var(--card);border:1px solid var(--borde);border-radius:12px;padding:12px 14px;font-size:13px;max-width:1260px;color:var(--muted);margin-top:14px}
+.nota b{color:var(--texto)}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="truck" viewBox="0 0 24 24"><path d="M2 6h12v10H2zM14 10h4l4 4v2h-8z"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></symbol>
+<symbol id="pin" viewBox="0 0 24 24"><path d="M12 21s7-6 7-11a7 7 0 10-14 0c0 5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+<symbol id="phone" viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z"/></symbol>
+<symbol id="chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4z"/></symbol>
+<symbol id="clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+<symbol id="menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+<symbol id="home" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></symbol>
+<symbol id="box" viewBox="0 0 24 24"><path d="M3 8l9-5 9 5v8l-9 5-9-5zM3 8l9 5 9-5M12 13v8"/></symbol>
+<symbol id="bag" viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6zM9 8a3 3 0 016 0"/></symbol>
+<symbol id="coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5h4a1.5 1.5 0 010 3h-3a1.5 1.5 0 000 3h4"/></symbol>
+<symbol id="check" viewBox="0 0 24 24"><path d="M4 12l5 5 11-11"/></symbol>
+<symbol id="alert" viewBox="0 0 24 24"><path d="M12 3l10 18H2zM12 10v5M12 18v.5"/></symbol>
+<symbol id="search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></symbol>
+<symbol id="print" viewBox="0 0 24 24"><path d="M7 9V3h10v6M7 17H4v-7h16v7h-3M7 14h10v7H7z"/></symbol>
+<symbol id="down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+<symbol id="sort" viewBox="0 0 24 24"><path d="M12 5v14M7 14l5 5 5-5"/></symbol>
+<symbol id="note" viewBox="0 0 24 24"><path d="M5 3h14v18H5zM9 8h6M9 12h6M9 16h4"/></symbol>
+<symbol id="card" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/></symbol>
+<symbol id="dl" viewBox="0 0 24 24"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></symbol>
+</defs></svg>
+
+<h1>Pedidos en todos los tamaños</h1>
+<p class="s">Regla: <b>móvil y tableta son compactos</b> (lo esencial, con el pulgar); <b>PC y TV muestran más información</b> (números del día, productos por preparar, datos completos de cada pedido). Revisé la maqueta con <code>ui-ux-pro-max</code> y <code>apple-hig-designer</code>: íconos de línea en vez de emojis, foco visible de 4 px, acciones en lote, texto mínimo de 20 px en TV y estados con texto además de color. Ejemplo de bodega: Rosa Quispe, 350 g de queso andino + 2 gaseosas Inca + delivery = <b>S/ 18,40</b>.</p>
+
+<!-- ===================== 1 · MÓVIL VERTICAL ===================== -->
+<h2>1 · Móvil vertical (menos de 600 px) — compacto, una cosa a la vez</h2>
+<div class="fila">
+  <div><div class="w" style="width:300px;height:608px"><div class="s" style="width:375px;height:760px;transform:scale(.8)">
+    <div class="bar" style="height:56px;padding:0 14px"><svg class="i" style="font-size:22px"><use href="#menu"/></svg><span class="tt" style="font-size:18px">Pedidos</span><span class="badge">2</span><span class="live">● En vivo</span></div>
+    <div class="met" style="padding:10px 14px 4px"><div><b style="color:var(--warn)">2</b>Nuevos</div><div><b style="color:#60A5FA">3</b>Activos</div><div><b style="color:var(--warn)">S/ 70,40</b>Por cobrar</div></div>
+    <div class="tabs" style="padding:8px 14px"><span class="tab on">Nuevos 2</span><span class="tab">Activos 3</span><span class="tab">Por cobrar</span><span class="tab">Reembolsos</span></div>
+    <div class="ped n" style="margin:6px 14px"><div class="ph"><div class="av">R</div><div><div class="pn">Rosa Quispe<small>7GHMHF</small></div><div class="sub"><span class="pill p-n">Nuevo</span><span class="pill p-g"><svg class="i"><use href="#truck"/></svg> Delivery</span>hace 4 min</div><div class="sub">350 g Queso, 2× Inca 500 ml</div></div><div class="tot">S/ 18,40</div></div></div>
+    <div class="ped n" style="margin:6px 14px"><div class="ph"><div class="av">J</div><div><div class="pn">Juan Paredes<small>K3M9TA</small></div><div class="sub"><span class="pill p-n">Nuevo</span><span class="pill p-g"><svg class="i"><use href="#pin"/></svg> Recojo</span>hace 21 min</div><div class="sub">1 kg Arroz, 1× Aceite 1 L</div></div><div class="tot">S/ 12,50</div></div></div>
+    <div class="ped" style="margin:6px 14px;border-color:rgba(248,113,113,.5)"><div class="ph"><div class="av" style="background:rgba(248,113,113,.15);color:var(--err)">M</div><div><div class="pn">María Soto<small>P2QW8D</small></div><div class="sub"><span class="pill p-x">Vencido</span>hace 13 h sin confirmar</div></div><div class="tot">S/ 9,00</div></div></div>
+    <div class="btn b2" style="margin:8px 14px;min-height:44px;font-size:13px">Cancelar 1 vencido</div>
+  </div></div><div class="cap">Lista. Cabe sin deslizar de lado. Menú en cajón. Tocar un pedido abre la hoja del detalle.</div></div>
+
+  <div><div class="w" style="width:300px;height:608px"><div class="s" style="width:375px;height:760px;transform:scale(.8)">
+    <div class="bar" style="height:56px;padding:0 14px"><svg class="i" style="font-size:22px"><use href="#menu"/></svg><span class="tt" style="font-size:18px">Pedidos</span></div>
+    <div class="ped n" style="margin:10px 14px"><div class="ph"><div class="av">R</div><div><div class="pn">Rosa Quispe</div></div><div class="tot">S/ 18,40</div></div></div>
+    <div class="vel"></div>
+    <div class="hoja" style="top:70px;display:flex;flex-direction:column">
+      <div class="asa"></div>
+      <div class="ph"><div class="av">R</div><div><div class="pn" style="font-size:16px">Rosa Quispe<small>7GHMHF</small></div><div class="sub"><svg class="i"><use href="#phone"/></svg> 987 654 321 · <svg class="i"><use href="#truck"/></svg> Zona Norte</div></div></div>
+      <div class="sec">Productos y stock</div>
+      <div class="lin"><span class="q">350 g</span><div>Queso andino<small class="si">hay 1 200 g · alcanza</small></div><span class="r">S/ 8,40</span></div>
+      <div class="lin"><span class="q">×2</span><div>Inca 500 ml<small class="si">hay 12 · alcanza</small></div><span class="r">S/ 7,00</span></div>
+      <div class="cuenta" style="margin-top:8px"><div><span>Delivery</span><span>S/ 3,00</span></div><div class="t"><span>TOTAL</span><span>S/ 18,40</span></div></div>
+      <div class="fl"></div>
+      <div class="btn b1">Confirmar pedido</div>
+      <div class="row" style="gap:8px;margin-top:6px"><div class="btn b2 fl" style="min-height:44px"><svg class="i"><use href="#chat"/></svg> WhatsApp</div><div class="btn b3 fl" style="min-height:44px">Cancelar</div></div>
+    </div>
+  </div></div><div class="cap">Detalle en hoja desde abajo. «Confirmar» fijo al pie, al alcance del pulgar.</div></div>
+</div>
+
+<!-- ===================== 2 · MÓVIL HORIZONTAL ===================== -->
+<h2>2 · Móvil horizontal (poca altura) — compacto, lista y detalle lado a lado</h2>
+<div class="fila"><div>
+  <div class="w" style="width:640px;height:296px"><div class="s" style="width:800px;height:370px;transform:scale(.8)">
+    <div class="bar" style="height:44px;padding:0 14px 0 30px"><svg class="i" style="font-size:20px"><use href="#menu"/></svg><span class="tt">Pedidos</span><span class="badge">2</span>
+      <div class="tabs"><span class="tab on" style="min-height:34px;padding:4px 12px">Nuevos 2</span><span class="tab" style="min-height:34px;padding:4px 12px">Activos 3</span><span class="tab" style="min-height:34px;padding:4px 12px">Por cobrar</span></div><span class="live">● En vivo</span></div>
+    <div class="row" style="height:326px">
+      <div style="width:320px;padding:8px 8px 8px 30px;overflow:hidden">
+        <div class="ped n sel" style="margin-bottom:6px;padding:8px 10px"><div class="ph"><div class="pn">Rosa Quispe<small>7GHMHF</small></div><div class="tot">S/ 18,40</div></div><div class="sub"><span class="pill p-n">Nuevo</span><svg class="i"><use href="#truck"/></svg> hace 4 min</div></div>
+        <div class="ped n" style="margin-bottom:6px;padding:8px 10px"><div class="ph"><div class="pn">Juan Paredes<small>K3M9TA</small></div><div class="tot">S/ 12,50</div></div><div class="sub"><span class="pill p-n">Nuevo</span><svg class="i"><use href="#pin"/></svg> hace 21 min</div></div>
+        <div class="ped" style="padding:8px 10px"><div class="ph"><div class="pn">Luis Vega<small>X8D4LQ</small></div><div class="tot">S/ 32,00</div></div><div class="sub"><span class="pill p-c">Confirmado</span><svg class="i"><use href="#truck"/></svg> 15:20</div></div>
+      </div>
+      <div class="col fl" style="border-left:1px solid var(--dim);padding:8px 24px 8px 14px">
+        <div class="pn" style="font-size:15px">Rosa Quispe · <svg class="i"><use href="#phone"/></svg> 987 654 321 · Zona Norte</div>
+        <div class="row" style="gap:8px;margin-top:4px"><div class="fl"><div class="lin"><span class="q">350 g</span><div>Queso andino<small class="si">hay 1 200 g</small></div><span class="r">8,40</span></div><div class="lin"><span class="q">×2</span><div>Inca 500 ml<small class="si">hay 12</small></div><span class="r">7,00</span></div></div>
+        <div class="cuenta" style="width:170px;align-self:flex-start;margin-top:6px"><div><span>Delivery</span><span>3,00</span></div><div class="t"><span>TOTAL</span><span>S/ 18,40</span></div></div></div>
+        <div class="fl"></div>
+        <div class="row" style="gap:8px"><div class="btn b1 fl">Confirmar pedido</div><div class="btn b2"><svg class="i"><use href="#chat"/></svg></div><div class="btn b3">Cancelar</div></div>
+      </div>
+    </div>
+  </div></div><div class="cap">Las métricas se reducen al aviso del título. Margen izquierdo de 30 px para la muesca. El botón principal sigue fijo abajo.</div></div></div>
+
+<!-- ===================== 3 · TABLETA ===================== -->
+<h2>3 · Tableta — compacta, con riel de íconos</h2>
+<div class="fila">
+  <div><div class="w" style="width:720px;height:490px"><div class="s" style="width:960px;height:653px;transform:scale(.75)">
+    <div class="row" style="height:100%">
+      <div class="rail"><span><svg class="i"><use href="#menu"/></svg></span><span><svg class="i"><use href="#home"/></svg></span><span><svg class="i"><use href="#box"/></svg></span><span class="on"><svg class="i"><use href="#bag"/></svg></span><span><svg class="i"><use href="#coin"/></svg></span></div>
+      <div class="col fl">
+        <div class="bar" style="height:56px;padding:0 18px"><span class="tt" style="font-size:20px">Pedidos</span><span class="badge">2 nuevos</span><span class="live">● En vivo</span></div>
+        <div class="row fl" style="min-height:0">
+          <div style="width:340px;padding:10px 12px;border-right:1px solid var(--dim)">
+            <div class="met" style="margin-bottom:8px"><div><b style="color:var(--warn)">2</b>Nuevos</div><div><b style="color:#60A5FA">3</b>Activos</div></div>
+            <div class="tabs" style="margin-bottom:8px"><span class="tab on">Nuevos 2</span><span class="tab">Activos 3</span><span class="tab">Cobrar</span></div>
+            <div class="ped n sel" style="margin-bottom:8px"><div class="ph"><div class="av">R</div><div><div class="pn">Rosa Quispe<small>7GHMHF</small></div><div class="sub"><span class="pill p-n">Nuevo</span><svg class="i"><use href="#truck"/></svg> hace 4 min</div></div><div class="tot">S/ 18,40</div></div></div>
+            <div class="ped n" style="margin-bottom:8px"><div class="ph"><div class="av">J</div><div><div class="pn">Juan Paredes<small>K3M9TA</small></div><div class="sub"><span class="pill p-n">Nuevo</span><svg class="i"><use href="#pin"/></svg> hace 21 min</div></div><div class="tot">S/ 12,50</div></div></div>
+            <div class="ped"><div class="ph"><div class="av" style="background:rgba(96,165,250,.18);color:#60A5FA">L</div><div><div class="pn">Luis Vega<small>X8D4LQ</small></div><div class="sub"><span class="pill p-c">Confirmado</span><svg class="i"><use href="#truck"/></svg> 15:20</div></div><div class="tot">S/ 32,00</div></div></div>
+          </div>
+          <div class="fl col" style="padding:14px 18px">
+            <div class="ph"><div class="av">R</div><div><div class="pn" style="font-size:17px">Rosa Quispe<small>7GHMHF</small></div><div class="sub"><svg class="i"><use href="#phone"/></svg> 987 654 321 · Av. Los Olivos 245, Zona Norte</div></div></div>
+            <div class="sec">Productos y stock</div>
+            <div class="lin"><span class="q">350 g</span><div>Queso andino<small class="si">hay 1 200 g · alcanza</small></div><span class="r">S/ 8,40</span></div>
+            <div class="lin"><span class="q">×2</span><div>Gaseosa Inca · 500 ml<small class="si">hay 12 · alcanza</small></div><span class="r">S/ 7,00</span></div>
+            <div class="cuenta" style="margin-top:10px"><div><span>Subtotal</span><span>S/ 15,40</span></div><div><span>Delivery · Zona Norte</span><span>S/ 3,00</span></div><div class="t"><span>TOTAL</span><span>S/ 18,40</span></div></div>
+            <div class="fl"></div>
+            <div class="row" style="gap:8px"><div class="btn b1 fl">Confirmar pedido</div><div class="btn b2"><svg class="i"><use href="#chat"/></svg> WhatsApp</div><div class="btn b3">Cancelar</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div></div><div class="cap">Tableta horizontal. Riel de 72 px; lista a la izquierda y detalle fijo a la derecha, sin hojas.</div></div>
+
+  <div><div class="w" style="width:330px;height:480px"><div class="s" style="width:768px;height:1116px;transform:scale(.43)">
+    <div class="bar" style="height:64px;padding:0 20px"><svg class="i" style="font-size:24px"><use href="#menu"/></svg><span class="tt" style="font-size:22px">Pedidos</span><span class="badge">2 nuevos</span><span class="live">● En vivo</span></div>
+    <div class="met" style="padding:14px 20px 6px"><div><b style="color:var(--warn)">2</b>Nuevos</div><div><b style="color:#60A5FA">3</b>Activos</div><div><b style="color:var(--warn)">S/ 70,40</b>Por cobrar</div><div><b style="color:var(--err)">1</b>Vencidos</div></div>
+    <div class="tabs" style="padding:8px 20px"><span class="tab on">Nuevos 2</span><span class="tab">Activos 3</span><span class="tab">Por cobrar 4</span><span class="tab">Reembolsos</span></div>
+    <div style="padding:0 20px"><div class="ped n sel" style="margin-bottom:10px"><div class="ph"><div class="av">R</div><div><div class="pn">Rosa Quispe<small>7GHMHF</small></div><div class="sub"><span class="pill p-n">Nuevo</span><svg class="i"><use href="#truck"/></svg> hace 4 min</div></div><div class="tot">S/ 18,40</div></div></div>
+    <div class="ped n" style="margin-bottom:10px"><div class="ph"><div class="av">J</div><div><div class="pn">Juan Paredes<small>K3M9TA</small></div><div class="sub"><span class="pill p-n">Nuevo</span><svg class="i"><use href="#pin"/></svg> hace 21 min</div></div><div class="tot">S/ 12,50</div></div></div></div>
+    <div class="vel" style="top:64px"></div>
+    <div style="position:absolute;right:0;top:64px;bottom:0;width:440px;background:var(--sup);border-left:1px solid var(--borde);padding:18px 20px" class="col">
+      <div class="ph"><div class="av">R</div><div><div class="pn" style="font-size:18px">Rosa Quispe<small>7GHMHF</small></div><div class="sub"><svg class="i"><use href="#phone"/></svg> 987 654 321 · Zona Norte</div></div></div>
+      <div class="lin"><span class="q">350 g</span><div>Queso andino<small class="si">hay 1 200 g</small></div><span class="r">S/ 8,40</span></div>
+      <div class="lin"><span class="q">×2</span><div>Inca 500 ml<small class="si">hay 12</small></div><span class="r">S/ 7,00</span></div>
+      <div class="cuenta" style="margin-top:10px"><div><span>Delivery</span><span>S/ 3,00</span></div><div class="t"><span>TOTAL</span><span>S/ 18,40</span></div></div>
+      <div class="fl"></div><div class="btn b1">Confirmar pedido</div><div class="row" style="gap:8px;margin-top:8px"><div class="btn b2 fl"><svg class="i"><use href="#chat"/></svg> WhatsApp</div><div class="btn b3 fl">Cancelar</div></div>
+    </div>
+  </div></div><div class="cap">Tableta vertical. Lista completa; el detalle entra como panel lateral de 440 px.</div></div>
+</div>
+
+<!-- ===================== 4 · PC ===================== -->
+<h2>4 · PC (900 px o más) — más información: números del día, tabla completa, por preparar y detalle completo</h2>
+<div class="fila"><div>
+  <div class="w" style="width:1008px;height:602px"><div class="s" style="width:1440px;height:860px;transform:scale(.7)">
+    <div class="row" style="height:100%">
+      <div class="menu"><b>YapiVenta</b>
+        <span><svg class="i"><use href="#home"/></svg>Inicio</span><span><svg class="i"><use href="#box"/></svg>Productos</span><span class="on"><svg class="i"><use href="#bag"/></svg>Pedidos<em style="margin-left:auto;font-style:normal;background:var(--warn);color:#201800;border-radius:999px;padding:0 8px;font-size:12px;font-weight:700">2</em></span><span><svg class="i"><use href="#coin"/></svg>Ventas</span><span><svg class="i"><use href="#note"/></svg>Reclamos</span><span><svg class="i"><use href="#pin"/></svg>Negocio</span></div>
+      <div class="col fl">
+        <div class="bar" style="height:64px;padding:0 20px;gap:14px"><span class="tt" style="font-size:20px">Pedidos</span>
+          <span class="busca"><svg class="i"><use href="#search"/></svg>Buscar clave, cliente o teléfono</span>
+          <span class="chipb">Hoy <svg class="i"><use href="#down"/></svg></span>
+          <span style="margin-left:auto" class="chipb"><svg class="i"><use href="#dl"/></svg>Exportar</span><span class="chipb"><svg class="i"><use href="#print"/></svg>Imprimir</span><span class="live" style="margin-left:6px">● En vivo</span></div>
+        <div class="kpi">
+          <div><b style="color:var(--warn)">2</b>Nuevos<small>el más viejo: 21 min</small></div>
+          <div><b style="color:#60A5FA">3</b>Activos<small>1 en camino</small></div>
+          <div><b style="color:var(--warn)">S/ 70,40</b>Por cobrar<small>4 pedidos</small></div>
+          <div><b style="color:var(--err)">1</b>Vencidos (+12 h)<small>sin confirmar</small></div>
+          <div><b style="color:var(--ok)">S/ 214,60</b>Ventas de hoy<small>9 entregados · ticket S/ 23,84</small></div>
+          <div><b>6 min</b>Tiempo para confirmar<small>promedio de hoy</small></div>
+        </div>
+        <div class="row fl" style="border-top:1px solid var(--dim);min-height:0">
+          <div class="fl col" style="padding:12px 16px;min-width:0">
+            <div class="row" style="gap:6px;align-items:center;margin-bottom:8px"><span class="tab on">Nuevos 2</span><span class="tab">Activos 3</span><span class="tab">Por cobrar 4</span><span class="tab">Reembolsos 0</span><span class="tab">Todos 6</span><span class="chipb" style="margin-left:auto"><svg class="i"><use href="#clock"/></svg>Historial</span></div>
+            <div class="row" style="gap:10px;align-items:center;font-size:12px;color:var(--muted);margin-bottom:6px"><span class="cb"></span><span>0 seleccionados</span><span class="chipb" style="min-height:32px">Confirmar seleccionados</span><span class="chipb" style="min-height:32px">Cancelar vencidos (1)</span></div>
+            <table>
+              <tr><th></th><th>Clave</th><th>Cliente</th><th>Hace <svg class="i"><use href="#sort"/></svg></th><th>Entrega</th><th>Productos</th><th>Pago</th><th>Estado</th><th style="text-align:right">Total <svg class="i"><use href="#sort"/></svg></th></tr>
+              <tr class="sel"><td><span class="cb"></span></td><td class="nw"><b>7GHMHF</b></td><td class="td2">Rosa Quispe<small>987 654 321</small></td><td class="nw">4 min</td><td class="td2 nw"><svg class="i"><use href="#truck"/></svg> Delivery<small>Zona Norte</small></td><td class="td2">350 g Queso · 2× Inca 500 ml</td><td class="td2 nw">Yape<small class="amb">Sin cobrar</small></td><td><span class="pill p-n">Nuevo</span></td><td class="num">S/ 18,40</td></tr>
+              <tr><td><span class="cb"></span></td><td class="nw"><b>K3M9TA</b></td><td class="td2">Juan Paredes<small>912 345 678</small></td><td class="nw amb">21 min</td><td class="td2 nw"><svg class="i"><use href="#pin"/></svg> Recojo<small>en el local</small></td><td class="td2">1 kg Arroz · 1× Aceite 1 L</td><td class="td2 nw">Efectivo<small class="amb">Sin cobrar</small></td><td><span class="pill p-n">Nuevo</span></td><td class="num">S/ 12,50</td></tr>
+              <tr><td><span class="cb"></span></td><td class="nw"><b>X8D4LQ</b></td><td class="td2">Luis Vega<small>955 210 987</small></td><td class="nw">52 min</td><td class="td2 nw"><svg class="i"><use href="#truck"/></svg> Delivery<small>Zona Sur</small></td><td class="td2">2× Pollo a la brasa · 1× Chicha</td><td class="td2 nw">Plin<small class="si">Pagado</small></td><td><span class="pill p-c">Confirmado</span></td><td class="num">S/ 32,00</td></tr>
+              <tr><td><span class="cb"></span></td><td class="nw"><b>R5T2NB</b></td><td class="td2">Ana Ríos<small>944 556 100</small></td><td class="nw">1 h 24</td><td class="td2 nw"><svg class="i"><use href="#pin"/></svg> Recojo<small>en el local</small></td><td class="td2">1× Combo familiar</td><td class="td2 nw">Efectivo<small class="amb">Sin cobrar</small></td><td><span class="pill p-c">Confirmado</span></td><td class="num">S/ 14,00</td></tr>
+              <tr><td><span class="cb"></span></td><td class="nw"><b>B7W1CE</b></td><td class="td2">Pedro Salas<small>933 700 412</small></td><td class="nw">2 h 40</td><td class="td2 nw"><svg class="i"><use href="#truck"/></svg> Delivery<small>Zona Norte</small></td><td class="td2">3× Inca 500 ml · 500 g Queso</td><td class="td2 nw">Yape<small class="amb">Sin cobrar</small></td><td><span class="pill p-c">En camino</span></td><td class="num">S/ 25,50</td></tr>
+              <tr><td><span class="cb"></span></td><td class="nw"><b>P2QW8D</b></td><td class="td2">María Soto<small>966 188 342</small></td><td class="nw rojo">13 h</td><td class="td2 nw"><svg class="i"><use href="#pin"/></svg> Recojo<small>en el local</small></td><td class="td2">1× Combo personal</td><td class="td2 nw">Efectivo<small>Sin cobrar</small></td><td><span class="pill p-x">Vencido</span></td><td class="num">S/ 9,00</td></tr>
+            </table>
+            <div class="prep"><div class="sec" style="margin:0 0 2px">Por preparar ahora · suma de los pedidos nuevos y confirmados</div>
+              <span class="ch">Queso andino <b>350 g</b></span><span class="ch">Gaseosa Inca 500 ml <b>×2</b></span><span class="ch">Arroz 1 kg <b>×1</b></span><span class="ch">Aceite 1 L <b>×1</b></span><span class="ch">Pollo a la brasa <b>×2</b></span><span class="ch">Chicha 1 L <b>×1</b></span><span class="ch">Combo familiar <b>×1</b></span></div>
+          </div>
+          <div class="col" style="width:420px;border-left:1px solid var(--dim);padding:16px 18px;background:rgba(13,21,38,.5)">
+            <div class="ph"><div class="av" style="width:42px;height:42px">R</div><div><div class="pn" style="font-size:18px">Rosa Quispe<small>7GHMHF</small></div><div class="sub"><span class="pill p-n">Nuevo</span>llegó a las 16:12 · hace 4 min</div></div><div class="tot" style="font-size:20px">S/ 18,40</div></div>
+            <div class="prog"><i class="h"></i><u></u><i></i><u></u><i></i><u></u><i></i></div>
+            <div class="etq"><span style="color:var(--warn);font-weight:700">Nuevo</span><span>Confirmado</span><span>En camino</span><span>Entregado</span></div>
+            <div class="sec">Cliente y entrega</div>
+            <div class="dato"><svg class="i"><use href="#phone"/></svg><span>987 654 321</span></div>
+            <div class="dato"><svg class="i"><use href="#truck"/></svg><span>Av. Los Olivos 245 · Zona Norte (delivery S/ 3,00)</span></div>
+            <div class="dato"><svg class="i"><use href="#note"/></svg><span>Nota del cliente: «Sin hielo en la gaseosa, por favor»</span></div>
+            <div class="dato"><svg class="i"><use href="#card"/></svg><span>Yape · <b class="amb">Sin cobrar</b></span></div>
+            <div class="sec">Productos y stock disponible</div>
+            <div class="lin"><span class="q">350 g</span><div>Queso andino<small class="si">hay 1 200 g · quedarán 850 g</small></div><span class="r">S/ 8,40</span></div>
+            <div class="lin"><span class="q">×2</span><div>Inca 500 ml<small class="no">hay 1 · faltan 1</small></div><span class="r">S/ 7,00</span></div>
+            <div class="cuenta" style="margin-top:8px"><div><span>Subtotal</span><span>S/ 15,40</span></div><div><span>Delivery</span><span>S/ 3,00</span></div><div class="t"><span>TOTAL</span><span>S/ 18,40</span></div></div>
+            <div class="sec">Historial</div><div class="hist"><b>16:12</b> llegó desde la tienda<br><b>16:12</b> pago: Yape, sin cobrar</div>
+            <div class="fl"></div>
+            <div class="btn b1" style="background:#3a4a68;color:#C3CDDD">Confirmar (falta stock)</div>
+            <div class="row" style="gap:8px;margin-top:8px"><div class="btn b2 fl" style="min-height:44px">Corregir stock</div><div class="btn b2" style="min-height:44px"><svg class="i"><use href="#chat"/></svg></div><div class="btn b2" style="min-height:44px"><svg class="i"><use href="#print"/></svg></div><div class="btn b3" style="min-height:44px">Cancelar</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div></div><div class="cap"><b>Más que el celular:</b> 6 números del día arriba, tabla con 9 columnas (cliente con teléfono, zona, productos, pago, antes de cuántos minutos), casillas para acciones en lote, la lista «por preparar» sumada de todos los pedidos, y en el detalle la dirección, la nota del cliente, el pago, el stock que quedará y el historial.</div></div></div>
+
+<!-- ===================== 5 · TV ===================== -->
+<h2>5 · TV (1 600 px o más, 1920×1080) — pantalla completa tipo web, para ver todo a la vez</h2>
+<p class="s">Se mira de lejos y se maneja con el control remoto (flechas y OK). No son tarjetas grandes: es <b>una sola pantalla densa</b> con los números del día arriba, la <b>tabla de todos los pedidos abiertos</b> en el centro, y a la derecha lo que hay que preparar y los avisos. Letra de 20 px o más (lo principal, entre 24 y 44 px); más información que el celular y la tableta, sin deslizar.</p>
+<div class="fila"><div>
+  <div class="w" style="width:1056px;height:594px"><div class="s tv" style="width:1920px;height:1080px;transform:scale(.55)">
+    <div class="bar" style="height:76px;padding:0 40px;gap:20px"><span class="tt" style="font-size:34px">YapiVenta · Pedidos</span><span class="badge" style="font-size:24px;padding:4px 16px">2 nuevos</span><span style="margin-left:auto;font-size:34px;font-weight:700">16:12</span><span class="live" style="font-size:24px;margin-left:20px">● En vivo</span></div>
+    <div class="tvkpi">
+      <div><b style="color:var(--warn)">2</b>Nuevos<small>el más viejo: 21 min</small></div>
+      <div><b style="color:#60A5FA">3</b>Activos<small>1 en camino</small></div>
+      <div><b style="color:var(--warn)">S/ 70,40</b>Por cobrar<small>4 pedidos</small></div>
+      <div><b style="color:var(--err)">1</b>Vencidos<small>más de 12 h sin confirmar</small></div>
+      <div><b style="color:var(--ok)">S/ 214,60</b>Ventas de hoy<small>9 entregados · ticket S/ 23,84</small></div>
+      <div><b>6 min</b>Para confirmar<small>promedio de hoy</small></div>
+    </div>
+    <div class="row" style="gap:24px;padding:0 40px;height:812px">
+      <div class="fl col" style="min-width:0">
+        <div class="tvt">
+          <table>
+            <tr><th>Clave</th><th>Cliente</th><th>Hace</th><th>Entrega</th><th>Productos</th><th>Pago</th><th>Estado</th><th style="text-align:right">Total</th></tr>
+            <tr class="foco"><td class="nw"><b>7GHMHF</b></td><td class="td2">Rosa Quispe<small>987 654 321</small></td><td class="nw" style="color:var(--ok);font-weight:700">4 min</td><td class="td2 nw"><svg class="i"><use href="#truck"/></svg> Delivery<small>Zona Norte</small></td><td>350 g Queso · 2× Inca 500 ml</td><td class="td2 nw">Yape<small class="amb">Sin cobrar</small></td><td><span class="pill p-n">Nuevo</span></td><td class="num">S/ 18,40</td></tr>
+            <tr><td class="nw"><b>K3M9TA</b></td><td class="td2">Juan Paredes<small>912 345 678</small></td><td class="nw amb">21 min</td><td class="td2 nw"><svg class="i"><use href="#pin"/></svg> Recojo<small>en el local</small></td><td>1 kg Arroz · 1× Aceite 1 L</td><td class="td2 nw">Efectivo<small class="amb">Sin cobrar</small></td><td><span class="pill p-n">Nuevo</span></td><td class="num">S/ 12,50</td></tr>
+            <tr><td class="nw"><b>X8D4LQ</b></td><td class="td2">Luis Vega<small>955 210 987</small></td><td class="nw">52 min</td><td class="td2 nw"><svg class="i"><use href="#truck"/></svg> Delivery<small>Zona Sur</small></td><td>2× Pollo a la brasa · 1× Chicha</td><td class="td2 nw">Plin<small class="si">Pagado</small></td><td><span class="pill p-c">Confirmado</span></td><td class="num">S/ 32,00</td></tr>
+            <tr><td class="nw"><b>R5T2NB</b></td><td class="td2">Ana Ríos<small>944 556 100</small></td><td class="nw amb">1 h 24</td><td class="td2 nw"><svg class="i"><use href="#pin"/></svg> Recojo<small>en el local</small></td><td>1× Combo familiar</td><td class="td2 nw">Efectivo<small class="amb">Sin cobrar</small></td><td><span class="pill p-c">Confirmado</span></td><td class="num">S/ 14,00</td></tr>
+            <tr><td class="nw"><b>B7W1CE</b></td><td class="td2">Pedro Salas<small>933 700 412</small></td><td class="nw amb">2 h 40</td><td class="td2 nw"><svg class="i"><use href="#truck"/></svg> Delivery<small>Zona Norte</small></td><td>3× Inca 500 ml · 500 g Queso</td><td class="td2 nw">Yape<small class="amb">Sin cobrar</small></td><td><span class="pill p-c">En camino</span></td><td class="num">S/ 25,50</td></tr>
+            <tr><td class="nw"><b>P2QW8D</b></td><td class="td2">María Soto<small>966 188 342</small></td><td class="nw rojo">13 h</td><td class="td2 nw"><svg class="i"><use href="#pin"/></svg> Recojo<small>en el local</small></td><td>1× Combo personal</td><td class="td2 nw">Efectivo<small>Sin cobrar</small></td><td><span class="pill p-x">Vencido</span></td><td class="num">S/ 9,00</td></tr>
+          </table>
+        </div>
+        <div class="tvk" style="margin:18px 0 0">
+          <h4>Últimos entregados hoy</h4>
+          <div class="pr"><span><b style="color:var(--texto)">15:40</b> · Carla Mena · 2× Combo familiar</span><span>Yape · pagado · <b>S/ 21,00</b></span></div>
+          <div class="pr"><span><b style="color:var(--texto)">15:12</b> · Diego Ruiz · 1 kg Arroz, 1× Aceite</span><span>Efectivo · pagado · <b>S/ 8,50</b></span></div>
+          <div class="pr"><span><b style="color:var(--texto)">14:55</b> · Elena Cruz · 3× Pollo a la brasa</span><span>Plin · pagado · <b>S/ 36,20</b></span></div>
+          <div class="pr" style="border:0"><span><b style="color:var(--texto)">14:30</b> · Fabio Lara · 1× Combo personal</span><span>Efectivo · pagado · <b>S/ 17,90</b></span></div>
+        </div>
+      </div>
+      <div style="width:520px;flex:none">
+        <div class="tvk" style="margin-top:0"><h4>Por preparar ahora</h4>
+          <div class="pr"><span>Queso andino</span><b>350 g</b></div><div class="pr"><span>Gaseosa Inca 500 ml</span><b>×2</b></div><div class="pr"><span>Arroz 1 kg</span><b>×1</b></div><div class="pr"><span>Aceite 1 L</span><b>×1</b></div><div class="pr"><span>Pollo a la brasa</span><b>×2</b></div><div class="pr"><span>Chicha 1 L</span><b>×1</b></div><div class="pr" style="border:0"><span>Combo familiar</span><b>×1</b></div></div>
+        <div class="tvk" style="border-color:rgba(248,113,113,.5)"><h4 style="color:var(--err)">Atención</h4>
+          <div class="pr"><span><svg class="i"><use href="#alert"/></svg> 1 pedido vencido (+12 h)</span></div>
+          <div class="pr"><span><svg class="i"><use href="#alert"/></svg> Inca 500 ml: queda 1</span></div>
+          <div class="pr" style="border:0"><span><svg class="i"><use href="#alert"/></svg> 4 pedidos sin cobrar</span></div></div>
+      </div>
+    </div>
+    <div class="ayuda" style="position:absolute;left:0;right:0;bottom:0;height:64px"><span><b>◀ ▶ ▲ ▼</b>mover</span><span><b>OK</b>abrir / siguiente paso</span><span><b>Atrás</b>volver</span><span style="margin-left:auto">Margen seguro de 40 px</span></div>
+  </div></div><div class="cap"><b>Una sola pantalla, todo a la vista:</b> 6 números del día, la tabla de pedidos abiertos con teléfono, zona, productos y pago, los últimos entregados, lo que hay que preparar y los avisos. La fila con borde blanco es el foco del control remoto (OK abre el detalle en una ventana grande). El tiempo de espera va en color y además escrito.</div></div></div>
+
+<h2>Resumen: qué información ve cada tamaño</h2>
+<table class="r">
+<tr><th>Tamaño</th><th>Densidad</th><th>Ancho</th><th>Menú</th><th>Lista y detalle</th><th>Información visible</th><th>Cómo se usa</th></tr>
+<tr><td><b>Móvil vertical</b></td><td>Compacto</td><td>&lt; 600 px</td><td>Cajón</td><td>Una a la vez; detalle en hoja desde abajo</td><td>3 números; por pedido: cliente, estado, entrega, 2 productos, total</td><td>Pulgar; botón principal fijo al pie</td></tr>
+<tr><td><b>Móvil horizontal</b></td><td>Compacto</td><td>≥ 600 px y poco alto</td><td>Cajón</td><td>Lado a lado</td><td>Aviso de nuevos; lo mismo que el vertical</td><td>Dos pulgares; margen para la muesca</td></tr>
+<tr><td><b>Tableta</b></td><td>Compacto</td><td>600–1 099 px</td><td>Riel de 72 px</td><td>Horizontal: lado a lado. Vertical: panel lateral</td><td>4 números; detalle con stock y cuenta</td><td>Táctil; botones de 48 px</td></tr>
+<tr><td><b>PC</b></td><td><b>Más información</b></td><td>1 100–1 599 px</td><td>Fijo de 200 px</td><td>Tabla de 9 columnas + detalle de 420 px</td><td>6 números del día; teléfono, zona, pago y nota del cliente; «por preparar»; stock que quedará; historial del pedido</td><td>Mouse y teclado; lote, exportar, imprimir</td></tr>
+<tr><td><b>TV</b></td><td><b>Más información</b></td><td>≥ 1 600 px</td><td>Ninguno</td><td>Una pantalla densa: tabla de pedidos abiertos + paneles laterales</td><td>6 números del día; tabla de 8 columnas con teléfono, zona, productos y pago; últimos entregados; por preparar; avisos</td><td>Control remoto; foco visible; letra de 20 px o más</td></tr>
+</table>
+
+<div class="nota"><b>Lecturas de Firebase.</b> Lo que sale de los <b>pedidos abiertos</b> (tabla, «por preparar», tiempos, por cobrar, vencidos) no agrega lecturas: es el mismo listener en todos los tamaños. Los números <b>«Ventas de hoy», «entregados», «ticket» y «tiempo para confirmar»</b> necesitan datos de pedidos ya cerrados. Para no leer cada pedido entregado, propongo <b>un documento resumen del día</b> que se actualiza dentro de la misma transacción al entregar: costo = <b>1 lectura por visita</b>. Esto hay que aprobarlo antes de construirlo. «Últimos entregados» de la TV sale del mismo resumen (guarda los últimos 5): 0 lecturas extra. «Stock bajo» usa los productos que el panel ya tiene cargados.</div>
+</body>
+</html>
