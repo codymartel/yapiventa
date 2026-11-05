@@ -24,6 +24,8 @@ Firebase: proyecto `yapiventa`, plan **Spark** (sin Cloud Functions por ahora). 
 5. **Revisar el código** propio antes de informar (ver "Revisión de código").
 6. **Informar y preguntar** antes de commit y antes de deploy.
 
+**Diseño:** al dibujar una maqueta o diseñar/rediseñar una pantalla, usar siempre `/mejorar-diseno` (guía de calidad con los skills de Apple: `apple-hig-designer`, `apple-ui-skills`, `design`). La identidad es la de YapiVenta (`app_colors.dart`); no se copian colores ni logo de Apple.
+
 ## Separación de responsabilidades
 - **Capas:** widget (pantalla) → provider (estado) → service / dominio (lógica pura, sin Flutter) → repository (datos). La UI no habla con Firestore; el provider no construye widgets; la lógica pura no vive en carpetas de widgets (va a `application/services` o `domain`).
 - **Cuándo dividir un archivo:** si pasa de ~500 líneas (o va a pasar con el cambio), **preguntar siempre** antes de seguir. Se divide si además tiene más de una responsabilidad y se toca ahora; un archivo grande pero estable no se toca.
