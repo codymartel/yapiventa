@@ -23,6 +23,8 @@ class ResultadoConfirmar {
     this.faltas = const [],
     this.sinProducto = const [],
     this.yaNoEsNuevo = false,
+    this.totalActualCentavos,
+    this.lineasCambiadas = const [],
   });
 
   /// Lo que no alcanza (nombre, pide, hay).
@@ -33,6 +35,11 @@ class ResultadoConfirmar {
 
   /// Otro vendedor ya lo confirmó o lo canceló.
   final bool yaNoEsNuevo;
+
+  /// Solo aviso (no bloquea): si con los precios de hoy el total sería otro.
+  /// Se respeta el total que vio el cliente; null = coincide.
+  final int? totalActualCentavos;
+  final List<String> lineasCambiadas;
 
   bool get ok => faltas.isEmpty && sinProducto.isEmpty && !yaNoEsNuevo;
 }
@@ -55,12 +62,10 @@ abstract class RepositorioPedidos {
   Future<ResultadoConfirmar> confirmar(String negocioId, String pedidoId);
 
   /// Transacción: cancela y devuelve al stock lo que se había descontado.
+  /// Si el pedido ya estaba pagado queda con el reembolso pendiente.
   /// Devuelve cuántas líneas no se pudieron devolver (producto borrado).
-  Future<int> cancelar(
-    String negocioId,
-    String pedidoId, {
-    bool reembolsoPendiente = false,
-  });
+  /// Lanza [StateError] si el pedido ya no se puede cancelar.
+  Future<int> cancelar(String negocioId, String pedidoId);
 
   /// Cambia al estado siguiente (en camino, listo, entregado).
   Future<void> avanzar(String negocioId, String pedidoId, EstadoPedido nuevo);

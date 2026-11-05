@@ -38,6 +38,58 @@ service cloud.firestore {
         esDuenoNegocioDespues(datos.negocioId);
     }
 
+    // Forma válida de un pedido NUEVO creado por la tienda pública (anónima).
+    // Las reglas no tienen bucles: no pueden revisar cada línea ni comprobar
+    // el total contra el catálogo. Por eso se acota todo lo demás (campos,
+    // tamaños, enteros, total = subtotal + delivery - descuento) y el panel
+    // recalcula con los precios de hoy al confirmar. Sin get(): no suma
+    // lecturas por cada pedido.
+    function pedidoNuevoValido(negocioId, d) {
+      let suma = d.subtotalCentavos + d.deliveryCentavos - d.descuentoCentavos;
+      return d.keys().hasOnly([
+          'negocioId', 'clave', 'estado', 'tipoEntrega', 'fecha', 'cliente',
+          'zona', 'deliveryCentavos', 'descuentoCentavos', 'subtotalCentavos',
+          'totalCentavos', 'lineas', 'metodoPago', 'estadoPago', 'notas',
+          'stockDescontado', 'reembolso', 'historial'
+        ]) &&
+        d.keys().hasAll([
+          'negocioId', 'clave', 'estado', 'tipoEntrega', 'fecha', 'cliente',
+          'deliveryCentavos', 'descuentoCentavos', 'subtotalCentavos',
+          'totalCentavos', 'lineas', 'estadoPago'
+        ]) &&
+        d.negocioId == negocioId &&
+        d.clave is string && d.clave.size() == 6 &&
+        d.estado == 'nuevo' &&
+        d.estadoPago == 'pendiente' &&
+        d.tipoEntrega in ['delivery', 'recojo'] &&
+        d.fecha == request.time &&
+        d.cliente is map &&
+        d.cliente.keys().hasOnly(['nombre', 'telefono', 'direccion', 'correo']) &&
+        d.cliente.get('nombre', '') is string &&
+        d.cliente.get('nombre', '').size() <= 80 &&
+        d.cliente.get('telefono', '') is string &&
+        d.cliente.get('telefono', '').size() <= 20 &&
+        d.cliente.get('direccion', '') is string &&
+        d.cliente.get('direccion', '').size() <= 200 &&
+        d.cliente.get('correo', '') is string &&
+        d.cliente.get('correo', '').size() <= 120 &&
+        d.get('zona', '') is string && d.get('zona', '').size() <= 60 &&
+        d.get('metodoPago', '') is string && d.get('metodoPago', '').size() <= 30 &&
+        d.get('notas', '') is string && d.get('notas', '').size() <= 500 &&
+        d.lineas is list && d.lineas.size() >= 1 && d.lineas.size() <= 30 &&
+        d.subtotalCentavos is int &&
+        d.subtotalCentavos >= 0 && d.subtotalCentavos <= 100000000 &&
+        d.deliveryCentavos is int &&
+        d.deliveryCentavos >= 0 && d.deliveryCentavos <= 1000000 &&
+        d.descuentoCentavos is int &&
+        d.descuentoCentavos >= 0 && d.descuentoCentavos <= 100000000 &&
+        d.totalCentavos is int &&
+        (d.totalCentavos == suma || (suma < 0 && d.totalCentavos == 0)) &&
+        d.get('reembolso', 'ninguno') == 'ninguno' &&
+        d.get('stockDescontado', []).size() == 0 &&
+        d.get('historial', []).size() <= 1;
+    }
+
     function camposPerfilPermitidos(datos) {
       return datos.keys().hasOnly([
         'email',
@@ -155,9 +207,6 @@ service cloud.firestore {
         resource.data.propietarioUid == request.auth.uid;
 
       // Subcolecciones privadas del negocio.
-      match /pedidos/{document=**} {
-        allow read, write: if false;
-      }
       match /reclamaciones/{document=**} {
         allow read, write: if false;
       }
@@ -169,6 +218,26 @@ service cloud.firestore {
       }
       match /inventario_privado/{document=**} {
         allow read, write: if false;
+      }
+
+      // negocios/{negocioId}/pedidos/{pedidoId}
+      //   Cualquiera (tienda pública anónima) CREA un pedido nuevo con la forma
+      //   válida; nadie puede leerlo ni cambiarlo desde fuera.
+      //   El propietario lee y cambia solo estado, pago, reembolso, stock
+      //   descontado e historial. Nunca se borra.
+      match /pedidos/{pedidoId} {
+        allow create: if pedidoNuevoValido(negocioId, request.resource.data);
+        allow read: if esDuenoNegocio(negocioId);
+        allow update: if esDuenoNegocio(negocioId) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'estado',
+            'estadoPago',
+            'reembolso',
+            'stockDescontado',
+            'historial',
+            'actualizadoEn'
+          ]);
+        allow delete: if false;
       }
 
       // negocios/{negocioId}/productos/{productoId}
