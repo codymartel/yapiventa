@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../application/services/lista_pedidos_paginada.dart';
 import '../../application/services/mensajes_accion_pedido.dart';
+import '../../application/services/resumen_dia_pedidos.dart';
 import '../../application/services/transiciones_pedido.dart';
 import '../../application/use_cases/avanzar_pedido.dart';
 import '../../application/use_cases/cancelar_pedido.dart';
@@ -13,6 +14,7 @@ import '../../application/use_cases/marcar_pago_pedido.dart';
 import '../../application/use_cases/marcar_reembolso_pedido.dart';
 import '../../domain/models/estado_pedido.dart';
 import '../../domain/models/pedido.dart';
+import '../../domain/models/resumen_ventas_dia.dart';
 import '../../domain/repositories/repositorio_pedidos.dart';
 
 /// Las pestañas de pedidos abiertos. Cada una escucha SU consulta de 10.
@@ -98,6 +100,9 @@ class PedidosProvider extends ChangeNotifier {
   final Map<PestanaPedidos, ListaPedidosPaginada> _listas = {};
   final Map<PestanaPedidos, StreamSubscription<List<Pedido>>> _suscripciones =
       {};
+  StreamSubscription<ResumenVentasDia>? _suscripcionResumen;
+  String? _diaResumen;
+  ResumenVentasDia? _resumen;
   final Set<PestanaPedidos> _esperandoPrimeraCarga = {};
   final Set<PestanaPedidos> _cargandoMas = {};
   final Set<String> _procesando = {};
@@ -111,6 +116,10 @@ class PedidosProvider extends ChangeNotifier {
   // ── Lectura ───────────────────────────────────────────────────────────
 
   PestanaPedidos get pestana => _pestana;
+
+  /// El resumen de ventas de hoy (un solo documento). Vacío mientras llega.
+  ResumenVentasDia get resumenHoy =>
+      _resumen ?? ResumenVentasDia.vacio(ResumenDiaPedidos.claveDia(_reloj()));
   String? get error => _error;
   bool get cancelandoVencidos => _cancelandoVencidos;
   bool get pausado => _pausado;
@@ -197,7 +206,43 @@ class PedidosProvider extends ChangeNotifier {
     _notificar();
   }
 
+  /// Si ya cambió el día (pasó la medianoche), pasa a escuchar el resumen del
+  /// día nuevo. Barato: solo compara textos; la pantalla lo llama cada minuto.
+  void revisarDia() {
+    if (!_iniciado || _pausado || _disposed) return;
+    if (_diaResumen != ResumenDiaPedidos.claveDia(_reloj())) {
+      _suscribirResumen();
+    }
+  }
+
+  /// 1 documento: 1 lectura al abrir y 1 por cada venta o confirmación nueva.
+  /// Si falla, los pedidos siguen funcionando (el resumen es un extra).
+  void _suscribirResumen() {
+    _suscripcionResumen?.cancel();
+    _suscripcionResumen = null;
+    final dia = ResumenDiaPedidos.claveDia(_reloj());
+    _diaResumen = dia;
+    if (_resumen?.dia != dia) _resumen = null;
+    try {
+      _suscripcionResumen = _repositorio
+          .escucharResumenDia(negocioId, dia)
+          .listen((resumen) {
+            _resumen = resumen;
+            _notificar();
+          }, onError: (Object _) => _cerrarResumen());
+    } catch (_) {
+      _cerrarResumen();
+    }
+  }
+
+  void _cerrarResumen() {
+    _suscripcionResumen?.cancel();
+    _suscripcionResumen = null;
+    _diaResumen = null;
+  }
+
   void _suscribir({required bool conSpinner}) {
+    _suscribirResumen();
     for (final pestana in PestanaPedidos.values) {
       if (_suscripciones.containsKey(pestana)) continue;
       if (conSpinner) _esperandoPrimeraCarga.add(pestana);
@@ -237,6 +282,7 @@ class PedidosProvider extends ChangeNotifier {
       suscripcion.cancel();
     }
     _suscripciones.clear();
+    _cerrarResumen();
   }
 
   // ── Ver más ───────────────────────────────────────────────────────────

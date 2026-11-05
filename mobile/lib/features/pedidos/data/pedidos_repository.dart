@@ -3,12 +3,16 @@ import 'package:mobile/features/productos/data/mappers/producto_firestore_mapper
 import 'package:mobile/features/productos/domain/models/producto.dart';
 
 import '../application/services/calculo_stock_pedido.dart';
+import '../application/services/resumen_dia_pedidos.dart';
+import '../application/services/resumen_ventas_dia_calculo.dart';
 import '../application/services/transiciones_pedido.dart';
 import '../application/services/verificacion_total_pedido.dart';
 import '../domain/models/estado_pedido.dart';
 import '../domain/models/pedido.dart';
 import '../domain/repositories/repositorio_pedidos.dart';
+import '../domain/models/resumen_ventas_dia.dart';
 import 'pedido_mapper.dart';
+import 'resumen_ventas_dia_mapper.dart';
 
 class _CursorPedidosFirestore implements CursorPedidos {
   const _CursorPedidosFirestore(this.documento);
@@ -58,6 +62,18 @@ class PedidosRepository implements RepositorioPedidos {
         .doc(negocioId.trim())
         .collection('productos')
         .doc(productoId);
+  }
+
+  /// negocios/{id}/resumenes/{AAAA-MM-DD}: el resumen de ventas de un día.
+  DocumentReference<Map<String, dynamic>> _resumen(
+    String negocioId,
+    String dia,
+  ) {
+    final id = negocioId.trim();
+    if (id.isEmpty) {
+      throw StateError('No se encontró un negocioId para operar los pedidos.');
+    }
+    return _db.collection('negocios').doc(id).collection('resumenes').doc(dia);
   }
 
   Pedido _pedido(DocumentSnapshot<Map<String, dynamic>> doc) {
@@ -163,6 +179,13 @@ class PedidosRepository implements RepositorioPedidos {
   }
 
   @override
+  Stream<ResumenVentasDia> escucharResumenDia(String negocioId, String dia) {
+    return _resumen(negocioId, dia).snapshots().map(
+      (doc) => ResumenVentasDiaMapper.desdeFirestore(dia, doc.data()),
+    );
+  }
+
+  @override
   Future<ResultadoConfirmar> confirmar(String negocioId, String pedidoId) {
     final ref = _pedidos(negocioId).doc(pedidoId);
     return _db.runTransaction((tx) async {
@@ -201,6 +224,15 @@ class PedidosRepository implements RepositorioPedidos {
       }
       final verificacion = CalculoPedido.verificar(pedido, buscar);
 
+      // Resumen del día: se lee ANTES de escribir (regla de las transacciones)
+      // y se guarda el valor ya sumado.
+      final ahora = _reloj();
+      final refResumen = _resumen(negocioId, ResumenDiaPedidos.claveDia(ahora));
+      final resumenActual = ResumenVentasDiaMapper.desdeFirestore(
+        refResumen.id,
+        (await tx.get(refResumen)).data(),
+      );
+
       for (final id in {for (final d in calculo.descuentos) d.productoId}) {
         final nuevo = CalculoStockPedido.aplicar(
           productos[id]!,
@@ -215,6 +247,18 @@ class PedidosRepository implements RepositorioPedidos {
         'historial': _historialCon(pedido, EstadoPedido.confirmado),
         'actualizadoEn': FieldValue.serverTimestamp(),
       });
+      // Cuántos minutos tardó en confirmarse (de la llegada a ahora).
+      final minutos = ResumenVentasDiaCalculo.minutosParaConfirmar(
+        pedido.fecha,
+        ahora,
+      );
+      if (minutos != null) {
+        tx.set(refResumen, {
+          'confirmados': resumenActual.confirmados + 1,
+          'sumaMinutosConfirmar': resumenActual.sumaMinutosConfirmar + minutos,
+          'actualizadoEn': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      }
 
       return ResultadoConfirmar(
         totalActualCentavos: verificacion.difiere
@@ -301,12 +345,41 @@ class PedidosRepository implements RepositorioPedidos {
           'El pedido no puede pasar de ${pedido.estado.valor} a ${nuevo.valor}.',
         );
       }
+      // Al entregar se suma la venta al resumen del día. La lectura va ANTES de
+      // todas las escrituras (regla de las transacciones).
+      final ahora = _reloj();
+      final entregando = nuevo == EstadoPedido.entregado;
+      final refResumen = _resumen(negocioId, ResumenDiaPedidos.claveDia(ahora));
+      var resumenActual = ResumenVentasDia.vacio(refResumen.id);
+      if (entregando) {
+        resumenActual = ResumenVentasDiaMapper.desdeFirestore(
+          refResumen.id,
+          (await tx.get(refResumen)).data(),
+        );
+      }
       tx.update(ref, {
         'estado': nuevo.valor,
         'estadoPago': ?pago?.valor,
         'historial': _historialCon(pedido, nuevo),
         'actualizadoEn': FieldValue.serverTimestamp(),
       });
+      if (entregando) {
+        final entregado = ResumenVentasDiaCalculo.entregadoDe(
+          pedido.copyWith(estadoPago: pago),
+          ahora,
+        );
+        tx.set(refResumen, {
+          'ventasCentavos': resumenActual.ventasCentavos + pedido.totalCentavos,
+          'entregados': resumenActual.entregados + 1,
+          'ultimosEntregados': ResumenVentasDiaMapper.entregadosAMapas(
+            ResumenVentasDiaCalculo.conNuevoEntregado(
+              resumenActual.ultimosEntregados,
+              entregado,
+            ),
+          ),
+          'actualizadoEn': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      }
     });
   }
 

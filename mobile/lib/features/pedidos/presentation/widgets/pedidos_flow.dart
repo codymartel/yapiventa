@@ -81,7 +81,9 @@ class _PedidosFlowState extends State<PedidosFlow> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     // Cada minuto se redibuja para que «hace 4 min» no quede viejo.
     _relojUi = Timer.periodic(const Duration(minutes: 1), (_) {
-      if (mounted) setState(() {});
+      if (!mounted) return;
+      _provider.revisarDia();
+      setState(() {});
     });
   }
 

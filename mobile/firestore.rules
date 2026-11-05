@@ -90,6 +90,27 @@ service cloud.firestore {
         d.get('historial', []).size() <= 1;
     }
 
+    // Resumen de ventas de un día (negocios/{id}/resumenes/AAAA-MM-DD): solo
+    // enteros >= 0, como máximo 5 entregados recientes y ningún campo extra.
+    function resumenDiaValido(d) {
+      return d.keys().hasOnly([
+          'ventasCentavos',
+          'entregados',
+          'confirmados',
+          'sumaMinutosConfirmar',
+          'ultimosEntregados',
+          'actualizadoEn'
+        ]) &&
+        (!('ventasCentavos' in d) || (d.ventasCentavos is int && d.ventasCentavos >= 0)) &&
+        (!('entregados' in d) || (d.entregados is int && d.entregados >= 0)) &&
+        (!('confirmados' in d) || (d.confirmados is int && d.confirmados >= 0)) &&
+        (!('sumaMinutosConfirmar' in d) ||
+          (d.sumaMinutosConfirmar is int && d.sumaMinutosConfirmar >= 0)) &&
+        (!('ultimosEntregados' in d) ||
+          (d.ultimosEntregados is list && d.ultimosEntregados.size() <= 5)) &&
+        (!('actualizadoEn' in d) || d.actualizadoEn is timestamp);
+    }
+
     function camposPerfilPermitidos(datos) {
       return datos.keys().hasOnly([
         'email',
@@ -237,6 +258,18 @@ service cloud.firestore {
             'historial',
             'actualizadoEn'
           ]);
+        allow delete: if false;
+      }
+
+      // negocios/{negocioId}/resumenes/{dia}
+      //   Resumen de ventas de un día (id AAAA-MM-DD). Solo el propietario lo
+      //   lee y lo actualiza (el panel lo escribe dentro de la transacción de
+      //   confirmar y entregar). Nunca se borra.
+      match /resumenes/{dia} {
+        allow read: if esDuenoNegocio(negocioId);
+        allow create, update: if esDuenoNegocio(negocioId) &&
+          dia.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$') &&
+          resumenDiaValido(request.resource.data);
         allow delete: if false;
       }
 

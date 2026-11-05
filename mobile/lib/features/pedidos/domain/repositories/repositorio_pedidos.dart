@@ -1,6 +1,7 @@
 import '../models/descuento_stock.dart';
 import '../models/estado_pedido.dart';
 import '../models/pedido.dart';
+import '../models/resumen_ventas_dia.dart';
 
 /// Marca opaca para pedir la página siguiente del historial.
 abstract class CursorPedidos {}
@@ -82,6 +83,11 @@ abstract class RepositorioPedidos {
     CursorPedidos? despuesDe,
     int limite = 20,
   });
+
+  /// Escucha el resumen de UN día (un solo documento: 1 lectura al abrir y
+  /// 1 por cada cambio). [dia] es AAAA-MM-DD en hora de Lima. Si el día aún no
+  /// tiene movimientos, emite un resumen vacío.
+  Stream<ResumenVentasDia> escucharResumenDia(String negocioId, String dia);
 
   /// Transacción: valida que siga nuevo, descuenta el stock y confirma.
   /// Todo o nada.

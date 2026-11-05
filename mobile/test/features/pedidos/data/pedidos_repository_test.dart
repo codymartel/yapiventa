@@ -656,6 +656,139 @@ void main() {
     });
   });
 
+  group('resumen del día', () {
+    Future<Map<String, dynamic>?> leerResumen([
+      String dia = '2026-11-05',
+    ]) async {
+      final doc = await db
+          .collection('negocios')
+          .doc(_negocio)
+          .collection('resumenes')
+          .doc(dia)
+          .get();
+      return doc.data();
+    }
+
+    test('confirmar suma los minutos que tardó en confirmarse', () async {
+      // Llegó 16:00 UTC y el reloj marca 17:00: 60 minutos.
+      await pedidos().doc('p1').set(_pedido());
+
+      await repo.confirmar(_negocio, 'p1');
+
+      final r = await leerResumen();
+      expect(r!['confirmados'], 1);
+      expect(r['sumaMinutosConfirmar'], 60);
+    });
+
+    test(
+      'un confirmar bloqueado por falta de stock no toca el resumen',
+      () async {
+        await producto(productoSimple(stock: 1));
+        await pedidos().doc('p1').set(_pedido());
+
+        await repo.confirmar(_negocio, 'p1');
+
+        expect(await leerResumen(), isNull);
+      },
+    );
+
+    test('entregar suma la venta y guarda el entregado reciente', () async {
+      await pedidos().doc('p1').set(_pedido(estado: 'en_camino'));
+
+      await repo.avanzar(_negocio, 'p1', EstadoPedido.entregado);
+
+      final r = await leerResumen();
+      expect(r!['ventasCentavos'], 1840);
+      expect(r['entregados'], 1);
+      final recientes = r['ultimosEntregados'] as List;
+      expect(recientes.single['pedidoId'], 'p1');
+      expect(recientes.single['cliente'], 'Rosa Quispe');
+      expect(recientes.single['totalCentavos'], 1840);
+      expect(recientes.single['cobrado'], isFalse);
+    });
+
+    test('entregar y cobrar guarda que se cobró', () async {
+      await pedidos().doc('p1').set(_pedido(estado: 'en_camino'));
+
+      await repo.avanzar(
+        _negocio,
+        'p1',
+        EstadoPedido.entregado,
+        pago: EstadoPago.pagado,
+      );
+
+      final r = await leerResumen();
+      expect((r!['ultimosEntregados'] as List).single['cobrado'], isTrue);
+    });
+
+    test(
+      'varias entregas se acumulan y solo se guardan las últimas 5',
+      () async {
+        for (var i = 0; i < 6; i++) {
+          await pedidos().doc('p$i').set(_pedido(estado: 'listo'));
+          await repo.avanzar(_negocio, 'p$i', EstadoPedido.entregado);
+        }
+
+        final r = await leerResumen();
+        expect(r!['entregados'], 6);
+        expect(r['ventasCentavos'], 6 * 1840);
+        final ids = [
+          for (final e in r['ultimosEntregados'] as List) e['pedidoId'],
+        ];
+        expect(ids, ['p5', 'p4', 'p3', 'p2', 'p1']);
+      },
+    );
+
+    test('un paso que no es entregar no suma ventas', () async {
+      await pedidos().doc('p1').set(_pedido(estado: 'confirmado'));
+
+      await repo.avanzar(_negocio, 'p1', EstadoPedido.enCamino);
+
+      expect(await leerResumen(), isNull);
+    });
+
+    test('entregar dos veces no cuenta dos veces', () async {
+      await pedidos().doc('p1').set(_pedido(estado: 'en_camino'));
+      await repo.avanzar(_negocio, 'p1', EstadoPedido.entregado);
+
+      expect(
+        () => repo.avanzar(_negocio, 'p1', EstadoPedido.entregado),
+        throwsStateError,
+      );
+
+      final r = await leerResumen();
+      expect(r!['entregados'], 1);
+      expect(r['ventasCentavos'], 1840);
+    });
+
+    test('cancelar no toca el resumen', () async {
+      await pedidos().doc('p1').set(_pedido());
+
+      await repo.cancelar(_negocio, 'p1');
+
+      expect(await leerResumen(), isNull);
+    });
+
+    test(
+      'escucha el resumen del día: vacío primero y luego los cambios',
+      () async {
+        final recibidos = <int>[];
+        final suscripcion = repo
+            .escucharResumenDia(_negocio, '2026-11-05')
+            .listen((r) => recibidos.add(r.ventasCentavos));
+        await Future<void>.delayed(Duration.zero);
+        await pedidos().doc('p1').set(_pedido(estado: 'en_camino'));
+
+        await repo.avanzar(_negocio, 'p1', EstadoPedido.entregado);
+        await Future<void>.delayed(Duration.zero);
+        await suscripcion.cancel();
+
+        expect(recibidos.first, 0);
+        expect(recibidos.last, 1840);
+      },
+    );
+  });
+
   test('sin negocioId no opera', () {
     expect(() => repo.escucharAbiertos('  '), throwsStateError);
   });

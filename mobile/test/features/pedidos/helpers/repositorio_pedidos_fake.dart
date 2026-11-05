@@ -3,6 +3,7 @@ import 'dart:collection';
 
 import 'package:mobile/features/pedidos/domain/models/estado_pedido.dart';
 import 'package:mobile/features/pedidos/domain/models/pedido.dart';
+import 'package:mobile/features/pedidos/domain/models/resumen_ventas_dia.dart';
 import 'package:mobile/features/pedidos/domain/repositories/repositorio_pedidos.dart';
 
 /// Repositorio falso: anota las llamadas, emite listas en vivo cuando se le
@@ -47,6 +48,30 @@ class RepositorioPedidosFake implements RepositorioPedidos {
   /// La consulta en vivo falla (por ejemplo, sin conexión).
   void fallar(Set<EstadoPedido> estados) {
     _controladores[_clave(estados)]!.addError(Exception('sin conexión'));
+  }
+
+  // ── Resumen del día ──
+  final _resumenes = <String, StreamController<ResumenVentasDia>>{};
+  final escuchasResumen = <String>[];
+  int resumenesActivos = 0;
+  Object? fallaAlEscucharResumen;
+
+  /// Emite el resumen de ese día (AAAA-MM-DD).
+  void emitirResumen(ResumenVentasDia resumen) {
+    _resumenes[resumen.dia]!.add(resumen);
+  }
+
+  @override
+  Stream<ResumenVentasDia> escucharResumenDia(String negocioId, String dia) {
+    final falla = fallaAlEscucharResumen;
+    if (falla != null) throw falla;
+    escuchasResumen.add(dia);
+    final controlador = StreamController<ResumenVentasDia>(
+      onListen: () => resumenesActivos++,
+      onCancel: () => resumenesActivos--,
+    );
+    _resumenes[dia] = controlador;
+    return controlador.stream;
   }
 
   // ── Ver más ──

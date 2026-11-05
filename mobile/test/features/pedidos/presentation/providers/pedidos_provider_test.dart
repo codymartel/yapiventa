@@ -10,6 +10,7 @@ import 'package:mobile/features/pedidos/application/use_cases/marcar_reembolso_p
 import 'package:mobile/features/pedidos/domain/models/descuento_stock.dart';
 import 'package:mobile/features/pedidos/domain/models/estado_pedido.dart';
 import 'package:mobile/features/pedidos/domain/models/pedido.dart';
+import 'package:mobile/features/pedidos/domain/models/resumen_ventas_dia.dart';
 import 'package:mobile/features/pedidos/domain/repositories/repositorio_pedidos.dart';
 import 'package:mobile/features/pedidos/presentation/providers/pedidos_provider.dart';
 
@@ -43,7 +44,11 @@ void main() {
   late PedidosProvider provider;
   var notificaciones = 0;
 
-  PedidosProvider crear({int tamano = 10, DateTime? ahora}) {
+  PedidosProvider crear({
+    int tamano = 10,
+    DateTime? ahora,
+    DateTime Function()? reloj,
+  }) {
     final p = PedidosProvider(
       negocioId: 'n1',
       repositorio: repo,
@@ -54,7 +59,7 @@ void main() {
       marcarReembolsoPedido: MarcarReembolsoPedido(repo),
       cancelarVencidos: CancelarVencidos(repo),
       tamanoPagina: tamano,
-      reloj: () => ahora ?? DateTime.utc(2026, 11, 5, 20),
+      reloj: reloj ?? () => ahora ?? DateTime.utc(2026, 11, 5, 20),
     );
     p.addListener(() => notificaciones++);
     return p;
@@ -227,26 +232,112 @@ void main() {
     });
   });
 
-  group('buscar y por cobrar', () {
-    test('busca en cualquier pestaña y suma solo lo pendiente de cobro', () async {
+  group('resumen del día', () {
+    test('iniciar escucha UN documento: el de hoy (hora de Lima)', () async {
       provider.iniciar();
-      repo.emitir(_nuevos, [_p('a', total: 1840), _p('b', hora: 11, total: 1000)]);
-      repo.emitir(_activos, [
-        pedidoDe(
-          [lineaSimple()],
-          id: 'c',
-          estado: EstadoPedido.confirmado,
-          pago: EstadoPago.pagado,
-          totalCentavos: 3200,
-          fecha: DateTime.utc(2026, 11, 5, 9),
-        ),
-      ]);
       await Future<void>.delayed(Duration.zero);
 
-      expect(provider.buscar('c')!.totalCentavos, 3200);
-      expect(provider.buscar('nada'), isNull);
-      expect(provider.porCobrarCargadoCentavos, 2840);
+      expect(repo.escuchasResumen, ['2026-11-05']);
+      expect(repo.resumenesActivos, 1);
+      expect(provider.resumenHoy.entregados, 0);
     });
+
+    test('lo que llega queda en resumenHoy con su ticket', () async {
+      provider.iniciar();
+      repo.emitirResumen(
+        const ResumenVentasDia(
+          dia: '2026-11-05',
+          ventasCentavos: 21460,
+          entregados: 9,
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(provider.resumenHoy.ventasCentavos, 21460);
+      expect(provider.resumenHoy.ticketCentavos, 2384);
+    });
+
+    test('pausar cierra el resumen y reanudar lo reabre', () async {
+      provider.iniciar();
+      await Future<void>.delayed(Duration.zero);
+
+      provider.pausar();
+      await Future<void>.delayed(Duration.zero);
+      expect(repo.resumenesActivos, 0);
+
+      provider.reanudar();
+      await Future<void>.delayed(Duration.zero);
+      expect(repo.resumenesActivos, 1);
+    });
+
+    test('pasada la medianoche pasa a escuchar el día nuevo', () async {
+      var ahora = DateTime.utc(2026, 11, 6, 4, 50); // 23:50 del 5 en Lima
+      provider = crear(reloj: () => ahora);
+      provider.iniciar();
+      await Future<void>.delayed(Duration.zero);
+      expect(repo.escuchasResumen, ['2026-11-05']);
+
+      provider.revisarDia();
+      expect(repo.escuchasResumen, ['2026-11-05'], reason: 'mismo día: nada');
+
+      ahora = DateTime.utc(2026, 11, 6, 5, 10); // 00:10 del 6 en Lima
+      provider.revisarDia();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(repo.escuchasResumen, ['2026-11-05', '2026-11-06']);
+      expect(repo.resumenesActivos, 1);
+    });
+
+    test('si el resumen falla, los pedidos siguen sin error', () async {
+      repo.fallaAlEscucharResumen = StateError('sin permiso');
+
+      provider.iniciar();
+      repo.emitir(_nuevos, [_p('a')]);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(provider.error, isNull);
+      expect(provider.pedidosDe(PestanaPedidos.nuevos).single.id, 'a');
+      expect(provider.resumenHoy.entregados, 0);
+    });
+
+    test('dispose cierra el resumen', () async {
+      provider.iniciar();
+      await Future<void>.delayed(Duration.zero);
+
+      provider.dispose();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(repo.resumenesActivos, 0);
+      provider = crear();
+    });
+  });
+
+  group('buscar y por cobrar', () {
+    test(
+      'busca en cualquier pestaña y suma solo lo pendiente de cobro',
+      () async {
+        provider.iniciar();
+        repo.emitir(_nuevos, [
+          _p('a', total: 1840),
+          _p('b', hora: 11, total: 1000),
+        ]);
+        repo.emitir(_activos, [
+          pedidoDe(
+            [lineaSimple()],
+            id: 'c',
+            estado: EstadoPedido.confirmado,
+            pago: EstadoPago.pagado,
+            totalCentavos: 3200,
+            fecha: DateTime.utc(2026, 11, 5, 9),
+          ),
+        ]);
+        await Future<void>.delayed(Duration.zero);
+
+        expect(provider.buscar('c')!.totalCentavos, 3200);
+        expect(provider.buscar('nada'), isNull);
+        expect(provider.porCobrarCargadoCentavos, 2840);
+      },
+    );
   });
 
   group('Ver más', () {
