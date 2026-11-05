@@ -47,12 +47,13 @@ class ResultadoConfirmar {
 /// Acceso a los pedidos de un negocio. La implementación vive en `data/`.
 abstract class RepositorioPedidos {
   /// Escucha los [limite] pedidos abiertos más nuevos, del más nuevo al más
-  /// viejo. Con [estado] solo ese estado (una pestaña); sin él, todos los
-  /// abiertos (nuevo, confirmado, en camino, listo). 1 listener acotado.
-  /// Lanza [ArgumentError] si [estado] no es abierto.
+  /// viejo. Con [estados] solo esos (una pestaña: Nuevos, o Activos =
+  /// confirmado, en camino y listo); sin ellos, todos los abiertos.
+  /// 1 listener acotado.
+  /// Lanza [ArgumentError] si [estados] está vacío o incluye uno cerrado.
   Stream<List<Pedido>> escucharAbiertos(
     String negocioId, {
-    EstadoPedido? estado,
+    Set<EstadoPedido>? estados,
     int limite = 10,
   });
 
@@ -63,7 +64,7 @@ abstract class RepositorioPedidos {
   Future<PaginaPedidos> obtenerAbiertosDespuesDe(
     String negocioId,
     Pedido despuesDe, {
-    EstadoPedido? estado,
+    Set<EstadoPedido>? estados,
     int limite = 10,
   });
 

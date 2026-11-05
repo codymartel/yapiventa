@@ -64,28 +64,34 @@ class PedidosRepository implements RepositorioPedidos {
     return PedidoMapper.desdeFirestore(doc.id, doc.data() ?? const {});
   }
 
-  /// Abiertos (todos, o solo [estado]) del más nuevo al más viejo.
+  /// Abiertos (todos, o solo [estados]) del más nuevo al más viejo.
   Query<Map<String, dynamic>> _consultaAbiertos(
     String negocioId,
-    EstadoPedido? estado,
+    Set<EstadoPedido>? estados,
   ) {
-    if (estado != null && !estado.abierto) {
-      throw ArgumentError.value(estado, 'estado', 'No es un estado abierto.');
+    if (estados != null &&
+        (estados.isEmpty || estados.any((e) => !e.abierto))) {
+      throw ArgumentError.value(
+        estados,
+        'estados',
+        'Debe tener solo estados abiertos.',
+      );
     }
-    final base = _pedidos(negocioId);
-    final filtrada = estado == null
-        ? base.where('estado', whereIn: _abiertos)
-        : base.where('estado', isEqualTo: estado.valor);
-    return filtrada.orderBy('fecha', descending: true);
+    final valores = estados == null
+        ? _abiertos
+        : [for (final e in estados) e.valor];
+    return _pedidos(
+      negocioId,
+    ).where('estado', whereIn: valores).orderBy('fecha', descending: true);
   }
 
   @override
   Stream<List<Pedido>> escucharAbiertos(
     String negocioId, {
-    EstadoPedido? estado,
+    Set<EstadoPedido>? estados,
     int limite = 10,
   }) {
-    return _consultaAbiertos(negocioId, estado)
+    return _consultaAbiertos(negocioId, estados)
         .limit(limite)
         .snapshots()
         .map((consulta) => consulta.docs.map(_pedido).toList());
@@ -95,7 +101,7 @@ class PedidosRepository implements RepositorioPedidos {
   Future<PaginaPedidos> obtenerAbiertosDespuesDe(
     String negocioId,
     Pedido despuesDe, {
-    EstadoPedido? estado,
+    Set<EstadoPedido>? estados,
     int limite = 10,
   }) async {
     final fecha = despuesDe.fecha;
@@ -105,7 +111,7 @@ class PedidosRepository implements RepositorioPedidos {
     // Un documento de más solo para saber si existe otra página.
     final resultado = await _consultaAbiertos(
       negocioId,
-      estado,
+      estados,
     ).startAfter([Timestamp.fromDate(fecha)]).limit(limite + 1).get();
     return PaginaPedidos(
       pedidos: resultado.docs.take(limite).map(_pedido).toList(),

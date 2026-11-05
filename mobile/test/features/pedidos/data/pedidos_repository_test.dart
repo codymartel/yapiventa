@@ -154,16 +154,55 @@ void main() {
         await pedidos().doc('c').set(_pedido(estado: 'confirmado'));
 
         final nuevos = await repo
-            .escucharAbiertos(_negocio, estado: EstadoPedido.nuevo)
+            .escucharAbiertos(_negocio, estados: {EstadoPedido.nuevo})
             .first;
 
         expect(nuevos.map((p) => p.id), ['b', 'a']);
       },
     );
 
+    test('Activos junta confirmado, en camino y listo, sin nuevos', () async {
+      await pedidos().doc('n').set(_pedido());
+      await pedidos()
+          .doc('c')
+          .set(
+            _pedido(estado: 'confirmado', fecha: DateTime.utc(2026, 11, 5, 14)),
+          );
+      await pedidos()
+          .doc('e')
+          .set(
+            _pedido(estado: 'en_camino', fecha: DateTime.utc(2026, 11, 5, 15)),
+          );
+      await pedidos()
+          .doc('l')
+          .set(_pedido(estado: 'listo', fecha: DateTime.utc(2026, 11, 5, 13)));
+      await pedidos().doc('x').set(_pedido(estado: 'entregado'));
+
+      final activos = await repo
+          .escucharAbiertos(
+            _negocio,
+            estados: {
+              EstadoPedido.confirmado,
+              EstadoPedido.enCamino,
+              EstadoPedido.listo,
+            },
+          )
+          .first;
+
+      expect(activos.map((p) => p.id), ['e', 'c', 'l']);
+    });
+
+    test('un conjunto vacío tampoco es una pestaña', () {
+      expect(
+        () => repo.escucharAbiertos(_negocio, estados: <EstadoPedido>{}),
+        throwsArgumentError,
+      );
+    });
+
     test('un estado cerrado no es una pestaña de abiertos', () {
       expect(
-        () => repo.escucharAbiertos(_negocio, estado: EstadoPedido.entregado),
+        () =>
+            repo.escucharAbiertos(_negocio, estados: {EstadoPedido.entregado}),
         throwsArgumentError,
       );
     });
@@ -190,12 +229,12 @@ void main() {
             );
 
         final vistos = await repo
-            .escucharAbiertos(_negocio, estado: EstadoPedido.nuevo)
+            .escucharAbiertos(_negocio, estados: {EstadoPedido.nuevo})
             .first;
         final segunda = await repo.obtenerAbiertosDespuesDe(
           _negocio,
           vistos.last,
-          estado: EstadoPedido.nuevo,
+          estados: {EstadoPedido.nuevo},
         );
 
         expect(vistos.map((p) => p.id), [for (var i = 12; i >= 3; i--) 'n$i']);

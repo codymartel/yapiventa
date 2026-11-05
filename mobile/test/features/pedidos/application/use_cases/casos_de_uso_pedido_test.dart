@@ -10,108 +10,14 @@ import 'package:mobile/features/pedidos/domain/models/pedido.dart';
 import 'package:mobile/features/pedidos/domain/repositories/repositorio_pedidos.dart';
 
 import '../../helpers/pedidos_de_prueba.dart';
+import '../../helpers/repositorio_pedidos_fake.dart';
 
 const _negocio = 'n1';
 
-/// Repositorio falso: anota las llamadas y falla donde se le pide.
-class _RepositorioPedidosFake implements RepositorioPedidos {
-  final llamadas = <String>[];
-  Pedido? ultimoAvanzado;
-  EstadoPedido? estadoAvanzado;
-  EstadoPago? pagoAvanzado;
-  DateTime? corteVencidos;
-
-  ResultadoConfirmar resultadoConfirmar = const ResultadoConfirmar();
-  int omitidosAlCancelar = 0;
-  List<Pedido> vencidos = const [];
-
-  /// Qué pasa al cancelar cada id: lo que se lance, o nada si no está.
-  final Map<String, Object> falloAlCancelar = {};
-
-  @override
-  Future<ResultadoConfirmar> confirmar(
-    String negocioId,
-    String pedidoId,
-  ) async {
-    llamadas.add('confirmar:$pedidoId');
-    return resultadoConfirmar;
-  }
-
-  @override
-  Future<int> cancelar(
-    String negocioId,
-    String pedidoId, {
-    bool soloSiEstaNuevo = false,
-  }) async {
-    llamadas.add('cancelar:$pedidoId:$soloSiEstaNuevo');
-    final fallo = falloAlCancelar[pedidoId];
-    if (fallo != null) throw fallo;
-    return omitidosAlCancelar;
-  }
-
-  @override
-  Future<void> avanzar(
-    String negocioId,
-    String pedidoId,
-    EstadoPedido nuevo, {
-    EstadoPago? pago,
-  }) async {
-    llamadas.add('avanzar:$pedidoId');
-    estadoAvanzado = nuevo;
-    pagoAvanzado = pago;
-  }
-
-  @override
-  Future<void> marcarPago(
-    String negocioId,
-    String pedidoId,
-    EstadoPago pago,
-  ) async {
-    llamadas.add('pago:$pedidoId:${pago.valor}');
-  }
-
-  @override
-  Future<void> marcarReembolsoHecho(String negocioId, String pedidoId) async {
-    llamadas.add('reembolso:$pedidoId');
-  }
-
-  @override
-  Future<List<Pedido>> obtenerVencidos(
-    String negocioId, {
-    required DateTime antesDe,
-    int limite = 10,
-  }) async {
-    corteVencidos = antesDe;
-    return vencidos;
-  }
-
-  @override
-  Stream<List<Pedido>> escucharAbiertos(
-    String negocioId, {
-    EstadoPedido? estado,
-    int limite = 10,
-  }) => throw UnimplementedError();
-
-  @override
-  Future<PaginaPedidos> obtenerAbiertosDespuesDe(
-    String negocioId,
-    Pedido despuesDe, {
-    EstadoPedido? estado,
-    int limite = 10,
-  }) => throw UnimplementedError();
-
-  @override
-  Future<PaginaPedidos> obtenerHistorial(
-    String negocioId, {
-    CursorPedidos? despuesDe,
-    int limite = 20,
-  }) => throw UnimplementedError();
-}
-
 void main() {
-  late _RepositorioPedidosFake repo;
+  late RepositorioPedidosFake repo;
 
-  setUp(() => repo = _RepositorioPedidosFake());
+  setUp(() => repo = RepositorioPedidosFake());
 
   group('ConfirmarPedido', () {
     test('devuelve el resultado del repositorio, con lo que falta', () async {
@@ -293,10 +199,10 @@ void main() {
     });
 
     test('cancela cada vencido solo si sigue nuevo', () async {
-      repo.vencidos = [
+      repo.tandasVencidos.add([
         pedidoDe([lineaSimple()], id: 'a'),
         pedidoDe([lineaSimple()], id: 'b'),
-      ];
+      ]);
 
       final r = await cancelar();
 
@@ -315,11 +221,11 @@ void main() {
     });
 
     test('uno ya confirmado se omite y sigue con el resto', () async {
-      repo.vencidos = [
+      repo.tandasVencidos.add([
         pedidoDe([lineaSimple()], id: 'a'),
         pedidoDe([lineaSimple()], id: 'b'),
         pedidoDe([lineaSimple()], id: 'c'),
-      ];
+      ]);
       repo.falloAlCancelar['b'] = StateError('ya no está nuevo');
 
       final r = await cancelar();
@@ -330,10 +236,10 @@ void main() {
     });
 
     test('un fallo de otra causa se cuenta y no detiene a los demás', () async {
-      repo.vencidos = [
+      repo.tandasVencidos.add([
         pedidoDe([lineaSimple()], id: 'a'),
         pedidoDe([lineaSimple()], id: 'b'),
-      ];
+      ]);
       repo.falloAlCancelar['a'] = Exception('sin conexión');
 
       final r = await cancelar();
@@ -344,10 +250,10 @@ void main() {
     });
 
     test('una tanda completa avisa que puede haber más', () async {
-      repo.vencidos = [
+      repo.tandasVencidos.add([
         pedidoDe([lineaSimple()], id: 'a'),
         pedidoDe([lineaSimple()], id: 'b'),
-      ];
+      ]);
 
       final r = await cancelar(limite: 2);
 
