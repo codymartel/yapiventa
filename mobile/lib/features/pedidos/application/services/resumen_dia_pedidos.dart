@@ -40,6 +40,32 @@ abstract final class ResumenDiaPedidos {
     return '${lima.year}-$mes-$dia';
   }
 
+  static const List<String> _meses = [
+    'ene',
+    'feb',
+    'mar',
+    'abr',
+    'may',
+    'jun',
+    'jul',
+    'ago',
+    'sep',
+    'oct',
+    'nov',
+    'dic',
+  ];
+
+  /// «2026-11-05» → «5 nov 2026». Si la clave no tiene esa forma, se devuelve
+  /// tal cual.
+  static String etiquetaDia(String clave) {
+    final partes = clave.split('-');
+    if (partes.length != 3) return clave;
+    final mes = int.tryParse(partes[1]);
+    final dia = int.tryParse(partes[2]);
+    if (mes == null || dia == null || mes < 1 || mes > 12) return clave;
+    return '$dia ${_meses[mes - 1]} ${partes[0]}';
+  }
+
   /// Días del más nuevo al más viejo. Los pedidos sin fecha se omiten.
   static List<ResumenDia> agrupar(List<Pedido> pedidos) {
     final porDia = <String, List<Pedido>>{};

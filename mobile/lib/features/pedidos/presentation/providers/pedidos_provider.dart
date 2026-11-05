@@ -133,6 +133,30 @@ class PedidosProvider extends ChangeNotifier {
         .length;
   }
 
+  /// El pedido con ese id en cualquiera de las pestañas cargadas, o null.
+  Pedido? buscar(String pedidoId) {
+    for (final lista in _listas.values) {
+      for (final pedido in lista.pedidos) {
+        if (pedido.id == pedidoId) return pedido;
+      }
+    }
+    return null;
+  }
+
+  /// Lo que falta cobrar entre los pedidos YA cargados (Nuevos y Activos), en
+  /// céntimos. No es el total del negocio: solo lo cargado, sin lecturas extra.
+  int get porCobrarCargadoCentavos {
+    var suma = 0;
+    for (final lista in _listas.values) {
+      for (final pedido in lista.pedidos) {
+        if (pedido.estadoPago == EstadoPago.pendiente) {
+          suma += pedido.totalCentavos;
+        }
+      }
+    }
+    return suma;
+  }
+
   void seleccionarPestana(PestanaPedidos p) {
     if (_pestana == p) return;
     _pestana = p;

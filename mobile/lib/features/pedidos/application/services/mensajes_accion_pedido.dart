@@ -9,10 +9,12 @@ import '../use_cases/cancelar_vencidos.dart';
 // del negocio y se muestran como texto plano: nunca se interpretan.
 // ═════════════════════════════════════════════════════════════════════════
 abstract final class MensajesAccionPedido {
-  /// 1840 → «S/ 18,40».
-  static String dinero(int centavos) {
+  /// 1840 → «18,40». Sin símbolo: la moneda depende del país del negocio
+  /// (paso «País y moneda», pendiente). Con [simbolo] → «S/ 18,40».
+  static String dinero(int centavos, {String simbolo = ''}) {
     final decimal = (centavos % 100).toString().padLeft(2, '0');
-    return 'S/ ${centavos ~/ 100},$decimal';
+    final numero = '${centavos ~/ 100},$decimal';
+    return simbolo.isEmpty ? numero : '$simbolo $numero';
   }
 
   /// Por qué NO se pudo confirmar (no se descontó nada).

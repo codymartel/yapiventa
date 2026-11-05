@@ -227,6 +227,28 @@ void main() {
     });
   });
 
+  group('buscar y por cobrar', () {
+    test('busca en cualquier pestaña y suma solo lo pendiente de cobro', () async {
+      provider.iniciar();
+      repo.emitir(_nuevos, [_p('a', total: 1840), _p('b', hora: 11, total: 1000)]);
+      repo.emitir(_activos, [
+        pedidoDe(
+          [lineaSimple()],
+          id: 'c',
+          estado: EstadoPedido.confirmado,
+          pago: EstadoPago.pagado,
+          totalCentavos: 3200,
+          fecha: DateTime.utc(2026, 11, 5, 9),
+        ),
+      ]);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(provider.buscar('c')!.totalCentavos, 3200);
+      expect(provider.buscar('nada'), isNull);
+      expect(provider.porCobrarCargadoCentavos, 2840);
+    });
+  });
+
   group('Ver más', () {
     Future<void> conCabezaCompleta() async {
       provider = crear(tamano: 2);
@@ -347,8 +369,8 @@ void main() {
       final r = await provider.confirmar(_p('a', total: 1840));
 
       expect(r.tipo, TipoResultado.aviso);
-      expect(r.mensaje, contains('S/ 19,40'));
-      expect(r.mensaje, contains('S/ 18,40'));
+      expect(r.mensaje, contains('19,40'));
+      expect(r.mensaje, contains('18,40'));
     });
 
     test('confirmar uno que otro vendedor ya tocó lo dice', () async {

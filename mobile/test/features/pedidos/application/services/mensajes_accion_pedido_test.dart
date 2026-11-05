@@ -7,10 +7,10 @@ import 'package:mobile/features/pedidos/domain/repositories/repositorio_pedidos.
 void main() {
   group('dinero', () {
     test('formatea céntimos enteros con coma', () {
-      expect(MensajesAccionPedido.dinero(1840), 'S/ 18,40');
-      expect(MensajesAccionPedido.dinero(805), 'S/ 8,05');
-      expect(MensajesAccionPedido.dinero(0), 'S/ 0,00');
-      expect(MensajesAccionPedido.dinero(99), 'S/ 0,99');
+      expect(MensajesAccionPedido.dinero(1840), '18,40');
+      expect(MensajesAccionPedido.dinero(805), '8,05');
+      expect(MensajesAccionPedido.dinero(0), '0,00');
+      expect(MensajesAccionPedido.dinero(99), '0,99');
     });
   });
 
@@ -80,8 +80,8 @@ void main() {
 
       expect(
         texto,
-        'Pedido confirmado. Con los precios de hoy el total sería S/ 19,40; '
-        'el cliente vio S/ 18,40 (cambió: Gaseosa Inca).',
+        'Pedido confirmado. Con los precios de hoy el total sería 19,40; '
+        'el cliente vio 18,40 (cambió: Gaseosa Inca).',
       );
     });
   });
