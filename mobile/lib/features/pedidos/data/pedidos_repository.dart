@@ -64,14 +64,69 @@ class PedidosRepository implements RepositorioPedidos {
     return PedidoMapper.desdeFirestore(doc.id, doc.data() ?? const {});
   }
 
+  /// Abiertos (todos, o solo [estado]) del más nuevo al más viejo.
+  Query<Map<String, dynamic>> _consultaAbiertos(
+    String negocioId,
+    EstadoPedido? estado,
+  ) {
+    if (estado != null && !estado.abierto) {
+      throw ArgumentError.value(estado, 'estado', 'No es un estado abierto.');
+    }
+    final base = _pedidos(negocioId);
+    final filtrada = estado == null
+        ? base.where('estado', whereIn: _abiertos)
+        : base.where('estado', isEqualTo: estado.valor);
+    return filtrada.orderBy('fecha', descending: true);
+  }
+
   @override
-  Stream<List<Pedido>> escucharAbiertos(String negocioId, {int limite = 50}) {
-    return _pedidos(negocioId)
-        .where('estado', whereIn: _abiertos)
-        .orderBy('fecha', descending: true)
+  Stream<List<Pedido>> escucharAbiertos(
+    String negocioId, {
+    EstadoPedido? estado,
+    int limite = 10,
+  }) {
+    return _consultaAbiertos(negocioId, estado)
         .limit(limite)
         .snapshots()
         .map((consulta) => consulta.docs.map(_pedido).toList());
+  }
+
+  @override
+  Future<PaginaPedidos> obtenerAbiertosDespuesDe(
+    String negocioId,
+    Pedido despuesDe, {
+    EstadoPedido? estado,
+    int limite = 10,
+  }) async {
+    final fecha = despuesDe.fecha;
+    if (fecha == null) {
+      throw ArgumentError.value(despuesDe, 'despuesDe', 'No tiene fecha.');
+    }
+    // Un documento de más solo para saber si existe otra página.
+    final resultado = await _consultaAbiertos(
+      negocioId,
+      estado,
+    ).startAfter([Timestamp.fromDate(fecha)]).limit(limite + 1).get();
+    return PaginaPedidos(
+      pedidos: resultado.docs.take(limite).map(_pedido).toList(),
+      ultimoCursor: null,
+      hayMas: resultado.docs.length > limite,
+    );
+  }
+
+  @override
+  Future<List<Pedido>> obtenerVencidos(
+    String negocioId, {
+    required DateTime antesDe,
+    int limite = 10,
+  }) async {
+    final resultado = await _pedidos(negocioId)
+        .where('estado', isEqualTo: EstadoPedido.nuevo.valor)
+        .where('fecha', isLessThan: Timestamp.fromDate(antesDe))
+        .orderBy('fecha', descending: true)
+        .limit(limite)
+        .get();
+    return resultado.docs.map(_pedido).toList();
   }
 
   @override
@@ -165,12 +220,19 @@ class PedidosRepository implements RepositorioPedidos {
   }
 
   @override
-  Future<int> cancelar(String negocioId, String pedidoId) {
+  Future<int> cancelar(
+    String negocioId,
+    String pedidoId, {
+    bool soloSiEstaNuevo = false,
+  }) {
     final ref = _pedidos(negocioId).doc(pedidoId);
     return _db.runTransaction((tx) async {
       final pedido = await _leerPedido(tx, ref);
       if (!TransicionesPedido.puedeCancelar(pedido.estado)) {
         throw StateError('El pedido ya no se puede cancelar.');
+      }
+      if (soloSiEstaNuevo && pedido.estado != EstadoPedido.nuevo) {
+        throw StateError('El pedido ya no está nuevo.');
       }
 
       // Se devuelve lo guardado en el pedido (no se recalcula). Un pedido
@@ -212,7 +274,12 @@ class PedidosRepository implements RepositorioPedidos {
   }
 
   @override
-  Future<void> avanzar(String negocioId, String pedidoId, EstadoPedido nuevo) {
+  Future<void> avanzar(
+    String negocioId,
+    String pedidoId,
+    EstadoPedido nuevo, {
+    EstadoPago? pago,
+  }) {
     if (nuevo == EstadoPedido.confirmado) {
       throw ArgumentError('Confirmar mueve stock: usa confirmar().');
     }
@@ -230,6 +297,7 @@ class PedidosRepository implements RepositorioPedidos {
       }
       tx.update(ref, {
         'estado': nuevo.valor,
+        'estadoPago': ?pago?.valor,
         'historial': _historialCon(pedido, nuevo),
         'actualizadoEn': FieldValue.serverTimestamp(),
       });

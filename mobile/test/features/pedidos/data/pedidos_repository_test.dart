@@ -129,6 +129,149 @@ void main() {
       expect(lista, hasLength(3));
     });
 
+    test('por defecto trae solo 10 abiertos', () async {
+      for (var i = 0; i < 12; i++) {
+        await pedidos()
+            .doc('p$i')
+            .set(_pedido(fecha: DateTime.utc(2026, 11, 5, 1, i)));
+      }
+
+      final lista = await repo.escucharAbiertos(_negocio).first;
+
+      expect(lista, hasLength(10));
+      expect(lista.first.id, 'p11');
+    });
+
+    test(
+      'con estado trae solo ese estado, del más nuevo al más viejo',
+      () async {
+        await pedidos()
+            .doc('a')
+            .set(_pedido(fecha: DateTime.utc(2026, 11, 5, 15)));
+        await pedidos()
+            .doc('b')
+            .set(_pedido(fecha: DateTime.utc(2026, 11, 5, 16)));
+        await pedidos().doc('c').set(_pedido(estado: 'confirmado'));
+
+        final nuevos = await repo
+            .escucharAbiertos(_negocio, estado: EstadoPedido.nuevo)
+            .first;
+
+        expect(nuevos.map((p) => p.id), ['b', 'a']);
+      },
+    );
+
+    test('un estado cerrado no es una pestaña de abiertos', () {
+      expect(
+        () => repo.escucharAbiertos(_negocio, estado: EstadoPedido.entregado),
+        throwsArgumentError,
+      );
+    });
+
+    // fake_cloud_firestore 3.1.0 ignora el orden descendente en startAfter
+    // (devuelve vacío). Contra el emulador real de Firestore (2026-11-05) la
+    // misma consulta devuelve los más viejos, como se espera.
+    const fakeSinCursorDescendente =
+        'fake_cloud_firestore no soporta startAfter con orden descendente';
+
+    test(
+      '«Ver más» trae los 10 siguientes de ese estado',
+      skip: fakeSinCursorDescendente,
+      () async {
+        for (var i = 0; i < 13; i++) {
+          await pedidos()
+              .doc('n$i')
+              .set(_pedido(fecha: DateTime.utc(2026, 11, 5, 1, i)));
+        }
+        await pedidos()
+            .doc('otro')
+            .set(
+              _pedido(estado: 'confirmado', fecha: DateTime.utc(2026, 11, 1)),
+            );
+
+        final vistos = await repo
+            .escucharAbiertos(_negocio, estado: EstadoPedido.nuevo)
+            .first;
+        final segunda = await repo.obtenerAbiertosDespuesDe(
+          _negocio,
+          vistos.last,
+          estado: EstadoPedido.nuevo,
+        );
+
+        expect(vistos.map((p) => p.id), [for (var i = 12; i >= 3; i--) 'n$i']);
+        expect(segunda.pedidos.map((p) => p.id), ['n2', 'n1', 'n0']);
+        expect(segunda.hayMas, isFalse);
+      },
+    );
+
+    test(
+      '«Ver más» dice si todavía hay otra página',
+      skip: fakeSinCursorDescendente,
+      () async {
+        for (var i = 0; i < 5; i++) {
+          await pedidos()
+              .doc('n$i')
+              .set(_pedido(fecha: DateTime.utc(2026, 11, 5, 1, i)));
+        }
+        final cabeza =
+            (await repo.escucharAbiertos(_negocio, limite: 1).first).single;
+
+        final pagina = await repo.obtenerAbiertosDespuesDe(
+          _negocio,
+          cabeza,
+          limite: 2,
+        );
+
+        expect(pagina.pedidos.map((p) => p.id), ['n3', 'n2']);
+        expect(pagina.hayMas, isTrue);
+      },
+    );
+
+    test('«Ver más» pide un pedido con fecha', () {
+      expect(
+        () => repo.obtenerAbiertosDespuesDe(_negocio, pedidoDe(const [])),
+        throwsArgumentError,
+      );
+    });
+
+    test('vencidos: solo los nuevos anteriores al corte', () async {
+      await pedidos()
+          .doc('viejo')
+          .set(_pedido(fecha: DateTime.utc(2026, 11, 4, 20)));
+      await pedidos()
+          .doc('mas-viejo')
+          .set(_pedido(fecha: DateTime.utc(2026, 11, 4, 10)));
+      await pedidos()
+          .doc('reciente')
+          .set(_pedido(fecha: DateTime.utc(2026, 11, 5, 10)));
+      await pedidos()
+          .doc('confirmado')
+          .set(_pedido(estado: 'confirmado', fecha: DateTime.utc(2026, 11, 4)));
+
+      final lista = await repo.obtenerVencidos(
+        _negocio,
+        antesDe: DateTime.utc(2026, 11, 5, 5),
+      );
+
+      expect(lista.map((p) => p.id), ['viejo', 'mas-viejo']);
+    });
+
+    test('vencidos respeta el límite', () async {
+      for (var i = 0; i < 4; i++) {
+        await pedidos()
+            .doc('v$i')
+            .set(_pedido(fecha: DateTime.utc(2026, 11, 1, i)));
+      }
+
+      final lista = await repo.obtenerVencidos(
+        _negocio,
+        antesDe: DateTime.utc(2026, 11, 5),
+        limite: 3,
+      );
+
+      expect(lista, hasLength(3));
+    });
+
     test('el historial pagina de a poco y dice si hay más', () async {
       for (var i = 0; i < 5; i++) {
         await pedidos()
@@ -349,6 +492,25 @@ void main() {
     });
 
     test(
+      'soloSiEstaNuevo no cancela uno ya confirmado ni toca su stock',
+      () async {
+        await pedidos().doc('p1').set(_pedido());
+        await pedidos().doc('p2').set(_pedido());
+        await repo.confirmar(_negocio, 'p1');
+
+        await repo.cancelar(_negocio, 'p2', soloSiEstaNuevo: true);
+
+        expect((await leerPedido('p2'))['estado'], 'cancelado');
+        expect(
+          () => repo.cancelar(_negocio, 'p1', soloSiEstaNuevo: true),
+          throwsStateError,
+        );
+        expect((await leerPedido('p1'))['estado'], 'confirmado');
+        expect((await leerProducto('gaseosa'))!.stock, 8);
+      },
+    );
+
+    test(
       'ya no se cancela un entregado, un cancelado ni uno que no existe',
       () async {
         await pedidos().doc('e').set(_pedido(estado: 'entregado'));
@@ -375,6 +537,29 @@ void main() {
         expect(doc['historial'], hasLength(2));
       },
     );
+
+    test('entregar y cobrar cambia estado y pago a la vez', () async {
+      await pedidos().doc('p1').set(_pedido(estado: 'en_camino'));
+
+      await repo.avanzar(
+        _negocio,
+        'p1',
+        EstadoPedido.entregado,
+        pago: EstadoPago.pagado,
+      );
+
+      final doc = await leerPedido('p1');
+      expect(doc['estado'], 'entregado');
+      expect(doc['estadoPago'], 'pagado');
+    });
+
+    test('entregar sin pago no cambia el pago', () async {
+      await pedidos().doc('p1').set(_pedido(estado: 'en_camino'));
+
+      await repo.avanzar(_negocio, 'p1', EstadoPedido.entregado);
+
+      expect((await leerPedido('p1'))['estadoPago'], 'pendiente');
+    });
 
     test('no se saltan pasos ni se confirma por aquí', () async {
       await pedidos().doc('p1').set(_pedido(estado: 'confirmado'));

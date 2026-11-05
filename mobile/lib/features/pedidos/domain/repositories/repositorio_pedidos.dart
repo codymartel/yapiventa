@@ -46,9 +46,34 @@ class ResultadoConfirmar {
 
 /// Acceso a los pedidos de un negocio. La implementación vive en `data/`.
 abstract class RepositorioPedidos {
-  /// Escucha los pedidos abiertos (nuevo, confirmado, en camino, listo),
-  /// del más nuevo al más viejo. 1 listener acotado a [limite] documentos.
-  Stream<List<Pedido>> escucharAbiertos(String negocioId, {int limite = 50});
+  /// Escucha los [limite] pedidos abiertos más nuevos, del más nuevo al más
+  /// viejo. Con [estado] solo ese estado (una pestaña); sin él, todos los
+  /// abiertos (nuevo, confirmado, en camino, listo). 1 listener acotado.
+  /// Lanza [ArgumentError] si [estado] no es abierto.
+  Stream<List<Pedido>> escucharAbiertos(
+    String negocioId, {
+    EstadoPedido? estado,
+    int limite = 10,
+  });
+
+  /// «Ver más»: los siguientes [limite] abiertos, más viejos que [despuesDe]
+  /// (el último de la lista que se ve). Una lectura puntual, no en vivo.
+  /// [PaginaPedidos.ultimoCursor] va siempre null: la siguiente página se pide
+  /// con el último pedido de esta.
+  Future<PaginaPedidos> obtenerAbiertosDespuesDe(
+    String negocioId,
+    Pedido despuesDe, {
+    EstadoPedido? estado,
+    int limite = 10,
+  });
+
+  /// Pedidos nuevos que llegaron antes de [antesDe] (vencidos), hasta
+  /// [limite]. Una lectura puntual.
+  Future<List<Pedido>> obtenerVencidos(
+    String negocioId, {
+    required DateTime antesDe,
+    int limite = 10,
+  });
 
   /// Historial (entregados y cancelados) por páginas, solo cuando se abre.
   Future<PaginaPedidos> obtenerHistorial(
@@ -64,11 +89,22 @@ abstract class RepositorioPedidos {
   /// Transacción: cancela y devuelve al stock lo que se había descontado.
   /// Si el pedido ya estaba pagado queda con el reembolso pendiente.
   /// Devuelve cuántas líneas no se pudieron devolver (producto borrado).
-  /// Lanza [StateError] si el pedido ya no se puede cancelar.
-  Future<int> cancelar(String negocioId, String pedidoId);
+  /// Lanza [StateError] si el pedido ya no se puede cancelar o, con
+  /// [soloSiEstaNuevo], si ya no está nuevo (otro vendedor lo confirmó).
+  Future<int> cancelar(
+    String negocioId,
+    String pedidoId, {
+    bool soloSiEstaNuevo = false,
+  });
 
-  /// Cambia al estado siguiente (en camino, listo, entregado).
-  Future<void> avanzar(String negocioId, String pedidoId, EstadoPedido nuevo);
+  /// Cambia al estado siguiente (en camino, listo, entregado). Con [pago]
+  /// marca también el pago en la misma transacción (entregar y cobrar).
+  Future<void> avanzar(
+    String negocioId,
+    String pedidoId,
+    EstadoPedido nuevo, {
+    EstadoPago? pago,
+  });
 
   Future<void> marcarPago(String negocioId, String pedidoId, EstadoPago pago);
 
