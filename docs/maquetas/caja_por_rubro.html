@@ -1,0 +1,1209 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YapiVenta · Caja por rubro</title>
+<style>
+:root{--fondo:#070C18;--sup:#0D1526;--card:#111D33;--texto:#E8EDF5;--muted:#9AA9C2;--hint:#8191AA;--dim:#2A3A55;--azul:#3D72D4;--azb:#2457B3;--precio:#8AB2FF;--borde:rgba(61,114,212,.30);--sutil:rgba(61,114,212,.14);--warn:#FBBF24;--ok:#4ADE80;--err:#F87171;--out:#938F99}
+*{box-sizing:border-box}
+body{margin:0;background:#04070f;color:var(--texto);font:14px/1.4 system-ui,Roboto,sans-serif;padding:24px 16px 56px}
+h1{font-size:22px;margin:0 0 4px}
+h2{font-size:16px;margin:36px 0 4px;color:var(--precio)}
+p.s{color:var(--muted);margin:0 0 12px;max-width:980px}
+.fila{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start}
+.cap{font-size:12px;color:var(--muted);max-width:390px;margin-top:8px;line-height:1.5}
+.cap b{color:var(--texto)}
+.tel{width:390px;height:780px;background:var(--fondo);border:1px solid #1d2a44;border-radius:22px;overflow:hidden;position:relative;display:flex;flex-direction:column}
+.pc{width:1180px;height:700px;background:var(--fondo);border:1px solid #1d2a44;border-radius:14px;overflow:hidden;display:flex}
+.i{width:1em;height:1em;vertical-align:-.13em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.bar{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--sup);border-bottom:1px solid var(--dim);min-height:56px}
+.tt{font-weight:700;font-size:17px}
+.live{margin-left:auto;color:var(--ok);font-size:12px;font-weight:600}
+.cuerpo{flex:1;overflow:hidden;padding:12px 16px;display:flex;flex-direction:column;gap:12px}
+.met{display:flex;gap:8px}
+.met div{flex:1;background:var(--card);border:1px solid var(--borde);border-radius:12px;padding:8px 10px;font-size:11px;color:var(--muted)}
+.met b{display:block;font-size:19px;color:var(--texto);font-variant-numeric:tabular-nums}
+.met small{display:block;font-size:11px;color:var(--hint)}
+.tabs{display:flex;gap:6px;white-space:nowrap}
+.tab{border-radius:999px;padding:0 14px;background:var(--card);color:var(--muted);font-size:13px;min-height:40px;display:flex;align-items:center;gap:6px}
+.tab.on{background:var(--azb);color:#fff;font-weight:600}
+.card{background:var(--card);border:1px solid var(--borde);border-radius:14px;padding:12px}
+.sec{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:0 0 6px}
+.lin{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid rgba(42,58,85,.6)}
+.lin:last-of-type{border-bottom:0}
+.lin .n{flex:1;min-width:0}
+.lin .n b{display:block;font-weight:600}
+.lin .n small{color:var(--muted);font-size:12px}
+.lin .r{font-weight:700;color:var(--precio);min-width:56px;text-align:right;font-variant-numeric:tabular-nums}
+.step{display:flex;align-items:center;gap:2px;background:var(--fondo);border-radius:999px;padding:2px}
+.step span{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--precio);font-size:16px}
+.step em{font-style:normal;min-width:44px;text-align:center;font-weight:700;font-variant-numeric:tabular-nums}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;min-height:48px;border-radius:999px;font-weight:700;padding:0 18px;white-space:nowrap}
+.b1{background:var(--azb);color:#fff}
+.b2{border:1px solid var(--out);color:var(--precio);font-weight:500}
+.b3{color:var(--err);font-weight:500}
+.b0{background:rgba(255,255,255,.06);color:var(--hint);font-weight:600}
+.campo{display:flex;align-items:center;gap:8px;border:1px solid var(--out);border-radius:12px;padding:0 12px;min-height:48px;color:var(--hint)}
+.campo b{color:var(--texto);font-weight:500}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--borde);border-radius:999px;padding:0 14px;min-height:40px;display:flex;align-items:center;gap:6px;color:var(--muted);font-size:13px}
+.chip.on{background:rgba(61,114,212,.22);border-color:var(--azul);color:var(--precio);font-weight:600}
+.tot{display:flex;justify-content:space-between;align-items:baseline;padding-top:8px;margin-top:4px;border-top:1px solid var(--dim)}
+.tot span{color:var(--muted)}
+.tot b{font-size:22px;font-variant-numeric:tabular-nums}
+.pie{padding:12px 16px 16px;background:var(--sup);border-top:1px solid var(--dim);display:flex;flex-direction:column;gap:8px}
+.vel{position:absolute;inset:0;background:rgba(0,0,0,.6)}
+.hoja{position:absolute;left:0;right:0;bottom:0;background:var(--sup);border-top:1px solid var(--borde);border-radius:20px 20px 0 0;padding:8px 16px 16px;display:flex;flex-direction:column;gap:10px}
+.asa{width:36px;height:4px;border-radius:2px;background:#3a4a68;margin:0 auto 2px}
+.prod{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--sutil);border-radius:12px;padding:10px 12px;min-height:56px}
+.prod .f{width:40px;height:40px;border-radius:10px;background:var(--fondo);border:1px solid var(--dim);flex:none;display:flex;align-items:center;justify-content:center;color:var(--hint)}
+.prod .n{flex:1;min-width:0}
+.prod .n b{display:block;font-weight:600}
+.prod .n small{color:var(--muted);font-size:12px}
+.prod .p{font-weight:700;color:var(--precio);text-align:right;font-variant-numeric:tabular-nums}
+.prod .p small{display:block;font-weight:400;color:var(--hint);font-size:11px}
+.prod.off{opacity:.55}
+.pill{display:inline-block;border-radius:6px;padding:1px 8px;font-size:11px;font-weight:700}
+.p-m{background:rgba(74,222,128,.14);color:var(--ok)}.p-w{background:rgba(96,165,250,.15);color:#60A5FA}
+.p-g{background:rgba(255,255,255,.07);color:var(--muted)}.p-x{background:rgba(248,113,113,.15);color:var(--err)}
+.aviso{display:flex;gap:10px;border:1px solid rgba(251,191,36,.45);background:rgba(251,191,36,.08);border-radius:12px;padding:10px 12px;color:var(--warn);font-size:13px}
+.aviso.e{border-color:rgba(248,113,113,.45);background:rgba(248,113,113,.08);color:var(--err)}
+.snack{background:#E8EDF5;color:#0D1526;border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:12px;font-size:13px;font-weight:600}
+.snack u{margin-left:auto;text-decoration:none;color:var(--azb);font-weight:700}
+.ent{display:flex;gap:10px;align-items:center;background:var(--card);border:1px solid var(--borde);border-radius:14px;padding:10px 12px}
+.av{width:36px;height:36px;border-radius:50%;background:rgba(61,114,212,.18);color:var(--precio);display:flex;align-items:center;justify-content:center;font-weight:800;flex:none}
+.ent .n{flex:1;min-width:0}.ent .n b{font-weight:700}.ent .n small{display:block;color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ent .m{font-weight:800;color:var(--precio);text-align:right;font-variant-numeric:tabular-nums}.ent .m small{display:block;font-weight:400;color:var(--hint);font-size:11px}
+.dia{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--borde);border-radius:14px;padding:0 14px;min-height:52px}
+.dia small{display:block;color:var(--hint);font-size:10px;letter-spacing:.06em;text-transform:uppercase}
+.dia b{font-size:15px}
+.dia .go{margin-left:auto;color:var(--muted)}
+.dlg{position:absolute;left:24px;right:24px;top:50%;transform:translateY(-50%);background:var(--sup);border:1px solid var(--borde);border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:12px}
+.dlg h3{margin:0;font-size:17px}
+.dlg p{margin:0;color:var(--muted);font-size:13px}
+.barra{height:8px;border-radius:4px;background:var(--dim);overflow:hidden;display:flex}
+.barra i{display:block;height:100%}
+.per{display:flex;flex-direction:column;gap:6px}
+.per .h{display:flex;justify-content:space-between;align-items:baseline}
+.per .h span{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.05em;font-weight:700}
+.per .h b{font-size:20px;font-variant-numeric:tabular-nums}
+.per .l{display:flex;gap:14px;font-size:12px;color:var(--muted)}
+.per .l i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px}
+/* PC */
+.menu{width:200px;background:var(--sup);border-right:1px solid var(--dim);padding:16px 14px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
+.menu b{color:var(--texto);font-size:16px;margin-bottom:10px}
+.menu span{display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;min-height:44px}
+.menu .on{color:var(--precio);font-weight:700;background:rgba(61,114,212,.15)}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.kpi{display:flex;gap:10px}
+.kpi div{flex:1;background:var(--card);border:1px solid var(--borde);border-radius:12px;padding:10px 12px;font-size:12px;color:var(--muted)}
+.kpi b{display:block;font-size:24px;color:var(--texto);line-height:1.15;font-variant-numeric:tabular-nums}
+.kpi small{display:block;font-size:11px;color:var(--hint)}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.tk{width:400px;background:var(--sup);border-left:1px solid var(--dim);padding:16px;display:flex;flex-direction:column;gap:10px}
+.nota{background:var(--card);border:1px solid var(--borde);border-radius:12px;padding:12px 14px;font-size:13px;max-width:1180px;color:var(--muted);margin-top:14px;line-height:1.55}
+.nota b{color:var(--texto)}
+
+.hz{width:812px;height:375px;background:var(--fondo);border:1px solid #1d2a44;border-radius:18px;overflow:hidden;display:flex;flex-direction:column}
+.tabv{width:768px;height:1024px;background:var(--fondo);border:1px solid #1d2a44;border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+.tabh{width:1024px;height:768px;background:var(--fondo);border:1px solid #1d2a44;border-radius:14px;overflow:hidden;display:flex;flex-direction:column}
+.pc2{width:1360px;height:820px;background:var(--fondo);border:1px solid #1d2a44;border-radius:14px;overflow:hidden;display:flex}
+.chart{display:flex;gap:10px;align-items:flex-end;height:96px;padding-top:4px}
+.bc{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch;height:100%;gap:2px}
+.bc i{display:block;border-radius:3px 3px 0 0;min-height:0}
+.bc span{text-align:center;font-size:11px;color:var(--hint);margin-top:2px}
+.pg{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(42,58,85,.5);font-size:13px;color:var(--muted)}
+.pg b{color:var(--texto);font-variant-numeric:tabular-nums}
+.tb{width:100%;border-collapse:collapse;font-size:13px}
+.tb th{text-align:left;color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em;padding:6px 8px;border-bottom:1px solid var(--dim)}
+.tb td{padding:7px 8px;border-bottom:1px solid rgba(42,58,85,.5);vertical-align:middle}
+.tb .num,.tvt .num{text-align:right;font-weight:700;color:var(--precio);font-variant-numeric:tabular-nums;white-space:nowrap}
+.tv2{width:1920px;height:1080px;background:var(--fondo);border:1px solid #1d2a44;overflow:hidden;display:flex;flex-direction:column;font-size:26px}
+.tvkpi{display:flex;gap:16px;padding:20px 48px}
+.tvkpi div{flex:1;background:var(--card);border:1px solid var(--borde);border-radius:16px;padding:12px 18px;font-size:22px;color:var(--muted)}
+.tvkpi b{display:block;font-size:44px;line-height:1.1;color:var(--texto);font-variant-numeric:tabular-nums}
+.tvkpi small{display:block;font-size:20px;margin-top:2px;color:var(--hint)}
+.tvt{background:var(--card);border:1px solid var(--borde);border-radius:16px;padding:6px 10px;align-self:flex-start}
+.tvt table{width:100%;border-collapse:collapse;font-size:24px}
+.tvt th{font-size:18px;padding:12px;text-align:left;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;border-bottom:1px solid var(--dim)}
+.tvt td{padding:0 12px;height:68px;white-space:nowrap;border-bottom:1px solid rgba(42,58,85,.5)}
+.tvt .pill{font-size:20px;padding:2px 12px}
+.tvt tr.foco{outline:5px solid #fff;outline-offset:-3px;border-radius:10px}
+.tvt tr.foco td{background:rgba(61,114,212,.18)}
+.tvk{background:var(--card);border:1px solid var(--borde);border-radius:16px;padding:16px 20px}
+.tvk h4{margin:0 0 6px;font-size:22px;color:var(--precio);text-transform:uppercase;letter-spacing:.04em}
+.tvk .pr{display:flex;justify-content:space-between;font-size:24px;padding:5px 0;border-bottom:1px solid rgba(42,58,85,.5)}
+.tvk .pr b{color:var(--texto)}
+.ayuda{display:flex;gap:34px;font-size:22px;color:var(--muted);padding:14px 48px;border-top:1px solid var(--dim);background:var(--sup);align-items:center;margin-top:auto}
+.ayuda b{color:var(--texto);background:var(--dim);border-radius:8px;padding:2px 12px;margin-right:8px}
+
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:2px;vertical-align:middle}
+.filas{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.fl{border:1px solid var(--borde);border-radius:12px;padding:8px 6px;text-align:center;display:flex;flex-direction:column;gap:2px;min-height:64px}
+.fl b{font-size:15px}.fl small{color:var(--hint);font-size:11px}.fl em{font-style:normal;color:var(--precio);font-size:12px;font-weight:700}
+.fl.on{background:rgba(61,114,212,.22);border-color:var(--azul)}
+.fl.off{opacity:.45}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+.cal .h{color:var(--hint);font-size:11px;padding:4px 0}
+.cal .d{min-height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--muted)}
+.cal .d.v{color:var(--texto);box-shadow:inset 0 -3px 0 var(--precio)}
+.cal .d.t{background:var(--azb);color:#fff;font-weight:700}
+.cal .d.x{color:transparent}
+.rk{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid rgba(42,58,85,.5)}
+.rk:last-child{border-bottom:0}
+.rk .no{width:22px;height:22px;border-radius:50%;background:var(--sutil);color:var(--precio);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex:none}
+.rk .rn{flex:1;min-width:0}
+.rk .rn b{display:block;font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rk .rb{height:5px;background:var(--dim);border-radius:3px;margin-top:5px;overflow:hidden}
+.rk .rb i{display:block;height:100%;background:var(--azul);border-radius:3px}
+.rk .rv{text-align:right;font-weight:700;font-size:13px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.rk .rv small{display:block;font-weight:400;color:var(--hint);font-size:11px}
+
+.mapa{display:flex;align-items:stretch;gap:10px;flex-wrap:wrap}
+.mp{background:var(--card);border:1px solid var(--borde);border-radius:14px;padding:12px 14px;width:200px;display:flex;flex-direction:column;gap:4px}
+.mp small{color:var(--muted);font-size:12px}.mp em{font-style:normal;color:var(--precio);font-size:11px;margin-top:auto}
+.fl2{align-self:center;color:var(--hint);font-size:20px}
+.chk{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid rgba(42,58,85,.5)}
+.chk:last-child{border-bottom:0}
+.chk .n{flex:1;min-width:0}.chk .n b{display:block;font-weight:600}.chk .n small{color:var(--muted);font-size:12px}
+.chk .ok{color:var(--ok)}.chk .lk{color:var(--precio);font-size:13px;font-weight:600}
+
+.cp{min-height:44px}
+.op{margin-left:auto;font-size:11px;color:var(--hint)}
+.campo.err{border-color:rgba(248,113,113,.7)}
+
+.campo.big{min-height:56px;font-size:16px;border-radius:16px}
+.campo.big.on{border-color:var(--azul)}
+.campo.big b{font-size:17px}
+.chips.nowrap{flex-wrap:nowrap;overflow:hidden}
+.chip{white-space:nowrap}
+mark{background:rgba(251,191,36,.25);color:var(--texto);border-radius:3px;padding:0 1px}
+
+.sbar{display:flex;align-items:center;gap:10px;min-height:48px;border-radius:999px;background:var(--card);border:1px solid var(--borde);padding:0 16px;color:var(--hint);font-size:16px}
+.sbar.on{border-color:var(--azul);color:var(--texto)}
+.sbar b{font-weight:500;color:var(--texto)}
+.kbd{margin-left:auto;border:1px solid var(--dim);border-radius:6px;padding:1px 8px;font-size:12px;color:var(--muted)}
+.chip.fil{color:var(--precio);border-color:var(--borde);gap:8px}
+.chip.act{background:rgba(61,114,212,.22);border-color:var(--azul);color:var(--precio);font-weight:600;gap:6px}
+.chip .x{font-size:13px;color:var(--precio)}
+.cnt{font-style:normal;background:var(--azb);color:#fff;border-radius:999px;min-width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;padding:0 6px}
+.sug{display:flex;align-items:center;gap:12px;min-height:48px;border-bottom:1px solid rgba(42,58,85,.5);color:var(--texto)}
+.sug .i{color:var(--hint)}
+.sug em{margin-left:auto;font-style:normal;color:var(--hint);font-size:12px}
+.tecla{height:150px;border-radius:14px 14px 0 0;background:#0a1222;border:1px dashed var(--dim);display:flex;align-items:center;justify-content:center;color:var(--hint);font-size:13px;margin:0 -16px -12px}
+.lst{background:var(--card);border:1px solid var(--borde);border-radius:14px;overflow:hidden}
+.rw{display:flex;align-items:center;gap:10px;min-height:44px;padding:0 14px;border-bottom:1px solid rgba(42,58,85,.5)}
+.rw:last-child{border-bottom:0}
+.rw em{margin-left:auto;font-style:normal;color:var(--hint);font-size:13px}
+.rw.on{color:var(--precio);font-weight:600}
+.rw.on em{margin-left:auto}
+.rw .ck{color:var(--precio)}
+.rw .sw{margin-left:auto}
+.sw{display:inline-block;width:46px;height:28px;border-radius:999px;background:var(--dim);position:relative;flex:none}
+.sw i{position:absolute;left:3px;top:3px;width:22px;height:22px;border-radius:50%;background:#fff}
+.sw.on{background:var(--azb)}.sw.on i{left:21px}
+.pop{position:absolute;z-index:3;background:var(--sup);border:1px solid var(--borde);border-radius:14px;padding:6px 0;min-width:240px;box-shadow:0 12px 32px rgba(0,0,0,.5)}
+.mi{display:flex;align-items:center;gap:10px;min-height:44px;padding:0 14px}
+.mi em{margin-left:auto;font-style:normal;color:var(--hint);font-size:13px}
+.mi.on{color:var(--precio);font-weight:600}
+.mi .ck{margin-left:auto;color:var(--precio)}
+.mi .sw{margin-left:auto}
+.side{width:210px;border-right:1px solid var(--dim);padding:14px;display:flex;flex-direction:column;gap:2px;background:var(--sup)}
+.sr{display:flex;align-items:center;gap:10px;min-height:36px;padding:0 8px;border-radius:8px;color:var(--muted);font-size:14px}
+.sr em{margin-left:auto;font-style:normal;color:var(--hint);font-size:12px}
+.sr.on{background:rgba(61,114,212,.18);color:var(--precio);font-weight:600}
+.sr .sw{margin-left:auto}
+.cb2{width:18px;height:18px;border:1.5px solid var(--out);border-radius:5px;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.cb2.on{background:var(--azb);border-color:var(--azb);color:#fff}
+.cb2 .i{font-size:12px}
+.tvchip{border:2px solid var(--borde);border-radius:999px;padding:6px 24px;font-size:26px;color:var(--muted)}
+.tvchip.foco2{outline:5px solid #fff;outline-offset:3px;color:var(--texto);background:rgba(61,114,212,.25)}
+
+.topnav{position:sticky;top:0;z-index:30;background:#04070f;border-bottom:1px solid var(--dim);padding:10px 0;margin:0 -16px 18px;display:flex;gap:8px;flex-wrap:nowrap;overflow-x:auto;padding-left:16px;padding-right:16px}
+.topnav a{flex:none;white-space:nowrap;color:var(--muted);text-decoration:none;border:1px solid var(--borde);border-radius:999px;padding:0 14px;min-height:40px;display:flex;align-items:center;font-size:13px}
+.topnav a:hover,.topnav a:focus{background:rgba(61,114,212,.22);color:var(--precio);outline:2px solid var(--azul);outline-offset:2px}
+h2{scroll-margin-top:70px}
+.band{margin:44px 0 6px;padding:10px 14px;border-left:4px solid var(--azul);background:var(--card);border-radius:0 12px 12px 0;color:var(--muted)}
+.band b{color:var(--texto);font-size:15px}
+.ficha{display:flex;gap:20px;background:var(--card);border:1px solid var(--borde);border-radius:16px;padding:16px 18px;margin:8px 0 16px;max-width:1180px}
+.ficha .nt{width:96px;flex:none;text-align:center}
+.ficha .nt b{display:block;font-size:44px;line-height:1;color:var(--c);font-variant-numeric:tabular-nums}
+.ficha .nt span{color:var(--muted);font-size:12px}
+.ficha .nb{height:6px;border-radius:3px;background:var(--dim);margin-top:8px;overflow:hidden}
+.ficha .nb i{display:block;height:100%;background:var(--c)}
+.ficha .rs{margin:0 0 10px;color:var(--texto)}
+.ficha .cols{display:flex;gap:28px;flex-wrap:wrap}
+.ficha h4{margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.ficha ul{margin:0;padding-left:18px;color:var(--muted);font-size:13px;line-height:1.6}
+.res{border-collapse:collapse;width:100%;max-width:980px;font-size:14px;margin:10px 0}
+.res th{text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em;padding:8px;border-bottom:1px solid var(--dim)}
+.res td{padding:10px 8px;border-bottom:1px solid rgba(42,58,85,.5)}
+.res a{color:var(--precio);text-decoration:none;font-weight:600}
+.res b.n{font-size:18px;font-variant-numeric:tabular-nums}
+.dev{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}
+.dev div{background:var(--card);border:1px solid var(--borde);border-radius:12px;padding:10px 14px;min-width:170px;font-size:13px;color:var(--muted)}
+.dev b{display:block;color:var(--texto);font-size:14px}
+.reg{max-width:980px;color:var(--muted);line-height:1.7;font-size:13px}
+.reg b{color:var(--texto)}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+<symbol id="plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+<symbol id="search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></symbol>
+<symbol id="trash" viewBox="0 0 24 24"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></symbol>
+<symbol id="cal" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></symbol>
+<symbol id="user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0116 0"/></symbol>
+<symbol id="note" viewBox="0 0 24 24"><path d="M5 4h14v16H5zM9 9h6M9 13h6"/></symbol>
+<symbol id="box" viewBox="0 0 24 24"><path d="M3 8l9-5 9 5v8l-9 5-9-5zM3 8l9 5 9-5M12 13v8"/></symbol>
+<symbol id="back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+<symbol id="go" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+<symbol id="warn" viewBox="0 0 24 24"><path d="M12 3l10 18H2zM12 10v5M12 18v.5"/></symbol>
+<symbol id="check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></symbol>
+<symbol id="truck" viewBox="0 0 24 24"><path d="M2 6h12v10H2zM14 10h4l4 4v2h-8z"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></symbol>
+<symbol id="phone" viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z"/></symbol>
+<symbol id="pin" viewBox="0 0 24 24"><path d="M12 21s7-6 7-11a7 7 0 10-14 0c0 5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+<symbol id="sliders" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2"/><circle cx="8" cy="17" r="2"/></symbol>
+<symbol id="close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+<symbol id="check2" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+<symbol id="clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+<symbol id="home" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></symbol>
+<symbol id="bag" viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6zM9 8a3 3 0 016 0"/></symbol>
+<symbol id="till" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="7" rx="1"/><path d="M3 14h18v7H3zM8 17h2"/></symbol>
+<symbol id="cog" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1"/></symbol>
+</defs></svg>
+<h1>Caja · ventas en mostrador, por rubro</h1>
+<p class="s">Maqueta ordenada. Primero un resumen, luego <b>una sección por cada uno de los 6 rubros</b> (con su nota de 1 a 10, sus filtros y sus pantallas en celular y PC) y al final lo que es <b>común a todos</b> y los <b>tamaños</b> (móvil horizontal, tableta, laptop, TV). Diseño: Apple HIG como guía de calidad (zonas de 44 px, cápsulas, hojas con agarre, menús emergentes, un solo botón principal) y la guía de UX (8 px entre chips, sección activa marcada, estados vacíos con una acción, contraste 4,5:1), con la identidad de YapiVenta.</p>
+<nav class="topnav" aria-label="Secciones"><a href="#resumen">Resumen</a><a href="#bodega">1 · Bodega</a><a href="#restaurante">2 · Restaurante</a><a href="#ropa">3 · Ropa</a><a href="#accesorios">4 · Accesorios</a><a href="#belleza">5 · Belleza</a><a href="#otros">6 · Otros</a><a href="#comun">Común a todos</a><a href="#tamanos">Tamaños</a></nav>
+<h2 id="resumen">Resumen: ¿Caja sirve a cada rubro?</h2>
+<table class="res"><tr><th>Rubro</th><th>Nota</th><th>Ya resuelve</th><th>Le falta</th></tr><tr><td><a href="#bodega">Bodega</a></td><td><b class="n" style="color:var(--ok)">7</b> / 10</td><td>Venta por peso con cantidades rápidas (¼, ½, 1 kg); Stock exacto en gramos, unidades y presentaciones</td><td>Fiado por cliente; Lector de código de barras</td></tr><tr><td><a href="#restaurante">Restaurante</a></td><td><b class="n" style="color:var(--warn)">5</b> / 10</td><td>Platos con tamaños (cuarto, medio, entero) y extras; Combos con su precio</td><td>Cuenta abierta por mesa; Enviar comanda a cocina</td></tr><tr><td><a href="#ropa">Ropa</a></td><td><b class="n" style="color:var(--ok)">7</b> / 10</td><td>Talla y color con stock por cada variante; Extras como bordado</td><td>Cambios y devoluciones parciales; Crédito en tienda</td></tr><tr><td><a href="#accesorios">Accesorios</a></td><td><b class="n" style="color:var(--ok)">7</b> / 10</td><td>Material y número con su stock; Grabado como extra</td><td>Garantía; Código o serie por pieza</td></tr><tr><td><a href="#belleza">Belleza</a></td><td><b class="n" style="color:var(--warn)">4</b> / 10</td><td>Productos con tono y presentación; Extras como envoltura de regalo</td><td>Citas y agenda; Comisión por empleado</td></tr><tr><td><a href="#otros">Otros (tecnología)</a></td><td><b class="n" style="color:var(--warn)">5</b> / 10</td><td>Modelos y capacidades con stock; Extras como mica o funda</td><td>Número de serie o IMEI por equipo; Garantía</td></tr></table>
+<p class="reg">Las notas son mi criterio, a partir de lo que ofrecen los sistemas de punto de venta para cada rubro. <b>Conviene confirmarlas con 1 o 2 vendedores reales de cada rubro.</b> Faltas comunes a todos: <b>cierre de caja</b> y <b>comprobante electrónico de SUNAT</b> (Caja registra la venta, no emite boleta ni factura).</p>
+<h2 style="margin-top:24px">Los 5 tamaños de pantalla</h2><div class="dev"><div><b>Móvil vertical</b>menos de 600 px</div><div><b>Móvil horizontal</b>dos columnas</div><div><b>Tableta</b>600–1 099 px, panel lateral</div><div><b>Laptop y PC</b>1 100–1 599 px, tablero</div><div><b>TV</b>1 600 px o más, solo mirar</div></div>
+<p class="reg"><b>Cómo se adapta cada rubro:</b> los <b>filtros rápidos</b> de arriba cambian según el rubro (tipo de producto en bodega, categorías propias en los demás); «Frecuentes» siempre va primero; lo demás está en «Más filtros». Cada rubro usa sus palabras: el restaurante dice «Mesa o nombre» y «Para llevar».</p>
+<h2 id="bodega">1 · Bodega</h2>
+<div class="ficha"><div class="nt" style="--c:var(--ok)"><b>7</b><span>de 10</span><div class="nb"><i style="width:70%"></i></div></div><div class="fx"><p class="rs">Vende por peso y por unidad, con mucho producto y venta rápida. Caja le sirve bien; le falta el fiado y el lector de códigos.</p><div class="cols"><div><h4>Ya resuelve</h4><ul><li>Venta por peso con cantidades rápidas (¼, ½, 1 kg)</li><li>Stock exacto en gramos, unidades y presentaciones</li><li>Búsqueda rápida entre muchos productos</li><li>Efectivo, Yape, Plin y transferencia</li></ul></div><div><h4>Falta (después)</h4><ul><li>Fiado por cliente</li><li>Lector de código de barras</li><li>Cierre de caja</li></ul></div><div><h4>Filtros rápidos de este rubro</h4><div class="chips"><span class="chip act" style="min-height:32px">Frecuentes</span><span class="chip" style="min-height:32px">Por peso</span><span class="chip" style="min-height:32px">Simples</span></div></div></div></div></div>
+<div class="fila">
+<div><div class="tel"><div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span></div><div class="cuerpo" style="gap:10px"><div class="sbar"><svg class="i"><use href="#search"/></svg><span>Buscar productos</span></div><div class="chips nowrap"><span class="chip fil"><svg class="i"><use href="#sliders"/></svg>Más filtros</span><span class="chip act">Frecuentes</span><span class="chip">Por peso</span><span class="chip">Simples</span></div><div style="display:flex;justify-content:space-between;color:var(--muted);font-size:13px;padding:0 2px"><span>38 productos</span><span style="color:var(--precio)">Más vendidos ▾</span></div><div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Gaseosa Inca 500 ml</b><small>Bebidas</small></div><div class="p">4,50<small>24 disp.</small></div></div><div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Queso andino</b><small><span class="pill p-g">Por peso</span> Lácteos</small></div><div class="p">24,00<small>3,2 kg</small></div></div><div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Arroz costeño 1 kg</b><small>Abarrotes</small></div><div class="p">4,20<small style="color:var(--warn)">2 disp.</small></div></div><div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Azúcar rubia</b><small><span class="pill p-g">Por peso</span> Abarrotes</small></div><div class="p">4,60<small>18 kg</small></div></div><div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Huevos de granja</b><small>Jaba de 30</small></div><div class="p">17,50<small>6 jabas</small></div></div></div><div class="pie"><div class="btn b1">Ver venta · 2 productos · S/ 17,40</div></div></div><div class="cap"><b>1 · Elegir.</b> Elegir: «Frecuentes» y los tipos que usa la bodega.</div></div>
+<div><div class="tel"><div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span></div><div class="vel"></div><div class="hoja"><div class="asa"></div><div style="display:flex;align-items:center"><b style="font-size:17px">Queso andino</b><span style="margin-left:auto;color:var(--precio)">Cambiar</span></div><div style="color:var(--muted);font-size:13px">S/ 24,00 el kg · hay 3,2 kg</div><p class="sec" style="margin:4px 0 0">¿Cuánto se lleva?</p><div class="chips"><span class="chip">¼ kg</span><span class="chip">½ kg</span><span class="chip">1 kg</span><span class="chip on">Otra cantidad</span></div><div class="campo" style="border-color:var(--azul);min-height:52px"><b style="font-size:20px">350</b><span style="margin-left:auto;color:var(--muted)">g</span></div><div class="card" style="display:flex;justify-content:space-between;align-items:baseline"><span style="color:var(--muted)">350 g salen</span><b style="font-size:20px;color:var(--ok)">S/ 8,40</b></div><div class="btn b1">Agregar y cobrar · S/ 8,40</div><div class="btn b2">Agregar y seguir</div></div></div><div class="cap"><b>2 · Producto.</b> Por peso: cantidades rápidas y gramos exactos.</div></div>
+<div><div class="tel"><div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span></div><div class="cuerpo" style="gap:10px"><div class="card" style="padding:4px 12px"><div class="lin" style="padding:8px 0"><div class="n"><b style="font-size:13px">Queso andino</b><small>350 g</small></div><div class="r">8,40</div></div><div class="lin" style="padding:8px 0"><div class="n"><b style="font-size:13px">Gaseosa Inca 500 ml</b><small>2 × 4,50</small></div><div class="r">9,00</div></div></div><div class="card" style="display:flex;flex-direction:column;gap:8px"><p class="sec" style="margin:0">Entrega</p><div class="chips"><span class="chip on">En el local</span><span class="chip">Recojo</span><span class="chip">Delivery</span></div><div class="campo cp"><svg class="i"><use href="#user"/></svg>Cliente o alias <span class="op">opcional</span></div><div class="campo cp"><svg class="i"><use href="#note"/></svg>Nota <span class="op">opcional</span></div><p class="sec" style="margin:2px 0 0">Cómo paga</p><div class="chips"><span class="chip on">Efectivo</span><span class="chip">Yape</span><span class="chip">Plin</span><span class="chip">Transferencia</span></div></div></div><div class="pie"><div class="tot" style="border:0;margin:0;padding:0"><span>Total</span><b>S/ 17,40</b></div><div class="btn b1">Cobrar S/ 17,40</div></div></div><div class="cap"><b>3 · Cobrar.</b> Cobrar: lo mínimo, nada obligatorio.</div></div>
+</div>
+<div class="fila" style="margin-top:18px"><div><div style="zoom:.9"><div class="pc2" style="height:720px"><div class="menu"><b>YapiVenta</b><span><svg class="i"><use href="#home"/></svg>Inicio</span><span><svg class="i"><use href="#box"/></svg>Productos</span><span><svg class="i"><use href="#bag"/></svg>Pedidos</span><span class="on"><svg class="i"><use href="#till"/></svg>Caja</span><span><svg class="i"><use href="#cog"/></svg>Configuración</span></div><div class="main"><div class="bar"><span class="tt">Caja</span><div class="tabs" style="margin-left:18px"><span class="tab on">Hoy</span><span class="tab">Historial</span><span class="tab">Informes</span></div><span class="live">● En vivo</span></div><div style="padding:14px 20px;display:flex;flex-direction:column;gap:12px;flex:1;min-height:0"><div class="kpi"><div>Ventas de hoy<b>103,80</b><small>8 ventas</small></div><div>Ticket promedio<b>12,97</b><small>de lo entregado</small></div><div>Efectivo en caja<b>61,40</b><small>cobrado hoy</small></div><div>Anuladas<b>1</b><small>S/ 9,00 devueltos</small></div></div><div class="sbar" style="min-height:52px"><svg class="i"><use href="#search"/></svg><span>Buscar productos</span><span class="kbd">F2</span></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="chip act">Frecuentes</span><span class="chip">Por peso</span><span class="chip">Simples</span><span class="chip fil" style="margin-left:auto"><svg class="i"><use href="#sliders"/></svg>Filtros avanzados</span></div><div class="grid" style="grid-template-columns:repeat(3,1fr)"><div class="prod"><div class="n"><b>Gaseosa Inca 500 ml</b><small>Bebidas</small></div><div class="p">4,50<small>24 disp.</small></div></div><div class="prod"><div class="n"><b>Queso andino</b><small><span class="pill p-g">Por peso</span> Lácteos</small></div><div class="p">24,00<small>3,2 kg</small></div></div><div class="prod"><div class="n"><b>Arroz costeño 1 kg</b><small>Abarrotes</small></div><div class="p">4,20<small style="color:var(--warn)">2 disp.</small></div></div><div class="prod"><div class="n"><b>Azúcar rubia</b><small><span class="pill p-g">Por peso</span> Abarrotes</small></div><div class="p">4,60<small>18 kg</small></div></div><div class="prod"><div class="n"><b>Huevos de granja</b><small>Jaba de 30</small></div><div class="p">17,50<small>6 jabas</small></div></div></div><div class="card" style="padding:8px 14px"><p class="sec">Más vendidos hoy</p><div class="rk"><span class="no">1</span><div class="rn"><b>Gaseosa Inca 500 ml</b><div class="rb"><i style="width:100%"></i></div></div><div class="rv">12 u<small>54,00</small></div></div><div class="rk"><span class="no">2</span><div class="rn"><b>Queso andino</b><div class="rb"><i style="width:62%"></i></div></div><div class="rv">1,7 kg<small>40,80</small></div></div><div class="rk"><span class="no">3</span><div class="rn"><b>Arroz costeño 1 kg</b><div class="rb"><i style="width:40%"></i></div></div><div class="rv">5 u<small>21,00</small></div></div></div></div></div><div class="tk" style="width:340px"><b style="font-size:16px">Venta nueva</b><div class="lin" style="padding:6px 0"><div class="n"><b style="font-size:13px">Queso andino</b><small>350 g</small></div><div class="r">8,40</div></div><div class="lin" style="padding:6px 0"><div class="n"><b style="font-size:13px">Gaseosa Inca 500 ml</b><small>2 × 4,50</small></div><div class="r">9,00</div></div><div style="flex:1"></div><div class="chips"><span class="chip on">En el local</span><span class="chip">Recojo</span><span class="chip">Delivery</span></div><div class="chips"><span class="chip on">Efectivo</span><span class="chip">Yape</span><span class="chip">Plin</span></div><div class="tot"><span>Total</span><b>S/ 17,40</b></div><div class="btn b1">Cobrar S/ 17,40</div></div></div></div><div class="cap" style="max-width:1000px"><b>Laptop y PC.</b> Tablero con los números del día, el buscador con sus filtros rápidos, los productos de este rubro, lo más vendido y el ticket fijo a la derecha.</div></div></div>
+<h2 id="restaurante">2 · Restaurante</h2>
+<div class="ficha"><div class="nt" style="--c:var(--warn)"><b>5</b><span>de 10</span><div class="nb"><i style="width:50%"></i></div></div><div class="fx"><p class="rs">Vende platos con tamaños y extras, combos y mucho delivery. Funciona para vender rápido, pero no maneja cuentas abiertas por mesa ni comandas.</p><div class="cols"><div><h4>Ya resuelve</h4><ul><li>Platos con tamaños (cuarto, medio, entero) y extras</li><li>Combos con su precio</li><li>Delivery y «Para llevar»</li><li>Un toque por plato</li></ul></div><div><h4>Falta (después)</h4><ul><li>Cuenta abierta por mesa</li><li>Enviar comanda a cocina</li><li>Dividir la cuenta</li><li>Propina</li></ul></div><div><h4>Filtros rápidos de este rubro</h4><div class="chips"><span class="chip act" style="min-height:32px">Frecuentes</span><span class="chip" style="min-height:32px">Platos</span><span class="chip" style="min-height:32px">Bebidas</span><span class="chip" style="min-height:32px">Postres</span><span class="chip" style="min-height:32px">Combos</span></div></div></div></div></div>
+<div class="fila">
+<div><div class="tel"><div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span></div><div class="cuerpo" style="gap:10px"><div class="sbar"><svg class="i"><use href="#search"/></svg><span>Buscar productos</span></div><div class="chips nowrap"><span class="chip fil"><svg class="i"><use href="#sliders"/></svg>Más filtros</span><span class="chip act">Frecuentes</span><span class="chip">Platos</span><span class="chip">Bebidas</span><span class="chip">Postres</span><span class="chip">Combos</span></div><div style="display:flex;justify-content:space-between;color:var(--muted);font-size:13px;padding:0 2px"><span>24 productos</span><span style="color:var(--precio)">Más vendidos ▾</span></div><div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Pollo a la brasa</b><small><span class="pill p-g">Variables</span> Platos</small></div><div class="p">desde 18,00<small>ilimitado</small></div></div><div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Arroz chaufa</b><small>Platos</small></div><div class="p">14,00<small>ilimitado</small></div></div><div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Chicha morada 1 L</b><small>Bebidas</small></div><div class="p">8,00<small>12 disp.</small></div></div><div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Combo Pareja</b><small><span class="pill p-g">Combo</span> Pollo + papas + 2 gaseosas</small></div><div class="p">49,00<small>8 disp.</small></div></div><div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Causa limeña</b><small>Entradas</small></div><div class="p">12,00<small>ilimitado</small></div></div></div><div class="pie"><div class="btn b1">Ver venta · 2 productos · S/ 43,00</div></div></div><div class="cap"><b>1 · Elegir.</b> Elegir: categorías del menú (Platos, Bebidas, Postres).</div></div>
+<div><div class="tel"><div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span></div><div class="vel"></div><div class="hoja"><div class="asa"></div><div style="display:flex;align-items:center"><b style="font-size:17px">Pollo a la brasa</b><span style="margin-left:auto;color:var(--precio)">Cambiar</span></div><div style="color:var(--muted);font-size:13px">Elige el tamaño y los extras</div><p class="sec" style="margin:0">Tamaño</p><div class="filas" style="grid-template-columns:repeat(3,1fr)"><div class="fl"><b>Un cuarto</b><em>18,00</em></div><div class="fl on"><b>Medio</b><em>34,00</em></div><div class="fl"><b>Entero</b><em>62,00</em></div></div><p class="sec" style="margin:0">Extras (opcional)</p><div class="chips"><span class="chip on"><svg class="i"><use href="#check"/></svg>Ají extra + 1,00</span><span class="chip">Papas extra + 6,00</span></div><div class="step" style="align-self:flex-start"><span><svg class="i"><use href="#minus"/></svg></span><em>1</em><span><svg class="i"><use href="#plus"/></svg></span></div><div class="card" style="display:flex;justify-content:space-between;align-items:baseline"><span style="color:var(--muted)">Medio · ají extra</span><b style="font-size:20px;color:var(--ok)">S/ 35,00</b></div><div class="btn b1">Agregar y cobrar · S/ 35,00</div><div class="btn b2">Agregar y seguir</div></div></div><div class="cap"><b>2 · Producto.</b> Plato: tamaño, extras y cantidad en una hoja.</div></div>
+<div><div class="tel"><div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span></div><div class="cuerpo" style="gap:10px"><div class="card" style="padding:4px 12px"><div class="lin" style="padding:8px 0"><div class="n"><b style="font-size:13px">Pollo a la brasa</b><small>Medio · ají extra</small></div><div class="r">35,00</div></div><div class="lin" style="padding:8px 0"><div class="n"><b style="font-size:13px">Chicha morada 1 L</b><small>1 × 8,00</small></div><div class="r">8,00</div></div></div><div class="card" style="display:flex;flex-direction:column;gap:8px"><p class="sec" style="margin:0">Entrega</p><div class="chips"><span class="chip on">En el local</span><span class="chip">Para llevar</span><span class="chip">Delivery</span></div><div class="campo cp"><svg class="i"><use href="#user"/></svg>Mesa o nombre <span class="op">opcional</span></div><div class="campo cp"><svg class="i"><use href="#note"/></svg>Nota <span class="op">opcional</span></div><p class="sec" style="margin:2px 0 0">Cómo paga</p><div class="chips"><span class="chip on">Efectivo</span><span class="chip">Yape</span><span class="chip">Plin</span><span class="chip">Transferencia</span></div></div></div><div class="pie"><div class="tot" style="border:0;margin:0;padding:0"><span>Total</span><b>S/ 43,00</b></div><div class="btn b1">Cobrar S/ 43,00</div></div></div><div class="cap"><b>3 · Cobrar.</b> Cobrar: «Mesa o nombre» y «Para llevar» en su lenguaje.</div></div>
+</div>
+<div class="fila" style="margin-top:18px"><div><div style="zoom:.9"><div class="pc2" style="height:720px"><div class="menu"><b>YapiVenta</b><span><svg class="i"><use href="#home"/></svg>Inicio</span><span><svg class="i"><use href="#box"/></svg>Productos</span><span><svg class="i"><use href="#bag"/></svg>Pedidos</span><span class="on"><svg class="i"><use href="#till"/></svg>Caja</span><span><svg class="i"><use href="#cog"/></svg>Configuración</span></div><div class="main"><div class="bar"><span class="tt">Caja</span><div class="tabs" style="margin-left:18px"><span class="tab on">Hoy</span><span class="tab">Historial</span><span class="tab">Informes</span></div><span class="live">● En vivo</span></div><div style="padding:14px 20px;display:flex;flex-direction:column;gap:12px;flex:1;min-height:0"><div class="kpi"><div>Ventas de hoy<b>103,80</b><small>8 ventas</small></div><div>Ticket promedio<b>12,97</b><small>de lo entregado</small></div><div>Efectivo en caja<b>61,40</b><small>cobrado hoy</small></div><div>Anuladas<b>1</b><small>S/ 9,00 devueltos</small></div></div><div class="sbar" style="min-height:52px"><svg class="i"><use href="#search"/></svg><span>Buscar productos</span><span class="kbd">F2</span></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="chip act">Frecuentes</span><span class="chip">Platos</span><span class="chip">Bebidas</span><span class="chip">Postres</span><span class="chip">Combos</span><span class="chip fil" style="margin-left:auto"><svg class="i"><use href="#sliders"/></svg>Filtros avanzados</span></div><div class="grid" style="grid-template-columns:repeat(3,1fr)"><div class="prod"><div class="n"><b>Pollo a la brasa</b><small><span class="pill p-g">Variables</span> Platos</small></div><div class="p">desde 18,00<small>ilimitado</small></div></div><div class="prod"><div class="n"><b>Arroz chaufa</b><small>Platos</small></div><div class="p">14,00<small>ilimitado</small></div></div><div class="prod"><div class="n"><b>Chicha morada 1 L</b><small>Bebidas</small></div><div class="p">8,00<small>12 disp.</small></div></div><div class="prod"><div class="n"><b>Combo Pareja</b><small><span class="pill p-g">Combo</span> Pollo + papas + 2 gaseosas</small></div><div class="p">49,00<small>8 disp.</small></div></div><div class="prod"><div class="n"><b>Causa limeña</b><small>Entradas</small></div><div class="p">12,00<small>ilimitado</small></div></div></div><div class="card" style="padding:8px 14px"><p class="sec">Más vendidos hoy</p><div class="rk"><span class="no">1</span><div class="rn"><b>Pollo a la brasa · Medio</b><div class="rb"><i style="width:100%"></i></div></div><div class="rv">31 u<small>1 054,00</small></div></div><div class="rk"><span class="no">2</span><div class="rn"><b>Combo Pareja</b><div class="rb"><i style="width:65%"></i></div></div><div class="rv">14 u<small>686,00</small></div></div><div class="rk"><span class="no">3</span><div class="rn"><b>Chicha morada 1 L</b><div class="rb"><i style="width:40%"></i></div></div><div class="rv">22 u<small>176,00</small></div></div></div></div></div><div class="tk" style="width:340px"><b style="font-size:16px">Venta nueva</b><div class="lin" style="padding:6px 0"><div class="n"><b style="font-size:13px">Pollo a la brasa</b><small>Medio · ají extra</small></div><div class="r">35,00</div></div><div class="lin" style="padding:6px 0"><div class="n"><b style="font-size:13px">Chicha morada 1 L</b><small>1 × 8,00</small></div><div class="r">8,00</div></div><div style="flex:1"></div><div class="chips"><span class="chip on">En el local</span><span class="chip">Para llevar</span><span class="chip">Delivery</span></div><div class="chips"><span class="chip on">Efectivo</span><span class="chip">Yape</span><span class="chip">Plin</span></div><div class="tot"><span>Total</span><b>S/ 43,00</b></div><div class="btn b1">Cobrar S/ 43,00</div></div></div></div><div class="cap" style="max-width:1000px"><b>Laptop y PC.</b> Tablero con los números del día, el buscador con sus filtros rápidos, los productos de este rubro, lo más vendido y el ticket fijo a la derecha.</div></div></div>
+<h2 id="ropa">3 · Ropa</h2>
+<div class="ficha"><div class="nt" style="--c:var(--ok)"><b>7</b><span>de 10</span><div class="nb"><i style="width:70%"></i></div></div><div class="fx"><p class="rs">Su necesidad principal es talla y color con stock por variante, y Caja lo hace bien. Le falta manejar cambios y devoluciones parciales.</p><div class="cols"><div><h4>Ya resuelve</h4><ul><li>Talla y color con stock por cada variante</li><li>Extras como bordado</li><li>Combos de prendas</li><li>Búsqueda por categoría</li></ul></div><div><h4>Falta (después)</h4><ul><li>Cambios y devoluciones parciales</li><li>Crédito en tienda</li><li>Código de barras por variante</li></ul></div><div><h4>Filtros rápidos de este rubro</h4><div class="chips"><span class="chip act" style="min-height:32px">Frecuentes</span><span class="chip" style="min-height:32px">Polos</span><span class="chip" style="min-height:32px">Pantalones</span><span class="chip" style="min-height:32px">Casacas</span><span class="chip" style="min-height:32px">Accesorios</span></div></div></div></div></div>
+<div class="fila">
+<div><div class="tel"><div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span></div><div class="cuerpo" style="gap:10px"><div class="sbar"><svg class="i"><use href="#search"/></svg><span>Buscar productos</span></div><div class="chips nowrap"><span class="chip fil"><svg class="i"><use href="#sliders"/></svg>Más filtros</span><span class="chip act">Frecuentes</span><span class="chip">Polos</span><span class="chip">Pantalones</span><span class="chip">Casacas</span><span class="chip">Accesorios</span></div><div style="display:flex;justify-content:space-between;color:var(--muted);font-size:13px;padding:0 2px"><span>64 productos</span><span style="color:var(--precio)">Más vendidos ▾</span></div><div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Polo básico</b><small><span class="pill p-g">Variables</span> Polos · 5 colores</small></div><div class="p">desde 35,00<small>18 disp.</small></div></div><div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Jean slim</b><small><span class="pill p-g">Variables</span> Pantalones</small></div><div class="p">desde 89,00<small>9 disp.</small></div></div><div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Casaca jean</b><small><span class="pill p-g">Variables</span> Casacas</small></div><div class="p">desde 129,00<small style="color:var(--warn)">4 disp.</small></div></div><div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Gorra deportiva</b><small>Accesorios</small></div><div class="p">25,00<small>11 disp.</small></div></div><div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Medias pack x3</b><small>Accesorios</small></div><div class="p">12,00<small>30 disp.</small></div></div></div><div class="pie"><div class="btn b1">Ver venta · 2 productos · S/ 55,00</div></div></div><div class="cap"><b>1 · Elegir.</b> Elegir: categorías de prendas.</div></div>
+<div><div class="tel"><div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span></div><div class="vel"></div><div class="hoja"><div class="asa"></div><div style="display:flex;align-items:center"><b style="font-size:17px">Polo básico</b><span style="margin-left:auto;color:var(--precio)">Cambiar</span></div><p class="sec" style="margin:0">Color</p><div class="chips"><span class="chip on"><i class="dot" style="background:#3D72D4"></i>Azul</span><span class="chip"><i class="dot" style="background:#E5484D"></i>Rojo</span><span class="chip"><i class="dot" style="background:#222222"></i>Negro</span><span class="chip"><i class="dot" style="background:#DDDDDD"></i>Blanco</span></div><p class="sec" style="margin:0">Talla</p><div class="filas" style="grid-template-columns:repeat(4,1fr)"><div class="fl"><b>S</b><small>3 disp.</small><em>35,00</em></div><div class="fl on"><b>M</b><small>5 disp.</small><em>35,00</em></div><div class="fl off"><b>L</b><small>Agotado</small><em>35,00</em></div><div class="fl"><b>XL</b><small>2 disp.</small><em>38,00</em></div></div><p class="sec" style="margin:0">Extras (opcional)</p><div class="chips"><span class="chip on"><svg class="i"><use href="#check"/></svg>Bordado + 8,00</span><span class="chip">Bolsa regalo + 2,00</span></div><div class="card" style="display:flex;justify-content:space-between;align-items:baseline"><span style="color:var(--muted)">Azul · M · bordado</span><b style="font-size:20px;color:var(--ok)">S/ 43,00</b></div><div class="btn b1">Agregar y cobrar · S/ 43,00</div><div class="btn b2">Agregar y seguir</div></div></div><div class="cap"><b>2 · Producto.</b> Variante: color, talla (con su stock) y bordado.</div></div>
+<div><div class="tel"><div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span></div><div class="cuerpo" style="gap:10px"><div class="card" style="padding:4px 12px"><div class="lin" style="padding:8px 0"><div class="n"><b style="font-size:13px">Polo básico</b><small>Azul · M · bordado</small></div><div class="r">43,00</div></div><div class="lin" style="padding:8px 0"><div class="n"><b style="font-size:13px">Medias pack x3</b><small>1 × 12,00</small></div><div class="r">12,00</div></div></div><div class="card" style="display:flex;flex-direction:column;gap:8px"><p class="sec" style="margin:0">Entrega</p><div class="chips"><span class="chip on">En el local</span><span class="chip">Recojo</span><span class="chip">Delivery</span></div><div class="campo cp"><svg class="i"><use href="#user"/></svg>Cliente o alias <span class="op">opcional</span></div><div class="campo cp"><svg class="i"><use href="#note"/></svg>Nota <span class="op">opcional</span></div><p class="sec" style="margin:2px 0 0">Cómo paga</p><div class="chips"><span class="chip on">Efectivo</span><span class="chip">Yape</span><span class="chip">Plin</span><span class="chip">Transferencia</span></div></div></div><div class="pie"><div class="tot" style="border:0;margin:0;padding:0"><span>Total</span><b>S/ 55,00</b></div><div class="btn b1">Cobrar S/ 55,00</div></div></div><div class="cap"><b>3 · Cobrar.</b> Cobrar: cliente opcional.</div></div>
+</div>
+<div class="fila" style="margin-top:18px"><div><div style="zoom:.9"><div class="pc2" style="height:720px"><div class="menu"><b>YapiVenta</b><span><svg class="i"><use href="#home"/></svg>Inicio</span><span><svg class="i"><use href="#box"/></svg>Productos</span><span><svg class="i"><use href="#bag"/></svg>Pedidos</span><span class="on"><svg class="i"><use href="#till"/></svg>Caja</span><span><svg class="i"><use href="#cog"/></svg>Configuración</span></div><div class="main"><div class="bar"><span class="tt">Caja</span><div class="tabs" style="margin-left:18px"><span class="tab on">Hoy</span><span class="tab">Historial</span><span class="tab">Informes</span></div><span class="live">● En vivo</span></div><div style="padding:14px 20px;display:flex;flex-direction:column;gap:12px;flex:1;min-height:0"><div class="kpi"><div>Ventas de hoy<b>103,80</b><small>8 ventas</small></div><div>Ticket promedio<b>12,97</b><small>de lo entregado</small></div><div>Efectivo en caja<b>61,40</b><small>cobrado hoy</small></div><div>Anuladas<b>1</b><small>S/ 9,00 devueltos</small></div></div><div class="sbar" style="min-height:52px"><svg class="i"><use href="#search"/></svg><span>Buscar productos</span><span class="kbd">F2</span></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="chip act">Frecuentes</span><span class="chip">Polos</span><span class="chip">Pantalones</span><span class="chip">Casacas</span><span class="chip">Accesorios</span><span class="chip fil" style="margin-left:auto"><svg class="i"><use href="#sliders"/></svg>Filtros avanzados</span></div><div class="grid" style="grid-template-columns:repeat(3,1fr)"><div class="prod"><div class="n"><b>Polo básico</b><small><span class="pill p-g">Variables</span> Polos · 5 colores</small></div><div class="p">desde 35,00<small>18 disp.</small></div></div><div class="prod"><div class="n"><b>Jean slim</b><small><span class="pill p-g">Variables</span> Pantalones</small></div><div class="p">desde 89,00<small>9 disp.</small></div></div><div class="prod"><div class="n"><b>Casaca jean</b><small><span class="pill p-g">Variables</span> Casacas</small></div><div class="p">desde 129,00<small style="color:var(--warn)">4 disp.</small></div></div><div class="prod"><div class="n"><b>Gorra deportiva</b><small>Accesorios</small></div><div class="p">25,00<small>11 disp.</small></div></div><div class="prod"><div class="n"><b>Medias pack x3</b><small>Accesorios</small></div><div class="p">12,00<small>30 disp.</small></div></div></div><div class="card" style="padding:8px 14px"><p class="sec">Más vendidos hoy</p><div class="rk"><span class="no">1</span><div class="rn"><b>Polo básico · Azul · M</b><div class="rb"><i style="width:100%"></i></div></div><div class="rv">22 u<small>770,00</small></div></div><div class="rk"><span class="no">2</span><div class="rn"><b>Jean slim · Azul · 32</b><div class="rb"><i style="width:55%"></i></div></div><div class="rv">9 u<small>801,00</small></div></div><div class="rk"><span class="no">3</span><div class="rn"><b>Casaca jean · Negro · M</b><div class="rb"><i style="width:25%"></i></div></div><div class="rv">3 u<small>387,00</small></div></div></div></div></div><div class="tk" style="width:340px"><b style="font-size:16px">Venta nueva</b><div class="lin" style="padding:6px 0"><div class="n"><b style="font-size:13px">Polo básico</b><small>Azul · M · bordado</small></div><div class="r">43,00</div></div><div class="lin" style="padding:6px 0"><div class="n"><b style="font-size:13px">Medias pack x3</b><small>1 × 12,00</small></div><div class="r">12,00</div></div><div style="flex:1"></div><div class="chips"><span class="chip on">En el local</span><span class="chip">Recojo</span><span class="chip">Delivery</span></div><div class="chips"><span class="chip on">Efectivo</span><span class="chip">Yape</span><span class="chip">Plin</span></div><div class="tot"><span>Total</span><b>S/ 55,00</b></div><div class="btn b1">Cobrar S/ 55,00</div></div></div></div><div class="cap" style="max-width:1000px"><b>Laptop y PC.</b> Tablero con los números del día, el buscador con sus filtros rápidos, los productos de este rubro, lo más vendido y el ticket fijo a la derecha.</div></div></div>
+<h2 id="accesorios">4 · Accesorios</h2>
+<div class="ficha"><div class="nt" style="--c:var(--ok)"><b>7</b><span>de 10</span><div class="nb"><i style="width:70%"></i></div></div><div class="fx"><p class="rs">Pocas ventas de más valor, con material, número y grabado. Caja lo cubre; le faltan garantía y un código por pieza.</p><div class="cols"><div><h4>Ya resuelve</h4><ul><li>Material y número con su stock</li><li>Grabado como extra</li><li>Productos de mayor valor con pocas ventas</li></ul></div><div><h4>Falta (después)</h4><ul><li>Garantía</li><li>Código o serie por pieza</li></ul></div><div><h4>Filtros rápidos de este rubro</h4><div class="chips"><span class="chip act" style="min-height:32px">Frecuentes</span><span class="chip" style="min-height:32px">Anillos</span><span class="chip" style="min-height:32px">Collares</span><span class="chip" style="min-height:32px">Pulseras</span><span class="chip" style="min-height:32px">Relojes</span></div></div></div></div></div>
+<div class="fila">
+<div><div class="tel"><div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span></div><div class="cuerpo" style="gap:10px"><div class="sbar"><svg class="i"><use href="#search"/></svg><span>Buscar productos</span></div><div class="chips nowrap"><span class="chip fil"><svg class="i"><use href="#sliders"/></svg>Más filtros</span><span class="chip act">Frecuentes</span><span class="chip">Anillos</span><span class="chip">Collares</span><span class="chip">Pulseras</span><span class="chip">Relojes</span></div><div style="display:flex;justify-content:space-between;color:var(--muted);font-size:13px;padding:0 2px"><span>41 productos</span><span style="color:var(--precio)">Más vendidos ▾</span></div><div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Anillo clásico</b><small><span class="pill p-g">Variables</span> Anillos</small></div><div class="p">desde 45,00<small>12 disp.</small></div></div><div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Collar corazón</b><small>Collares</small></div><div class="p">68,00<small>6 disp.</small></div></div><div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Pulsera trenzada</b><small>Pulseras</small></div><div class="p">25,00<small>20 disp.</small></div></div><div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Reloj casual</b><small>Relojes</small></div><div class="p">120,00<small style="color:var(--warn)">3 disp.</small></div></div><div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Aretes perla</b><small>Aretes</small></div><div class="p">38,00<small>14 disp.</small></div></div></div><div class="pie"><div class="btn b1">Ver venta · 2 productos · S/ 93,00</div></div></div><div class="cap"><b>1 · Elegir.</b> Elegir: categorías de joyas.</div></div>
+<div><div class="tel"><div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span></div><div class="vel"></div><div class="hoja"><div class="asa"></div><div style="display:flex;align-items:center"><b style="font-size:17px">Anillo clásico</b><span style="margin-left:auto;color:var(--precio)">Cambiar</span></div><p class="sec" style="margin:0">Material</p><div class="chips"><span class="chip on">Plata</span><span class="chip">Acero</span><span class="chip">Dorado</span></div><p class="sec" style="margin:0">Número</p><div class="filas" style="grid-template-columns:repeat(4,1fr)"><div class="fl"><b>6</b><small>2 disp.</small><em>45,00</em></div><div class="fl on"><b>7</b><small>4 disp.</small><em>45,00</em></div><div class="fl"><b>8</b><small>3 disp.</small><em>45,00</em></div><div class="fl off"><b>9</b><small>Agotado</small><em>45,00</em></div></div><p class="sec" style="margin:0">Extras (opcional)</p><div class="chips"><span class="chip on"><svg class="i"><use href="#check"/></svg>Grabado + 10,00</span></div><div class="card" style="display:flex;justify-content:space-between;align-items:baseline"><span style="color:var(--muted)">Plata · 7 · grabado</span><b style="font-size:20px;color:var(--ok)">S/ 55,00</b></div><div class="btn b1">Agregar y cobrar · S/ 55,00</div><div class="btn b2">Agregar y seguir</div></div></div><div class="cap"><b>2 · Producto.</b> Variante: material, número y grabado.</div></div>
+<div><div class="tel"><div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span></div><div class="cuerpo" style="gap:10px"><div class="card" style="padding:4px 12px"><div class="lin" style="padding:8px 0"><div class="n"><b style="font-size:13px">Anillo clásico</b><small>Plata · 7 · grabado</small></div><div class="r">55,00</div></div><div class="lin" style="padding:8px 0"><div class="n"><b style="font-size:13px">Aretes perla</b><small>1 × 38,00</small></div><div class="r">38,00</div></div></div><div class="card" style="display:flex;flex-direction:column;gap:8px"><p class="sec" style="margin:0">Entrega</p><div class="chips"><span class="chip on">En el local</span><span class="chip">Recojo</span><span class="chip">Delivery</span></div><div class="campo cp"><svg class="i"><use href="#user"/></svg>Cliente o alias <span class="op">opcional</span></div><div class="campo cp"><svg class="i"><use href="#note"/></svg>Nota <span class="op">opcional</span></div><p class="sec" style="margin:2px 0 0">Cómo paga</p><div class="chips"><span class="chip on">Efectivo</span><span class="chip">Yape</span><span class="chip">Plin</span><span class="chip">Transferencia</span></div></div></div><div class="pie"><div class="tot" style="border:0;margin:0;padding:0"><span>Total</span><b>S/ 93,00</b></div><div class="btn b1">Cobrar S/ 93,00</div></div></div><div class="cap"><b>3 · Cobrar.</b> Cobrar: igual que los demás.</div></div>
+</div>
+<div class="fila" style="margin-top:18px"><div><div style="zoom:.9"><div class="pc2" style="height:720px"><div class="menu"><b>YapiVenta</b><span><svg class="i"><use href="#home"/></svg>Inicio</span><span><svg class="i"><use href="#box"/></svg>Productos</span><span><svg class="i"><use href="#bag"/></svg>Pedidos</span><span class="on"><svg class="i"><use href="#till"/></svg>Caja</span><span><svg class="i"><use href="#cog"/></svg>Configuración</span></div><div class="main"><div class="bar"><span class="tt">Caja</span><div class="tabs" style="margin-left:18px"><span class="tab on">Hoy</span><span class="tab">Historial</span><span class="tab">Informes</span></div><span class="live">● En vivo</span></div><div style="padding:14px 20px;display:flex;flex-direction:column;gap:12px;flex:1;min-height:0"><div class="kpi"><div>Ventas de hoy<b>103,80</b><small>8 ventas</small></div><div>Ticket promedio<b>12,97</b><small>de lo entregado</small></div><div>Efectivo en caja<b>61,40</b><small>cobrado hoy</small></div><div>Anuladas<b>1</b><small>S/ 9,00 devueltos</small></div></div><div class="sbar" style="min-height:52px"><svg class="i"><use href="#search"/></svg><span>Buscar productos</span><span class="kbd">F2</span></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="chip act">Frecuentes</span><span class="chip">Anillos</span><span class="chip">Collares</span><span class="chip">Pulseras</span><span class="chip">Relojes</span><span class="chip fil" style="margin-left:auto"><svg class="i"><use href="#sliders"/></svg>Filtros avanzados</span></div><div class="grid" style="grid-template-columns:repeat(3,1fr)"><div class="prod"><div class="n"><b>Anillo clásico</b><small><span class="pill p-g">Variables</span> Anillos</small></div><div class="p">desde 45,00<small>12 disp.</small></div></div><div class="prod"><div class="n"><b>Collar corazón</b><small>Collares</small></div><div class="p">68,00<small>6 disp.</small></div></div><div class="prod"><div class="n"><b>Pulsera trenzada</b><small>Pulseras</small></div><div class="p">25,00<small>20 disp.</small></div></div><div class="prod"><div class="n"><b>Reloj casual</b><small>Relojes</small></div><div class="p">120,00<small style="color:var(--warn)">3 disp.</small></div></div><div class="prod"><div class="n"><b>Aretes perla</b><small>Aretes</small></div><div class="p">38,00<small>14 disp.</small></div></div></div><div class="card" style="padding:8px 14px"><p class="sec">Más vendidos hoy</p><div class="rk"><span class="no">1</span><div class="rn"><b>Anillo clásico · Plata · 7</b><div class="rb"><i style="width:100%"></i></div></div><div class="rv">14 u<small>770,00</small></div></div><div class="rk"><span class="no">2</span><div class="rn"><b>Pulsera trenzada</b><div class="rb"><i style="width:70%"></i></div></div><div class="rv">22 u<small>550,00</small></div></div><div class="rk"><span class="no">3</span><div class="rn"><b>Aretes perla</b><div class="rb"><i style="width:45%"></i></div></div><div class="rv">9 u<small>342,00</small></div></div></div></div></div><div class="tk" style="width:340px"><b style="font-size:16px">Venta nueva</b><div class="lin" style="padding:6px 0"><div class="n"><b style="font-size:13px">Anillo clásico</b><small>Plata · 7 · grabado</small></div><div class="r">55,00</div></div><div class="lin" style="padding:6px 0"><div class="n"><b style="font-size:13px">Aretes perla</b><small>1 × 38,00</small></div><div class="r">38,00</div></div><div style="flex:1"></div><div class="chips"><span class="chip on">En el local</span><span class="chip">Recojo</span><span class="chip">Delivery</span></div><div class="chips"><span class="chip on">Efectivo</span><span class="chip">Yape</span><span class="chip">Plin</span></div><div class="tot"><span>Total</span><b>S/ 93,00</b></div><div class="btn b1">Cobrar S/ 93,00</div></div></div></div><div class="cap" style="max-width:1000px"><b>Laptop y PC.</b> Tablero con los números del día, el buscador con sus filtros rápidos, los productos de este rubro, lo más vendido y el ticket fijo a la derecha.</div></div></div>
+<h2 id="belleza">5 · Belleza</h2>
+<div class="ficha"><div class="nt" style="--c:var(--warn)"><b>4</b><span>de 10</span><div class="nb"><i style="width:40%"></i></div></div><div class="fx"><p class="rs">Caja sirve para vender productos (tono, presentación, regalo), pero un salón también necesita citas y comisiones por empleado, que no existen.</p><div class="cols"><div><h4>Ya resuelve</h4><ul><li>Productos con tono y presentación</li><li>Extras como envoltura de regalo</li><li>Venta de productos al detalle</li></ul></div><div><h4>Falta (después)</h4><ul><li>Citas y agenda</li><li>Comisión por empleado</li><li>Propinas</li></ul></div><div><h4>Filtros rápidos de este rubro</h4><div class="chips"><span class="chip act" style="min-height:32px">Frecuentes</span><span class="chip" style="min-height:32px">Maquillaje</span><span class="chip" style="min-height:32px">Cuidado de piel</span><span class="chip" style="min-height:32px">Cabello</span><span class="chip" style="min-height:32px">Regalos</span></div></div></div></div></div>
+<div class="fila">
+<div><div class="tel"><div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span></div><div class="cuerpo" style="gap:10px"><div class="sbar"><svg class="i"><use href="#search"/></svg><span>Buscar productos</span></div><div class="chips nowrap"><span class="chip fil"><svg class="i"><use href="#sliders"/></svg>Más filtros</span><span class="chip act">Frecuentes</span><span class="chip">Maquillaje</span><span class="chip">Cuidado de piel</span><span class="chip">Cabello</span><span class="chip">Regalos</span></div><div style="display:flex;justify-content:space-between;color:var(--muted);font-size:13px;padding:0 2px"><span>29 productos</span><span style="color:var(--precio)">Más vendidos ▾</span></div><div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Labial mate</b><small><span class="pill p-g">Variables</span> Maquillaje</small></div><div class="p">desde 22,00<small>30 disp.</small></div></div><div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Crema hidratante</b><small>Cuidado de piel</small></div><div class="p">35,00<small>15 disp.</small></div></div><div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Shampoo reparador</b><small>Cabello</small></div><div class="p">28,00<small>18 disp.</small></div></div><div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Set de regalo</b><small><span class="pill p-g">Combo</span> Crema + labial + bolsa</small></div><div class="p">65,00<small>5 disp.</small></div></div><div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Base líquida</b><small><span class="pill p-g">Variables</span> Maquillaje</small></div><div class="p">desde 45,00<small>9 disp.</small></div></div></div><div class="pie"><div class="btn b1">Ver venta · 2 productos · S/ 66,00</div></div></div><div class="cap"><b>1 · Elegir.</b> Elegir: categorías de belleza.</div></div>
+<div><div class="tel"><div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span></div><div class="vel"></div><div class="hoja"><div class="asa"></div><div style="display:flex;align-items:center"><b style="font-size:17px">Labial mate</b><span style="margin-left:auto;color:var(--precio)">Cambiar</span></div><p class="sec" style="margin:0">Tono</p><div class="chips"><span class="chip on"><i class="dot" style="background:#C0392B"></i>Rojo</span><span class="chip"><i class="dot" style="background:#D9A58A"></i>Nude</span><span class="chip"><i class="dot" style="background:#E58FB0"></i>Rosa</span><span class="chip"><i class="dot" style="background:#6B1E3A"></i>Vino</span></div><p class="sec" style="margin:0">Presentación</p><div class="filas" style="grid-template-columns:repeat(2,1fr)"><div class="fl"><b>Mini 3 g</b><small>12 disp.</small><em>22,00</em></div><div class="fl on"><b>Normal 4 g</b><small>18 disp.</small><em>28,00</em></div></div><p class="sec" style="margin:0">Extras (opcional)</p><div class="chips"><span class="chip on"><svg class="i"><use href="#check"/></svg>Envoltura de regalo + 3,00</span></div><div class="card" style="display:flex;justify-content:space-between;align-items:baseline"><span style="color:var(--muted)">Rojo · Normal · regalo</span><b style="font-size:20px;color:var(--ok)">S/ 31,00</b></div><div class="btn b1">Agregar y cobrar · S/ 31,00</div><div class="btn b2">Agregar y seguir</div></div></div><div class="cap"><b>2 · Producto.</b> Variante: tono y presentación, con envoltura.</div></div>
+<div><div class="tel"><div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span></div><div class="cuerpo" style="gap:10px"><div class="card" style="padding:4px 12px"><div class="lin" style="padding:8px 0"><div class="n"><b style="font-size:13px">Labial mate</b><small>Rojo · Normal · regalo</small></div><div class="r">31,00</div></div><div class="lin" style="padding:8px 0"><div class="n"><b style="font-size:13px">Crema hidratante</b><small>1 × 35,00</small></div><div class="r">35,00</div></div></div><div class="card" style="display:flex;flex-direction:column;gap:8px"><p class="sec" style="margin:0">Entrega</p><div class="chips"><span class="chip on">En el local</span><span class="chip">Recojo</span><span class="chip">Delivery</span></div><div class="campo cp"><svg class="i"><use href="#user"/></svg>Cliente o alias <span class="op">opcional</span></div><div class="campo cp"><svg class="i"><use href="#note"/></svg>Nota <span class="op">opcional</span></div><p class="sec" style="margin:2px 0 0">Cómo paga</p><div class="chips"><span class="chip on">Efectivo</span><span class="chip">Yape</span><span class="chip">Plin</span><span class="chip">Transferencia</span></div></div></div><div class="pie"><div class="tot" style="border:0;margin:0;padding:0"><span>Total</span><b>S/ 66,00</b></div><div class="btn b1">Cobrar S/ 66,00</div></div></div><div class="cap"><b>3 · Cobrar.</b> Cobrar: cliente opcional.</div></div>
+</div>
+<div class="fila" style="margin-top:18px"><div><div style="zoom:.9"><div class="pc2" style="height:720px"><div class="menu"><b>YapiVenta</b><span><svg class="i"><use href="#home"/></svg>Inicio</span><span><svg class="i"><use href="#box"/></svg>Productos</span><span><svg class="i"><use href="#bag"/></svg>Pedidos</span><span class="on"><svg class="i"><use href="#till"/></svg>Caja</span><span><svg class="i"><use href="#cog"/></svg>Configuración</span></div><div class="main"><div class="bar"><span class="tt">Caja</span><div class="tabs" style="margin-left:18px"><span class="tab on">Hoy</span><span class="tab">Historial</span><span class="tab">Informes</span></div><span class="live">● En vivo</span></div><div style="padding:14px 20px;display:flex;flex-direction:column;gap:12px;flex:1;min-height:0"><div class="kpi"><div>Ventas de hoy<b>103,80</b><small>8 ventas</small></div><div>Ticket promedio<b>12,97</b><small>de lo entregado</small></div><div>Efectivo en caja<b>61,40</b><small>cobrado hoy</small></div><div>Anuladas<b>1</b><small>S/ 9,00 devueltos</small></div></div><div class="sbar" style="min-height:52px"><svg class="i"><use href="#search"/></svg><span>Buscar productos</span><span class="kbd">F2</span></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="chip act">Frecuentes</span><span class="chip">Maquillaje</span><span class="chip">Cuidado de piel</span><span class="chip">Cabello</span><span class="chip">Regalos</span><span class="chip fil" style="margin-left:auto"><svg class="i"><use href="#sliders"/></svg>Filtros avanzados</span></div><div class="grid" style="grid-template-columns:repeat(3,1fr)"><div class="prod"><div class="n"><b>Labial mate</b><small><span class="pill p-g">Variables</span> Maquillaje</small></div><div class="p">desde 22,00<small>30 disp.</small></div></div><div class="prod"><div class="n"><b>Crema hidratante</b><small>Cuidado de piel</small></div><div class="p">35,00<small>15 disp.</small></div></div><div class="prod"><div class="n"><b>Shampoo reparador</b><small>Cabello</small></div><div class="p">28,00<small>18 disp.</small></div></div><div class="prod"><div class="n"><b>Set de regalo</b><small><span class="pill p-g">Combo</span> Crema + labial + bolsa</small></div><div class="p">65,00<small>5 disp.</small></div></div><div class="prod"><div class="n"><b>Base líquida</b><small><span class="pill p-g">Variables</span> Maquillaje</small></div><div class="p">desde 45,00<small>9 disp.</small></div></div></div><div class="card" style="padding:8px 14px"><p class="sec">Más vendidos hoy</p><div class="rk"><span class="no">1</span><div class="rn"><b>Labial mate · Rojo · Normal</b><div class="rb"><i style="width:100%"></i></div></div><div class="rv">25 u<small>700,00</small></div></div><div class="rk"><span class="no">2</span><div class="rn"><b>Crema hidratante</b><div class="rb"><i style="width:60%"></i></div></div><div class="rv">12 u<small>420,00</small></div></div><div class="rk"><span class="no">3</span><div class="rn"><b>Set de regalo</b><div class="rb"><i style="width:35%"></i></div></div><div class="rv">4 u<small>260,00</small></div></div></div></div></div><div class="tk" style="width:340px"><b style="font-size:16px">Venta nueva</b><div class="lin" style="padding:6px 0"><div class="n"><b style="font-size:13px">Labial mate</b><small>Rojo · Normal · regalo</small></div><div class="r">31,00</div></div><div class="lin" style="padding:6px 0"><div class="n"><b style="font-size:13px">Crema hidratante</b><small>1 × 35,00</small></div><div class="r">35,00</div></div><div style="flex:1"></div><div class="chips"><span class="chip on">En el local</span><span class="chip">Recojo</span><span class="chip">Delivery</span></div><div class="chips"><span class="chip on">Efectivo</span><span class="chip">Yape</span><span class="chip">Plin</span></div><div class="tot"><span>Total</span><b>S/ 66,00</b></div><div class="btn b1">Cobrar S/ 66,00</div></div></div></div><div class="cap" style="max-width:1000px"><b>Laptop y PC.</b> Tablero con los números del día, el buscador con sus filtros rápidos, los productos de este rubro, lo más vendido y el ticket fijo a la derecha.</div></div></div>
+<h2 id="otros">6 · Otros (tecnología)</h2>
+<div class="ficha"><div class="nt" style="--c:var(--warn)"><b>5</b><span>de 10</span><div class="nb"><i style="width:50%"></i></div></div><div class="fx"><p class="rs">Modelos y capacidades con stock funcionan bien. Un equipo caro necesita número de serie o IMEI y garantía, que no existen.</p><div class="cols"><div><h4>Ya resuelve</h4><ul><li>Modelos y capacidades con stock</li><li>Extras como mica o funda</li><li>Accesorios y cargadores</li></ul></div><div><h4>Falta (después)</h4><ul><li>Número de serie o IMEI por equipo</li><li>Garantía</li></ul></div><div><h4>Filtros rápidos de este rubro</h4><div class="chips"><span class="chip act" style="min-height:32px">Frecuentes</span><span class="chip" style="min-height:32px">Celulares</span><span class="chip" style="min-height:32px">Accesorios</span><span class="chip" style="min-height:32px">Audio</span><span class="chip" style="min-height:32px">Cargadores</span></div></div></div></div></div>
+<div class="fila">
+<div><div class="tel"><div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span></div><div class="cuerpo" style="gap:10px"><div class="sbar"><svg class="i"><use href="#search"/></svg><span>Buscar productos</span></div><div class="chips nowrap"><span class="chip fil"><svg class="i"><use href="#sliders"/></svg>Más filtros</span><span class="chip act">Frecuentes</span><span class="chip">Celulares</span><span class="chip">Accesorios</span><span class="chip">Audio</span><span class="chip">Cargadores</span></div><div style="display:flex;justify-content:space-between;color:var(--muted);font-size:13px;padding:0 2px"><span>52 productos</span><span style="color:var(--precio)">Más vendidos ▾</span></div><div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Galaxy A15</b><small><span class="pill p-g">Variables</span> Celulares</small></div><div class="p">desde 690,00<small>6 disp.</small></div></div><div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Funda transparente</b><small>Accesorios</small></div><div class="p">15,00<small>40 disp.</small></div></div><div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Audífonos Bluetooth</b><small>Audio</small></div><div class="p">89,00<small>12 disp.</small></div></div><div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Cargador rápido 20 W</b><small>Cargadores</small></div><div class="p">35,00<small>25 disp.</small></div></div><div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Mica de vidrio</b><small>Accesorios</small></div><div class="p">12,00<small>50 disp.</small></div></div></div><div class="pie"><div class="btn b1">Ver venta · 2 productos · S/ 840,00</div></div></div><div class="cap"><b>1 · Elegir.</b> Elegir: categorías de tecnología.</div></div>
+<div><div class="tel"><div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span></div><div class="vel"></div><div class="hoja"><div class="asa"></div><div style="display:flex;align-items:center"><b style="font-size:17px">Galaxy A15</b><span style="margin-left:auto;color:var(--precio)">Cambiar</span></div><p class="sec" style="margin:0">Color</p><div class="chips"><span class="chip on"><i class="dot" style="background:#222222"></i>Negro</span><span class="chip"><i class="dot" style="background:#3D72D4"></i>Azul</span><span class="chip"><i class="dot" style="background:#2E9E6B"></i>Verde</span></div><p class="sec" style="margin:0">Capacidad</p><div class="filas" style="grid-template-columns:repeat(3,1fr)"><div class="fl"><b>64 GB</b><small>3 disp.</small><em>690,00</em></div><div class="fl on"><b>128 GB</b><small>2 disp.</small><em>790,00</em></div><div class="fl off"><b>256 GB</b><small>Agotado</small><em>890,00</em></div></div><p class="sec" style="margin:0">Extras (opcional)</p><div class="chips"><span class="chip on"><svg class="i"><use href="#check"/></svg>Mica + 15,00</span><span class="chip">Funda + 15,00</span></div><div class="card" style="display:flex;justify-content:space-between;align-items:baseline"><span style="color:var(--muted)">Negro · 128 GB · mica</span><b style="font-size:20px;color:var(--ok)">S/ 805,00</b></div><div class="btn b1">Agregar y cobrar · S/ 805,00</div><div class="btn b2">Agregar y seguir</div></div></div><div class="cap"><b>2 · Producto.</b> Variante: color, capacidad y mica.</div></div>
+<div><div class="tel"><div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span></div><div class="cuerpo" style="gap:10px"><div class="card" style="padding:4px 12px"><div class="lin" style="padding:8px 0"><div class="n"><b style="font-size:13px">Galaxy A15</b><small>Negro · 128 GB · mica</small></div><div class="r">805,00</div></div><div class="lin" style="padding:8px 0"><div class="n"><b style="font-size:13px">Cargador rápido 20 W</b><small>1 × 35,00</small></div><div class="r">35,00</div></div></div><div class="card" style="display:flex;flex-direction:column;gap:8px"><p class="sec" style="margin:0">Entrega</p><div class="chips"><span class="chip on">En el local</span><span class="chip">Recojo</span><span class="chip">Delivery</span></div><div class="campo cp"><svg class="i"><use href="#user"/></svg>Cliente o alias <span class="op">opcional</span></div><div class="campo cp"><svg class="i"><use href="#note"/></svg>Nota <span class="op">opcional</span></div><p class="sec" style="margin:2px 0 0">Cómo paga</p><div class="chips"><span class="chip on">Efectivo</span><span class="chip">Yape</span><span class="chip">Plin</span><span class="chip">Transferencia</span></div></div></div><div class="pie"><div class="tot" style="border:0;margin:0;padding:0"><span>Total</span><b>S/ 840,00</b></div><div class="btn b1">Cobrar S/ 840,00</div></div></div><div class="cap"><b>3 · Cobrar.</b> Cobrar: cliente opcional.</div></div>
+</div>
+<div class="fila" style="margin-top:18px"><div><div style="zoom:.9"><div class="pc2" style="height:720px"><div class="menu"><b>YapiVenta</b><span><svg class="i"><use href="#home"/></svg>Inicio</span><span><svg class="i"><use href="#box"/></svg>Productos</span><span><svg class="i"><use href="#bag"/></svg>Pedidos</span><span class="on"><svg class="i"><use href="#till"/></svg>Caja</span><span><svg class="i"><use href="#cog"/></svg>Configuración</span></div><div class="main"><div class="bar"><span class="tt">Caja</span><div class="tabs" style="margin-left:18px"><span class="tab on">Hoy</span><span class="tab">Historial</span><span class="tab">Informes</span></div><span class="live">● En vivo</span></div><div style="padding:14px 20px;display:flex;flex-direction:column;gap:12px;flex:1;min-height:0"><div class="kpi"><div>Ventas de hoy<b>103,80</b><small>8 ventas</small></div><div>Ticket promedio<b>12,97</b><small>de lo entregado</small></div><div>Efectivo en caja<b>61,40</b><small>cobrado hoy</small></div><div>Anuladas<b>1</b><small>S/ 9,00 devueltos</small></div></div><div class="sbar" style="min-height:52px"><svg class="i"><use href="#search"/></svg><span>Buscar productos</span><span class="kbd">F2</span></div><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="chip act">Frecuentes</span><span class="chip">Celulares</span><span class="chip">Accesorios</span><span class="chip">Audio</span><span class="chip">Cargadores</span><span class="chip fil" style="margin-left:auto"><svg class="i"><use href="#sliders"/></svg>Filtros avanzados</span></div><div class="grid" style="grid-template-columns:repeat(3,1fr)"><div class="prod"><div class="n"><b>Galaxy A15</b><small><span class="pill p-g">Variables</span> Celulares</small></div><div class="p">desde 690,00<small>6 disp.</small></div></div><div class="prod"><div class="n"><b>Funda transparente</b><small>Accesorios</small></div><div class="p">15,00<small>40 disp.</small></div></div><div class="prod"><div class="n"><b>Audífonos Bluetooth</b><small>Audio</small></div><div class="p">89,00<small>12 disp.</small></div></div><div class="prod"><div class="n"><b>Cargador rápido 20 W</b><small>Cargadores</small></div><div class="p">35,00<small>25 disp.</small></div></div><div class="prod"><div class="n"><b>Mica de vidrio</b><small>Accesorios</small></div><div class="p">12,00<small>50 disp.</small></div></div></div><div class="card" style="padding:8px 14px"><p class="sec">Más vendidos hoy</p><div class="rk"><span class="no">1</span><div class="rn"><b>Cargador rápido 20 W</b><div class="rb"><i style="width:100%"></i></div></div><div class="rv">9 u<small>315,00</small></div></div><div class="rk"><span class="no">2</span><div class="rn"><b>Funda transparente</b><div class="rb"><i style="width:85%"></i></div></div><div class="rv">18 u<small>270,00</small></div></div><div class="rk"><span class="no">3</span><div class="rn"><b>Galaxy A15 · Negro · 128 GB</b><div class="rb"><i style="width:60%"></i></div></div><div class="rv">2 u<small>1 580,00</small></div></div></div></div></div><div class="tk" style="width:340px"><b style="font-size:16px">Venta nueva</b><div class="lin" style="padding:6px 0"><div class="n"><b style="font-size:13px">Galaxy A15</b><small>Negro · 128 GB · mica</small></div><div class="r">805,00</div></div><div class="lin" style="padding:6px 0"><div class="n"><b style="font-size:13px">Cargador rápido 20 W</b><small>1 × 35,00</small></div><div class="r">35,00</div></div><div style="flex:1"></div><div class="chips"><span class="chip on">En el local</span><span class="chip">Recojo</span><span class="chip">Delivery</span></div><div class="chips"><span class="chip on">Efectivo</span><span class="chip">Yape</span><span class="chip">Plin</span></div><div class="tot"><span>Total</span><b>S/ 840,00</b></div><div class="btn b1">Cobrar S/ 840,00</div></div></div></div><div class="cap" style="max-width:1000px"><b>Laptop y PC.</b> Tablero con los números del día, el buscador con sus filtros rápidos, los productos de este rubro, lo más vendido y el ticket fijo a la derecha.</div></div></div>
+<h2 id="comun" style="margin-top:56px">Común a todos los rubros</h2><div class="band"><b>Lo que funciona igual en los 6 rubros:</b> buscar y filtrar, entrega y datos del cliente, falta de stock, historial, ventas anteriores, informes y de dónde sale cada dato.</div>
+<h2 id="b1">B1 · Buscar y filtrar productos (como en las apps grandes), en todos los dispositivos</h2>
+<p class="s">Se usa el método de las apps modernas (Google, App Store, Gmail): <b>búsqueda en cápsula</b> con recientes y sugerencias, una fila corta de <b>filtros rápidos</b> (el tipo de producto, un toque y listo) y, aparte, un botón <b>Filtros avanzados</b> (categoría, precio, solo con stock y orden) que solo se abre cuando hace falta. Nada de paneles fijos ni listas largas a la vista. Guía de calidad: Apple HIG (zonas de 44 px, hoja con agarre, menús emergentes, cápsulas, un solo botón principal) con la identidad de YapiVenta. Los combos, variables y productos por peso pasan después por el mismo flujo de entrega, datos y pago.</p>
+
+<div class="band"><b>Ojo:</b> aquí los filtros rápidos usan el ejemplo de la bodega (por tipo). En cada rubro cambian: mira su sección arriba.</div><div class="fila">
+  <div>
+    <div class="tel">
+      <div class="bar"><span class="tt">Agregar producto</span><span style="margin-left:auto;color:var(--precio)">Cerrar</span></div>
+      <div class="cuerpo" style="gap:10px">
+        <div class="sbar"><svg class="i"><use href="#search"/></svg><span>Buscar productos</span></div>
+        <div class="chips nowrap">
+          <span class="chip fil"><svg class="i"><use href="#sliders"/></svg>Avanzados<em class="cnt">1</em></span>
+          <span class="chip">Todos</span><span class="chip">Simples</span><span class="chip">Por peso</span><span class="chip act">Variables</span><span class="chip">Combos</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;color:var(--muted);font-size:13px;padding:0 2px"><span>7 productos</span><span style="color:var(--precio)">Más vendidos ▾</span></div>
+        <div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Polo básico</b><small><span class="pill p-g">Variables</span> Ropa · 5 colores</small></div><div class="p">desde 35,00<small>18 disp.</small></div></div>
+        <div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Polo deportivo</b><small><span class="pill p-g">Variables</span> Ropa · 3 colores</small></div><div class="p">desde 42,00<small>9 disp.</small></div></div>
+        <div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Casaca jean</b><small><span class="pill p-g">Variables</span> Ropa · 2 colores</small></div><div class="p">desde 89,00<small>4 disp.</small></div></div>
+        <div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Short playero</b><small><span class="pill p-g">Variables</span> Ropa · 4 colores</small></div><div class="p">desde 28,00<small>11 disp.</small></div></div>
+        <div class="btn b2" style="min-height:44px;margin-top:auto">Ver más</div>
+      </div>
+    </div>
+    <div class="cap"><b>Celular · lista.</b> Búsqueda en cápsula de 48 px. Debajo, una fila que se desliza: primero <b>Avanzados</b> (con la cantidad de filtros avanzados puestos) y luego los <b>filtros rápidos</b> por tipo: un toque y la lista cambia. Se ven de 20 en 20.</div>
+  </div>
+
+  <div>
+    <div class="tel">
+      <div class="bar"><span class="tt">Agregar producto</span><span style="margin-left:auto;color:var(--precio)">Cerrar</span></div>
+      <div class="cuerpo" style="gap:10px">
+        <div style="display:flex;gap:10px;align-items:center"><div class="sbar on" style="flex:1"><svg class="i"><use href="#search"/></svg><b>po</b><svg class="i" style="margin-left:auto;color:var(--hint)"><use href="#close"/></svg></div><span style="color:var(--precio)">Cancelar</span></div>
+        <p class="sec" style="margin:6px 0 0">Sugerencias</p>
+        <div class="sug"><svg class="i"><use href="#search"/></svg><span><mark>Po</mark>lo básico</span><em>Variables</em></div>
+        <div class="sug"><svg class="i"><use href="#search"/></svg><span><mark>Po</mark>lo deportivo</span><em>Variables</em></div>
+        <div class="sug"><svg class="i"><use href="#search"/></svg><span><mark>Po</mark>llo a la brasa</span><em>Combo</em></div>
+        <div class="sug"><svg class="i"><use href="#search"/></svg><span>Arroz con <mark>po</mark>llo</span><em>Simple</em></div>
+        <p class="sec" style="margin:14px 0 0">Recientes</p>
+        <div class="sug"><svg class="i"><use href="#clock"/></svg><span>Gaseosa Inca</span><svg class="i" style="margin-left:auto;color:var(--hint)"><use href="#close"/></svg></div>
+        <div class="sug"><svg class="i"><use href="#clock"/></svg><span>Queso andino</span><svg class="i" style="margin-left:auto;color:var(--hint)"><use href="#close"/></svg></div>
+        <div style="flex:1"></div>
+        <div class="tecla">teclado</div>
+      </div>
+    </div>
+    <div class="cap"><b>Celular · escribiendo.</b> Al tocar la búsqueda aparece «Cancelar», las <b>sugerencias</b> mientras se escribe (con el tipo de cada una) y los <b>recientes</b> que se pueden quitar uno a uno. Las sugerencias salen de lo ya cargado: sin lecturas extra.</div>
+  </div>
+
+  <div>
+    <div class="tel">
+      <div class="bar"><span class="tt">Agregar producto</span></div>
+      <div class="vel"></div>
+      <div class="hoja" style="top:34px">
+        <div class="asa"></div>
+        <div style="display:flex;align-items:center"><span style="color:var(--precio)">Restablecer</span><b style="margin:0 auto;font-size:17px">Filtros avanzados</b><b style="color:var(--precio)">Listo</b></div>
+        <div style="overflow:hidden;display:flex;flex-direction:column;gap:12px">
+          <div><p class="sec" style="margin:0 0 4px">Categoría</p>
+            <div class="lst">
+              <div class="rw"><span>Abarrotes</span><em>14</em></div>
+              <div class="rw on"><span>Ropa</span><em>7</em><svg class="i ck"><use href="#check2"/></svg></div>
+              <div class="rw"><span>Bebidas</span><em>9</em></div>
+            </div></div>
+          <div><p class="sec" style="margin:0 0 4px">Precio</p>
+            <div class="lst"><div class="rw"><span>Desde</span><em style="color:var(--texto)">S/ 0,00</em></div><div class="rw"><span>Hasta</span><em style="color:var(--texto)">S/ 100,00</em></div></div></div>
+          <div class="lst"><div class="rw"><span>Solo con stock</span><span class="sw"><i></i></span></div></div>
+        </div>
+        <div class="btn b1" style="margin-top:auto">Ver 14 productos</div>
+      </div>
+    </div>
+    <div class="cap"><b>Celular · filtros avanzados.</b> Se abre desde «Avanzados». Solo lo que no cabe en los filtros rápidos: categoría (varias), rango de precio y «Solo con stock». «Restablecer» a la izquierda, «Listo» a la derecha, y el botón principal dice cuántos resultados saldrán.</div>
+  </div>
+
+  <div>
+    <div class="tel">
+      <div class="bar"><span class="tt">Agregar producto</span><span style="margin-left:auto;color:var(--precio)">Cerrar</span></div>
+      <div class="cuerpo" style="gap:10px;position:relative">
+        <div class="sbar"><svg class="i"><use href="#search"/></svg><span>Buscar productos</span></div>
+        <div class="chips nowrap">
+          <span class="chip fil"><svg class="i"><use href="#sliders"/></svg>Filtros</span>
+          <span class="chip act">Orden: Más vendidos ▾</span>
+        </div>
+        <div class="pop" style="top:128px;left:16px">
+          <div class="mi on"><span>Más vendidos</span><svg class="i ck"><use href="#check2"/></svg></div>
+          <div class="mi"><span>Recientes</span></div>
+          <div class="mi"><span>Nombre, A–Z</span></div>
+          <div class="mi"><span>Precio, menor a mayor</span></div>
+          <div class="mi"><span>Stock, menor a mayor</span></div>
+        </div>
+        <div style="height:150px"></div>
+        <div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Gaseosa Inca 500 ml</b><small>Bebidas</small></div><div class="p">4,50<small>24 disp.</small></div></div>
+        <div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Combo familiar</b><small><span class="pill p-g">Combo</span></small></div><div class="p">38,00<small>6 disp.</small></div></div>
+      </div>
+    </div>
+    <div class="cap"><b>Celular · menú rápido.</b> Tocar «Más vendidos ▾» (sobre la lista) abre un <b>menú emergente</b> junto al texto, con la opción actual marcada con ✓. Sirve para cambiar una sola cosa sin abrir toda la hoja. «Stock, menor a mayor» ayuda a ver lo que se acaba.</div>
+  </div>
+</div>
+
+<div class="fila" style="margin-top:18px">
+  <div>
+    <div class="hz" style="height:375px">
+      <div class="bar" style="min-height:44px;padding:6px 14px"><span class="tt">Caja</span><div class="sbar" style="flex:1;min-height:34px;margin-left:10px;padding:0 12px"><svg class="i"><use href="#search"/></svg><span>Buscar productos</span></div><span class="chip fil" style="min-height:34px"><svg class="i"><use href="#sliders"/></svg>Filtros</span></div>
+      <div style="display:flex;flex:1;min-height:0">
+        <div style="flex:1;padding:8px 14px;display:flex;flex-direction:column;gap:6px;min-width:0">
+          <div class="chips nowrap"><span class="chip act" style="min-height:34px">Combos<svg class="i x"><use href="#close"/></svg></span><span class="chip" style="min-height:34px">Orden ▾</span></div>
+          <div class="prod" style="min-height:46px"><div class="n"><b>Combo familiar</b><small>Incluye 3 productos</small></div><div class="p">38,00<small>6 disp.</small></div></div>
+          <div class="prod" style="min-height:46px"><div class="n"><b>Combo desayuno</b><small>Incluye 2 productos</small></div><div class="p">18,00<small>9 disp.</small></div></div>
+        </div>
+        <div style="width:250px;background:var(--sup);border-left:1px solid var(--dim);padding:10px 14px;display:flex;flex-direction:column;gap:6px"><b>Venta nueva</b><div style="flex:1;color:var(--hint)">Toca un producto.</div><div class="btn b0" style="min-height:44px">Cobrar</div></div>
+      </div>
+    </div>
+    <div class="cap" style="max-width:812px"><b>Celular horizontal.</b> Búsqueda y «Filtros» suben a la barra de arriba; la lista queda a la izquierda y el ticket a la derecha. «Filtros» abre una hoja lateral (no ocupa toda la pantalla).</div>
+  </div>
+</div>
+
+<div class="fila" style="margin-top:18px">
+  <div>
+    <div style="zoom:.78"><div class="tabh">
+      <div class="bar"><span class="tt">Caja</span><div class="sbar" style="flex:1;max-width:420px;min-height:40px;margin-left:12px"><svg class="i"><use href="#search"/></svg><span>Buscar productos</span></div><span class="chip fil" style="min-height:40px"><svg class="i"><use href="#sliders"/></svg>Filtros<em class="cnt">1</em></span><span class="live">● En vivo</span></div>
+      <div style="display:flex;flex:1;min-height:0;position:relative">
+        <div style="flex:1;padding:14px 16px;display:flex;flex-direction:column;gap:12px;min-width:0">
+          <div class="chips"><span class="chip">Todos</span><span class="chip">Simples</span><span class="chip act">Por peso</span><span class="chip">Variables</span><span class="chip">Combos</span></div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+            <div class="prod"><div class="n"><b>Queso andino</b><small>Lácteos</small></div><div class="p">24,00<small>3,2 kg</small></div></div>
+            <div class="prod"><div class="n"><b>Jamón inglés</b><small>Lácteos</small></div><div class="p">38,00<small>1,8 kg</small></div></div>
+            <div class="prod"><div class="n"><b>Aceitunas</b><small>Abarrotes</small></div><div class="p">22,00<small>2,5 kg</small></div></div>
+          </div>
+          <div class="pop" style="top:6px;left:16px;width:300px">
+            <p class="sec" style="margin:4px 12px">Filtros avanzados</p>
+            <div class="mi"><span>Categoría</span><em>Todas ›</em></div>
+            <div class="mi"><span>Precio</span><em>Cualquiera ›</em></div>
+            <div class="mi"><span>Ordenar</span><em>Más vendidos ›</em></div>
+            <div class="mi"><span>Solo con stock</span><span class="sw"><i></i></span></div>
+          </div>
+        </div>
+        <div style="width:340px;background:var(--sup);border-left:1px solid var(--dim);padding:14px;display:flex;flex-direction:column;gap:8px"><b>Venta nueva</b><div style="flex:1;color:var(--hint)">Toca un producto para empezar.</div><div class="btn b0">Cobrar</div></div>
+      </div>
+    </div></div>
+    <div class="cap" style="max-width:800px"><b>Tableta.</b> Búsqueda en la barra y los filtros rápidos por tipo debajo. «Filtros» abre un <b>menú emergente</b> junto al botón, solo con lo avanzado (en la tableta cabe y es más rápido que una hoja).</div>
+  </div>
+</div>
+
+<div class="fila" style="margin-top:18px"><div>
+  <div style="zoom:.92"><div class="pc2" style="height:600px">
+    <div class="menu"><b>YapiVenta</b><span><svg class="i"><use href="#home"/></svg>Inicio</span><span><svg class="i"><use href="#box"/></svg>Productos</span><span><svg class="i"><use href="#bag"/></svg>Pedidos</span><span class="on"><svg class="i"><use href="#till"/></svg>Caja</span><span><svg class="i"><use href="#cog"/></svg>Configuración</span></div>
+    <div class="main">
+      <div class="bar"><span class="tt">Caja</span><div class="tabs" style="margin-left:18px"><span class="tab on">Hoy</span><span class="tab">Historial</span><span class="tab">Informes</span></div><span class="live">● En vivo</span></div>
+      <div style="padding:16px 20px;display:flex;flex-direction:column;gap:12px;flex:1;min-height:0">
+        <div class="sbar" style="min-height:52px"><svg class="i"><use href="#search"/></svg><span>Buscar productos</span><span class="kbd">F2</span></div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <span class="chip act">Todos</span><span class="chip">Simples</span><span class="chip">Por peso</span><span class="chip">Variables</span><span class="chip">Combos</span>
+          <span class="chip fil" style="margin-left:auto"><svg class="i"><use href="#sliders"/></svg>Filtros avanzados</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;color:var(--muted);font-size:13px;padding:0 2px"><span>38 productos</span><span style="color:var(--precio)">Más vendidos ▾</span></div>
+        <div class="grid" style="grid-template-columns:repeat(3,1fr)">
+          <div class="prod"><div class="n"><b>Gaseosa Inca 500 ml</b><small>Bebidas</small></div><div class="p">4,50<small>24 disp.</small></div></div>
+          <div class="prod"><div class="n"><b>Combo familiar</b><small><span class="pill p-g">Combo</span></small></div><div class="p">38,00<small>6 disp.</small></div></div>
+          <div class="prod"><div class="n"><b>Queso andino</b><small><span class="pill p-g">Por peso</span></small></div><div class="p">24,00<small>3,2 kg</small></div></div>
+          <div class="prod"><div class="n"><b>Polo básico</b><small><span class="pill p-g">Variables</span></small></div><div class="p">desde 35,00<small>18 disp.</small></div></div>
+          <div class="prod"><div class="n"><b>Arroz costeño 1 kg</b><small>Abarrotes</small></div><div class="p">4,20<small style="color:var(--warn)">2 disp.</small></div></div>
+          <div class="prod"><div class="n"><b>Leche Gloria 400 g</b><small>Abarrotes</small></div><div class="p">5,80<small>40 disp.</small></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="tk" style="width:340px"><b style="font-size:16px">Venta nueva</b><div style="flex:1;color:var(--hint)">Toca un producto para empezar.</div><div class="btn b0">Cobrar</div></div>
+  </div></div>
+  <div class="cap" style="max-width:1000px"><b>Laptop y PC · simple.</b> Como el buscador de Google: <b>un buscador grande</b> arriba (F2) y debajo solo los <b>filtros rápidos</b> por tipo. Lo demás está escondido detrás de «Filtros avanzados». Sin panel lateral fijo: el catálogo y el ticket ocupan el espacio.</div>
+</div></div>
+
+<div class="fila" style="margin-top:18px"><div>
+  <div class="pop" style="position:relative;width:360px;padding:12px 0">
+    <div style="display:flex;align-items:center;padding:0 14px 6px"><b style="font-size:16px">Filtros avanzados</b><svg class="i" style="margin-left:auto;color:var(--hint)"><use href="#close"/></svg></div>
+    <p class="sec" style="margin:6px 14px 4px">Categoría</p>
+    <div class="chips" style="padding:0 14px"><span class="chip act">Abarrotes</span><span class="chip">Lácteos</span><span class="chip">Bebidas</span><span class="chip">Ropa</span></div>
+    <p class="sec" style="margin:12px 14px 4px">Precio (S/)</p>
+    <div style="display:flex;gap:8px;padding:0 14px"><div class="campo cp" style="flex:1"><b>0,00</b><span class="op">desde</span></div><div class="campo cp" style="flex:1"><b>100,00</b><span class="op">hasta</span></div></div>
+    <p class="sec" style="margin:12px 14px 0">Orden</p>
+    <div class="mi on"><span>Más vendidos</span><svg class="i ck"><use href="#check2"/></svg></div>
+    <div class="mi"><span>Recientes</span></div>
+    <div class="mi"><span>Nombre, A–Z</span></div>
+    <div class="mi"><span>Stock, menor a mayor</span></div>
+    <div style="height:1px;background:var(--dim);margin:4px 0"></div>
+    <div class="mi"><span>Solo con stock</span><span class="sw on"><i></i></span></div>
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 14px 0"><span style="color:var(--precio)">Borrar</span><div class="btn b1" style="margin-left:auto;min-height:44px">Ver 12 productos</div></div>
+  </div>
+  <div class="cap" style="max-width:520px"><b>Filtros avanzados (PC).</b> Una ventana emergente que se abre sola desde el botón: categoría, rango de precio, orden y «Solo con stock». Se cierra con × o tocando afuera. El botón principal dice cuántos resultados saldrán.</div>
+</div></div>
+
+<div class="fila" style="margin-top:18px"><div>
+  <div style="zoom:.5"><div class="tv2" style="height:420px">
+    <div style="display:flex;align-items:center;gap:24px;padding:20px 48px;background:var(--sup);border-bottom:2px solid var(--dim)"><span style="font-size:40px;font-weight:800">Caja · Ventas de hoy</span><span style="margin-left:auto;font-size:28px;color:var(--muted)">Ver:</span>
+      <span class="tvchip">Todas</span><span class="tvchip foco2">Mostrador</span><span class="tvchip">Tienda</span><span class="tvchip">Anuladas</span></div>
+    <div class="ayuda"><span><b>◀ ▶</b>cambiar filtro</span><span><b>▲ ▼</b>mover en la tabla</span><span><b>OK</b>ver la venta</span><span><b>Atrás</b>cerrar</span></div>
+  </div></div>
+  <div class="cap" style="max-width:900px"><b>TV.</b> En la TV <b>no se busca ni se escribe</b> (escribir con control remoto es lento y ahí no se vende). El filtro es una fila de botones grandes que se cambian con ◀ ▶ sobre la tabla de ventas de hoy: Todas, Mostrador, Tienda, Anuladas. El foco se marca con un borde blanco grueso.</div>
+</div></div>
+
+
+<h2 id="b2">B2 · El flujo de registrar una venta: qué se pide según la entrega</h2>
+<p class="s">Es el mismo registro que crea la tienda web (cliente, entrega, pago, productos). La diferencia es quién lo llena: en la web el cliente, en Caja el vendedor. <b>Lo que se pide cambia según la entrega</b>; lo obligatorio se marca con «obligatorio» y el botón avisa qué falta.</p>
+
+<div class="fila" style="margin-bottom:14px">
+  <div class="mapa">
+    <div class="mp"><b>1 · Productos</b><small>Simple, por peso, variable, extra o combo</small></div>
+    <span class="fl2">→</span>
+    <div class="mp"><b>2 · Entrega</b><small>En el local · Recojo · Delivery</small></div>
+    <span class="fl2">→</span>
+    <div class="mp"><b>3 · Datos del cliente</b><small>Según la entrega: opcional u obligatorio</small></div>
+    <span class="fl2">→</span>
+    <div class="mp"><b>4 · Forma de pago</b><small>Solo las activas del negocio</small></div>
+    <span class="fl2">→</span>
+    <div class="mp"><b>5 · Registrar</b><small>Descuenta stock y suma al resumen del día</small><em>En el local y recojo: entregado y cobrado · Delivery: confirmado, sigue en Pedidos</em></div>
+  </div>
+</div>
+
+<div class="fila">
+  <div>
+    <div class="tel">
+      <div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span></div>
+      <div class="cuerpo" style="gap:10px">
+        <div class="card" style="padding:4px 12px"><div class="lin" style="padding:8px 0"><div class="n"><b style="font-size:13px">Queso andino</b><small>350 g</small></div><div class="r">8,40</div></div><div class="lin" style="padding:8px 0"><div class="n"><b style="font-size:13px">Gaseosa Inca</b><small>2 × 4,50</small></div><div class="r">9,00</div></div></div>
+        <div class="card" style="display:flex;flex-direction:column;gap:8px">
+          <p class="sec" style="margin:0">Entrega</p>
+          <div class="chips"><span class="chip on">En el local</span><span class="chip">Recojo</span><span class="chip">Delivery</span></div>
+          <div class="campo cp"><svg class="i"><use href="#user"/></svg>Cliente o alias <span class="op">opcional</span></div>
+          <div class="campo cp"><svg class="i"><use href="#note"/></svg>Nota <span class="op">opcional</span></div>
+          <p class="sec" style="margin:2px 0 0">Cómo paga</p>
+          <div class="chips"><span class="chip on">Efectivo</span><span class="chip">Yape</span><span class="chip">Plin</span><span class="chip">Transferencia</span></div>
+        </div>
+      </div>
+      <div class="pie"><div class="tot" style="border:0;margin:0;padding:0"><span>Total</span><b>S/ 17,40</b></div><div class="btn b1">Cobrar S/ 17,40</div></div>
+    </div>
+    <div class="cap"><b>En el local.</b> Lo mínimo: nada es obligatorio salvo productos y forma de pago (Efectivo viene marcado). El cliente puede quedar en blanco («Sin nombre») o llevar un alias como «Mesa 4». Se registra entregado y cobrado.</div>
+  </div>
+
+  <div>
+    <div class="tel">
+      <div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span></div>
+      <div class="cuerpo" style="gap:10px">
+        <div class="card" style="padding:4px 12px"><div class="lin" style="padding:8px 0"><div class="n"><b style="font-size:13px">Queso andino</b><small>350 g</small></div><div class="r">8,40</div></div><div class="lin" style="padding:8px 0"><div class="n"><b style="font-size:13px">Gaseosa Inca</b><small>2 × 4,50</small></div><div class="r">9,00</div></div></div>
+        <div class="card" style="display:flex;flex-direction:column;gap:8px">
+          <p class="sec" style="margin:0">Entrega</p>
+          <div class="chips"><span class="chip">En el local</span><span class="chip on">Recojo</span><span class="chip">Delivery</span></div>
+          <div class="campo cp"><svg class="i"><use href="#user"/></svg>Cliente o alias <span class="op">opcional</span></div>
+          <div class="campo cp"><svg class="i"><use href="#phone"/></svg>Teléfono <span class="op">opcional</span></div>
+          <div class="campo cp"><svg class="i"><use href="#note"/></svg>Nota <span class="op">opcional</span></div>
+          <p class="sec" style="margin:2px 0 0">Cómo paga</p>
+          <div class="chips"><span class="chip">Efectivo</span><span class="chip on">Yape</span><span class="chip">Plin</span><span class="chip">Transferencia</span></div>
+        </div>
+      </div>
+      <div class="pie"><div class="tot" style="border:0;margin:0;padding:0"><span>Total</span><b>S/ 17,40</b></div><div class="btn b1">Cobrar S/ 17,40</div></div>
+    </div>
+    <div class="cap"><b>Recojo.</b> Igual, pero aparece el teléfono (opcional) por si el cliente tiene que volver o avisarle. También se registra entregado y cobrado.</div>
+  </div>
+
+  <div>
+    <div class="tel">
+      <div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span></div>
+      <div class="cuerpo" style="gap:10px">
+        <div class="card" style="padding:4px 12px"><div class="lin" style="padding:8px 0"><div class="n"><b style="font-size:13px">Queso andino</b><small>350 g</small></div><div class="r">8,40</div></div><div class="lin" style="padding:8px 0"><div class="n"><b style="font-size:13px">Gaseosa Inca</b><small>2 × 4,50</small></div><div class="r">9,00</div></div></div>
+        <div class="card" style="display:flex;flex-direction:column;gap:8px">
+          <p class="sec" style="margin:0">Entrega</p>
+          <div class="chips"><span class="chip">En el local</span><span class="chip">Recojo</span><span class="chip on">Delivery</span></div>
+          <div class="campo cp"><svg class="i"><use href="#user"/></svg><b>Carla</b></div>
+          <div class="campo cp"><svg class="i"><use href="#phone"/></svg><b>987 654 321</b></div>
+          <div class="campo cp"><svg class="i"><use href="#pin"/></svg><b>Miraflores</b><span style="margin-left:auto;color:var(--precio)">+ 5,00</span></div>
+          <div class="campo cp"><svg class="i"><use href="#note"/></svg><b>Av. Larco 123, 2.º piso</b></div>
+          <div class="chips"><span class="chip">Efectivo</span><span class="chip on">Yape</span><span class="chip">Plin</span><span class="chip">Transferencia</span></div>
+          <div class="campo cp"><svg class="i"><use href="#check"/></svg><b>Cobrar al entregar</b><span style="margin-left:auto;color:var(--muted)">No</span></div>
+        </div>
+      </div>
+      <div class="pie"><div class="tot" style="border:0;margin:0;padding:0"><span>Total con delivery</span><b>S/ 22,40</b></div><div class="btn b1">Registrar delivery</div></div>
+    </div>
+    <div class="cap"><b>Delivery, completo.</b> Cliente, teléfono, zona (con su costo) y dirección son <b>obligatorios</b>. El pedido queda <b>confirmado</b> (stock descontado) y sigue en Pedidos: en camino → entregado. Con «Cobrar al entregar» el pago queda pendiente.</div>
+  </div>
+
+  <div>
+    <div class="tel">
+      <div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span></div>
+      <div class="cuerpo" style="gap:10px">
+        <div class="aviso e"><svg class="i" style="margin-top:2px"><use href="#warn"/></svg><div><b>Falta para el delivery</b><br>Teléfono, zona y dirección.</div></div>
+        <div class="card" style="display:flex;flex-direction:column;gap:8px">
+          <p class="sec" style="margin:0">Entrega</p>
+          <div class="chips"><span class="chip">En el local</span><span class="chip">Recojo</span><span class="chip on">Delivery</span></div>
+          <div class="campo cp"><svg class="i"><use href="#user"/></svg><b>Carla</b></div>
+          <div class="campo cp err"><svg class="i"><use href="#phone"/></svg>Teléfono <span class="op" style="color:var(--err)">obligatorio</span></div>
+          <div class="campo cp err"><svg class="i"><use href="#pin"/></svg>Zona <span class="op" style="color:var(--err)">obligatorio</span></div>
+          <div class="campo cp err"><svg class="i"><use href="#note"/></svg>Dirección y referencia <span class="op" style="color:var(--err)">obligatorio</span></div>
+        </div>
+      </div>
+      <div class="pie"><div class="tot" style="border:0;margin:0;padding:0"><span>Total</span><b>S/ 17,40</b></div><div class="btn b0">Registrar delivery</div></div>
+    </div>
+    <div class="cap"><b>Delivery, con faltantes.</b> Los campos que faltan se marcan en rojo con su texto y el botón queda apagado hasta completarlos. Nunca se registra un delivery sin forma de llegar al cliente.</div>
+  </div>
+</div>
+
+<div class="fila" style="margin-top:18px">
+  <div>
+    <div style="width:400px;height:640px;background:var(--sup);border:1px solid var(--dim);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:8px;overflow:hidden">
+      <b style="font-size:16px">Venta nueva</b>
+      <div class="lin" style="padding:6px 0"><div class="n"><b style="font-size:13px">Polo básico</b><small>Azul · M · bordado</small></div><div class="r">43,00</div></div>
+      <div class="lin" style="padding:6px 0"><div class="n"><b style="font-size:13px">Combo familiar</b><small>× 1</small></div><div class="r">38,00</div></div>
+      <div class="chips"><span class="chip">En el local</span><span class="chip">Recojo</span><span class="chip on">Delivery</span></div>
+      <div class="campo cp"><svg class="i"><use href="#user"/></svg><b>Carla</b></div>
+      <div class="campo cp"><svg class="i"><use href="#phone"/></svg><b>987 654 321</b></div>
+      <div class="campo cp"><svg class="i"><use href="#pin"/></svg><b>Miraflores</b><span style="margin-left:auto;color:var(--precio)">+ 5,00</span></div>
+      <div class="campo cp"><svg class="i"><use href="#note"/></svg><b>Av. Larco 123</b></div>
+      <div class="chips"><span class="chip">Efectivo</span><span class="chip on">Yape</span><span class="chip">Plin</span></div>
+      <div style="flex:1"></div>
+      <div class="tot"><span>Total con delivery</span><b>S/ 86,00</b></div>
+      <div class="btn b1">Registrar delivery</div>
+    </div>
+    <div class="cap"><b>PC y tableta.</b> Es el mismo panel de la derecha del tablero (ticket fijo): los mismos campos y las mismas reglas. Una variable con extras y un combo se ven como una línea cada uno.</div>
+  </div>
+  <div style="max-width:470px;color:var(--muted);line-height:1.6">
+    <h2 style="margin-top:0">Qué pasa al registrar</h2>
+    <p><b style="color:var(--texto)">En el local o recojo:</b> el pedido se guarda como <i>entregado y cobrado</i>, se descuenta el stock (de la variable, del combo o del producto) y se suma al resumen del día. Todo en una sola transacción.</p>
+    <p><b style="color:var(--texto)">Delivery:</b> el pedido se guarda como <i>confirmado</i> con el stock ya descontado. Después se maneja en Pedidos: en camino, entregado y cobrado. Si se cancela, el stock vuelve.</p>
+    <p><b style="color:var(--texto)">Si falta stock:</b> no se guarda nada y dice qué falta («No alcanza el stock: Gaseosa Inca, pide 3, hay 2»).</p>
+    <p><b style="color:var(--texto)">Si se equivoca:</b> «Anular» devuelve el stock y deja la venta visible tachada.</p>
+  </div>
+</div>
+
+
+<h2 id="b3">B3 · Celular: falta de stock y venta registrada</h2>
+<div class="fila">
+  <div>
+    <div class="tel">
+      <div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span></div>
+      <div class="cuerpo">
+        <div class="aviso e"><svg class="i" style="margin-top:2px"><use href="#warn"/></svg><div><b>No alcanza el stock</b><br>Gaseosa Inca 500 ml: pides 3, hay 2. No se cobró nada.</div></div>
+        <div class="card">
+          <p class="sec">Venta nueva</p>
+          <div class="lin"><div class="n"><b>Gaseosa Inca 500 ml</b><small>S/ 4,50 c/u</small></div><div class="step"><span><svg class="i"><use href="#minus"/></svg></span><em>3</em><span><svg class="i"><use href="#plus"/></svg></span></div><div class="r">13,50</div></div>
+          <div class="btn b2" style="margin-top:6px"><svg class="i"><use href="#plus"/></svg> Agregar producto</div>
+        </div>
+      </div>
+      <div class="pie"><div class="tot" style="border:0;margin:0;padding:0"><span>Total</span><b>S/ 13,50</b></div><div class="btn b1">Cobrar S/ 13,50</div></div>
+    </div>
+    <div class="cap"><b>Sin stock suficiente.</b> Misma frase que Confirmar en Pedidos. No se escribe nada (todo o nada). El carrito queda como estaba para corregirlo.</div>
+  </div>
+  <div>
+    <div class="tel">
+      <div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span></div>
+      <div class="cuerpo">
+        <div class="met"><div>Hoy<b>103,80</b><small>8 ventas</small></div><div>Mostrador<b>51,40</b><small>4 ventas</small></div><div>Tienda web<b>52,40</b><small>4 ventas</small></div></div>
+        <div class="tabs"><span class="tab on">Caja</span><span class="tab">Historial</span><span class="tab">Informes</span></div>
+        <div class="card" style="text-align:center;padding:28px 16px;color:var(--muted)">
+          <div style="font-size:32px;color:var(--ok)"><svg class="i"><use href="#check"/></svg></div>
+          <b style="color:var(--texto);display:block;margin:6px 0 2px">Venta registrada</b>
+          S/ 17,40 · Efectivo
+        </div>
+      </div>
+      <div class="pie" style="background:transparent;border:0"><div class="snack"><svg class="i"><use href="#check"/></svg>Venta registrada · S/ 17,40<u>Anular</u></div></div>
+    </div>
+    <div class="cap"><b>Después de cobrar.</b> Los números de arriba suben solos (el resumen del día está en vivo). El aviso <b>flota</b> sobre la pantalla y no tapa botones; «Anular» da 8 segundos para arrepentirse. El carrito queda vacío.</div>
+  </div>
+</div>
+
+
+<h2 id="b4">B4 · Celular: historial del día y anular</h2>
+<div class="fila">
+  <div>
+    <div class="tel">
+      <div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span></div>
+      <div class="cuerpo">
+        <div class="tabs"><span class="tab">Caja</span><span class="tab on">Historial</span><span class="tab">Informes</span></div>
+        <div class="dia"><svg class="i" style="color:var(--precio)"><use href="#cal"/></svg><div><small>Mostrando</small><b>Hoy</b></div><svg class="i go"><use href="#go"/></svg></div>
+        <div style="display:flex;justify-content:space-between;color:var(--muted);font-size:12px;padding:0 2px"><span>8 ventas · 4 mostrador · 4 web</span><b style="color:var(--texto)">S/ 103,80</b></div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div class="ent"><div class="av">S</div><div class="n"><b>Sin nombre <span class="pill p-m">Mostrador</span></b><small>350 g Queso andino, 2 × Gaseosa Inca</small></div><div class="m">17,40<small>14:32 · Efectivo</small></div></div>
+          <div class="ent"><div class="av">R</div><div class="n"><b>Rosa <span class="pill p-w">Tienda</span></b><small>350 g Queso andino, 5 × Gaseosa</small></div><div class="m">12,00<small>13:05 · Yape</small></div></div>
+          <div class="ent"><div class="av">M</div><div class="n"><b>María <span class="pill p-m">Mostrador</span></b><small>1 × Arroz costeño 1 kg</small></div><div class="m">4,20<small>11:48 · Efectivo</small></div></div>
+          <div class="ent" style="opacity:.55"><div class="av">J</div><div class="n"><b>Juan <span class="pill p-m">Mostrador</span> <span class="pill p-x">Anulada</span></b><small>2 × Gaseosa Inca</small></div><div class="m" style="text-decoration:line-through">9,00<small>10:20</small></div></div>
+        </div>
+        <div class="btn b2" style="margin-top:2px">Ver más</div>
+      </div>
+    </div>
+    <div class="cap"><b>Historial.</b> Una sola lista con ventas de la tienda y del mostrador, cada una con su etiqueta (neutra, sin colores chillones). El día se cambia con el calendario; el listado trae 20 por página. <b>Las anuladas se quedan visibles</b> y tachadas: nada se borra.</div>
+  </div>
+
+  <div>
+    <div class="tel">
+      <div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span></div>
+      <div class="cuerpo" style="opacity:.35">
+        <div class="tabs"><span class="tab">Caja</span><span class="tab on">Historial</span><span class="tab">Informes</span></div>
+        <div class="ent"><div class="av">S</div><div class="n"><b>Sin nombre</b><small>350 g Queso andino, 2 × Gaseosa Inca</small></div><div class="m">17,40<small>14:32</small></div></div>
+      </div>
+      <div class="vel"></div>
+      <div class="dlg">
+        <h3>¿Anular esta venta?</h3>
+        <p>Venta de S/ 17,40 hecha a las 14:32 en el mostrador.</p>
+        <div class="aviso" style="color:var(--ok);border-color:rgba(74,222,128,.4);background:rgba(74,222,128,.07)"><svg class="i" style="margin-top:2px"><use href="#box"/></svg><div>El stock se devuelve: 350 g de queso y 2 gaseosas. Las ventas de hoy bajan S/ 17,40.</div></div>
+        <div class="btn b1" style="background:#B3261E">Anular venta</div>
+        <div class="btn b2">No, volver</div>
+      </div>
+    </div>
+    <div class="cap"><b>Anular.</b> Reemplaza al «Eliminar» del Kotlin. Dice con claridad qué pasa con el stock y con las ventas del día. Lo que se devuelve es <b>exactamente lo que se descontó</b>. El único botón rojo de toda la pantalla es este, porque es el único que deshace algo.</div>
+  </div>
+</div>
+
+
+<h2 id="b5">B5 · Celular: ventas anteriores (historial con calendario)</h2>
+<div class="fila">
+  <div>
+    <div class="tel">
+      <div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span></div>
+      <div class="cuerpo">
+        <div class="tabs"><span class="tab">Caja</span><span class="tab on">Historial</span><span class="tab">Informes</span></div>
+        <div class="chips"><span class="chip">Hoy</span><span class="chip on">Ayer</span><span class="chip">Hace 7 días</span><span class="chip">Este mes</span></div>
+        <div class="card">
+          <div style="display:flex;align-items:center;margin-bottom:8px"><b>Noviembre 2026</b><span style="margin-left:auto;color:var(--muted);display:flex;gap:18px"><svg class="i"><use href="#back"/></svg><svg class="i"><use href="#go"/></svg></span></div>
+          <div class="cal">
+            <span class="h">L</span><span class="h">M</span><span class="h">M</span><span class="h">J</span><span class="h">V</span><span class="h">S</span><span class="h">D</span>
+            <span class="d x"></span><span class="d x"></span><span class="d x"></span><span class="d x"></span><span class="d x"></span><span class="d x"></span><span class="d v">1</span>
+            <span class="d v">2</span><span class="d v">3</span><span class="d">4</span><span class="d t">5</span><span class="d x">6</span><span class="d x">7</span><span class="d x">8</span>
+          </div>
+          <div style="color:var(--hint);font-size:11px;margin-top:6px"><i class="dot" style="background:var(--precio)"></i>Días con ventas · los puntos salen del resumen diario (hasta 31 lecturas al abrir el mes)</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;color:var(--muted);font-size:12px;padding:0 2px"><span>Ayer, miércoles 4 · 6 ventas</span><b style="color:var(--texto)">S/ 94,20</b></div>
+        <div class="ent"><div class="av">C</div><div class="n"><b>Carla <span class="pill p-w">Tienda</span></b><small>2 × Gaseosa Inca, 1 × Arroz</small></div><div class="m">13,20<small>18:10 · Yape</small></div></div>
+        <div class="ent"><div class="av">S</div><div class="n"><b>Sin nombre <span class="pill p-m">Mostrador</span></b><small>Polo básico Azul · M</small></div><div class="m">35,00<small>12:40 · Efectivo</small></div></div>
+      </div>
+    </div>
+    <div class="cap"><b>Ventas anteriores.</b> Atajos (ayer, hace 7 días, este mes) y un calendario que marca los días con ventas. Al tocar un día se leen sus ventas, 20 por página. Los puntos del calendario salen de los resúmenes diarios del mes, sin leer pedidos.</div>
+  </div>
+</div>
+
+
+<h2 id="b6">B6 · Celular: informes completos (comparar, entrega, pago y los más vendidos)</h2>
+<div class="fila">
+  <div>
+    <div class="tel">
+      <div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span></div>
+      <div class="cuerpo">
+        <div class="tabs"><span class="tab">Caja</span><span class="tab">Historial</span><span class="tab on">Informes</span></div>
+        <div class="chips"><span class="chip on">Hoy</span><span class="chip">Semana</span><span class="chip">Mes</span><span class="chip"><svg class="i"><use href="#cal"/></svg>Elegir</span></div>
+        <div class="card per">
+          <div class="h"><span>Ventas de hoy</span><b>S/ 103,80</b></div>
+          <div style="font-size:12px;color:var(--ok)">▲ 10 % más que ayer (94,20)</div>
+          <div class="barra"><i style="width:50%;background:var(--ok)"></i><i style="width:50%;background:var(--azul)"></i></div>
+          <div class="l"><span><i style="background:var(--ok)"></i>Mostrador 51,40</span><span><i style="background:var(--azul)"></i>Tienda 52,40</span></div>
+        </div>
+        <div class="card">
+          <p class="sec">Comparar</p>
+          <div class="pg"><span>Ayer</span><b>94,20</b></div>
+          <div class="pg"><span>Mismo día, semana pasada</span><b>88,00</b></div>
+          <div class="pg"><span>Mismo día, mes pasado</span><b>71,50</b></div>
+        </div>
+        <div class="card">
+          <p class="sec">Tipo de entrega</p>
+          <div class="pg"><span>En el local</span><b>34,00</b></div>
+          <div class="pg"><span>Recojo</span><b>20,00</b></div>
+          <div class="pg"><span>Delivery</span><b>49,80</b></div>
+        </div>
+        <div class="card">
+          <p class="sec">Forma de pago</p>
+          <div class="pg"><span>Efectivo</span><b>61,40</b></div>
+          <div class="pg"><span>Yape</span><b>28,80</b></div>
+          <div class="pg"><span>Plin / Transferencia</span><b>13,60</b></div>
+        </div>
+      </div>
+    </div>
+    <div class="cap"><b>Informes (1).</b> Periodo con chips (hoy, semana, mes o un día a elección). Cada número se compara con el periodo anterior. Tipo de entrega y forma de pago como listas simples; nada de gráficos recargados en el celular.</div>
+  </div>
+  <div>
+    <div class="tel">
+      <div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span></div>
+      <div class="cuerpo">
+        <div class="tabs"><span class="tab">Caja</span><span class="tab">Historial</span><span class="tab on">Informes</span></div>
+        <div class="card">
+          <p class="sec">Productos más vendidos · hoy</p>
+          <div class="rk"><span class="no">1</span><div class="rn"><b>Gaseosa Inca 500 ml</b><div class="rb"><i style="width:100%"></i></div></div><div class="rv">12 u<small>54,00</small></div></div>
+          <div class="rk"><span class="no">2</span><div class="rn"><b>Queso andino</b><div class="rb"><i style="width:62%"></i></div></div><div class="rv">1,7 kg<small>40,80</small></div></div>
+          <div class="rk"><span class="no">3</span><div class="rn"><b>Arroz costeño 1 kg</b><div class="rb"><i style="width:40%"></i></div></div><div class="rv">5 u<small>21,00</small></div></div>
+        </div>
+        <div class="card">
+          <p class="sec">Combos más vendidos</p>
+          <div class="rk"><span class="no">1</span><div class="rn"><b>Combo familiar</b><div class="rb"><i style="width:100%"></i></div></div><div class="rv">3 u<small>114,00</small></div></div>
+          <div class="rk"><span class="no">2</span><div class="rn"><b>Combo desayuno</b><div class="rb"><i style="width:34%"></i></div></div><div class="rv">1 u<small>18,00</small></div></div>
+        </div>
+        <div class="card">
+          <p class="sec">Variables más vendidas</p>
+          <div class="rk"><span class="no">1</span><div class="rn"><b>Polo básico · Azul · M</b><div class="rb"><i style="width:100%"></i></div></div><div class="rv">4 u<small>140,00</small></div></div>
+          <div class="rk"><span class="no">2</span><div class="rn"><b>Polo básico · Rojo · S</b><div class="rb"><i style="width:50%"></i></div></div><div class="rv">2 u<small>70,00</small></div></div>
+          <div class="rk"><span class="no">3</span><div class="rn"><b>Polo básico · Negro · L</b><div class="rb"><i style="width:25%"></i></div></div><div class="rv">1 u<small>35,00</small></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="cap"><b>Informes (2).</b> Tres rankings: productos, combos y variables (modelo · fila). Muestran cantidad y monto, con una barra que compara. Cada uno es un ranking de 3 a 5 filas con «Ver todos». Salen de los contadores del resumen diario.</div>
+  </div>
+</div>
+
+
+<h2 id="b7">B7 · Laptop y PC: pestaña Informes (tablero con comparación y rankings)</h2>
+<div class="fila"><div>
+  <div style="zoom:.92"><div class="pc2">
+    <div class="menu"><b>YapiVenta</b><span><svg class="i"><use href="#home"/></svg>Inicio</span><span><svg class="i"><use href="#box"/></svg>Productos</span><span><svg class="i"><use href="#bag"/></svg>Pedidos</span><span class="on"><svg class="i"><use href="#till"/></svg>Caja</span><span><svg class="i"><use href="#cog"/></svg>Configuración</span></div>
+    <div class="main">
+      <div class="bar"><span class="tt">Caja</span><div class="tabs" style="margin-left:18px"><span class="tab">Hoy</span><span class="tab">Historial</span><span class="tab on">Informes</span></div><div class="chips" style="margin-left:auto"><span class="chip">Hoy</span><span class="chip">Semana</span><span class="chip on">Mes</span><span class="chip"><svg class="i"><use href="#cal"/></svg>Elegir</span></div></div>
+      <div style="padding:14px 20px;display:flex;flex-direction:column;gap:12px;flex:1;min-height:0">
+        <div class="kpi">
+          <div>Ventas del mes<b>1 538,20</b><small style="color:var(--ok)">▲ 8 % vs octubre (1 424,00)</small></div>
+          <div>Ventas<b>96</b><small>ticket 16,02</small></div>
+          <div>Mostrador<b>676,40</b><small>44 %</small></div>
+          <div>Tienda web<b>861,80</b><small>56 %</small></div>
+          <div>Anuladas<b>3</b><small>S/ 41,00 devueltos</small></div>
+        </div>
+        <div style="display:flex;gap:12px">
+          <div class="card" style="flex:2">
+            <p class="sec">Ventas por día · este mes contra el mes pasado</p>
+            <div class="chart" style="height:104px">
+              <div class="bc"><i style="height:30%;background:var(--azul)"></i><span>1</span></div><div class="bc"><i style="height:44%;background:var(--azul)"></i><span>2</span></div><div class="bc"><i style="height:38%;background:var(--azul)"></i><span>3</span></div><div class="bc"><i style="height:62%;background:var(--azul)"></i><span>4</span></div><div class="bc"><i style="height:70%;background:var(--azul)"></i><span>5</span></div><div class="bc"><i style="height:0"></i><span>6</span></div><div class="bc"><i style="height:0"></i><span>7</span></div><div class="bc"><i style="height:0"></i><span>8</span></div><div class="bc"><i style="height:0"></i><span>9</span></div><div class="bc"><i style="height:0"></i><span>10</span></div>
+            </div>
+            <div class="per" style="margin-top:6px"><div class="l"><span><i style="background:var(--azul)"></i>Este mes</span><span><i style="background:var(--dim)"></i>Mes pasado (más claro, detrás)</span></div></div>
+          </div>
+          <div class="card" style="flex:1"><p class="sec">Tipo de entrega</p><div class="pg"><span>En el local</span><b>412,00</b></div><div class="pg"><span>Recojo</span><b>264,40</b></div><div class="pg"><span>Delivery</span><b>861,80</b></div></div>
+          <div class="card" style="flex:1"><p class="sec">Forma de pago</p><div class="pg"><span>Efectivo</span><b>702,10</b></div><div class="pg"><span>Yape</span><b>531,60</b></div><div class="pg"><span>Plin</span><b>198,50</b></div><div class="pg"><span>Transferencia</span><b>106,00</b></div></div>
+        </div>
+        <div style="display:flex;gap:12px;flex:1;min-height:0">
+          <div class="card" style="flex:1"><p class="sec">Productos más vendidos</p>
+            <div class="rk"><span class="no">1</span><div class="rn"><b>Gaseosa Inca 500 ml</b><div class="rb"><i style="width:100%"></i></div></div><div class="rv">188 u<small>846,00</small></div></div>
+            <div class="rk"><span class="no">2</span><div class="rn"><b>Queso andino</b><div class="rb"><i style="width:70%"></i></div></div><div class="rv">24,6 kg<small>590,40</small></div></div>
+            <div class="rk"><span class="no">3</span><div class="rn"><b>Arroz costeño 1 kg</b><div class="rb"><i style="width:48%"></i></div></div><div class="rv">90 u<small>378,00</small></div></div>
+            <div class="rk"><span class="no">4</span><div class="rn"><b>Leche Gloria 400 g</b><div class="rb"><i style="width:30%"></i></div></div><div class="rv">55 u<small>319,00</small></div></div></div>
+          <div class="card" style="flex:1"><p class="sec">Combos más vendidos</p>
+            <div class="rk"><span class="no">1</span><div class="rn"><b>Combo familiar</b><div class="rb"><i style="width:100%"></i></div></div><div class="rv">31 u<small>1 178,00</small></div></div>
+            <div class="rk"><span class="no">2</span><div class="rn"><b>Combo desayuno</b><div class="rb"><i style="width:45%"></i></div></div><div class="rv">14 u<small>252,00</small></div></div>
+            <div class="rk"><span class="no">3</span><div class="rn"><b>Combo pareja</b><div class="rb"><i style="width:22%"></i></div></div><div class="rv">7 u<small>189,00</small></div></div></div>
+          <div class="card" style="flex:1"><p class="sec">Variables más vendidas</p>
+            <div class="rk"><span class="no">1</span><div class="rn"><b>Polo básico · Azul · M</b><div class="rb"><i style="width:100%"></i></div></div><div class="rv">22 u<small>770,00</small></div></div>
+            <div class="rk"><span class="no">2</span><div class="rn"><b>Polo básico · Rojo · S</b><div class="rb"><i style="width:64%"></i></div></div><div class="rv">14 u<small>490,00</small></div></div>
+            <div class="rk"><span class="no">3</span><div class="rn"><b>Polo básico · Negro · L</b><div class="rb"><i style="width:40%"></i></div></div><div class="rv">9 u<small>315,00</small></div></div>
+            <div class="rk"><span class="no">4</span><div class="rn"><b>Zapatilla · Blanco · 40</b><div class="rb"><i style="width:26%"></i></div></div><div class="rv">6 u<small>420,00</small></div></div></div>
+        </div>
+      </div>
+    </div>
+  </div></div>
+  <div class="cap" style="max-width:1000px"><b>PC · Informes.</b> Un tablero para decidir: el mes contra el anterior, tipo de entrega, forma de pago y los tres rankings lado a lado (productos, combos y variables). Se puede elegir hoy, semana, mes o un rango. Todo sale de los resúmenes diarios (hasta 31 lecturas al abrir, una vez).</div>
+</div></div>
+
+
+<h2 id="b8">B8 · TV: informes del mes para mirar desde lejos</h2>
+<div class="fila"><div>
+  <div style="zoom:.55"><div class="tv2">
+    <div style="display:flex;align-items:center;gap:24px;padding:20px 48px;background:var(--sup);border-bottom:2px solid var(--dim)"><span style="font-size:40px;font-weight:800">Caja · Informes</span><span style="color:var(--muted);font-size:28px">Noviembre 2026</span><span style="margin-left:auto;font-size:40px;font-weight:700">14:32</span><span style="color:var(--ok);font-size:26px;font-weight:700">● En vivo</span></div>
+    <div class="tvkpi">
+      <div>Ventas del mes<b>1 538,20</b><small style="color:var(--ok)">▲ 8 % vs octubre</small></div>
+      <div>Ventas<b>96</b><small>ticket 16,02</small></div>
+      <div>Mostrador<b>676,40</b><small>44 %</small></div>
+      <div>Tienda web<b>861,80</b><small>56 %</small></div>
+      <div>Delivery<b>861,80</b><small>de la tienda</small></div>
+    </div>
+    <div style="display:flex;gap:24px;padding:0 48px;flex:1;min-height:0">
+      <div class="tvk" style="flex:1"><h4>Productos más vendidos</h4>
+        <div class="pr"><span>1 · Gaseosa Inca 500 ml</span><b>188 u · 846,00</b></div><div class="pr"><span>2 · Queso andino</span><b>24,6 kg · 590,40</b></div><div class="pr"><span>3 · Arroz costeño 1 kg</span><b>90 u · 378,00</b></div><div class="pr"><span>4 · Leche Gloria 400 g</span><b>55 u · 319,00</b></div><div class="pr"><span>5 · Aceite Primor 1 L</span><b>41 u · 287,00</b></div></div>
+      <div class="tvk" style="flex:1"><h4>Combos más vendidos</h4>
+        <div class="pr"><span>1 · Combo familiar</span><b>31 u · 1 178,00</b></div><div class="pr"><span>2 · Combo desayuno</span><b>14 u · 252,00</b></div><div class="pr"><span>3 · Combo pareja</span><b>7 u · 189,00</b></div></div>
+      <div class="tvk" style="flex:1"><h4>Variables más vendidas</h4>
+        <div class="pr"><span>1 · Polo · Azul · M</span><b>22 u · 770,00</b></div><div class="pr"><span>2 · Polo · Rojo · S</span><b>14 u · 490,00</b></div><div class="pr"><span>3 · Polo · Negro · L</span><b>9 u · 315,00</b></div><div class="pr"><span>4 · Zapatilla · Blanco · 40</span><b>6 u · 420,00</b></div></div>
+    </div>
+    <div class="ayuda"><span><b>◀ ▶</b>Hoy · Historial · Informes</span><span><b>▲ ▼</b>Hoy, semana, mes</span><span><b>Atrás</b>cerrar</span></div>
+  </div></div>
+  <div class="cap" style="max-width:1000px"><b>TV · Informes.</b> Letra grande y solo lo importante: 5 números y los 3 rankings. Cambiar de periodo con ▲ ▼. Es para mirar, no para cobrar.</div>
+</div></div>
+
+
+<h2 id="b9">B9 · De dónde sale cada dato y cómo se llena (en cada dispositivo)</h2>
+<p class="s">Caja <b>no crea</b> productos, combos, variables, formas de pago ni zonas: los <b>lee</b> de donde el vendedor ya los llenó. Lo único que hace es avisar si falta algo y llevar a ese lugar con un toque. Los números e informes se llenan <b>solos</b> con cada venta.</p>
+
+<div class="fila" style="margin-bottom:14px">
+  <div class="mapa">
+    <div class="mp"><b>Productos</b><small>Variables, extras, combos, stock, foto</small><em>Lo llena el vendedor · Productos</em></div>
+    <span class="fl2">→</span>
+    <div class="mp"><b>Caja</b><small>Elegir y cobrar</small><em>Solo lee y vende</em></div>
+    <span class="fl2">←</span>
+    <div class="mp"><b>Pagos y delivery</b><small>Yape, Plin, Efectivo, Transferencia · zonas y costos</small><em>Lo llena el vendedor · Configuración</em></div>
+    <span class="fl2">→</span>
+    <div class="mp"><b>Resumen del día</b><small>Se suma solo en cada venta</small><em>Alimenta Informes y rankings</em></div>
+  </div>
+</div>
+
+<div class="fila">
+  <div>
+    <div class="tel">
+      <div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span></div>
+      <div class="cuerpo">
+        <div class="card" style="display:flex;flex-direction:column;gap:2px">
+          <p class="sec">Antes de vender</p>
+          <div class="chk"><svg class="i ok"><use href="#check"/></svg><div class="n"><b>Productos</b><small>12 cargados · 2 combos · 3 con variables</small></div><span class="lk">Agregar</span></div>
+          <div class="chk"><svg class="i ok"><use href="#check"/></svg><div class="n"><b>Formas de pago</b><small>Efectivo, Yape, Plin</small></div><span class="lk">Configurar</span></div>
+          <div class="chk"><svg class="i"><use href="#warn"/></svg><div class="n"><b>Delivery</b><small>Sin zonas · opcional</small></div><span class="lk">Configurar</span></div>
+        </div>
+        <div class="card" style="display:flex;flex-direction:column;gap:6px">
+          <p class="sec" style="margin:0">Cómo paga (solo las activas)</p>
+          <div class="chips"><span class="chip on">Efectivo</span><span class="chip">Yape</span><span class="chip">Plin</span></div>
+          <div style="color:var(--hint);font-size:12px">¿Falta una? Actívala en Configuración → Pagos.</div>
+        </div>
+        <div class="card" style="display:flex;flex-direction:column;gap:6px">
+          <p class="sec" style="margin:0">Entrega</p>
+          <div class="chips"><span class="chip on">En el local</span><span class="chip">Recojo</span><span class="chip" style="opacity:.5">Delivery</span></div>
+          <div style="color:var(--hint);font-size:12px">Delivery aparece cuando creas una zona en Configuración → Logística.</div>
+        </div>
+      </div>
+    </div>
+    <div class="cap"><b>Celular.</b> Una tarjeta «Antes de vender» con 3 filas y un toque para ir a llenar lo que falta (Productos o Configuración). Desaparece sola cuando todo está listo. Solo se ofrecen las formas de pago <b>activas</b>; Delivery se ve apagado hasta que exista una zona.</div>
+  </div>
+
+  <div>
+    <div class="tel">
+      <div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span></div>
+      <div class="cuerpo">
+        <div class="card" style="text-align:center;padding:30px 16px;color:var(--muted)">
+          <div style="font-size:32px;color:var(--hint)"><svg class="i"><use href="#box"/></svg></div>
+          <b style="color:var(--texto);display:block;margin:6px 0 2px">Aún no tienes productos</b>
+          Para vender en Caja primero crea al menos uno.
+          <div class="btn b1" style="margin-top:14px">Crear mi primer producto</div>
+          <div style="margin-top:10px;font-size:12px;color:var(--hint)">Ahí eliges si tiene colores o tallas, extras o si es un combo.</div>
+        </div>
+      </div>
+      <div class="pie"><div class="btn b0">Cobrar</div></div>
+    </div>
+    <div class="cap"><b>Negocio nuevo.</b> Sin productos no hay nada que vender, así que el botón lleva al formulario de Productos (el que ya está aprobado: variables, extras y combos). Nada de «próximamente»: un solo camino claro.</div>
+  </div>
+</div>
+
+<div class="fila" style="margin-top:18px">
+  <div>
+    <div style="zoom:.78"><div class="tabh">
+      <div class="bar"><span class="tt">Caja</span><div class="tabs" style="margin-left:14px"><span class="tab on">Caja</span><span class="tab">Historial</span><span class="tab">Informes</span></div><span class="live">● En vivo</span></div>
+      <div style="display:flex;flex:1;min-height:0">
+        <div style="flex:1;padding:14px 16px;display:flex;flex-direction:column;gap:12px;min-width:0">
+          <div class="card" style="display:flex;gap:14px;align-items:center;padding:10px 14px">
+            <p class="sec" style="margin:0;white-space:nowrap">Antes de vender</p>
+            <span class="chip" style="min-height:34px"><svg class="i" style="color:var(--ok)"><use href="#check"/></svg>12 productos</span>
+            <span class="chip" style="min-height:34px"><svg class="i" style="color:var(--ok)"><use href="#check"/></svg>Pagos: Efectivo, Yape</span>
+            <span class="chip" style="min-height:34px;border-color:rgba(251,191,36,.5);color:var(--warn)"><svg class="i"><use href="#warn"/></svg>Delivery: crear zona</span>
+          </div>
+          <div class="campo"><svg class="i"><use href="#search"/></svg>Buscar producto</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+            <div class="prod"><div class="n"><b>Gaseosa Inca</b><small>Bebidas</small></div><div class="p">4,50</div></div>
+            <div class="prod"><div class="n"><b>Polo básico</b><small>Con colores y tallas</small></div><div class="p">35,00</div></div>
+            <div class="prod"><div class="n"><b>Combo familiar</b><small>Combo</small></div><div class="p">38,00</div></div>
+          </div>
+        </div>
+        <div style="width:340px;background:var(--sup);border-left:1px solid var(--dim);padding:14px;display:flex;flex-direction:column;gap:8px">
+          <b>Venta nueva</b><div style="flex:1;color:var(--hint)">Toca un producto para empezar.</div>
+          <div class="chips"><span class="chip on">Efectivo</span><span class="chip">Yape</span></div>
+          <div class="btn b0">Cobrar</div>
+        </div>
+      </div>
+    </div></div>
+    <div class="cap"><b>Tableta.</b> La misma información, en una sola fila de chips arriba del catálogo: verde lo que está listo, ámbar lo que falta; tocar un chip lleva a configurarlo.</div>
+  </div>
+</div>
+
+<div class="fila" style="margin-top:18px"><div>
+  <div style="zoom:.92"><div class="pc2" style="height:360px">
+    <div class="menu"><b>YapiVenta</b><span><svg class="i"><use href="#home"/></svg>Inicio</span><span><svg class="i"><use href="#box"/></svg>Productos</span><span><svg class="i"><use href="#bag"/></svg>Pedidos</span><span class="on"><svg class="i"><use href="#till"/></svg>Caja</span><span><svg class="i"><use href="#cog"/></svg>Configuración</span></div>
+    <div class="main"><div class="bar"><span class="tt">Caja</span><div class="tabs" style="margin-left:18px"><span class="tab on">Hoy</span><span class="tab">Historial</span><span class="tab">Informes</span></div><span class="live">● En vivo</span></div>
+      <div style="padding:14px 20px;display:flex;gap:12px">
+        <div class="card" style="flex:1"><p class="sec">Productos</p><b style="font-size:20px">12</b><div style="color:var(--muted);font-size:12px;margin:2px 0 8px">2 combos · 3 con variables</div><div class="btn b2" style="min-height:40px">+ Agregar producto</div></div>
+        <div class="card" style="flex:1"><p class="sec">Formas de pago activas</p><div class="chips"><span class="chip on" style="min-height:34px">Efectivo</span><span class="chip on" style="min-height:34px">Yape</span><span class="chip" style="min-height:34px">Plin</span><span class="chip" style="min-height:34px">Transferencia</span></div><div class="btn b2" style="min-height:40px;margin-top:8px">Configurar pagos</div></div>
+        <div class="card" style="flex:1"><p class="sec">Zonas de delivery</p><div style="color:var(--warn);font-size:13px;margin:4px 0 8px">Ninguna creada</div><div class="btn b2" style="min-height:40px">Crear zona</div></div>
+      </div>
+    </div>
+  </div></div>
+  <div class="cap" style="max-width:900px"><b>Laptop y PC.</b> En el tablero, una fila de tres tarjetas «Configuración rápida» (productos, pagos y zonas), visible hasta que todo esté listo; después se oculta o se reduce a un enlace. Siempre con botones de borde, no principales.</div>
+</div></div>
+
+<div class="fila" style="margin-top:18px"><div>
+  <div style="zoom:.45"><div class="tv2" style="height:340px">
+    <div style="display:flex;align-items:center;gap:24px;padding:20px 48px;background:var(--sup);border-bottom:2px solid var(--dim)"><span style="font-size:40px;font-weight:800">Caja</span><span style="margin-left:auto;font-size:28px;color:var(--warn)">Faltan datos: configura pagos y zonas desde el celular o la PC</span></div>
+  </div></div>
+  <div class="cap" style="max-width:900px"><b>TV.</b> No se configura nada desde la TV (solo control remoto): si falta algo, una línea en la cabecera lo dice y manda a usar el celular o la PC.</div>
+</div></div>
+
+
+<h2 id="tamanos" style="margin-top:56px">Tamaños de pantalla</h2><div class="band"><b>Cómo se ve Caja en móvil horizontal, tableta, laptop o PC y TV.</b> Mismo diseño base; en PC y TV se muestra más información.</div>
+<h2 id="t1">T1 · Móvil horizontal (menos de 900 px de alto de lado a lado): catálogo y ticket lado a lado</h2>
+<div class="fila"><div>
+  <div class="hz">
+    <div class="bar" style="min-height:44px;padding:6px 14px"><span class="tt">Caja</span><span style="color:var(--muted);font-size:12px;margin-left:8px">Hoy <b style="color:var(--texto)">86,40</b> · Mostrador <b style="color:var(--texto)">34,00</b> · Tienda <b style="color:var(--texto)">52,40</b></span><span class="live">● En vivo</span></div>
+    <div style="display:flex;flex:1;min-height:0">
+      <div style="flex:1;padding:10px 14px;display:flex;flex-direction:column;gap:8px;min-width:0">
+        <div class="tabs"><span class="tab on" style="min-height:36px">Caja</span><span class="tab" style="min-height:36px">Historial</span><span class="tab" style="min-height:36px">Informes</span></div>
+        <div class="campo" style="min-height:40px"><svg class="i"><use href="#search"/></svg>Buscar producto</div>
+        <div class="prod" style="min-height:48px"><div class="n"><b>Gaseosa Inca 500 ml</b><small>Bebidas</small></div><div class="p">4,50<small>24 disp.</small></div></div>
+        <div class="prod" style="min-height:48px;border-color:var(--azul)"><div class="n"><b>Queso andino</b><small>Lácteos · por kg</small></div><div class="p">24,00<small>3,2 kg disp.</small></div></div>
+      </div>
+      <div style="width:290px;background:var(--sup);border-left:1px solid var(--dim);padding:10px 14px;display:flex;flex-direction:column;gap:6px">
+        <b>Venta nueva</b>
+        <div class="lin" style="padding:6px 0"><div class="n"><b style="font-size:13px">Queso andino</b></div><em style="font-style:normal;font-weight:700">350 g</em><div class="r">8,40</div></div>
+        <div class="lin" style="padding:6px 0"><div class="n"><b style="font-size:13px">Gaseosa Inca</b></div><em style="font-style:normal;font-weight:700">2</em><div class="r">9,00</div></div>
+        <div style="flex:1"></div>
+        <div class="tot" style="margin:0"><span>Total</span><b>S/ 17,40</b></div>
+        <div class="btn b1" style="min-height:44px">Cobrar</div>
+      </div>
+    </div>
+  </div>
+  <div class="cap"><b>Celular de lado.</b> Es el mismo diseño del celular vertical, pero en dos columnas: productos a la izquierda y el ticket fijo a la derecha, para no tener que subir y bajar. Los 3 números pasan a una sola línea en la barra de arriba, así sobra altura.</div>
+</div></div>
+
+
+<h2 id="t2">T2 · Tableta vertical y horizontal (600–1 099 px): mismo diseño base, con panel lateral</h2>
+<div class="fila">
+  <div>
+    <div style="zoom:.62"><div class="tabv">
+      <div class="bar"><span class="tt">Caja</span><div class="tabs" style="margin-left:14px"><span class="tab on">Caja</span><span class="tab">Historial</span><span class="tab">Informes</span></div><span class="live">● En vivo</span></div>
+      <div style="display:flex;flex:1;min-height:0">
+        <div style="flex:1;padding:14px 16px;display:flex;flex-direction:column;gap:12px;min-width:0">
+          <div class="met"><div>Hoy<b>86,40</b><small>7 ventas</small></div><div>Mostrador<b>34,00</b><small>3 ventas</small></div><div>Tienda web<b>52,40</b><small>4 ventas</small></div></div>
+          <div class="campo"><svg class="i"><use href="#search"/></svg>Buscar producto</div>
+          <div class="chips"><span class="chip on">Todos</span><span class="chip">Abarrotes</span><span class="chip">Lácteos</span><span class="chip">Bebidas</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div class="prod"><div class="n"><b>Gaseosa Inca 500 ml</b><small>Bebidas</small></div><div class="p">4,50<small>24 disp.</small></div></div>
+            <div class="prod" style="border-color:var(--azul)"><div class="n"><b>Queso andino</b><small>Lácteos · por kg</small></div><div class="p">24,00<small>3,2 kg</small></div></div>
+            <div class="prod"><div class="n"><b>Arroz costeño 1 kg</b><small>Abarrotes</small></div><div class="p">4,20<small>2 disp.</small></div></div>
+            <div class="prod"><div class="n"><b>Leche Gloria 400 g</b><small>Abarrotes</small></div><div class="p">5,80<small>40 disp.</small></div></div>
+            <div class="prod off"><div class="n"><b>Aceite Primor 1 L</b></div><div class="p"><span class="pill p-x">Agotado</span></div></div>
+            <div class="prod"><div class="n"><b>Combo familiar</b><small>Combo</small></div><div class="p">38,00<small>6 disp.</small></div></div>
+          </div>
+        </div>
+        <div style="width:300px;background:var(--sup);border-left:1px solid var(--dim);padding:14px;display:flex;flex-direction:column;gap:8px">
+          <b>Venta nueva</b>
+          <div class="lin"><div class="n"><b>Queso andino</b><small>350 g</small></div><div class="r">8,40</div></div>
+          <div class="lin"><div class="n"><b>Gaseosa Inca</b><small>2 × 4,50</small></div><div class="r">9,00</div></div>
+          <div style="flex:1"></div>
+          <div class="campo"><svg class="i"><use href="#user"/></svg>Cliente o alias (opcional)</div>
+          <div class="chips"><span class="chip on">Efectivo</span><span class="chip">Yape</span><span class="chip">Plin</span></div>
+          <div class="tot"><span>Total</span><b>S/ 17,40</b></div>
+          <div class="btn b1">Cobrar S/ 17,40</div>
+        </div>
+      </div>
+    </div></div>
+    <div class="cap"><b>Tableta vertical.</b> Catálogo en 2 columnas y el ticket en un panel lateral de 300 px, igual que Pedidos (lista + panel). Los colores y botones son los del celular.</div>
+  </div>
+  <div>
+    <div style="zoom:.78"><div class="tabh">
+      <div class="bar"><span class="tt">Caja</span><div class="tabs" style="margin-left:14px"><span class="tab on">Caja</span><span class="tab">Historial</span><span class="tab">Informes</span></div><span class="live">● En vivo</span></div>
+      <div style="display:flex;flex:1;min-height:0">
+        <div style="flex:1;padding:14px 16px;display:flex;flex-direction:column;gap:12px;min-width:0">
+          <div class="met"><div>Hoy<b>86,40</b><small>7 ventas</small></div><div>Mostrador<b>34,00</b><small>3 ventas</small></div><div>Tienda web<b>52,40</b><small>4 ventas</small></div></div>
+          <div style="display:flex;gap:8px"><div class="campo" style="flex:1"><svg class="i"><use href="#search"/></svg>Buscar producto</div></div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+            <div class="prod"><div class="n"><b>Gaseosa Inca</b><small>Bebidas</small></div><div class="p">4,50</div></div>
+            <div class="prod" style="border-color:var(--azul)"><div class="n"><b>Queso andino</b><small>por kg</small></div><div class="p">24,00</div></div>
+            <div class="prod"><div class="n"><b>Arroz costeño</b><small>Abarrotes</small></div><div class="p">4,20</div></div>
+            <div class="prod"><div class="n"><b>Leche Gloria</b><small>Abarrotes</small></div><div class="p">5,80</div></div>
+            <div class="prod off"><div class="n"><b>Aceite Primor</b></div><div class="p"><span class="pill p-x">Agotado</span></div></div>
+            <div class="prod"><div class="n"><b>Combo familiar</b><small>Combo</small></div><div class="p">38,00</div></div>
+          </div>
+        </div>
+        <div style="width:340px;background:var(--sup);border-left:1px solid var(--dim);padding:14px;display:flex;flex-direction:column;gap:8px">
+          <b>Venta nueva</b>
+          <div class="lin"><div class="n"><b>Queso andino</b><small>350 g</small></div><div class="r">8,40</div></div>
+          <div class="lin"><div class="n"><b>Gaseosa Inca</b><small>2 × 4,50</small></div><div class="r">9,00</div></div>
+          <div style="flex:1"></div>
+          <div class="chips"><span class="chip on">Efectivo</span><span class="chip">Yape</span><span class="chip">Plin</span></div>
+          <div class="tot"><span>Total</span><b>S/ 17,40</b></div>
+          <div class="btn b1">Cobrar S/ 17,40</div>
+        </div>
+      </div>
+    </div></div>
+    <div class="cap"><b>Tableta horizontal.</b> Igual, con el catálogo en 3 columnas y el ticket de 340 px. Sigue siendo el diseño de celular, solo aprovecha el ancho.</div>
+  </div>
+</div>
+
+
+<h2 id="t3">T3 · Laptop y PC (1 100 a 1 599 px): tablero de caja con más información</h2>
+<div class="fila"><div>
+  <div style="zoom:.92"><div class="pc2">
+    <div class="menu"><b>YapiVenta</b><span><svg class="i"><use href="#home"/></svg>Inicio</span><span><svg class="i"><use href="#box"/></svg>Productos</span><span><svg class="i"><use href="#bag"/></svg>Pedidos</span><span class="on"><svg class="i"><use href="#till"/></svg>Caja</span><span><svg class="i"><use href="#cog"/></svg>Configuración</span></div>
+    <div class="main">
+      <div class="bar"><span class="tt">Caja</span><div class="tabs" style="margin-left:18px"><span class="tab on">Hoy</span><span class="tab">Historial</span><span class="tab">Informes</span></div><span style="margin-left:auto;color:var(--muted);font-size:12px">Jueves 5 de noviembre · hora de Lima</span><span class="live" style="margin-left:14px">● En vivo</span></div>
+      <div style="padding:14px 20px;display:flex;flex-direction:column;gap:12px;flex:1;min-height:0">
+        <div class="kpi">
+          <div>Ventas de hoy<b>103,80</b><small>8 ventas · ticket 12,97</small></div>
+          <div>Mostrador<b>51,40</b><small>4 ventas · 50 %</small></div>
+          <div>Tienda web<b>52,40</b><small>4 ventas · 50 %</small></div>
+          <div>Efectivo en caja<b>61,40</b><small>lo cobrado en efectivo</small></div>
+          <div>Por cobrar<b>18,00</b><small>2 pedidos entregados sin cobrar</small></div>
+          <div>Anuladas<b>1</b><small>S/ 9,00 devueltos al stock</small></div>
+        </div>
+        <div style="display:flex;gap:12px;flex:0 0 auto">
+          <div class="card" style="flex:1.6">
+            <p class="sec">Ventas por hora</p>
+            <div class="chart">
+              <div class="bc"><i style="height:20%;background:var(--ok)"></i><i style="height:12%;background:var(--azul)"></i><span>9</span></div>
+              <div class="bc"><i style="height:28%;background:var(--ok)"></i><i style="height:30%;background:var(--azul)"></i><span>10</span></div>
+              <div class="bc"><i style="height:36%;background:var(--ok)"></i><i style="height:18%;background:var(--azul)"></i><span>11</span></div>
+              <div class="bc"><i style="height:12%;background:var(--ok)"></i><i style="height:22%;background:var(--azul)"></i><span>12</span></div>
+              <div class="bc"><i style="height:18%;background:var(--ok)"></i><i style="height:42%;background:var(--azul)"></i><span>13</span></div>
+              <div class="bc"><i style="height:40%;background:var(--ok)"></i><i style="height:14%;background:var(--azul)"></i><span>14</span></div>
+              <div class="bc"><i style="height:0;background:var(--ok)"></i><i style="height:0;background:var(--azul)"></i><span>15</span></div>
+              <div class="bc"><i style="height:0;background:var(--ok)"></i><i style="height:0;background:var(--azul)"></i><span>16</span></div>
+            </div>
+            <div class="per" style="margin-top:6px"><div class="l"><span><i style="background:var(--ok)"></i>Mostrador</span><span><i style="background:var(--azul)"></i>Tienda</span></div></div>
+          </div>
+          <div class="card" style="flex:1">
+            <p class="sec">Por forma de pago</p>
+            <div class="pg"><span>Efectivo</span><b>61,40</b></div>
+            <div class="pg"><span>Yape</span><b>28,80</b></div>
+            <div class="pg"><span>Plin</span><b>9,00</b></div>
+            <div class="pg"><span>Transferencia</span><b>4,60</b></div>
+            <div class="pg"><span>Sin indicar</span><b>0,00</b></div>
+          </div>
+          <div class="card" style="flex:1">
+            <p class="sec">Stock bajo</p>
+            <div class="pg"><span>Arroz costeño 1 kg</span><b style="color:var(--warn)">2</b></div>
+            <div class="pg"><span>Queso andino</span><b style="color:var(--warn)">3,2 kg</b></div>
+            <div class="pg"><span>Aceite Primor 1 L</span><b style="color:var(--err)">0</b></div>
+            <div style="color:var(--hint);font-size:11px;margin-top:4px">de los productos cargados</div>
+          </div>
+        </div>
+        <div class="card" style="flex:1;min-height:0;overflow:hidden;padding:8px 12px">
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px"><b>Ventas de hoy</b><div class="campo" style="width:260px;min-height:34px;border-radius:999px;margin-left:12px"><svg class="i"><use href="#search"/></svg>Cliente o producto</div><span class="chip on" style="min-height:34px">Todas</span><span class="chip" style="min-height:34px">Mostrador</span><span class="chip" style="min-height:34px">Tienda</span><span class="chip" style="min-height:34px">Anuladas</span></div>
+          <table class="tb">
+            <tr><th>Hora</th><th>Cliente</th><th>Origen</th><th>Productos</th><th>Pago</th><th style="text-align:right">Total</th><th></th></tr>
+            <tr><td>14:32</td><td>Sin nombre</td><td><span class="pill p-m">Mostrador</span></td><td>350 g Queso andino, 2 × Gaseosa Inca</td><td>Efectivo</td><td class="num">17,40</td><td style="color:var(--err)">Anular</td></tr>
+            <tr><td>13:05</td><td>Rosa</td><td><span class="pill p-w">Tienda</span></td><td>350 g Queso andino, 5 × Gaseosa</td><td>Yape</td><td class="num">12,00</td><td></td></tr>
+            <tr><td>11:48</td><td>María</td><td><span class="pill p-m">Mostrador</span></td><td>1 × Arroz costeño 1 kg</td><td>Efectivo</td><td class="num">4,20</td><td style="color:var(--err)">Anular</td></tr>
+            <tr style="opacity:.55"><td>10:20</td><td>Juan</td><td><span class="pill p-m">Mostrador</span> <span class="pill p-x">Anulada</span></td><td>2 × Gaseosa Inca</td><td>Efectivo</td><td class="num" style="text-decoration:line-through">9,00</td><td></td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="tk" style="width:360px">
+      <b style="font-size:16px">Venta nueva</b>
+      <div class="campo" style="min-height:40px"><svg class="i"><use href="#search"/></svg>Buscar producto (F2)</div>
+      <div class="prod" style="min-height:48px"><div class="n"><b>Gaseosa Inca 500 ml</b></div><div class="p">4,50<small>24 disp.</small></div></div>
+      <div class="prod" style="min-height:48px;border-color:var(--azul)"><div class="n"><b>Queso andino</b><small>por kg</small></div><div class="p">24,00<small>3,2 kg</small></div></div>
+      <p class="sec" style="margin:6px 0 0">En el ticket</p>
+      <div class="lin" style="padding:6px 0"><div class="n"><b>Queso andino</b><small>350 g</small></div><div class="r">8,40</div></div>
+      <div class="lin" style="padding:6px 0"><div class="n"><b>Gaseosa Inca</b><small>2 × 4,50</small></div><div class="r">9,00</div></div>
+      <div style="flex:1"></div>
+      <div class="chips"><span class="chip on">Efectivo</span><span class="chip">Yape</span><span class="chip">Plin</span><span class="chip">Transferencia</span></div>
+      <div class="tot"><span>Total</span><b>S/ 17,40</b></div>
+      <div class="btn b1">Cobrar S/ 17,40</div>
+    </div>
+  </div></div>
+  <div class="cap" style="max-width:1000px"><b>Laptop y PC.</b> Ya no es el celular estirado: es un <b>tablero</b>. Arriba, 6 números (ventas, mostrador, tienda, efectivo en caja, por cobrar y anuladas). En medio, ventas por hora, por forma de pago y stock bajo. Abajo, la tabla de ventas con búsqueda, filtros y «Anular» por fila. A la derecha, el ticket siempre a la mano con búsqueda (F2). Todo sale del resumen del día y de lo ya cargado; los números nuevos (efectivo, por hora, por pago) se guardan también en el resumen del día, sin lecturas extra.</div>
+</div></div>
+
+
+<h2 id="t4">T4 · TV (1 600 px o más): panel de control para mirar desde lejos</h2>
+<div class="fila"><div>
+  <div style="zoom:.55"><div class="tv2">
+    <div style="display:flex;align-items:center;gap:24px;padding:20px 48px;background:var(--sup);border-bottom:2px solid var(--dim)"><span style="font-size:40px;font-weight:800">Caja</span><span style="color:var(--muted);font-size:28px">Jueves 5 de noviembre</span><span style="margin-left:auto;font-size:40px;font-weight:700;font-variant-numeric:tabular-nums">14:32</span><span style="color:var(--ok);font-size:26px;font-weight:700">● En vivo</span></div>
+    <div class="tvkpi">
+      <div>Ventas de hoy<b>S/ 103,80</b><small>8 ventas · ticket 12,97</small></div>
+      <div>Mostrador<b>S/ 51,40</b><small>4 ventas</small></div>
+      <div>Tienda web<b>S/ 52,40</b><small>4 ventas</small></div>
+      <div>Efectivo en caja<b>S/ 61,40</b><small>cobrado</small></div>
+      <div>Por cobrar<b>S/ 18,00</b><small>2 pedidos</small></div>
+    </div>
+    <div style="display:flex;gap:24px;padding:0 48px;flex:1;min-height:0">
+      <div class="tvt" style="flex:1.7">
+        <table>
+          <tr><th>Hora</th><th>Cliente</th><th>Origen</th><th>Productos</th><th>Pago</th><th style="text-align:right">Total</th></tr>
+          <tr class="foco"><td>14:32</td><td>Sin nombre</td><td><span class="pill p-m">Mostrador</span></td><td>350 g Queso andino, 2 × Gaseosa</td><td>Efectivo</td><td class="num">17,40</td></tr>
+          <tr><td>13:05</td><td>Rosa</td><td><span class="pill p-w">Tienda</span></td><td>350 g Queso andino, 5 × Gaseosa</td><td>Yape</td><td class="num">12,00</td></tr>
+          <tr><td>11:48</td><td>María</td><td><span class="pill p-m">Mostrador</span></td><td>1 × Arroz costeño 1 kg</td><td>Efectivo</td><td class="num">4,20</td></tr>
+          <tr style="opacity:.55"><td>10:20</td><td>Juan</td><td><span class="pill p-m">Mostrador</span></td><td>2 × Gaseosa Inca (anulada)</td><td>Efectivo</td><td class="num">9,00</td></tr>
+          <tr><td>09:40</td><td>Luis</td><td><span class="pill p-w">Tienda</span></td><td>1 000 g Queso andino</td><td>Plin</td><td class="num">24,00</td></tr>
+        </table>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:16px">
+        <div class="tvk"><h4>Por forma de pago</h4><div class="pr"><span>Efectivo</span><b>61,40</b></div><div class="pr"><span>Yape</span><b>28,80</b></div><div class="pr"><span>Plin</span><b>9,00</b></div><div class="pr"><span>Transferencia</span><b>4,60</b></div></div>
+        <div class="tvk"><h4>Atención</h4><div class="pr"><span>Stock bajo</span><b style="color:var(--warn)">3 productos</b></div><div class="pr"><span>Agotado</span><b style="color:var(--err)">Aceite Primor</b></div><div class="pr"><span>Por cobrar</span><b>2 pedidos</b></div></div>
+      </div>
+    </div>
+    <div class="ayuda"><span><b>▲ ▼</b>mover</span><span><b>OK</b>ver la venta</span><span><b>◀ ▶</b>Hoy · Historial · Informes</span><span><b>Atrás</b>cerrar</span></div>
+  </div></div>
+  <div class="cap" style="max-width:1000px"><b>TV.</b> Una sola pantalla densa, para mirar desde lejos: letra grande, 5 números, la tabla de ventas con el foco marcado por un borde blanco, formas de pago y avisos. Se maneja con el control remoto (▲ ▼, OK, Atrás). <b>En la TV no se cobra</b>: cobrar se hace en celular, tableta o PC; en la TV se mira y, con OK, se abre el detalle de una venta (y se anula si hace falta). Igual que la TV de Pedidos.</div>
+</div></div>
+
+
+<div class="nota"><b>Revisión con las guías de diseño (Apple HIG + UX Pro Max):</b> cuadrícula de 4 px y 8 px entre chips; zonas de toque de 40–48 px; contraste con <code>texto</code>, <code>muted</code> y <code>hint</code> (nunca <code>dim</code> como texto); estados vacío, error de stock, éxito y anulada, siempre con una acción; avisos con texto además de color; sección activa marcada en la navegación; un solo botón principal por pantalla. <b>Sin lecturas nuevas por diseño:</b> la búsqueda usa lo ya cargado y los números salen del resumen del día.</div>
+</body>
+</html>
