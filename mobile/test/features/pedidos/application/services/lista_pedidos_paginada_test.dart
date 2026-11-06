@@ -113,6 +113,17 @@ void main() {
       expect(reiniciada.hayMas, isTrue);
     });
 
+    test('unir varias listas: del más nuevo al más viejo, sin repetir', () {
+      final unida = ListaPedidosPaginada.unirPorFecha([
+        [p1, p3],
+        [p2, p3],
+        [sinFecha],
+      ]);
+
+      expect(unida.map((p) => p.id), ['nuevo', 'p3', 'p2', 'p1']);
+      expect(ListaPedidosPaginada.unirPorFecha(const []), isEmpty);
+    });
+
     test('es inmutable: cada cambio devuelve otra lista', () {
       final base = ListaPedidosPaginada().conCabeza([p1]);
       final otra = base.conCabeza([p2]);

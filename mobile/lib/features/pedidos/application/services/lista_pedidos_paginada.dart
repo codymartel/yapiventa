@@ -91,6 +91,15 @@ class ListaPedidosPaginada {
     return ListaPedidosPaginada(tamano: tamano, cabeza: cabeza);
   }
 
+  /// Junta varias listas (por ejemplo Nuevos y Activos) en una sola, del más
+  /// nuevo al más viejo; uno sin fecha va primero. No repite pedidos.
+  static List<Pedido> unirPorFecha(Iterable<List<Pedido>> listas) {
+    return ListaPedidosPaginada(
+      tamano: 0,
+      cabeza: [for (final l in listas) ...l],
+    ).pedidos;
+  }
+
   List<Pedido> _unir() {
     final vistos = <String>{};
     final union = <Pedido>[];

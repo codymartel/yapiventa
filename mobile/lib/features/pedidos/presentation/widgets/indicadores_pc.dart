@@ -15,12 +15,16 @@ class IndicadoresPc extends StatelessWidget {
     required this.conteoNuevos,
     required this.conteoActivos,
     required this.resumen,
+    this.escala = 1,
   });
 
   final IndicadoresPedidos indicadores;
   final String conteoNuevos;
   final String conteoActivos;
   final ResumenVentasDia resumen;
+
+  /// 1 en PC; mayor en TV (letra de 20 px o más).
+  final double escala;
 
   @override
   Widget build(BuildContext context) {
@@ -35,12 +39,14 @@ class IndicadoresPc extends StatelessWidget {
             ? 'ninguno esperando'
             : 'el más viejo: $masViejo min',
         color: AppColors.aviso,
+        escala: escala,
       ),
       _Dato(
         valor: conteoActivos,
         etiqueta: 'Activos',
         detalle: '${indicadores.enCamino} en camino',
         color: AppColors.azulTexto,
+        escala: escala,
       ),
       _Dato(
         valor: MensajesAccionPedido.dinero(indicadores.porCobrarCentavos),
@@ -49,12 +55,14 @@ class IndicadoresPc extends StatelessWidget {
             ? '1 pedido'
             : '${indicadores.porCobrarPedidos} pedidos',
         color: AppColors.aviso,
+        escala: escala,
       ),
       _Dato(
         valor: '${indicadores.vencidos}',
         etiqueta: 'Vencidos (+12 h)',
         detalle: 'sin confirmar',
         color: indicadores.vencidos > 0 ? AppColors.error : AppColors.muted,
+        escala: escala,
       ),
       _Dato(
         valor: MensajesAccionPedido.dinero(resumen.ventasCentavos),
@@ -63,12 +71,14 @@ class IndicadoresPc extends StatelessWidget {
             '${resumen.entregados} entregados · ticket '
             '${ticket == null ? '—' : MensajesAccionPedido.dinero(ticket)}',
         color: AppColors.ok,
+        escala: escala,
       ),
       _Dato(
         valor: minutos == null ? '—' : '$minutos min',
         etiqueta: 'Tiempo para confirmar',
         detalle: 'promedio de hoy',
         color: AppColors.texto,
+        escala: escala,
       ),
     ];
     return LayoutBuilder(
@@ -94,8 +104,10 @@ class _Dato extends StatelessWidget {
     required this.etiqueta,
     required this.detalle,
     required this.color,
+    required this.escala,
   });
 
+  final double escala;
   final String valor;
   final String etiqueta;
   final String detalle;
@@ -106,7 +118,7 @@ class _Dato extends StatelessWidget {
     return Semantics(
       label: '$etiqueta: $valor, $detalle',
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(12 * escala),
         decoration: BoxDecoration(
           color: AppColors.card,
           borderRadius: BorderRadius.circular(12),
@@ -122,7 +134,7 @@ class _Dato extends StatelessWidget {
                 valor,
                 style: TextStyle(
                   color: color,
-                  fontSize: 20,
+                  fontSize: 20 * escala,
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -132,13 +144,13 @@ class _Dato extends StatelessWidget {
               etiqueta,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: AppColors.texto, fontSize: 12),
+              style: TextStyle(color: AppColors.texto, fontSize: 12 * escala),
             ),
             Text(
               detalle,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: AppColors.hint, fontSize: 11),
+              style: TextStyle(color: AppColors.hint, fontSize: 11 * escala),
             ),
           ],
         ),

@@ -20,6 +20,7 @@ import 'dialogo_entregar_pedido.dart';
 import 'filtros_pedidos.dart';
 import 'historial_pedidos_vista.dart';
 import 'pedidos_vista_pc.dart';
+import 'pedidos_vista_tv.dart';
 import 'tarjeta_pedido.dart';
 
 /// Abre un enlace afuera de la app (WhatsApp). Se puede cambiar en pruebas.
@@ -34,7 +35,8 @@ Future<bool> _abrirEnlaceReal(Uri uri) =>
 ///   - 600 px o más: lista y detalle lado a lado (tableta o celular
 ///     horizontal) o, en tableta vertical, la lista con un panel lateral.
 /// En PC (1 100 px o más) usa `PedidosVistaPc`: tabla, números del día y
-/// detalle completo. La TV llega en su propio paso.
+/// detalle completo. En TV (1 600 px o más) usa
+/// `PedidosVistaTv`: una pantalla densa para el control remoto.
 ///
 /// Los listeners se pausan si la pestaña o la app lleva más de
 /// [tiempoParaPausar] oculta (la web no guarda caché: volver a abrirlos
@@ -245,6 +247,9 @@ class _PedidosFlowState extends State<PedidosFlow> with WidgetsBindingObserver {
       child: LayoutBuilder(
         builder: (context, c) {
           final ancho = c.maxWidth;
+          if (ancho >= 1600) {
+            return PedidosVistaTv(reloj: _reloj, acciones: _acciones);
+          }
           if (ancho >= 1100) {
             return PedidosVistaPc(
               reloj: _reloj,
