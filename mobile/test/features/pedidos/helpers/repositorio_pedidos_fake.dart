@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:collection';
 
 import 'package:mobile/features/pedidos/domain/models/estado_pedido.dart';
+import 'package:mobile/features/pedidos/domain/models/filtro_pedidos.dart';
 import 'package:mobile/features/pedidos/domain/models/pedido.dart';
 import 'package:mobile/features/pedidos/domain/models/resumen_ventas_dia.dart';
 import 'package:mobile/features/pedidos/domain/repositories/repositorio_pedidos.dart';
@@ -34,20 +35,32 @@ class RepositorioPedidosFake implements RepositorioPedidos {
   final escuchas = <String>[];
   int oyentesActivos = 0;
 
-  String _clave(Set<EstadoPedido>? estados) {
-    final valores = [for (final e in estados ?? <EstadoPedido>{}) e.valor]
-      ..sort();
-    return valores.join('+');
-  }
+  String _clave(FiltroPedidos filtro) => filtro.name;
 
-  /// Emite la lista en vivo de la consulta de esos estados.
-  void emitir(Set<EstadoPedido> estados, List<Pedido> pedidos) {
-    _controladores[_clave(estados)]!.add(pedidos);
+  /// Emite la lista en vivo de la consulta de ese filtro.
+  void emitir(FiltroPedidos filtro, List<Pedido> pedidos) {
+    _controladores[_clave(filtro)]!.add(pedidos);
   }
 
   /// La consulta en vivo falla (por ejemplo, sin conexión).
-  void fallar(Set<EstadoPedido> estados) {
-    _controladores[_clave(estados)]!.addError(Exception('sin conexión'));
+  void fallar(FiltroPedidos filtro) {
+    _controladores[_clave(filtro)]!.addError(Exception('sin conexión'));
+  }
+
+  /// Cuántos oyentes tiene ahora la consulta de ese filtro.
+  int oyentesDe(FiltroPedidos filtro) => _oyentes[_clave(filtro)] ?? 0;
+  final _oyentes = <String, int>{};
+
+  /// Lo que devuelve la suma de «por cobrar» (null = falla).
+  int? sumaPorCobrar = 0;
+  int sumasPedidas = 0;
+
+  @override
+  Future<int> sumarPorCobrar(String negocioId) async {
+    sumasPedidas++;
+    final suma = sumaPorCobrar;
+    if (suma == null) throw StateError('sin índice');
+    return suma;
   }
 
   // ── Resumen del día ──
@@ -81,28 +94,34 @@ class RepositorioPedidosFake implements RepositorioPedidos {
   final despuesDeVerMas = <String>[];
 
   @override
-  Stream<List<Pedido>> escucharAbiertos(
+  Stream<List<Pedido>> escucharPedidos(
     String negocioId, {
-    Set<EstadoPedido>? estados,
+    FiltroPedidos filtro = FiltroPedidos.todos,
     int limite = 10,
   }) {
     final falla = fallaAlEscuchar;
     if (falla != null) throw falla;
-    final clave = _clave(estados);
+    final clave = _clave(filtro);
     escuchas.add(clave);
     final controlador = StreamController<List<Pedido>>(
-      onListen: () => oyentesActivos++,
-      onCancel: () => oyentesActivos--,
+      onListen: () {
+        oyentesActivos++;
+        _oyentes[clave] = (_oyentes[clave] ?? 0) + 1;
+      },
+      onCancel: () {
+        oyentesActivos--;
+        _oyentes[clave] = (_oyentes[clave] ?? 1) - 1;
+      },
     );
     _controladores[clave] = controlador;
     return controlador.stream;
   }
 
   @override
-  Future<PaginaPedidos> obtenerAbiertosDespuesDe(
+  Future<PaginaPedidos> obtenerPedidosDespuesDe(
     String negocioId,
     Pedido despuesDe, {
-    Set<EstadoPedido>? estados,
+    FiltroPedidos filtro = FiltroPedidos.todos,
     int limite = 10,
   }) async {
     despuesDeVerMas.add(despuesDe.id);

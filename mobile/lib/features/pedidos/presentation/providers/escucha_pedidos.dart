@@ -19,7 +19,10 @@ import 'resultado_accion.dart';
 // [onCambio] y lo usa `PedidosProvider`.
 //
 // Ahorro de lecturas:
-//   - 2 listeners de 10 documentos y 1 documento (el resumen de hoy).
+//   - 2 listeners de 10 documentos (Nuevos y Activos), 1 documento (el resumen
+//     de hoy) y 1 consulta de suma («por cobrar» de todo el negocio).
+//   - Las otras pestañas (Por cobrar, Reembolsos, Todos) se escuchan SOLO
+//     mientras se ven: 10 lecturas al abrirlas, y se cierran al salir.
 //   - [pausar] los cierra y [reanudar] los reabre; lo cargado se conserva.
 //   - Las insignias salen de lo cargado («10+»): 0 lecturas.
 // ═════════════════════════════════════════════════════════════════════════
@@ -50,6 +53,10 @@ class EscuchaPedidos {
   ResumenVentasDia? _resumen;
   final Set<PestanaPedidos> _esperandoPrimeraCarga = {};
   final Set<PestanaPedidos> _cargandoMas = {};
+  final Set<PestanaPedidos> _cargadas = {};
+  PestanaPedidos _visible = PestanaPedidos.nuevos;
+  int? _porCobrarExacto;
+  bool _sumando = false;
   String? _error;
   bool _iniciado = false;
   bool _pausado = false;
@@ -68,6 +75,15 @@ class EscuchaPedidos {
   bool cargando(PestanaPedidos p) => _esperandoPrimeraCarga.contains(p);
   bool cargandoMas(PestanaPedidos p) => _cargandoMas.contains(p);
 
+  /// ¿Ya se puede mostrar el número de la pestaña? Nuevos y Activos siempre;
+  /// las demás, cuando se abrieron al menos una vez.
+  bool conteoDisponible(PestanaPedidos p) =>
+      p.siempreEnVivo || _cargadas.contains(p);
+
+  /// Lo que falta cobrar en TODO el negocio (consulta de suma), en céntimos.
+  /// null si la consulta falló (entonces se usa lo cargado).
+  int? get porCobrarExacto => _porCobrarExacto;
+
   // ── Escucha en vivo ───────────────────────────────────────────────────
 
   /// Abre los listeners. Se llama una vez al mostrar la pantalla.
@@ -75,6 +91,37 @@ class EscuchaPedidos {
     if (_iniciado || _cerrada) return;
     _iniciado = true;
     _suscribir(conSpinner: true);
+    refrescarPorCobrar();
+  }
+
+  /// La pantalla muestra [p]: si es una pestaña que no está siempre en vivo,
+  /// se abre su consulta y se cierra la de la que se dejó de ver.
+  void mostrar(PestanaPedidos p) {
+    _visible = p;
+    if (!_iniciado || _pausado || _cerrada) return;
+    for (final pestana in PestanaPedidos.values) {
+      if (pestana.siempreEnVivo || pestana == p) continue;
+      _suscripciones.remove(pestana)?.cancel();
+    }
+    _suscribir(conSpinner: true);
+    if (p == PestanaPedidos.porCobrar) refrescarPorCobrar();
+    onCambio();
+  }
+
+  /// Vuelve a pedir la suma de «por cobrar» (1 lectura). Si falla (por
+  /// ejemplo, falta el índice) se queda sin valor exacto y la pantalla usa lo
+  /// cargado.
+  Future<void> refrescarPorCobrar() async {
+    if (_sumando || _cerrada) return;
+    _sumando = true;
+    try {
+      _porCobrarExacto = await _repositorio.sumarPorCobrar(negocioId);
+    } catch (_) {
+      _porCobrarExacto = null;
+    } finally {
+      _sumando = false;
+      if (!_cerrada) onCambio();
+    }
   }
 
   /// Cierra los listeners sin perder lo cargado (pestaña oculta, app en
@@ -91,6 +138,7 @@ class EscuchaPedidos {
     if (!_pausado || _cerrada) return;
     _pausado = false;
     _suscribir(conSpinner: false);
+    refrescarPorCobrar();
     onCambio();
   }
 
@@ -144,17 +192,15 @@ class EscuchaPedidos {
   }
 
   void _suscribir({required bool conSpinner}) {
-    _suscribirResumen();
+    // Cambiar de pestaña no debe volver a abrir el resumen (1 lectura de más).
+    if (_suscripcionResumen == null) _suscribirResumen();
     for (final pestana in PestanaPedidos.values) {
+      if (!pestana.siempreEnVivo && pestana != _visible) continue;
       if (_suscripciones.containsKey(pestana)) continue;
       if (conSpinner) _esperandoPrimeraCarga.add(pestana);
       try {
         _suscripciones[pestana] = _repositorio
-            .escucharAbiertos(
-              negocioId,
-              estados: pestana.estados,
-              limite: _tamano,
-            )
+            .escucharPedidos(negocioId, filtro: pestana.filtro, limite: _tamano)
             .listen(
               (pedidos) => _llegaron(pestana, pedidos),
               onError: (Object _) => _fallo(pestana),
@@ -167,6 +213,7 @@ class EscuchaPedidos {
 
   void _llegaron(PestanaPedidos pestana, List<Pedido> pedidos) {
     _listas[pestana] = _listas[pestana]!.conCabeza(pedidos);
+    _cargadas.add(pestana);
     _esperandoPrimeraCarga.remove(pestana);
     _error = null;
     onCambio();
@@ -199,10 +246,10 @@ class EscuchaPedidos {
     _cargandoMas.add(p);
     onCambio();
     try {
-      final pagina = await _repositorio.obtenerAbiertosDespuesDe(
+      final pagina = await _repositorio.obtenerPedidosDespuesDe(
         negocioId,
         ultimo,
-        estados: p.estados,
+        filtro: p.filtro,
         limite: _tamano,
       );
       _listas[p] = _listas[p]!.conPagina(pagina.pedidos, hayMas: pagina.hayMas);
@@ -225,11 +272,12 @@ class EscuchaPedidos {
     if (avisar) onCambio();
   }
 
-  /// El pedido cambió: su copia traída con «Ver más» quedó vieja. La de la
-  /// cabeza en vivo se corrige sola.
+  /// El pedido cambió: su copia traída con «Ver más» quedó vieja (la de la
+  /// cabeza en vivo se corrige sola) y lo que falta cobrar pudo cambiar.
   void olvidarCopiaVieja(String pedidoId) {
     for (final p in PestanaPedidos.values) {
       _listas[p] = _listas[p]!.sinPedidoViejo(pedidoId);
     }
+    refrescarPorCobrar();
   }
 }

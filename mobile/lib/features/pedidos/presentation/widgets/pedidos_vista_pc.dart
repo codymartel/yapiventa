@@ -11,6 +11,7 @@ import 'filtros_pedidos.dart';
 import 'indicadores_pc.dart';
 import 'por_preparar_vista.dart';
 import 'tabla_pedidos.dart';
+import 'textos_pestanas_pedidos.dart';
 
 /// La pantalla de pedidos para PC (1 100 px o más): búsqueda, los 6 números
 /// del día, pestañas, acciones en lote, la tabla con todos los datos, «por
@@ -123,14 +124,20 @@ class _Izquierda extends StatelessWidget {
                 conteoNuevos: p.conteo(PestanaPedidos.nuevos),
                 conteoActivos: p.conteo(PestanaPedidos.activos),
                 resumen: p.resumenHoy,
+                porCobrarCentavos: p.porCobrarEsExacto
+                    ? p.porCobrarCentavos
+                    : null,
               ),
             ),
             FiltrosPedidos(
               mostrarNumeros: false,
               pestana: pestana,
+              pestanas: PestanaPedidos.values,
+              etiquetaPestana: (t) => etiquetaDePestana(p, t),
               conteoNuevos: p.conteo(PestanaPedidos.nuevos),
               conteoActivos: p.conteo(PestanaPedidos.activos),
-              porCobrarCentavos: p.porCobrarCargadoCentavos,
+              porCobrarCentavos: p.porCobrarCentavos,
+              porCobrarExacto: p.porCobrarEsExacto,
               vencidos: p.vencidosCargados,
               cancelandoVencidos: p.cancelandoVencidos,
               onPestana: p.seleccionarPestana,
@@ -155,9 +162,7 @@ class _Izquierda extends StatelessWidget {
                       cargando: p.cargando(pestana) && sinFiltro.isEmpty,
                       mensaje: p.busqueda.trim().isNotEmpty
                           ? 'Sin resultados entre los pedidos cargados.'
-                          : pestana == PestanaPedidos.nuevos
-                          ? 'No hay pedidos nuevos.'
-                          : 'No hay pedidos activos.',
+                          : textoVacioDePestana(pestana),
                     )
                   : ListView(
                       padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),

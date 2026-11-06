@@ -19,12 +19,16 @@ class AccionesDetallePedido {
     this.onCancelar,
     this.onMarcarCobrado,
     this.onWhatsapp,
+    this.onReembolso,
   });
 
   final VoidCallback? onPrincipal;
   final VoidCallback? onCancelar;
   final VoidCallback? onMarcarCobrado;
   final VoidCallback? onWhatsapp;
+
+  /// Solo en un cancelado que ya estaba pagado: avisa que se devolvió el dinero.
+  final VoidCallback? onReembolso;
 }
 
 /// El detalle de un pedido: cliente, entrega, productos, cuenta y las
@@ -244,7 +248,13 @@ class _Pie extends StatelessWidget {
     final puedeCancelar =
         acciones.onCancelar != null &&
         TransicionesPedido.puedeCancelar(pedido.estado);
-    if (!hayPrincipal && !puedeCancelar && acciones.onWhatsapp == null) {
+    final hayReembolso =
+        acciones.onReembolso != null &&
+        TransicionesPedido.puedeMarcarReembolsoHecho(pedido);
+    if (!hayPrincipal &&
+        !hayReembolso &&
+        !puedeCancelar &&
+        acciones.onWhatsapp == null) {
       return const SizedBox.shrink();
     }
     return Container(
@@ -273,9 +283,19 @@ class _Pie extends StatelessWidget {
                       )
                     : Text(etiqueta),
               ),
+            if (hayReembolso)
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(48),
+                ),
+                onPressed: procesando ? null : acciones.onReembolso,
+                child: const Text('Marcar reembolso hecho'),
+              ),
             if (acciones.onWhatsapp != null || puedeCancelar)
               Padding(
-                padding: EdgeInsets.only(top: hayPrincipal ? 8 : 0),
+                padding: EdgeInsets.only(
+                  top: hayPrincipal || hayReembolso ? 8 : 0,
+                ),
                 child: Row(
                   children: [
                     if (acciones.onWhatsapp != null)

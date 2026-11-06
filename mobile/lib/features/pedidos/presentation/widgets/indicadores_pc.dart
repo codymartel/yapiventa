@@ -15,6 +15,7 @@ class IndicadoresPc extends StatelessWidget {
     required this.conteoNuevos,
     required this.conteoActivos,
     required this.resumen,
+    this.porCobrarCentavos,
     this.escala = 1,
   });
 
@@ -22,6 +23,10 @@ class IndicadoresPc extends StatelessWidget {
   final String conteoNuevos;
   final String conteoActivos;
   final ResumenVentasDia resumen;
+
+  /// Lo que falta cobrar en TODO el negocio (consulta de suma). null = no se
+  /// pudo: se usa lo cargado y la etiqueta dice «cargados».
+  final int? porCobrarCentavos;
 
   /// 1 en PC; mayor en TV (letra de 20 px o más).
   final double escala;
@@ -49,11 +54,17 @@ class IndicadoresPc extends StatelessWidget {
         escala: escala,
       ),
       _Dato(
-        valor: MensajesAccionPedido.dinero(indicadores.porCobrarCentavos),
-        etiqueta: 'Por cobrar (cargados)',
-        detalle: indicadores.porCobrarPedidos == 1
-            ? '1 pedido'
-            : '${indicadores.porCobrarPedidos} pedidos',
+        valor: MensajesAccionPedido.dinero(
+          porCobrarCentavos ?? indicadores.porCobrarCentavos,
+        ),
+        etiqueta: porCobrarCentavos == null
+            ? 'Por cobrar (cargados)'
+            : 'Por cobrar',
+        detalle: porCobrarCentavos != null
+            ? 'de todo el negocio'
+            : (indicadores.porCobrarPedidos == 1
+                  ? '1 pedido'
+                  : '${indicadores.porCobrarPedidos} pedidos'),
         color: AppColors.aviso,
         escala: escala,
       ),

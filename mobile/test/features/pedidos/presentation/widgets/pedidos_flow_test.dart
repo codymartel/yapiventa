@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/features/pedidos/domain/models/estado_pedido.dart';
+import 'package:mobile/features/pedidos/domain/models/filtro_pedidos.dart';
 import 'package:mobile/features/pedidos/domain/models/linea_pedido.dart';
 import 'package:mobile/features/pedidos/domain/models/pedido.dart';
 import 'package:mobile/features/pedidos/pedidos_dependencies.dart';
@@ -9,12 +10,8 @@ import 'package:mobile/features/pedidos/presentation/widgets/tarjeta_pedido.dart
 
 import '../../helpers/repositorio_pedidos_fake.dart';
 
-const _nuevos = {EstadoPedido.nuevo};
-const _activos = {
-  EstadoPedido.confirmado,
-  EstadoPedido.enCamino,
-  EstadoPedido.listo,
-};
+const _nuevos = FiltroPedidos.nuevos;
+const _activos = FiltroPedidos.activos;
 final _ahora = DateTime.utc(2026, 11, 5, 20);
 
 Pedido _pedido(

@@ -1,5 +1,6 @@
 import '../models/descuento_stock.dart';
 import '../models/estado_pedido.dart';
+import '../models/filtro_pedidos.dart';
 import '../models/pedido.dart';
 import '../models/resumen_ventas_dia.dart';
 
@@ -47,27 +48,29 @@ class ResultadoConfirmar {
 
 /// Acceso a los pedidos de un negocio. La implementación vive en `data/`.
 abstract class RepositorioPedidos {
-  /// Escucha los [limite] pedidos abiertos más nuevos, del más nuevo al más
-  /// viejo. Con [estados] solo esos (una pestaña: Nuevos, o Activos =
-  /// confirmado, en camino y listo); sin ellos, todos los abiertos.
-  /// 1 listener acotado.
-  /// Lanza [ArgumentError] si [estados] está vacío o incluye uno cerrado.
-  Stream<List<Pedido>> escucharAbiertos(
+  /// Escucha los [limite] pedidos más nuevos que cumplen [filtro], del más
+  /// nuevo al más viejo (una pestaña). 1 listener acotado.
+  Stream<List<Pedido>> escucharPedidos(
     String negocioId, {
-    Set<EstadoPedido>? estados,
+    FiltroPedidos filtro = FiltroPedidos.todos,
     int limite = 10,
   });
 
-  /// «Ver más»: los siguientes [limite] abiertos, más viejos que [despuesDe]
-  /// (el último de la lista que se ve). Una lectura puntual, no en vivo.
-  /// [PaginaPedidos.ultimoCursor] va siempre null: la siguiente página se pide
-  /// con el último pedido de esta.
-  Future<PaginaPedidos> obtenerAbiertosDespuesDe(
+  /// «Ver más»: los siguientes [limite] que cumplen [filtro], más viejos que
+  /// [despuesDe] (el último de la lista que se ve). Una lectura puntual, no en
+  /// vivo. [PaginaPedidos.ultimoCursor] va siempre null: la siguiente página
+  /// se pide con el último pedido de esta.
+  Future<PaginaPedidos> obtenerPedidosDespuesDe(
     String negocioId,
     Pedido despuesDe, {
-    Set<EstadoPedido>? estados,
+    FiltroPedidos filtro = FiltroPedidos.todos,
     int limite = 10,
   });
+
+  /// Cuánto falta cobrar en TODO el negocio (suma de los totales de los
+  /// pedidos sin cobrar y no cancelados), en céntimos. Una consulta de suma:
+  /// cuesta casi 1 lectura sin importar cuántos pedidos sean.
+  Future<int> sumarPorCobrar(String negocioId);
 
   /// Pedidos nuevos que llegaron antes de [antesDe] (vencidos), hasta
   /// [limite]. Una lectura puntual.

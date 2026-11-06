@@ -204,6 +204,9 @@ class _FilaPedido extends StatelessWidget {
     final telefono = pedido.cliente.telefono.trim();
     final esDelivery = pedido.tipoEntrega == TipoEntrega.delivery;
     final cobrado = pedido.estadoPago == EstadoPago.pagado;
+    final reembolsoPendiente =
+        pedido.estado == EstadoPedido.cancelado &&
+        pedido.reembolso == EstadoReembolso.pendiente;
     final base = TextStyle(color: AppColors.texto, fontSize: 13 * escala);
     final tenue = TextStyle(color: AppColors.hint, fontSize: 11 * escala);
 
@@ -301,9 +304,13 @@ class _FilaPedido extends StatelessWidget {
                     pedido.metodoPago.trim().isEmpty
                         ? '—'
                         : pedido.metodoPago.trim(),
-                    cobrado ? 'Pagado' : 'Sin cobrar',
+                    reembolsoPendiente
+                        ? 'Reembolso pendiente'
+                        : (cobrado ? 'Pagado' : 'Sin cobrar'),
                     estiloAbajo: tenue.copyWith(
-                      color: cobrado ? AppColors.ok : AppColors.aviso,
+                      color: cobrado && !reembolsoPendiente
+                          ? AppColors.ok
+                          : AppColors.aviso,
                     ),
                   ),
                 ),

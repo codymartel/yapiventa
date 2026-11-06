@@ -22,6 +22,7 @@ import 'historial_pedidos_vista.dart';
 import 'pedidos_vista_pc.dart';
 import 'pedidos_vista_tv.dart';
 import 'tarjeta_pedido.dart';
+import 'textos_pestanas_pedidos.dart';
 
 /// Abre un enlace afuera de la app (WhatsApp). Se puede cambiar en pruebas.
 typedef AbrirEnlace = Future<bool> Function(Uri uri);
@@ -66,6 +67,14 @@ class PedidosFlow extends StatefulWidget {
 }
 
 class _PedidosFlowState extends State<PedidosFlow> with WidgetsBindingObserver {
+  /// Celular y tableta: 4 pestañas (PC agrega «Todos»).
+  static const _pestanasCompactas = [
+    PestanaPedidos.nuevos,
+    PestanaPedidos.activos,
+    PestanaPedidos.porCobrar,
+    PestanaPedidos.reembolsos,
+  ];
+
   static const double _anchoLista = 340;
   static const double _anchoPanel = 440;
 
@@ -193,6 +202,7 @@ class _PedidosFlowState extends State<PedidosFlow> with WidgetsBindingObserver {
       onCancelar: () => _cancelar(p),
       onMarcarCobrado: () async =>
           _avisar(await _provider.marcarPago(p, EstadoPago.pagado)),
+      onReembolso: () async => _avisar(await _provider.marcarReembolsoHecho(p)),
       onWhatsapp: tieneTelefono ? () => _whatsapp(p) : null,
     );
   }
@@ -323,9 +333,12 @@ class _PedidosFlowState extends State<PedidosFlow> with WidgetsBindingObserver {
           children: [
             FiltrosPedidos(
               pestana: pestana,
+              pestanas: _pestanasCompactas,
+              etiquetaPestana: (t) => etiquetaDePestana(p, t),
               conteoNuevos: p.conteo(PestanaPedidos.nuevos),
               conteoActivos: p.conteo(PestanaPedidos.activos),
-              porCobrarCentavos: p.porCobrarCargadoCentavos,
+              porCobrarCentavos: p.porCobrarCentavos,
+              porCobrarExacto: p.porCobrarEsExacto,
               vencidos: p.vencidosCargados,
               cancelandoVencidos: p.cancelandoVencidos,
               onPestana: p.seleccionarPestana,
@@ -343,9 +356,7 @@ class _PedidosFlowState extends State<PedidosFlow> with WidgetsBindingObserver {
                   : pedidos.isEmpty
                   ? Center(
                       child: Text(
-                        pestana == PestanaPedidos.nuevos
-                            ? 'No hay pedidos nuevos.'
-                            : 'No hay pedidos activos.',
+                        textoVacioDePestana(pestana),
                         style: const TextStyle(color: AppColors.muted),
                       ),
                     )

@@ -9,6 +9,7 @@ import 'package:mobile/features/pedidos/application/use_cases/marcar_pago_pedido
 import 'package:mobile/features/pedidos/application/use_cases/marcar_reembolso_pedido.dart';
 import 'package:mobile/features/pedidos/domain/models/descuento_stock.dart';
 import 'package:mobile/features/pedidos/domain/models/estado_pedido.dart';
+import 'package:mobile/features/pedidos/domain/models/filtro_pedidos.dart';
 import 'package:mobile/features/pedidos/domain/models/pedido.dart';
 import 'package:mobile/features/pedidos/domain/models/resumen_ventas_dia.dart';
 import 'package:mobile/features/pedidos/domain/repositories/repositorio_pedidos.dart';
@@ -17,12 +18,8 @@ import 'package:mobile/features/pedidos/presentation/providers/pedidos_provider.
 import '../../helpers/pedidos_de_prueba.dart';
 import '../../helpers/repositorio_pedidos_fake.dart';
 
-const _nuevos = {EstadoPedido.nuevo};
-const _activos = {
-  EstadoPedido.confirmado,
-  EstadoPedido.enCamino,
-  EstadoPedido.listo,
-};
+const _nuevos = FiltroPedidos.nuevos;
+const _activos = FiltroPedidos.activos;
 
 Pedido _p(
   String id, {

@@ -4,6 +4,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../application/services/mensajes_accion_pedido.dart';
 import '../../application/services/texto_lineas_pedido.dart';
 import '../../application/services/tiempo_transcurrido.dart';
+import '../../domain/models/estado_pedido.dart';
 import '../../domain/models/pedido.dart';
 import 'pildora_pedido.dart';
 
@@ -98,6 +99,12 @@ class TarjetaPedido extends StatelessWidget {
                               pedido.estado,
                               vencido: vencido,
                             ),
+                            if (pedido.estado == EstadoPedido.cancelado &&
+                                pedido.reembolso == EstadoReembolso.pendiente)
+                              const PildoraPedido(
+                                texto: 'Reembolso pendiente',
+                                color: AppColors.aviso,
+                              ),
                             PildoraPedido(
                               texto: esDelivery ? 'Delivery' : 'Recojo',
                               color: AppColors.muted,

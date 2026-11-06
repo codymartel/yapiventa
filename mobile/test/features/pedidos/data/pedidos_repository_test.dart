@@ -3,6 +3,7 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/features/pedidos/data/pedidos_repository.dart';
 import 'package:mobile/features/pedidos/domain/models/estado_pedido.dart';
+import 'package:mobile/features/pedidos/domain/models/filtro_pedidos.dart';
 import 'package:mobile/features/productos/data/mappers/producto_firestore_mapper.dart';
 import 'package:mobile/features/productos/domain/models/producto.dart';
 
@@ -97,7 +98,7 @@ void main() {
     await producto(productoSimple(stock: 10));
   });
 
-  group('escucharAbiertos e historial', () {
+  group('escucharPedidos e historial', () {
     test('trae solo los abiertos, del más nuevo al más viejo', () async {
       await pedidos()
           .doc('a')
@@ -112,7 +113,7 @@ void main() {
             _pedido(estado: 'en_camino', fecha: DateTime.utc(2026, 11, 5, 14)),
           );
 
-      final lista = await repo.escucharAbiertos(_negocio).first;
+      final lista = await repo.escucharPedidos(_negocio).first;
 
       expect(lista.map((p) => p.id), ['b', 'a', 'd']);
     });
@@ -124,7 +125,7 @@ void main() {
             .set(_pedido(fecha: DateTime.utc(2026, 11, 5, 10 + i)));
       }
 
-      final lista = await repo.escucharAbiertos(_negocio, limite: 3).first;
+      final lista = await repo.escucharPedidos(_negocio, limite: 3).first;
 
       expect(lista, hasLength(3));
     });
@@ -136,7 +137,7 @@ void main() {
             .set(_pedido(fecha: DateTime.utc(2026, 11, 5, 1, i)));
       }
 
-      final lista = await repo.escucharAbiertos(_negocio).first;
+      final lista = await repo.escucharPedidos(_negocio).first;
 
       expect(lista, hasLength(10));
       expect(lista.first.id, 'p11');
@@ -154,7 +155,7 @@ void main() {
         await pedidos().doc('c').set(_pedido(estado: 'confirmado'));
 
         final nuevos = await repo
-            .escucharAbiertos(_negocio, estados: {EstadoPedido.nuevo})
+            .escucharPedidos(_negocio, filtro: FiltroPedidos.nuevos)
             .first;
 
         expect(nuevos.map((p) => p.id), ['b', 'a']);
@@ -179,32 +180,10 @@ void main() {
       await pedidos().doc('x').set(_pedido(estado: 'entregado'));
 
       final activos = await repo
-          .escucharAbiertos(
-            _negocio,
-            estados: {
-              EstadoPedido.confirmado,
-              EstadoPedido.enCamino,
-              EstadoPedido.listo,
-            },
-          )
+          .escucharPedidos(_negocio, filtro: FiltroPedidos.activos)
           .first;
 
       expect(activos.map((p) => p.id), ['e', 'c', 'l']);
-    });
-
-    test('un conjunto vacío tampoco es una pestaña', () {
-      expect(
-        () => repo.escucharAbiertos(_negocio, estados: <EstadoPedido>{}),
-        throwsArgumentError,
-      );
-    });
-
-    test('un estado cerrado no es una pestaña de abiertos', () {
-      expect(
-        () =>
-            repo.escucharAbiertos(_negocio, estados: {EstadoPedido.entregado}),
-        throwsArgumentError,
-      );
     });
 
     // fake_cloud_firestore 3.1.0 ignora el orden descendente en startAfter
@@ -229,12 +208,12 @@ void main() {
             );
 
         final vistos = await repo
-            .escucharAbiertos(_negocio, estados: {EstadoPedido.nuevo})
+            .escucharPedidos(_negocio, filtro: FiltroPedidos.nuevos)
             .first;
-        final segunda = await repo.obtenerAbiertosDespuesDe(
+        final segunda = await repo.obtenerPedidosDespuesDe(
           _negocio,
           vistos.last,
-          estados: {EstadoPedido.nuevo},
+          filtro: FiltroPedidos.nuevos,
         );
 
         expect(vistos.map((p) => p.id), [for (var i = 12; i >= 3; i--) 'n$i']);
@@ -253,9 +232,9 @@ void main() {
               .set(_pedido(fecha: DateTime.utc(2026, 11, 5, 1, i)));
         }
         final cabeza =
-            (await repo.escucharAbiertos(_negocio, limite: 1).first).single;
+            (await repo.escucharPedidos(_negocio, limite: 1).first).single;
 
-        final pagina = await repo.obtenerAbiertosDespuesDe(
+        final pagina = await repo.obtenerPedidosDespuesDe(
           _negocio,
           cabeza,
           limite: 2,
@@ -268,7 +247,7 @@ void main() {
 
     test('«Ver más» pide un pedido con fecha', () {
       expect(
-        () => repo.obtenerAbiertosDespuesDe(_negocio, pedidoDe(const [])),
+        () => repo.obtenerPedidosDespuesDe(_negocio, pedidoDe(const [])),
         throwsArgumentError,
       );
     });
@@ -789,7 +768,112 @@ void main() {
     );
   });
 
+  group('filtros: todos, por cobrar y reembolsos', () {
+    Future<List<String>> ids(FiltroPedidos filtro) async {
+      final lista = await repo.escucharPedidos(_negocio, filtro: filtro).first;
+      return [for (final p in lista) p.id];
+    }
+
+    test(
+      'todos: los abiertos mezclados, sin entregados ni cancelados',
+      () async {
+        await pedidos()
+            .doc('n')
+            .set(_pedido(fecha: DateTime.utc(2026, 11, 5, 10)));
+        await pedidos()
+            .doc('c')
+            .set(
+              _pedido(
+                estado: 'confirmado',
+                fecha: DateTime.utc(2026, 11, 5, 11),
+              ),
+            );
+        await pedidos().doc('e').set(_pedido(estado: 'entregado'));
+        await pedidos().doc('x').set(_pedido(estado: 'cancelado'));
+
+        expect(await ids(FiltroPedidos.todos), ['c', 'n']);
+      },
+    );
+
+    test(
+      'por cobrar: sin cobrar y no cancelados, con los entregados',
+      () async {
+        await pedidos()
+            .doc('nuevo')
+            .set(_pedido(fecha: DateTime.utc(2026, 11, 5, 10)));
+        await pedidos()
+            .doc('entregado')
+            .set(
+              _pedido(
+                estado: 'entregado',
+                fecha: DateTime.utc(2026, 11, 5, 11),
+              ),
+            );
+        await pedidos().doc('pagado').set(_pedido(estadoPago: 'pagado'));
+        await pedidos().doc('cancelado').set(_pedido(estado: 'cancelado'));
+
+        expect(await ids(FiltroPedidos.porCobrar), ['entregado', 'nuevo']);
+      },
+    );
+
+    test('reembolsos: solo cancelados con el reembolso pendiente', () async {
+      await pedidos()
+          .doc('r1')
+          .set(
+            _pedido(
+              estado: 'cancelado',
+              estadoPago: 'pagado',
+              reembolso: 'pendiente',
+              fecha: DateTime.utc(2026, 11, 5, 10),
+            ),
+          );
+      await pedidos()
+          .doc('hecho')
+          .set(
+            _pedido(
+              estado: 'cancelado',
+              estadoPago: 'pagado',
+              reembolso: 'hecho',
+            ),
+          );
+      await pedidos().doc('sin').set(_pedido(estado: 'cancelado'));
+      await pedidos().doc('abierto').set(_pedido(reembolso: 'pendiente'));
+
+      expect(await ids(FiltroPedidos.reembolsos), ['r1']);
+    });
+
+    test(
+      'cancelar uno pagado lo deja en reembolsos y marcarlo hecho lo saca',
+      () async {
+        await pedidos().doc('p1').set(_pedido(estadoPago: 'pagado'));
+        await repo.cancelar(_negocio, 'p1');
+        expect(await ids(FiltroPedidos.reembolsos), ['p1']);
+
+        await repo.marcarReembolsoHecho(_negocio, 'p1');
+
+        expect(await ids(FiltroPedidos.reembolsos), isEmpty);
+      },
+    );
+
+    test(
+      'la suma de por cobrar es de TODO el negocio, en céntimos enteros',
+      () async {
+        await pedidos().doc('a').set(_pedido());
+        await pedidos().doc('b').set(_pedido(estado: 'entregado'));
+        await pedidos().doc('c').set(_pedido(estadoPago: 'pagado'));
+        await pedidos().doc('d').set(_pedido(estado: 'cancelado'));
+
+        // a y b: 1 840 + 1 840. El pagado y el cancelado no cuentan.
+        expect(await repo.sumarPorCobrar(_negocio), 3680);
+      },
+    );
+
+    test('la suma sin pedidos por cobrar es 0', () async {
+      expect(await repo.sumarPorCobrar(_negocio), 0);
+    });
+  });
+
   test('sin negocioId no opera', () {
-    expect(() => repo.escucharAbiertos('  '), throwsStateError);
+    expect(() => repo.escucharPedidos('  '), throwsStateError);
   });
 }

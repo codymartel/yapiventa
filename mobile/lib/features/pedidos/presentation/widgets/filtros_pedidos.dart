@@ -4,16 +4,21 @@ import '../../../../core/theme/app_colors.dart';
 import '../../application/services/mensajes_accion_pedido.dart';
 import '../providers/pedidos_provider.dart';
 
-/// Lo de arriba de la lista: tres números, las pestañas (Nuevos, Activos) con
-/// su insignia, el botón Historial y «Cancelar vencidos (N)». Las insignias y
-/// «Por cobrar» salen de lo ya cargado: no leen nada.
+/// Lo de arriba de la lista: tres números (celular y tableta), las pestañas
+/// con su insignia, el botón Historial y «Cancelar vencidos (N)». Las
+/// insignias de Nuevos y Activos salen de lo ya cargado; «Por cobrar» es el
+/// total del negocio si la consulta de suma respondió (si no, dice
+/// «cargados»). Ninguno lee nada por sí mismo.
 class FiltrosPedidos extends StatelessWidget {
   const FiltrosPedidos({
     super.key,
     required this.pestana,
+    required this.pestanas,
+    required this.etiquetaPestana,
     required this.conteoNuevos,
     required this.conteoActivos,
     required this.porCobrarCentavos,
+    required this.porCobrarExacto,
     required this.vencidos,
     required this.cancelandoVencidos,
     required this.onPestana,
@@ -23,9 +28,16 @@ class FiltrosPedidos extends StatelessWidget {
   });
 
   final PestanaPedidos pestana;
+
+  /// Las pestañas que se muestran, en orden (celular: 4; PC: 5).
+  final List<PestanaPedidos> pestanas;
+
+  /// El texto de cada pestaña, con su número si ya se puede mostrar.
+  final String Function(PestanaPedidos) etiquetaPestana;
   final String conteoNuevos;
   final String conteoActivos;
   final int porCobrarCentavos;
+  final bool porCobrarExacto;
   final int vencidos;
   final bool cancelandoVencidos;
   final ValueChanged<PestanaPedidos> onPestana;
@@ -49,29 +61,25 @@ class FiltrosPedidos extends StatelessWidget {
                 _Numero(conteoActivos, 'Activos', AppColors.azulTexto),
                 _Numero(
                   MensajesAccionPedido.dinero(porCobrarCentavos),
-                  'Por cobrar (cargados)',
+                  porCobrarExacto ? 'Por cobrar' : 'Por cobrar (cargados)',
                   AppColors.aviso,
                 ),
               ],
             ),
           if (mostrarNumeros) const SizedBox(height: 8),
-          // Wrap: con letra grande o pantalla angosta, Historial baja de línea
-          // en vez de salirse.
+          // Wrap: con letra grande, pantalla angosta o 5 pestañas, lo que no
+          // cabe baja de línea en vez de salirse.
           Wrap(
             spacing: 8,
             runSpacing: 4,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              _Pestana(
-                texto: 'Nuevos $conteoNuevos',
-                activa: pestana == PestanaPedidos.nuevos,
-                onTap: () => onPestana(PestanaPedidos.nuevos),
-              ),
-              _Pestana(
-                texto: 'Activos $conteoActivos',
-                activa: pestana == PestanaPedidos.activos,
-                onTap: () => onPestana(PestanaPedidos.activos),
-              ),
+              for (final p in pestanas)
+                _Pestana(
+                  texto: etiquetaPestana(p),
+                  activa: pestana == p,
+                  onTap: () => onPestana(p),
+                ),
               TextButton.icon(
                 style: TextButton.styleFrom(minimumSize: const Size(44, 44)),
                 onPressed: onHistorial,

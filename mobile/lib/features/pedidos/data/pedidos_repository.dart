@@ -8,6 +8,7 @@ import '../application/services/resumen_ventas_dia_calculo.dart';
 import '../application/services/transiciones_pedido.dart';
 import '../application/services/verificacion_total_pedido.dart';
 import '../domain/models/estado_pedido.dart';
+import '../domain/models/filtro_pedidos.dart';
 import '../domain/models/pedido.dart';
 import '../domain/repositories/repositorio_pedidos.dart';
 import '../domain/models/resumen_ventas_dia.dart';
@@ -39,6 +40,15 @@ class PedidosRepository implements RepositorioPedidos {
   static final List<String> _abiertos = [
     for (final e in EstadoPedido.values)
       if (e.abierto) e.valor,
+  ];
+  static final List<String> _activos = [
+    EstadoPedido.confirmado.valor,
+    EstadoPedido.enCamino.valor,
+    EstadoPedido.listo.valor,
+  ];
+  static final List<String> _sinCancelar = [
+    ..._abiertos,
+    EstadoPedido.entregado.valor,
   ];
   static final List<String> _cerrados = [
     for (final e in EstadoPedido.values)
@@ -80,44 +90,52 @@ class PedidosRepository implements RepositorioPedidos {
     return PedidoMapper.desdeFirestore(doc.id, doc.data() ?? const {});
   }
 
-  /// Abiertos (todos, o solo [estados]) del más nuevo al más viejo.
-  Query<Map<String, dynamic>> _consultaAbiertos(
+  /// Los pedidos que cumplen [filtro], sin orden (para consultar y para sumar).
+  Query<Map<String, dynamic>> _filtrar(String negocioId, FiltroPedidos filtro) {
+    final base = _pedidos(negocioId);
+    return switch (filtro) {
+      FiltroPedidos.nuevos => base.where(
+        'estado',
+        isEqualTo: EstadoPedido.nuevo.valor,
+      ),
+      FiltroPedidos.activos => base.where('estado', whereIn: _activos),
+      FiltroPedidos.todos => base.where('estado', whereIn: _abiertos),
+      FiltroPedidos.porCobrar =>
+        base
+            .where('estadoPago', isEqualTo: EstadoPago.pendiente.valor)
+            .where('estado', whereIn: _sinCancelar),
+      FiltroPedidos.reembolsos =>
+        base
+            .where('estado', isEqualTo: EstadoPedido.cancelado.valor)
+            .where('reembolso', isEqualTo: EstadoReembolso.pendiente.valor),
+    };
+  }
+
+  /// Del más nuevo al más viejo.
+  Query<Map<String, dynamic>> _consulta(
     String negocioId,
-    Set<EstadoPedido>? estados,
+    FiltroPedidos filtro,
   ) {
-    if (estados != null &&
-        (estados.isEmpty || estados.any((e) => !e.abierto))) {
-      throw ArgumentError.value(
-        estados,
-        'estados',
-        'Debe tener solo estados abiertos.',
-      );
-    }
-    final valores = estados == null
-        ? _abiertos
-        : [for (final e in estados) e.valor];
-    return _pedidos(
-      negocioId,
-    ).where('estado', whereIn: valores).orderBy('fecha', descending: true);
+    return _filtrar(negocioId, filtro).orderBy('fecha', descending: true);
   }
 
   @override
-  Stream<List<Pedido>> escucharAbiertos(
+  Stream<List<Pedido>> escucharPedidos(
     String negocioId, {
-    Set<EstadoPedido>? estados,
+    FiltroPedidos filtro = FiltroPedidos.todos,
     int limite = 10,
   }) {
-    return _consultaAbiertos(negocioId, estados)
+    return _consulta(negocioId, filtro)
         .limit(limite)
         .snapshots()
         .map((consulta) => consulta.docs.map(_pedido).toList());
   }
 
   @override
-  Future<PaginaPedidos> obtenerAbiertosDespuesDe(
+  Future<PaginaPedidos> obtenerPedidosDespuesDe(
     String negocioId,
     Pedido despuesDe, {
-    Set<EstadoPedido>? estados,
+    FiltroPedidos filtro = FiltroPedidos.todos,
     int limite = 10,
   }) async {
     final fecha = despuesDe.fecha;
@@ -125,15 +143,26 @@ class PedidosRepository implements RepositorioPedidos {
       throw ArgumentError.value(despuesDe, 'despuesDe', 'No tiene fecha.');
     }
     // Un documento de más solo para saber si existe otra página.
-    final resultado = await _consultaAbiertos(
+    final resultado = await _consulta(
       negocioId,
-      estados,
+      filtro,
     ).startAfter([Timestamp.fromDate(fecha)]).limit(limite + 1).get();
     return PaginaPedidos(
       pedidos: resultado.docs.take(limite).map(_pedido).toList(),
       ultimoCursor: null,
       hayMas: resultado.docs.length > limite,
     );
+  }
+
+  @override
+  Future<int> sumarPorCobrar(String negocioId) async {
+    final resultado = await _filtrar(
+      negocioId,
+      FiltroPedidos.porCobrar,
+    ).aggregate(sum('totalCentavos')).get();
+    // La suma llega como número decimal; los totales son enteros, así que el
+    // redondeo no pierde nada.
+    return (resultado.getSum('totalCentavos') ?? 0).round();
   }
 
   @override

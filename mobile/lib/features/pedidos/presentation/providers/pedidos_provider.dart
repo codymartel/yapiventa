@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../application/services/busqueda_pedidos.dart';
 import '../../application/services/indicadores_pedidos.dart';
+import '../../application/services/lista_pedidos_paginada.dart';
 import '../../application/services/por_preparar_pedidos.dart';
 import '../../application/services/transiciones_pedido.dart';
 import '../../application/use_cases/avanzar_pedido.dart';
@@ -94,6 +95,7 @@ class PedidosProvider extends ChangeNotifier {
 
   /// «3», o «10+» si hay más sin cargar. Sale de lo cargado: 0 lecturas.
   String conteo(PestanaPedidos p) => _escucha.lista(p).etiquetaConteo;
+  bool conteoDisponible(PestanaPedidos p) => _escucha.conteoDisponible(p);
   bool hayMas(PestanaPedidos p) => _escucha.lista(p).hayMas;
   bool cargando(PestanaPedidos p) => _escucha.cargando(p);
   bool cargandoMas(PestanaPedidos p) => _escucha.cargandoMas(p);
@@ -130,11 +132,22 @@ class PedidosProvider extends ChangeNotifier {
   /// céntimos. No es el total del negocio: solo lo cargado, sin lecturas extra.
   int get porCobrarCargadoCentavos => indicadores.porCobrarCentavos;
 
+  /// Lo que falta cobrar: el total de TODO el negocio (consulta de suma) si
+  /// está disponible; si no, lo cargado.
+  int get porCobrarCentavos =>
+      _escucha.porCobrarExacto ?? indicadores.porCobrarCentavos;
+
+  /// true si [porCobrarCentavos] es el total del negocio y no solo lo cargado.
+  bool get porCobrarEsExacto => _escucha.porCobrarExacto != null;
+
   /// «Por preparar ahora»: suma de lo pedido en los nuevos y confirmados
   /// cargados.
-  List<ItemPorPreparar> get porPreparar => PorPrepararPedidos.sumar([
-    for (final lista in _escucha.listas) ...lista.pedidos,
-  ]);
+  List<ItemPorPreparar> get porPreparar => PorPrepararPedidos.sumar(
+    ListaPedidosPaginada.unirPorFecha([
+      _escucha.lista(PestanaPedidos.nuevos).pedidos,
+      _escucha.lista(PestanaPedidos.activos).pedidos,
+    ]),
+  );
 
   // ── Búsqueda y selección (PC) ─────────────────────────────────────────
 
@@ -189,6 +202,7 @@ class PedidosProvider extends ChangeNotifier {
   void seleccionarPestana(PestanaPedidos p) {
     if (_pestana == p) return;
     _pestana = p;
+    _escucha.mostrar(p);
     _notificar();
   }
 
