@@ -15,6 +15,8 @@ import '../../../negocio/presentation/widgets/seleccion_plantilla_flow.dart';
 import '../../../negocio/seleccion_plantilla_dependencies.dart';
 import '../../../productos/presentation/widgets/productos_flow.dart';
 import '../../../productos/presentation/widgets/productos_contextual_panel.dart';
+import '../../../pedidos/pedidos_dependencies.dart';
+import '../../../pedidos/presentation/widgets/pedidos_flow.dart';
 import '../../../productos/productos_dependencies.dart';
 import '../providers/dashboard_provider.dart';
 import '../state/dashboard_ui_state.dart';
@@ -45,6 +47,9 @@ class DashboardWebScreen extends StatefulWidget {
   final ValueChanged<EtapaConfiguracion> onAbrirEtapa;
   final VoidCallback onCerrarSesion;
   final ProductosDependencies? productosDependencies;
+
+  /// Se arma sola (producción) si no se pasa: solo se crea al abrir Pedidos.
+  final PedidosDependencies? pedidosDependencies;
   final CatalogoNegocioDependencies? catalogoDependencies;
   final SeleccionPlantillaDependencies? seleccionPlantillaDependencies;
 
@@ -59,6 +64,7 @@ class DashboardWebScreen extends StatefulWidget {
     required this.onAbrirEtapa,
     required this.onCerrarSesion,
     this.productosDependencies,
+    this.pedidosDependencies,
     this.catalogoDependencies,
     this.seleccionPlantillaDependencies,
   });
@@ -67,7 +73,7 @@ class DashboardWebScreen extends StatefulWidget {
   State<DashboardWebScreen> createState() => _DashboardWebScreenState();
 }
 
-enum _Seccion { inicio, rubro, configuracion, productos, plantilla }
+enum _Seccion { inicio, rubro, configuracion, productos, plantilla, pedidos }
 
 class _DashboardWebScreenState extends State<DashboardWebScreen> {
   /// Sección activa. Una sola variable en vez de una bandera por sección:
@@ -78,6 +84,7 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
   bool get _configuracionAbierta => _seccion == _Seccion.configuracion;
   bool get _productosAbierta => _seccion == _Seccion.productos;
   bool get _plantillaAbierta => _seccion == _Seccion.plantilla;
+  bool get _pedidosAbierta => _seccion == _Seccion.pedidos;
 
   /// Se marca en la primera visita para montar la rama Productos de forma
   /// perezosa: al entrar al dashboard no existe ninguna instancia del flow.
@@ -87,6 +94,9 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
   /// (y, con ella, el provider y la carga inicial) una sola vez. Mientras el
   /// usuario esté en Plantilla, la rama se mantiene viva vía Offstage.
   bool _plantillaVisitada = false;
+
+  /// Se arma una sola vez, al abrir Pedidos por primera vez.
+  PedidosDependencies? _pedidosDependencias;
 
   /// Configuración se abrió desde el formulario de un producto: muestra
   /// «Guardar y volver al producto».
@@ -150,6 +160,8 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
       navigationBuilder: (_, closeNavigation) => DashboardSidebar(
         destinoActivo: _plantillaAbierta
             ? DashboardDestination.plantilla
+            : _pedidosAbierta
+            ? DashboardDestination.pedidos
             : _productosAbierta
             ? DashboardDestination.productos
             : _configuracionAbierta
@@ -170,7 +182,9 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
         email: widget.email,
         onCerrarSesion: widget.onCerrarSesion,
       ),
-      contextualPanel: _configuracionAbierta && _providerConfiguracion != null
+      contextualPanel: _pedidosAbierta
+          ? null
+          : _configuracionAbierta && _providerConfiguracion != null
           ? ConfiguracionContextualPanel(provider: _providerConfiguracion!)
           : _plantillaAbierta
           ? const PlantillaContextualPanel()
@@ -186,7 +200,7 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
         fit: StackFit.expand,
         children: [
           Offstage(
-            offstage: _productosAbierta || _plantillaAbierta,
+            offstage: _productosAbierta || _plantillaAbierta || _pedidosAbierta,
             child: Navigator(
               key: DashboardWebScreen.navegadorInicioClave,
               observers: [_observadorInterno],
@@ -206,6 +220,9 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
               offstage: !_plantillaAbierta,
               child: _crearRamaPlantilla(),
             ),
+          // Pedidos no se deja viva por detrás: al salir se cierran sus
+          // listeners (ahorra lecturas) y al volver se abre de nuevo.
+          if (_pedidosAbierta) _crearRamaPedidos(),
         ],
       ),
     );
@@ -396,6 +413,27 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
     });
   }
 
+  void _abrirPedidos(BuildContext context) {
+    final negocioId = widget.negocioId;
+    if (negocioId == null || negocioId.trim().isEmpty) {
+      mostrarAvisoDashboard(
+        context,
+        'No se encontró tu negocio. Vuelve a iniciar sesión.',
+      );
+      return;
+    }
+    setState(() => _seccion = _Seccion.pedidos);
+  }
+
+  Widget _crearRamaPedidos() {
+    _pedidosDependencias ??=
+        widget.pedidosDependencies ?? PedidosDependencies.production();
+    return PedidosFlow(
+      negocioId: widget.negocioId!,
+      dependencias: _pedidosDependencias!,
+    );
+  }
+
   Widget _crearRamaPlantilla() {
     return SeleccionPlantillaFlow(
       uid: widget.uid,
@@ -452,7 +490,7 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
     }
     switch (destino) {
       case DashboardDestination.inicio:
-        if (_productosAbierta || _plantillaAbierta) {
+        if (_productosAbierta || _plantillaAbierta || _pedidosAbierta) {
           setState(() => _seccion = _Seccion.inicio);
         }
         return;
@@ -463,10 +501,7 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
         _abrirPlantilla(context, widget.progreso);
         return;
       case DashboardDestination.pedidos:
-        _mostrarProximamente(
-          context,
-          'Pedidos estará disponible próximamente.',
-        );
+        _abrirPedidos(context);
         return;
       case DashboardDestination.ventas:
         _mostrarProximamente(context, 'Ventas estará disponible próximamente.');

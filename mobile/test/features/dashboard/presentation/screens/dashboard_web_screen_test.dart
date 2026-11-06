@@ -29,6 +29,9 @@ import 'package:mobile/features/negocio/presentation/widgets/seleccion_negocio_f
 import 'package:mobile/features/negocio/presentation/widgets/seleccion_plantilla_content.dart';
 import 'package:mobile/features/negocio/presentation/widgets/seleccion_plantilla_flow.dart';
 import 'package:mobile/features/negocio/seleccion_plantilla_dependencies.dart';
+import 'package:mobile/features/pedidos/domain/models/filtro_pedidos.dart';
+import 'package:mobile/features/pedidos/pedidos_dependencies.dart';
+import 'package:mobile/features/pedidos/presentation/widgets/pedidos_flow.dart';
 import 'package:mobile/features/productos/application/use_cases/cambiar_disponibilidad_producto.dart';
 import 'package:mobile/features/productos/application/use_cases/crear_producto.dart';
 import 'package:mobile/features/productos/application/use_cases/editar_producto.dart';
@@ -45,6 +48,8 @@ import 'package:mocktail/mocktail.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../../pedidos/helpers/repositorio_pedidos_fake.dart';
+
 void main() {
   setUpAll(() {
     registerFallbackValue(PlantillaWeb.cristal);
@@ -59,6 +64,8 @@ void main() {
     NegocioRepository? repositorio,
     _DependenciasProductos? dependencias,
     _DependenciasPlantilla? dependenciasPlantilla,
+    PedidosDependencies? pedidos,
+    String? negocioId = 'negocio-1',
     Size size = const Size(1400, 1000),
     TextScaler textScaler = TextScaler.noScaling,
   }) async {
@@ -99,8 +106,9 @@ void main() {
             home: Builder(
               builder: (context) => DashboardWebScreen(
                 uid: 'usuario-1',
-                negocioId: 'negocio-1',
+                negocioId: negocioId,
                 abrirUrl: abridor.call,
+                pedidosDependencies: pedidos,
                 progreso: progreso ?? _progresoCompleto(),
                 email: 'ana@example.com',
                 onAbrirEtapa: (etapa) {
@@ -334,6 +342,81 @@ void main() {
     );
   });
 
+  testWidgets('Pedidos en el menú abre la pantalla de pedidos', (tester) async {
+    final repo = RepositorioPedidosFake();
+    await mostrarDashboard(
+      tester,
+      pedidos: PedidosDependencies.conRepositorio(repo),
+    );
+    expect(find.byType(PedidosFlow), findsNothing);
+
+    await tester.tap(find.text('Pedidos').first);
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byType(PedidosFlow), findsOneWidget);
+    expect(find.text('Pedidos estará disponible próximamente.'), findsNothing);
+    expect(repo.oyentesDe(FiltroPedidos.nuevos), 1);
+    expect(repo.oyentesDe(FiltroPedidos.activos), 1);
+  });
+
+  testWidgets('al salir de Pedidos se cierran sus listeners', (tester) async {
+    final repo = RepositorioPedidosFake();
+    await mostrarDashboard(
+      tester,
+      pedidos: PedidosDependencies.conRepositorio(repo),
+    );
+    await tester.tap(find.text('Pedidos').first);
+    await tester.pump();
+    await tester.pump();
+    expect(repo.oyentesActivos, greaterThan(0));
+
+    await tester.tap(find.text('Inicio').first);
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byType(PedidosFlow), findsNothing);
+    expect(repo.oyentesActivos, 0);
+  });
+
+  testWidgets('volver a Pedidos lo abre de nuevo', (tester) async {
+    final repo = RepositorioPedidosFake();
+    await mostrarDashboard(
+      tester,
+      pedidos: PedidosDependencies.conRepositorio(repo),
+    );
+    await tester.tap(find.text('Pedidos').first);
+    await tester.pump();
+    await tester.tap(find.text('Inicio').first);
+    await tester.pump();
+
+    await tester.tap(find.text('Pedidos').first);
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byType(PedidosFlow), findsOneWidget);
+    expect(repo.oyentesDe(FiltroPedidos.nuevos), 1);
+  });
+
+  testWidgets('sin negocio no abre Pedidos y lo avisa', (tester) async {
+    final repo = RepositorioPedidosFake();
+    await mostrarDashboard(
+      tester,
+      negocioId: null,
+      pedidos: PedidosDependencies.conRepositorio(repo),
+    );
+
+    await tester.tap(find.text('Pedidos').first);
+    await tester.pump();
+
+    expect(find.byType(PedidosFlow), findsNothing);
+    expect(
+      find.text('No se encontró tu negocio. Vuelve a iniciar sesión.'),
+      findsOneWidget,
+    );
+    expect(repo.escuchas, isEmpty);
+  });
+
   testWidgets('usa dos columnas + overlay y un unico Scaffold en escritorio', (
     tester,
   ) async {
@@ -416,43 +499,42 @@ void main() {
     },
   );
 
-  testWidgets(
-    'bajo el umbral de tres columnas la ayuda se abre bajo demanda',
-    (tester) async {
-      await mostrarDashboard(
-        tester,
-        size: Size(AuthenticatedShell.anchoMinimoTresColumnas - 1, 1000),
-      );
+  testWidgets('bajo el umbral de tres columnas la ayuda se abre bajo demanda', (
+    tester,
+  ) async {
+    await mostrarDashboard(
+      tester,
+      size: Size(AuthenticatedShell.anchoMinimoTresColumnas - 1, 1000),
+    );
 
-      expect(find.byType(Scaffold), findsOneWidget);
-      expect(find.byType(DashboardTopBar), findsOneWidget);
-      expect(find.byTooltip('Abrir menú'), findsOneWidget);
-      expect(
-        find.byKey(const Key('authenticated-shell-navigation')),
-        findsNothing,
-      );
-      expect(
-        find.byKey(const Key('authenticated-shell-contextual-panel')),
-        findsNothing,
-      );
-      expect(_botonAyuda(), findsOneWidget);
-      expect(find.text('Necesita tu atención'), findsNothing);
+    expect(find.byType(Scaffold), findsOneWidget);
+    expect(find.byType(DashboardTopBar), findsOneWidget);
+    expect(find.byTooltip('Abrir menú'), findsOneWidget);
+    expect(
+      find.byKey(const Key('authenticated-shell-navigation')),
+      findsNothing,
+    );
+    expect(
+      find.byKey(const Key('authenticated-shell-contextual-panel')),
+      findsNothing,
+    );
+    expect(_botonAyuda(), findsOneWidget);
+    expect(find.text('Necesita tu atención'), findsNothing);
 
-      await _abrirAyuda(tester);
+    await _abrirAyuda(tester);
 
-      expect(_dialogoAyuda(), findsOneWidget);
-      expect(find.text('Necesita tu atención'), findsOneWidget);
+    expect(_dialogoAyuda(), findsOneWidget);
+    expect(find.text('Necesita tu atención'), findsOneWidget);
 
-      await _cerrarAyuda(tester);
+    await _cerrarAyuda(tester);
 
-      expect(find.text('Necesita tu atención'), findsNothing);
+    expect(find.text('Necesita tu atención'), findsNothing);
 
-      await tester.tap(find.byTooltip('Abrir menú'));
-      await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Abrir menú'));
+    await tester.pumpAndSettle();
 
-      expect(find.byType(DashboardSidebar), findsOneWidget);
-    },
-  );
+    expect(find.byType(DashboardSidebar), findsOneWidget);
+  });
 
   testWidgets('el overlay no comprime el contenido al cambiar el ancho', (
     tester,
@@ -496,10 +578,7 @@ void main() {
     final centroDrawer = tester.getRect(
       find.byKey(const Key('authenticated-shell-content')),
     );
-    expect(
-      centroDrawer.width,
-      AuthenticatedShell.anchoMinimoTresColumnas - 1,
-    );
+    expect(centroDrawer.width, AuthenticatedShell.anchoMinimoTresColumnas - 1);
     expect(centroDrawer.width, greaterThan(centroConNav.width));
     expect(
       centroDrawer.width,
@@ -682,10 +761,16 @@ void main() {
           findsOneWidget,
           reason: 'shell a $ancho px',
         );
-        expect(find.byType(Scaffold), findsOneWidget,
-            reason: 'scaffold a $ancho px');
-        expect(find.text('Resumen de tu negocio'), findsOneWidget,
-            reason: 'inicio a $ancho px');
+        expect(
+          find.byType(Scaffold),
+          findsOneWidget,
+          reason: 'scaffold a $ancho px',
+        );
+        expect(
+          find.text('Resumen de tu negocio'),
+          findsOneWidget,
+          reason: 'inicio a $ancho px',
+        );
         expect(
           tester
               .getRect(find.byKey(const Key('authenticated-shell-content')))
@@ -1436,10 +1521,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(tituloFormulario(), findsNothing);
-      expect(
-        find.byType(ModalBarrier).evaluate().length,
-        barrerasIniciales,
-      );
+      expect(find.byType(ModalBarrier).evaluate().length, barrerasIniciales);
       expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
       expect(find.byKey(const Key('seccion-sugeridas')), findsOneWidget);
       // La alta va a `categoriasPersonalizadas`, no al borrador legacy.
@@ -1486,18 +1568,12 @@ void main() {
         find.widgetWithText(TextField, 'Zona (Ej: Centro)'),
         'Miraflores',
       );
-      await tester.enterText(
-        find.widgetWithText(TextField, 'Costo S/'),
-        '10',
-      );
+      await tester.enterText(find.widgetWithText(TextField, 'Costo S/'), '10');
       await tester.tap(find.widgetWithText(ElevatedButton, 'Guardar'));
       await tester.pumpAndSettle();
 
       expect(find.text('Nueva zona'), findsNothing);
-      expect(
-        find.byType(ModalBarrier).evaluate().length,
-        barrerasBasales,
-      );
+      expect(find.byType(ModalBarrier).evaluate().length, barrerasBasales);
       expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
       expect(find.text('Zonas de delivery *'), findsOneWidget);
       expect(find.text('¿Ofreces delivery?'), findsOneWidget);
@@ -1512,10 +1588,7 @@ void main() {
       await tester.tap(find.text('Cancelar'));
       await tester.pumpAndSettle();
       expect(find.text('Nueva zona'), findsNothing);
-      expect(
-        find.byType(ModalBarrier).evaluate().length,
-        barrerasBasales,
-      );
+      expect(find.byType(ModalBarrier).evaluate().length, barrerasBasales);
       expect(provider.zonasDelivery, hasLength(1));
       expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
       expect(find.text('Zonas de delivery *'), findsOneWidget);
@@ -1555,10 +1628,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Abierto este día'), findsNothing);
-      expect(
-        find.byType(ModalBarrier).evaluate().length,
-        barrerasBasales,
-      );
+      expect(find.byType(ModalBarrier).evaluate().length, barrerasBasales);
       expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
       expect(find.text('Horario de atención (opcional)'), findsOneWidget);
       expect(provider.horarios, hasLength(1));
@@ -1572,10 +1642,7 @@ void main() {
       await tester.tap(find.text('Cancelar'));
       await tester.pumpAndSettle();
       expect(find.text('Abierto este día'), findsNothing);
-      expect(
-        find.byType(ModalBarrier).evaluate().length,
-        barrerasBasales,
-      );
+      expect(find.byType(ModalBarrier).evaluate().length, barrerasBasales);
       expect(provider.horarios, hasLength(1));
       expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
       expect(find.text('Horario de atención (opcional)'), findsOneWidget);
@@ -1793,7 +1860,9 @@ void main() {
       expect(find.byType(AuthenticatedShell), findsOneWidget);
       expect(find.byType(Scaffold), findsOneWidget);
 
-      final elementoFinal = tester.element(find.byType(ConfiguracionNegocioFlow));
+      final elementoFinal = tester.element(
+        find.byType(ConfiguracionNegocioFlow),
+      );
       final providerFinal = Provider.of<ConfiguracionNegocioProvider>(
         elementoFinal,
         listen: false,
@@ -1841,10 +1910,7 @@ void main() {
 
     expect(enPanel(find.text('Información')), findsOneWidget);
     expect(enPanel(find.text('Nombre del negocio')), findsOneWidget);
-    expect(
-      enPanel(find.textContaining('Aquí registrarás')),
-      findsOneWidget,
-    );
+    expect(enPanel(find.textContaining('Aquí registrarás')), findsOneWidget);
     expect(
       enPanel(find.textContaining('El prefijo solo indica el país del número')),
       findsOneWidget,
@@ -1896,7 +1962,9 @@ void main() {
 
     // Cambiar de pestaña no desmonta el flujo ni reemplaza el provider.
     expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
-    final elementoActual = tester.element(find.byType(ConfiguracionNegocioFlow));
+    final elementoActual = tester.element(
+      find.byType(ConfiguracionNegocioFlow),
+    );
     final providerActual = Provider.of<ConfiguracionNegocioProvider>(
       elementoActual,
       listen: false,
@@ -1934,66 +2002,60 @@ void main() {
     expect(find.byType(DashboardAttentionPanel), findsNothing);
   });
 
-  testWidgets(
-    'editar campos y cambiar el prefijo conserva la ayuda del paso',
-    (tester) async {
-      await mostrarDashboard(tester, progreso: _progresoConRubro());
-      await tester.tap(_textoSidebar('Configuración'));
-      await tester.pumpAndSettle();
+  testWidgets('editar campos y cambiar el prefijo conserva la ayuda del paso', (
+    tester,
+  ) async {
+    await mostrarDashboard(tester, progreso: _progresoConRubro());
+    await tester.tap(_textoSidebar('Configuración'));
+    await tester.pumpAndSettle();
 
-      expect(
-        find.byKey(const Key('authenticated-shell-contextual-panel')),
-        findsNothing,
-      );
-      expect(_botonAyuda(), findsOneWidget);
-      await _abrirAyuda(tester);
+    expect(
+      find.byKey(const Key('authenticated-shell-contextual-panel')),
+      findsNothing,
+    );
+    expect(_botonAyuda(), findsOneWidget);
+    await _abrirAyuda(tester);
 
-      final panel = find.byKey(const Key('configuracion-contextual-panel'));
-      Finder enPanel(Finder interno) =>
-          find.descendant(of: panel, matching: interno);
+    final panel = find.byKey(const Key('configuracion-contextual-panel'));
+    Finder enPanel(Finder interno) =>
+        find.descendant(of: panel, matching: interno);
 
-      expect(enPanel(find.text('Nombre del negocio')), findsOneWidget);
-      expect(
-        enPanel(find.textContaining('El prefijo solo indica el país del número')),
-        findsOneWidget,
-      );
-      await _cerrarAyuda(tester);
+    expect(enPanel(find.text('Nombre del negocio')), findsOneWidget);
+    expect(
+      enPanel(find.textContaining('El prefijo solo indica el país del número')),
+      findsOneWidget,
+    );
+    await _cerrarAyuda(tester);
 
-      await tester.enterText(
-        find.byKey(const Key('campo_nombre')),
-        'Mi Negocio',
-      );
-      await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('campo_nombre')), 'Mi Negocio');
+    await tester.pumpAndSettle();
 
-      await tester.tap(find.byType(DropdownButton<PaisTelefono>));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('+503 El Salvador').last);
-      await tester.pumpAndSettle();
+    await tester.tap(find.byType(DropdownButton<PaisTelefono>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('+503 El Salvador').last);
+    await tester.pumpAndSettle();
 
-      final elemento = tester.element(find.byType(ConfiguracionNegocioFlow));
-      final provider = Provider.of<ConfiguracionNegocioProvider>(
-        elemento,
-        listen: false,
-      );
-      expect(provider.nombreNegocio, 'Mi Negocio');
-      expect(provider.paisTelefono.prefijo, '+503');
+    final elemento = tester.element(find.byType(ConfiguracionNegocioFlow));
+    final provider = Provider.of<ConfiguracionNegocioProvider>(
+      elemento,
+      listen: false,
+    );
+    expect(provider.nombreNegocio, 'Mi Negocio');
+    expect(provider.paisTelefono.prefijo, '+503');
 
-      provider.irAPaso(1);
-      await tester.pumpAndSettle();
+    provider.irAPaso(1);
+    await tester.pumpAndSettle();
 
-      await _abrirAyuda(tester);
-      expect(panel, findsOneWidget);
-      expect(enPanel(find.text('Categorías')), findsOneWidget);
-      expect(
-        enPanel(
-          find.textContaining('Las categorías organizan tus productos'),
-        ),
-        findsOneWidget,
-      );
-      expect(find.byType(DashboardAttentionPanel), findsNothing);
-      await _cerrarAyuda(tester);
-    },
-  );
+    await _abrirAyuda(tester);
+    expect(panel, findsOneWidget);
+    expect(enPanel(find.text('Categorías')), findsOneWidget);
+    expect(
+      enPanel(find.textContaining('Las categorías organizan tus productos')),
+      findsOneWidget,
+    );
+    expect(find.byType(DashboardAttentionPanel), findsNothing);
+    await _cerrarAyuda(tester);
+  });
 
   testWidgets(
     'no aparecen a la vez el panel de Configuración y el de atención',
@@ -2048,69 +2110,68 @@ void main() {
     },
   );
 
-  testWidgets(
-    'la ayuda de Configuración no desborda en distintos tamaños',
-    (tester) async {
-      for (final ancho in const [
-        360,
-        500,
-        768,
-        1049,
-        1050,
-        1140,
-        1200,
-        1366,
-        1440,
-        1720,
-      ]) {
-        await tester.pumpWidget(const SizedBox.shrink());
-        await mostrarDashboard(
-          tester,
-          size: Size(ancho.toDouble(), 1000),
-          progreso: _progresoConRubro(),
-        );
+  testWidgets('la ayuda de Configuración no desborda en distintos tamaños', (
+    tester,
+  ) async {
+    for (final ancho in const [
+      360,
+      500,
+      768,
+      1049,
+      1050,
+      1140,
+      1200,
+      1366,
+      1440,
+      1720,
+    ]) {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await mostrarDashboard(
+        tester,
+        size: Size(ancho.toDouble(), 1000),
+        progreso: _progresoConRubro(),
+      );
 
-        final conNavegacionFija =
-            ancho >= AuthenticatedShell.anchoMinimoTresColumnas;
-        // Sin panel fijo: el centro solo descuenta la navegación fija.
-        final anchoCentroEsperado = conNavegacionFija
-            ? ancho - AuthenticatedShell.navigationWidth
-            : ancho.toDouble();
+      final conNavegacionFija =
+          ancho >= AuthenticatedShell.anchoMinimoTresColumnas;
+      // Sin panel fijo: el centro solo descuenta la navegación fija.
+      final anchoCentroEsperado = conNavegacionFija
+          ? ancho - AuthenticatedShell.navigationWidth
+          : ancho.toDouble();
 
-        if (!conNavegacionFija) {
-          await tester.tap(find.byTooltip('Abrir menú'));
-          await tester.pumpAndSettle();
-        }
-        await tester.tap(_textoSidebar('Configuración'));
+      if (!conNavegacionFija) {
+        await tester.tap(find.byTooltip('Abrir menú'));
         await tester.pumpAndSettle();
-
-        expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
-
-        expect(
-          find.byKey(const Key('authenticated-shell-contextual-panel')),
-          findsNothing,
-        );
-        expect(_botonAyuda(), findsOneWidget);
-        expect(
-          find.byKey(const Key('configuracion-contextual-panel')),
-          findsNothing,
-        );
-        await _abrirAyuda(tester);
-
-        expect(
-          find.byKey(const Key('configuracion-contextual-panel')),
-          findsOneWidget,
-        );
-        expect(
-          tester
-              .getRect(find.byKey(const Key('authenticated-shell-content')))
-              .width,
-          anchoCentroEsperado,
-        );
-        expect(tester.takeException(), isNull);
       }
-    },
-  );
+      await tester.tap(_textoSidebar('Configuración'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
+
+      expect(
+        find.byKey(const Key('authenticated-shell-contextual-panel')),
+        findsNothing,
+      );
+      expect(_botonAyuda(), findsOneWidget);
+      expect(
+        find.byKey(const Key('configuracion-contextual-panel')),
+        findsNothing,
+      );
+      await _abrirAyuda(tester);
+
+      expect(
+        find.byKey(const Key('configuracion-contextual-panel')),
+        findsOneWidget,
+      );
+      expect(
+        tester
+            .getRect(find.byKey(const Key('authenticated-shell-content')))
+            .width,
+        anchoCentroEsperado,
+      );
+      expect(tester.takeException(), isNull);
+    }
+  });
 
   testWidgets(
     'la ayuda de Configuración conserva su contenido con texto ampliado',
@@ -2120,7 +2181,9 @@ void main() {
         TextScaler.linear(1.3),
         TextScaler.linear(2.0),
       ]) {
-        final repositorio = NegocioRepository(firestore: FakeFirebaseFirestore());
+        final repositorio = NegocioRepository(
+          firestore: FakeFirebaseFirestore(),
+        );
         final provider = ConfiguracionNegocioProvider(
           rubro: 'Bodega',
           repository: repositorio,
@@ -2148,9 +2211,7 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        final panel = find.byKey(
-          const Key('configuracion-contextual-panel'),
-        );
+        final panel = find.byKey(const Key('configuracion-contextual-panel'));
         final contenidoPorPaso = <int, List<String>>{
           0: [
             'Información',
@@ -2181,10 +2242,7 @@ void main() {
           await tester.pumpAndSettle();
           for (final texto in contenidoPorPaso[paso]!) {
             expect(
-              find.descendant(
-                of: panel,
-                matching: find.textContaining(texto),
-              ),
+              find.descendant(of: panel, matching: find.textContaining(texto)),
               findsOneWidget,
               reason: 'escala=${escala.scale(10.0)} paso=$paso texto="$texto"',
             );
@@ -2213,7 +2271,8 @@ void main() {
               matching: find.textContaining(entry.value),
             ),
             findsOneWidget,
-            reason: 'escala=${escala.scale(10.0)} pestana=${entry.key} '
+            reason:
+                'escala=${escala.scale(10.0)} pestana=${entry.key} '
                 'texto="${entry.value}"',
           );
           expect(
@@ -2461,9 +2520,7 @@ void main() {
     expect(find.byType(DashboardAttentionPanel), findsNothing);
   });
 
-  testWidgets('la ayuda de Rubro usa el overlay en escritorio', (
-    tester,
-  ) async {
+  testWidgets('la ayuda de Rubro usa el overlay en escritorio', (tester) async {
     for (final ancho in const [1200.0, 1440.0]) {
       await tester.pumpWidget(const SizedBox.shrink());
       await mostrarDashboard(
