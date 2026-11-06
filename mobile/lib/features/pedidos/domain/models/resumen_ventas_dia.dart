@@ -1,3 +1,5 @@
+import 'contadores_dia.dart';
+
 // ═════════════════════════════════════════════════════════════════════════
 // ResumenVentasDia · EntregadoReciente
 // ═════════════════════════════════════════════════════════════════════════
@@ -43,6 +45,7 @@ class ResumenVentasDia {
     this.confirmados = 0,
     this.sumaMinutosConfirmar = 0,
     this.ultimosEntregados = const [],
+    this.contadores = ContadoresDia.vacio,
   });
 
   /// Un día sin movimientos (el documento todavía no existe).
@@ -62,6 +65,10 @@ class ResumenVentasDia {
 
   /// Los últimos entregados, del más nuevo al más viejo (máximo 5).
   final List<EntregadoReciente> ultimosEntregados;
+
+  /// Lo vendido por forma de pago, entrega, hora, producto, variable y combo,
+  /// lo de mostrador y lo anulado. Un resumen viejo no los trae: vienen vacíos.
+  final ContadoresDia contadores;
 
   /// Venta promedio por pedido entregado, en céntimos, redondeada hacia abajo
   /// una sola vez. null si todavía no se entregó nada (no se divide entre 0).

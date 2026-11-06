@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mobile/features/productos/data/mappers/lectura_firestore.dart';
 
 import '../domain/models/resumen_ventas_dia.dart';
+import 'contadores_dia_mapper.dart';
 
 // ═════════════════════════════════════════════════════════════════════════
 // ResumenVentasDiaMapper
@@ -27,6 +28,7 @@ abstract final class ResumenVentasDiaMapper {
           for (final item in lista)
             if (item is Map) _entregado(Map<String, dynamic>.from(item)),
       ],
+      contadores: ContadoresDiaMapper.desdeFirestore(data),
     );
   }
 
