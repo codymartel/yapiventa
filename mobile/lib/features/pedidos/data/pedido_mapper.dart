@@ -24,9 +24,11 @@ abstract final class PedidoMapper {
       id: id,
       clave: clave.isEmpty ? _claveDeId(id) : clave,
       estado: EstadoPedido.desdeValor(LecturaFirestore.texto(data['estado'])),
+      origen: OrigenPedido.desdeValor(LecturaFirestore.texto(data['origen'])),
       tipoEntrega: TipoEntrega.desdeValor(
         LecturaFirestore.texto(data['tipoEntrega']),
       ),
+      enLocal: data['enLocal'] == true,
       fecha: _fecha(data['fecha']),
       cliente: _cliente(data['cliente']),
       zona: LecturaFirestore.texto(data['zona']),
@@ -125,6 +127,7 @@ abstract final class PedidoMapper {
           ),
       ],
       subtotalCentavos: LecturaFirestore.entero(m['subtotalCentavos']),
+      esCombo: m['esCombo'] == true,
     );
   }
 

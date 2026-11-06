@@ -25,6 +25,21 @@ enum TipoEntrega {
   }
 }
 
+/// Quién registró el pedido: el cliente en la tienda web, o el vendedor en
+/// Caja (venta de mostrador). Los pedidos viejos no lo traen: son de la tienda.
+enum OrigenPedido {
+  tienda('tienda'),
+  mostrador('mostrador');
+
+  const OrigenPedido(this.valor);
+
+  final String valor;
+
+  static OrigenPedido desdeValor(String? valor) {
+    return valor == 'mostrador' ? mostrador : tienda;
+  }
+}
+
 class ClientePedido {
   const ClientePedido({
     this.nombre = '',
@@ -51,7 +66,9 @@ class Pedido {
     required this.id,
     this.clave = '',
     this.estado = EstadoPedido.nuevo,
+    this.origen = OrigenPedido.tienda,
     this.tipoEntrega = TipoEntrega.delivery,
+    this.enLocal = false,
     this.fecha,
     this.cliente = const ClientePedido(),
     this.zona = '',
@@ -73,7 +90,12 @@ class Pedido {
   /// Clave corta que ve el cliente (6 caracteres, ej. 7GHMHF).
   final String clave;
   final EstadoPedido estado;
+  final OrigenPedido origen;
   final TipoEntrega tipoEntrega;
+
+  /// Venta de mostrador atendida en el local (el cliente se lleva el producto
+  /// ahí mismo). Se guarda como «recojo»; este campo la distingue de un recojo.
+  final bool enLocal;
 
   /// Momento en que llegó (hora del servidor). null mientras se escribe.
   final DateTime? fecha;
@@ -102,7 +124,9 @@ class Pedido {
       id: id,
       clave: clave,
       estado: estado ?? this.estado,
+      origen: origen,
       tipoEntrega: tipoEntrega,
+      enLocal: enLocal,
       fecha: fecha,
       cliente: cliente,
       zona: zona,

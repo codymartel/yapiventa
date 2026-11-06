@@ -31,6 +31,7 @@ class LineaPedido {
     this.cantidadReferencia = 1,
     this.extras = const [],
     this.subtotalCentavos = 0,
+    this.esCombo = false,
   });
 
   final String productoId;
@@ -54,7 +55,15 @@ class LineaPedido {
   /// recalcula con CalculoPedido y avisa si no coincide.
   final int subtotalCentavos;
 
-  LineaPedido copyWith({int? precioCentavos, int? cantidadReferencia}) {
+  /// La línea es un combo (sus partes se descuentan una a una). Los pedidos
+  /// viejos no lo traen: no son combos.
+  final bool esCombo;
+
+  LineaPedido copyWith({
+    int? precioCentavos,
+    int? cantidadReferencia,
+    int? subtotalCentavos,
+  }) {
     return LineaPedido(
       productoId: productoId,
       modeloId: modeloId,
@@ -66,7 +75,8 @@ class LineaPedido {
       porMedida: porMedida,
       cantidadReferencia: cantidadReferencia ?? this.cantidadReferencia,
       extras: extras,
-      subtotalCentavos: subtotalCentavos,
+      subtotalCentavos: subtotalCentavos ?? this.subtotalCentavos,
+      esCombo: esCombo,
     );
   }
 }

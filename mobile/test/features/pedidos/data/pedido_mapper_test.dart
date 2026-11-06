@@ -130,4 +130,33 @@ void main() {
     expect(p.historial.single.estado, EstadoPedido.confirmado);
     expect(p.historial.single.fecha.toUtc(), fecha);
   });
+
+  group('origen del pedido', () {
+    test('un pedido viejo, sin el campo, es de la tienda', () {
+      final p = PedidoMapper.desdeFirestore('x', {'estado': 'nuevo'});
+
+      expect(p.origen, OrigenPedido.tienda);
+    });
+
+    test('lee una venta de mostrador', () {
+      final p = PedidoMapper.desdeFirestore('x', {'origen': 'mostrador'});
+
+      expect(p.origen, OrigenPedido.mostrador);
+    });
+
+    test('un valor raro se toma como tienda (lectura defensiva)', () {
+      final p = PedidoMapper.desdeFirestore('x', {'origen': 'otra-cosa'});
+
+      expect(p.origen, OrigenPedido.tienda);
+    });
+
+    test('copyWith conserva el origen', () {
+      final p = PedidoMapper.desdeFirestore('x', {'origen': 'mostrador'});
+
+      expect(
+        p.copyWith(estado: EstadoPedido.entregado).origen,
+        OrigenPedido.mostrador,
+      );
+    });
+  });
 }
