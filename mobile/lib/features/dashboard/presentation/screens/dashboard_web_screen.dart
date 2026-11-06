@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/widgets/authenticated_shell.dart';
 import '../../../auth/domain/politica_acceso.dart';
 import '../../../auth/presentation/providers/acceso_provider.dart';
@@ -22,10 +21,13 @@ import '../state/dashboard_ui_state.dart';
 import '../widgets/dashboard_attention_panel.dart';
 import '../widgets/configuracion_contextual_panel.dart';
 import '../widgets/rubro_contextual_panel.dart';
-import '../widgets/dashboard_home_content.dart';
 import '../widgets/dashboard_sidebar.dart';
 import '../widgets/dashboard_top_bar.dart';
 import '../widgets/plantilla_contextual_panel.dart';
+import 'abrir_tienda_publica.dart';
+import 'dashboard_contenido_inicio.dart';
+
+export 'abrir_tienda_publica.dart' show AbrirUrlDashboard;
 
 typedef AbrirUrlDashboard =
     Future<bool> Function(Uri url, {String? webOnlyWindowName});
@@ -102,7 +104,7 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
     super.initState();
     _rubroContextual = _rubroCompatible(widget.progreso.catalogo.rubro);
     _progresoNotifier = ValueNotifier<ProgresoConfiguracion>(widget.progreso);
-    _observadorInterno = _ObservadorRutasInternas(() {
+    _observadorInterno = ObservadorRutasInternas(() {
       if (!mounted || (!_rubroAbierta && !_configuracionAbierta)) return;
       setState(() => _seccion = _Seccion.inicio);
     });
@@ -248,7 +250,7 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
       settings: settings,
       builder: (rutaContexto) => ValueListenableBuilder<ProgresoConfiguracion>(
         valueListenable: _progresoNotifier,
-        builder: (rutaContexto, progreso, _) => _ContenidoInicio(
+        builder: (rutaContexto, progreso, _) => DashboardContenidoInicio(
           progreso: progreso,
           onAbrirEtapa: (etapa) => _abrirEtapa(rutaContexto, progreso, etapa),
         ),
@@ -495,46 +497,18 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
     await _abrirTiendaWeb(context, widget.progreso.slug);
   }
 
-  Future<void> _abrirTiendaWeb(BuildContext context, String slug) async {
-    if (!widget.progreso.completo) {
-      _mostrarBloqueado(context);
-      return;
-    }
-    if (slug.isEmpty || widget.progreso.plantilla == null) {
-      _mostrarProximamente(
-        context,
-        'Selecciona una plantilla para publicar tu tienda web.',
-      );
-      return;
-    }
-
-    final url = Uri.https('yapiventa-tienda.web.app', '/$slug');
-    try {
-      final lanzarUrl = widget.abrirUrl ?? launchUrl;
-      final abierto = await lanzarUrl(url, webOnlyWindowName: '_blank');
-      if (!abierto && context.mounted) {
-        _mostrarProximamente(
-          context,
-          'El navegador no pudo abrir la tienda web.',
-        );
-      }
-    } catch (error, stackTrace) {
-      debugPrint(
-        'Error al abrir la tienda publica (${url.host}): '
-        '${error.runtimeType}: $error',
-      );
-      debugPrintStack(stackTrace: stackTrace);
-      if (context.mounted) {
-        _mostrarProximamente(
-          context,
-          'Ocurrió un error al abrir la tienda web. Intenta de nuevo.',
-        );
-      }
-    }
+  Future<void> _abrirTiendaWeb(BuildContext context, String slug) {
+    return abrirTiendaPublica(
+      context,
+      progreso: widget.progreso,
+      slug: slug,
+      abrirUrl: widget.abrirUrl,
+      alBloquear: () => _mostrarBloqueado(context),
+    );
   }
 
   void _mostrarProximamente(BuildContext context, String mensaje) {
-    _mostrarAviso(context, mensaje);
+    mostrarAvisoDashboard(context, mensaje);
   }
 
   bool _destinoHabilitado(DashboardDestination destino) {
@@ -565,63 +539,9 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
   }
 
   void _mostrarBloqueado(BuildContext context) {
-    _mostrarAviso(
+    mostrarAvisoDashboard(
       context,
       'Completa primero las etapas pendientes de configuración.',
-    );
-  }
-}
-
-class _ObservadorRutasInternas extends NavigatorObserver {
-  final VoidCallback _alRegresar;
-
-  _ObservadorRutasInternas(this._alRegresar);
-
-  @override
-  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    final nombre = route.settings.name;
-    if (nombre != RutasAcceso.rubro && nombre != RutasAcceso.negocio) return;
-    _alRegresar();
-  }
-}
-
-void _mostrarAviso(BuildContext context, String mensaje) {
-  ScaffoldMessenger.of(context)
-    ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(mensaje)));
-}
-
-class _ContenidoInicio extends StatelessWidget {
-  final ProgresoConfiguracion progreso;
-  final ValueChanged<EtapaConfiguracion> onAbrirEtapa;
-
-  const _ContenidoInicio({required this.progreso, required this.onAbrirEtapa});
-
-  @override
-  Widget build(BuildContext context) {
-    final state = context.watch<DashboardProvider>().state;
-    return DashboardHomeContent(
-      state: state,
-      progreso: progreso,
-      onAbrirEtapa: onAbrirEtapa,
-      onAgregarProducto: () => progreso.negocioCompleto
-          ? onAbrirEtapa(EtapaConfiguracion.productos)
-          : _mostrarAviso(
-              context,
-              'Completa primero las etapas pendientes de configuración.',
-            ),
-      onActualizarStock: () => _mostrarAviso(
-        context,
-        'El módulo de stock estará disponible próximamente.',
-      ),
-      onVerPedidos: () => _mostrarAviso(
-        context,
-        'El módulo de pedidos estará disponible próximamente.',
-      ),
-      onResponderQueja: () => _mostrarAviso(
-        context,
-        'El módulo de reclamaciones estará disponible próximamente.',
-      ),
     );
   }
 }
