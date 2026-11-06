@@ -1,0 +1,14 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "panel-local",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": [
+        "/c",
+        "cd mobile && flutter run -d web-server --web-port 5050 --web-hostname localhost"
+      ],
+      "port": 5050
+    }
+  ]
+}
