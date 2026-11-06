@@ -1,0 +1,254 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:mobile/features/productos/domain/models/producto.dart';
+
+import '../application/services/calculo_stock_pedido.dart';
+import '../application/services/contadores_venta.dart';
+import '../application/services/resumen_dia_pedidos.dart';
+import '../application/services/resumen_ventas_dia_calculo.dart';
+import '../application/services/verificacion_total_pedido.dart';
+import '../domain/models/estado_pedido.dart';
+import '../domain/models/pedido.dart';
+import '../domain/models/resumen_ventas_dia.dart';
+import '../domain/repositories/repositorio_ventas_mostrador.dart';
+import 'ayudas_pedidos_firestore.dart';
+import 'contadores_dia_mapper.dart';
+import 'pedido_mapper.dart';
+import 'resumen_ventas_dia_mapper.dart';
+
+/// Ventas de mostrador (Caja). Registrar una venta mueve el stock de varios
+/// productos, crea el pedido y suma al resumen del día: va en UNA transacción
+/// (todo o nada), con todas las lecturas antes de las escrituras.
+///
+/// Lecturas: los productos de la venta (más las partes de sus combos) y, si la
+/// venta queda entregada, 1 resumen del día. Escrituras: 1 pedido, los
+/// productos cuyo stock cambia y 1 resumen. Una venta de 2 productos en el
+/// local: 3 lecturas y 4 escrituras.
+///
+///   En el local y recojo → nace ENTREGADA y cobrada, y suma a las ventas.
+///   Delivery             → nace CONFIRMADA (stock ya descontado) y sigue en
+///                          Pedidos; suma a las ventas cuando se entregue.
+class VentasMostradorRepository implements RepositorioVentasMostrador {
+  VentasMostradorRepository({FirebaseFirestore? db, DateTime Function()? reloj})
+    : _db = db ?? FirebaseFirestore.instance,
+      _ayudas = AyudasPedidosFirestore(
+        db: db ?? FirebaseFirestore.instance,
+        reloj: reloj ?? DateTime.now,
+      );
+
+  final FirebaseFirestore _db;
+  final AyudasPedidosFirestore _ayudas;
+
+  @override
+  Future<ResultadoVentaMostrador> registrar(
+    String negocioId,
+    SolicitudVentaMostrador solicitud,
+  ) {
+    _comprobarSolicitud(solicitud);
+    final ref = _ayudas.pedidos(negocioId).doc(solicitud.idVenta.trim());
+    final entregada = solicitud.tipoEntrega != TipoEntrega.delivery;
+
+    return _db.runTransaction((tx) async {
+      // Un toque repetido: la venta ya está registrada, no se hace nada más.
+      final existente = await tx.get(ref);
+      if (existente.exists) {
+        return ResultadoVentaMostrador(
+          pedidoId: ref.id,
+          clave: _ayudas.pedido(existente).clave,
+          yaRegistrada: true,
+        );
+      }
+
+      // Todas las lecturas primero: los productos de la venta y, si hay
+      // combos, las partes de cada combo.
+      final productos = <String, Producto>{};
+      final leidos = <String>{};
+      Future<void> leer(Iterable<String> ids) async {
+        for (final id in ids) {
+          if (!leidos.add(id)) continue;
+          final producto = await _ayudas.leerProducto(tx, negocioId, id);
+          if (producto != null) productos[id] = producto;
+        }
+      }
+
+      await leer(CalculoStockPedido.idsDeLineas(solicitud.lineas));
+      await leer([
+        for (final p in productos.values.toList())
+          if (p.esCombo) ...CalculoStockPedido.idsDePartes(p),
+      ]);
+      Producto? buscar(String id) => productos[id];
+
+      final calculo = CalculoStockPedido.calcular(solicitud.lineas, buscar);
+      if (!calculo.ok) {
+        return ResultadoVentaMostrador(
+          faltas: calculo.faltas,
+          sinProducto: calculo.sinProducto,
+        );
+      }
+
+      // El precio de hoy debe ser el que vio el cajero: si cambió, no se cobra.
+      final verificacion = CalculoPedido.verificar(
+        Pedido(
+          id: ref.id,
+          lineas: solicitud.lineas,
+          deliveryCentavos: solicitud.deliveryCentavos,
+          descuentoCentavos: solicitud.descuentoCentavos,
+          subtotalCentavos: solicitud.subtotalCentavos,
+          totalCentavos: solicitud.totalCentavos,
+        ),
+        buscar,
+      );
+      if (verificacion.difiere || verificacion.lineasCambiadas.isNotEmpty) {
+        return ResultadoVentaMostrador(
+          precioCambio: true,
+          totalActualCentavos: verificacion.totalActualCentavos,
+          lineasCambiadas: verificacion.lineasCambiadas,
+        );
+      }
+
+      final ahora = _ayudas.ahora();
+      final estado = entregada
+          ? EstadoPedido.entregado
+          : EstadoPedido.confirmado;
+      final pedido = Pedido(
+        id: ref.id,
+        clave: PedidoMapper.claveDeId(ref.id),
+        estado: estado,
+        origen: OrigenPedido.mostrador,
+        tipoEntrega: solicitud.tipoEntrega,
+        enLocal: entregada && solicitud.enLocal,
+        cliente: solicitud.cliente,
+        zona: solicitud.zona.trim(),
+        deliveryCentavos: solicitud.deliveryCentavos,
+        descuentoCentavos: solicitud.descuentoCentavos,
+        subtotalCentavos: solicitud.subtotalCentavos,
+        totalCentavos: solicitud.totalCentavos,
+        lineas: solicitud.lineas,
+        metodoPago: solicitud.metodoPago.trim(),
+        estadoPago: (!entregada && solicitud.cobrarAlEntregar)
+            ? EstadoPago.pendiente
+            : EstadoPago.pagado,
+        notas: solicitud.notas.trim(),
+        stockDescontado: calculo.descuentos,
+        historial: [
+          CambioEstado(estado: EstadoPedido.confirmado, fecha: ahora),
+          if (entregada)
+            CambioEstado(estado: EstadoPedido.entregado, fecha: ahora),
+        ],
+      );
+
+      // El resumen del día se lee ANTES de escribir (regla de las
+      // transacciones) y se guarda el valor ya sumado.
+      final refResumen = _ayudas.resumen(
+        negocioId,
+        ResumenDiaPedidos.claveDia(ahora),
+      );
+      var resumenActual = ResumenVentasDia.vacio(refResumen.id);
+      if (entregada) {
+        resumenActual = ResumenVentasDiaMapper.desdeFirestore(
+          refResumen.id,
+          (await tx.get(refResumen)).data(),
+        );
+      }
+
+      // ── Escrituras ──────────────────────────────────────────────────
+      for (final id in {for (final d in calculo.descuentos) d.productoId}) {
+        final nuevo = CalculoStockPedido.aplicar(
+          productos[id]!,
+          calculo.descuentos,
+          devolver: false,
+        ).producto;
+        tx.update(
+          _ayudas.producto(negocioId, id),
+          _ayudas.camposDeStock(nuevo),
+        );
+      }
+
+      tx.set(ref, {
+        'negocioId': negocioId.trim(),
+        'clave': pedido.clave,
+        'estado': estado.valor,
+        'origen': OrigenPedido.mostrador.valor,
+        'enLocal': pedido.enLocal,
+        'tipoEntrega': pedido.tipoEntrega.valor,
+        'fecha': FieldValue.serverTimestamp(),
+        'cliente': PedidoMapper.clienteAMapa(pedido.cliente),
+        if (pedido.zona.isNotEmpty) 'zona': pedido.zona,
+        'deliveryCentavos': pedido.deliveryCentavos,
+        'descuentoCentavos': pedido.descuentoCentavos,
+        'subtotalCentavos': pedido.subtotalCentavos,
+        'totalCentavos': pedido.totalCentavos,
+        'lineas': PedidoMapper.lineasAMapas(pedido.lineas),
+        'metodoPago': pedido.metodoPago,
+        'estadoPago': pedido.estadoPago.valor,
+        if (pedido.notas.isNotEmpty) 'notas': pedido.notas,
+        'stockDescontado': PedidoMapper.descuentosAMapas(calculo.descuentos),
+        'reembolso': EstadoReembolso.ninguno.valor,
+        'historial': PedidoMapper.historialAMapas(pedido.historial),
+        'actualizadoEn': FieldValue.serverTimestamp(),
+      });
+
+      if (entregada) {
+        final contadores = ContadoresVenta.sumar(
+          resumenActual.contadores,
+          ContadoresVenta.aporteDe(pedido, ahora),
+        );
+        tx.set(
+          refResumen,
+          {
+            'ventasCentavos':
+                resumenActual.ventasCentavos + pedido.totalCentavos,
+            'entregados': resumenActual.entregados + 1,
+            'ultimosEntregados': ResumenVentasDiaMapper.entregadosAMapas(
+              ResumenVentasDiaCalculo.conNuevoEntregado(
+                resumenActual.ultimosEntregados,
+                ResumenVentasDiaCalculo.entregadoDe(pedido, ahora),
+              ),
+            ),
+            'actualizadoEn': FieldValue.serverTimestamp(),
+            ...ContadoresDiaMapper.aCampos(contadores),
+          },
+          // Reemplaza estos campos enteros (un merge normal juntaría los
+          // mapas con lo que ya había).
+          SetOptions(
+            mergeFields: [
+              'ventasCentavos',
+              'entregados',
+              'ultimosEntregados',
+              'actualizadoEn',
+              ...ContadoresDiaMapper.camposContadores,
+            ],
+          ),
+        );
+      }
+
+      return ResultadoVentaMostrador(
+        pedidoId: ref.id,
+        clave: pedido.clave,
+        registrada: true,
+      );
+    });
+  }
+
+  /// Errores de programación (no del cajero): la cuenta debe cuadrar.
+  void _comprobarSolicitud(SolicitudVentaMostrador s) {
+    if (s.idVenta.trim().isEmpty) {
+      throw ArgumentError.value(s.idVenta, 'idVenta', 'La venta no tiene id.');
+    }
+    if (s.lineas.isEmpty) {
+      throw ArgumentError.value(
+        s.lineas,
+        'lineas',
+        'La venta no tiene líneas.',
+      );
+    }
+    final subtotal = CalculoPedido.subtotal(s.lineas);
+    final total = CalculoPedido.total(
+      subtotalCentavos: subtotal,
+      deliveryCentavos: s.deliveryCentavos,
+      descuentoCentavos: s.descuentoCentavos,
+    );
+    if (subtotal != s.subtotalCentavos || total != s.totalCentavos) {
+      throw ArgumentError('La cuenta de la venta no cuadra.');
+    }
+  }
+}

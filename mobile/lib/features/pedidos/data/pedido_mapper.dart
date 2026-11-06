@@ -22,7 +22,7 @@ abstract final class PedidoMapper {
     final clave = LecturaFirestore.texto(data['clave']);
     return Pedido(
       id: id,
-      clave: clave.isEmpty ? _claveDeId(id) : clave,
+      clave: clave.isEmpty ? claveDeId(id) : clave,
       estado: EstadoPedido.desdeValor(LecturaFirestore.texto(data['estado'])),
       origen: OrigenPedido.desdeValor(LecturaFirestore.texto(data['origen'])),
       tipoEntrega: TipoEntrega.desdeValor(
@@ -76,6 +76,43 @@ abstract final class PedidoMapper {
     ];
   }
 
+  /// Las líneas como se guardan en el pedido. Solo se escriben los textos que
+  /// tienen algo (un producto simple no lleva modelo, fila ni etiqueta).
+  static List<Map<String, dynamic>> lineasAMapas(List<LineaPedido> lineas) {
+    return [
+      for (final l in lineas)
+        {
+          'productoId': l.productoId,
+          if (l.modeloId.isNotEmpty) 'modeloId': l.modeloId,
+          if (l.filaId.isNotEmpty) 'filaId': l.filaId,
+          'nombre': l.nombre,
+          if (l.etiqueta.isNotEmpty) 'etiqueta': l.etiqueta,
+          'cantidad': l.cantidad,
+          'precioCentavos': l.precioCentavos,
+          if (l.porMedida) 'porMedida': true,
+          if (l.porMedida) 'cantidadReferencia': l.cantidadReferencia,
+          if (l.extras.isNotEmpty)
+            'extras': [
+              for (final e in l.extras)
+                {'nombre': e.nombre, 'precioCentavos': e.precioCentavos},
+            ],
+          'subtotalCentavos': l.subtotalCentavos,
+          if (l.esCombo) 'esCombo': true,
+        },
+    ];
+  }
+
+  /// El cliente como se guarda: solo lo que tiene texto (puede quedar vacío:
+  /// en Caja el cliente es opcional).
+  static Map<String, dynamic> clienteAMapa(ClientePedido c) {
+    return {
+      if (c.nombre.trim().isNotEmpty) 'nombre': c.nombre.trim(),
+      if (c.telefono.trim().isNotEmpty) 'telefono': c.telefono.trim(),
+      if (c.direccion.trim().isNotEmpty) 'direccion': c.direccion.trim(),
+      if (c.correo.trim().isNotEmpty) 'correo': c.correo.trim(),
+    };
+  }
+
   static List<Map<String, dynamic>> historialAMapas(
     List<CambioEstado> historial,
   ) {
@@ -87,7 +124,9 @@ abstract final class PedidoMapper {
 
   // ── Lectura de partes ─────────────────────────────────────────────────
 
-  static String _claveDeId(String id) {
+  /// La clave corta que ve el cliente: los últimos 6 caracteres del id, en
+  /// mayúsculas (la misma que arma la tienda).
+  static String claveDeId(String id) {
     final cola = id.length > 6 ? id.substring(id.length - 6) : id;
     return cola.toUpperCase();
   }
