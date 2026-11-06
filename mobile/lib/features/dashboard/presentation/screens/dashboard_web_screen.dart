@@ -16,6 +16,7 @@ import '../../../negocio/seleccion_plantilla_dependencies.dart';
 import '../../../productos/presentation/widgets/productos_flow.dart';
 import '../../../productos/presentation/widgets/productos_contextual_panel.dart';
 import '../../../pedidos/pedidos_dependencies.dart';
+import '../../../pedidos/presentation/widgets/pedidos_contextual_panel.dart';
 import '../../../pedidos/presentation/widgets/pedidos_flow.dart';
 import '../../../productos/productos_dependencies.dart';
 import '../providers/dashboard_provider.dart';
@@ -146,7 +147,9 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<DashboardProvider>().state;
-    final seccionAyuda = _plantillaAbierta
+    final seccionAyuda = _pedidosAbierta
+        ? 'pedidos'
+        : _plantillaAbierta
         ? 'plantilla'
         : _productosAbierta
         ? 'productos'
@@ -183,7 +186,7 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
         onCerrarSesion: widget.onCerrarSesion,
       ),
       contextualPanel: _pedidosAbierta
-          ? null
+          ? const PedidosContextualPanel()
           : _configuracionAbierta && _providerConfiguracion != null
           ? ConfiguracionContextualPanel(provider: _providerConfiguracion!)
           : _plantillaAbierta

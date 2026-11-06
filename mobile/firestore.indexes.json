@@ -25,6 +25,15 @@
         { "fieldPath": "reembolso", "order": "ASCENDING" },
         { "fieldPath": "fecha", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "pedidos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "estadoPago", "order": "ASCENDING" },
+        { "fieldPath": "estado", "order": "ASCENDING" },
+        { "fieldPath": "totalCentavos", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

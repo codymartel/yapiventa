@@ -42,8 +42,14 @@ Pedido _pedido(
 }
 
 /// La pestaña (no el número de arriba, que puede decir lo mismo).
-Finder pestana(String texto) =>
-    find.descendant(of: find.byType(Wrap), matching: find.text(texto));
+Finder pestana(String texto) => find.widgetWithText(InkWell, texto);
+
+/// Lleva la pestaña a la vista (la fila se desliza) y la toca.
+Future<void> tocar(WidgetTester tester, Finder pestana) async {
+  await tester.ensureVisible(pestana);
+  await tester.pump();
+  await tester.tap(pestana);
+}
 
 void main() {
   late RepositorioPedidosFake repo;
@@ -109,7 +115,7 @@ void main() {
     ) async {
       await abrir(tester, tamano: tamano);
 
-      await tester.tap(pestana('Por cobrar'));
+      await tocar(tester, pestana('Por cobrar'));
       await tester.pump();
       repo.emitir(FiltroPedidos.porCobrar, [
         _pedido(
@@ -131,7 +137,7 @@ void main() {
       tester,
     ) async {
       await abrir(tester, tamano: tamano);
-      await tester.tap(pestana('Por cobrar'));
+      await tocar(tester, pestana('Por cobrar'));
       await tester.pump();
       repo.emitir(FiltroPedidos.porCobrar, [
         _pedido('e', estado: EstadoPedido.entregado),
@@ -151,7 +157,7 @@ void main() {
       tester,
     ) async {
       await abrir(tester, tamano: tamano);
-      await tester.tap(pestana('Reembolsos'));
+      await tocar(tester, pestana('Reembolsos'));
       await tester.pump();
       repo.emitir(FiltroPedidos.reembolsos, [
         _pedido(
@@ -177,7 +183,7 @@ void main() {
     testWidgets('sin reembolsos pendientes lo dice', (tester) async {
       await abrir(tester, tamano: tamano);
 
-      await tester.tap(pestana('Reembolsos'));
+      await tocar(tester, pestana('Reembolsos'));
       await tester.pump();
       repo.emitir(FiltroPedidos.reembolsos, const []);
       await tester.pump();
@@ -190,11 +196,11 @@ void main() {
       tester,
     ) async {
       await abrir(tester, tamano: tamano);
-      await tester.tap(pestana('Reembolsos'));
+      await tocar(tester, pestana('Reembolsos'));
       await tester.pump();
       expect(repo.oyentesDe(FiltroPedidos.reembolsos), 1);
 
-      await tester.tap(find.text('Nuevos 1'));
+      await tocar(tester, pestana('Nuevos 1'));
       await tester.pump();
 
       expect(repo.oyentesDe(FiltroPedidos.reembolsos), 0);
@@ -208,7 +214,7 @@ void main() {
       await abrir(tester, tamano: tamano);
 
       expect(pestana('Todos'), findsOneWidget);
-      await tester.tap(pestana('Todos'));
+      await tocar(tester, pestana('Todos'));
       await tester.pump();
       repo.emitir(FiltroPedidos.todos, [
         _pedido('a'),
@@ -231,7 +237,7 @@ void main() {
       tester,
     ) async {
       await abrir(tester, tamano: tamano);
-      await tester.tap(pestana('Reembolsos'));
+      await tocar(tester, pestana('Reembolsos'));
       await tester.pump();
       repo.emitir(FiltroPedidos.reembolsos, [
         _pedido(

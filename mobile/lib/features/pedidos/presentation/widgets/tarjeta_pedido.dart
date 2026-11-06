@@ -8,8 +8,10 @@ import '../../domain/models/estado_pedido.dart';
 import '../../domain/models/pedido.dart';
 import 'pildora_pedido.dart';
 
-/// Un pedido en la lista: quién, cuándo, qué pidió y cuánto. Todo es texto
-/// plano (viene de una tienda pública).
+/// Un pedido en la lista, como en la maqueta: inicial de color, nombre con su
+/// clave, etiquetas (estado y entrega), «hace X», lo pedido y el total. El
+/// borde dice el estado: ámbar si es nuevo, rojo si está vencido, azul grueso
+/// si es el elegido. Todo es texto plano (viene de una tienda pública).
 class TarjetaPedido extends StatelessWidget {
   const TarjetaPedido({
     super.key,
@@ -32,11 +34,19 @@ class TarjetaPedido extends StatelessWidget {
         ? 'Cliente'
         : pedido.cliente.nombre.trim();
     final esDelivery = pedido.tipoEntrega == TipoEntrega.delivery;
-    final borde = vencido
-        ? AppColors.error.withValues(alpha: 0.5)
-        : seleccionado
+    final esNuevo = pedido.estado == EstadoPedido.nuevo;
+    final acento = vencido
+        ? AppColors.error
+        : esNuevo
+        ? AppColors.aviso
+        : AppColors.azulTexto;
+    final borde = seleccionado
         ? AppColors.blueLt
-        : AppColors.bordeSutil;
+        : vencido
+        ? AppColors.error.withValues(alpha: 0.5)
+        : esNuevo
+        ? AppColors.aviso.withValues(alpha: 0.55)
+        : AppColors.bordeMedio;
 
     return Semantics(
       button: true,
@@ -46,21 +56,21 @@ class TarjetaPedido extends StatelessWidget {
       child: Material(
         color: AppColors.card,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: borde, width: seleccionado ? 1.5 : 1),
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(color: borde, width: seleccionado ? 2 : 1),
         ),
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(14),
           onTap: onTap,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(minHeight: 72),
+            constraints: const BoxConstraints(minHeight: 64),
             child: Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _Inicial(nombre: nombre, vencido: vencido),
-                  const SizedBox(width: 12),
+                  _Inicial(nombre: nombre, color: acento),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -75,24 +85,24 @@ class TarjetaPedido extends StatelessWidget {
                                 style: const TextStyle(
                                   color: AppColors.texto,
                                   fontWeight: FontWeight.w700,
-                                  fontSize: 15,
+                                  fontSize: 14,
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 6),
                             Text(
                               pedido.clave,
                               style: const TextStyle(
-                                color: AppColors.hint,
-                                fontSize: 12,
+                                color: AppColors.muted,
+                                fontSize: 10.5,
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 4),
+                        const SizedBox(height: 3),
                         Wrap(
-                          spacing: 6,
-                          runSpacing: 4,
+                          spacing: 4,
+                          runSpacing: 3,
                           crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
                             PildoraPedido.estado(
@@ -105,39 +115,42 @@ class TarjetaPedido extends StatelessWidget {
                                 texto: 'Reembolso pendiente',
                                 color: AppColors.aviso,
                               ),
-                            PildoraPedido(
-                              texto: esDelivery ? 'Delivery' : 'Recojo',
-                              color: AppColors.muted,
-                              icono: esDelivery
-                                  ? Icons.local_shipping_outlined
-                                  : Icons.storefront_outlined,
-                            ),
-                            Text(
-                              vencido
-                                  ? '${TiempoTranscurrido.hace(pedido.fecha, ahora)} sin confirmar'
-                                  : TiempoTranscurrido.hace(
-                                      pedido.fecha,
-                                      ahora,
-                                    ),
-                              style: TextStyle(
-                                color: vencido
-                                    ? AppColors.error
-                                    : AppColors.muted,
-                                fontSize: 12,
+                            if (!vencido)
+                              PildoraPedido.neutra(
+                                texto: esDelivery ? 'Delivery' : 'Recojo',
+                                icono: esDelivery
+                                    ? Icons.local_shipping_outlined
+                                    : Icons.storefront_outlined,
+                              ),
+                            Padding(
+                              padding: const EdgeInsets.only(left: 2),
+                              child: Text(
+                                vencido
+                                    ? '${TiempoTranscurrido.hace(pedido.fecha, ahora)} sin confirmar'
+                                    : TiempoTranscurrido.hace(
+                                        pedido.fecha,
+                                        ahora,
+                                      ),
+                                style: const TextStyle(
+                                  color: AppColors.muted,
+                                  fontSize: 11,
+                                ),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          TextoLineasPedido.resumen(pedido.lineas),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: AppColors.muted,
-                            fontSize: 13,
+                        if (!vencido) ...[
+                          const SizedBox(height: 3),
+                          Text(
+                            TextoLineasPedido.resumen(pedido.lineas),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: AppColors.muted,
+                              fontSize: 11,
+                            ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
                   ),
@@ -147,7 +160,7 @@ class TarjetaPedido extends StatelessWidget {
                     style: const TextStyle(
                       color: AppColors.azulTexto,
                       fontWeight: FontWeight.w800,
-                      fontSize: 15,
+                      fontSize: 14,
                     ),
                   ),
                 ],
@@ -161,20 +174,19 @@ class TarjetaPedido extends StatelessWidget {
 }
 
 class _Inicial extends StatelessWidget {
-  const _Inicial({required this.nombre, required this.vencido});
+  const _Inicial({required this.nombre, required this.color});
 
   final String nombre;
-  final bool vencido;
+  final Color color;
 
   @override
   Widget build(BuildContext context) {
-    final color = vencido ? AppColors.error : AppColors.azulTexto;
     return Container(
-      width: 40,
-      height: 40,
+      width: 36,
+      height: 36,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.15),
+        color: color.withValues(alpha: 0.18),
         shape: BoxShape.circle,
       ),
       child: Text(

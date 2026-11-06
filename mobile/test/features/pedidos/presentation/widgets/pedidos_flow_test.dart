@@ -180,10 +180,10 @@ void main() {
       );
 
       expect(find.text('Vencido'), findsOneWidget);
-      expect(find.text('Cancelar vencidos (1)'), findsOneWidget);
+      expect(find.text('Cancelar 1 vencido'), findsOneWidget);
 
       repo.tandasVencidos.add([_pedido('v', hace: const Duration(hours: 13))]);
-      await tester.tap(find.text('Cancelar vencidos (1)'));
+      await tester.tap(find.text('Cancelar 1 vencido'));
       await tester.pumpAndSettle();
       expect(find.text('¿Cancelar el pedido vencido?'), findsOneWidget);
 

@@ -77,6 +77,7 @@ void main() {
       'ayuda_vista_configuracion': true,
       'ayuda_vista_rubro': true,
       'ayuda_vista_plantilla': true,
+      'ayuda_vista_pedidos': true,
     });
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -170,6 +171,7 @@ void main() {
       'ayuda_vista_configuracion': true,
       'ayuda_vista_rubro': true,
       'ayuda_vista_plantilla': true,
+      'ayuda_vista_pedidos': true,
     });
     tester.view.physicalSize = const Size(1400, 1000);
     tester.view.devicePixelRatio = 1;
@@ -358,6 +360,59 @@ void main() {
     expect(find.text('Pedidos estará disponible próximamente.'), findsNothing);
     expect(repo.oyentesDe(FiltroPedidos.nuevos), 1);
     expect(repo.oyentesDe(FiltroPedidos.activos), 1);
+  });
+
+  testWidgets('Pedidos trae su ayuda como los demás módulos', (tester) async {
+    final repo = RepositorioPedidosFake();
+    await mostrarDashboard(
+      tester,
+      pedidos: PedidosDependencies.conRepositorio(repo),
+    );
+    await tester.tap(find.text('Pedidos').first);
+    await tester.pump();
+    // La lista llega vacía (si no, el círculo de carga gira para siempre).
+    repo.emitir(FiltroPedidos.nuevos, const []);
+    repo.emitir(FiltroPedidos.activos, const []);
+    await tester.pump();
+    expect(find.byKey(AuthenticatedShell.helpDialogKey), findsNothing);
+
+    await tester.tap(find.byKey(AuthenticatedShell.helpButtonKey));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(AuthenticatedShell.helpDialogKey), findsOneWidget);
+    expect(find.byKey(const Key('pedidos-contextual-panel')), findsOneWidget);
+    expect(find.text('¿Cómo funciona?'), findsOneWidget);
+    expect(find.text('EL CAMINO DE UN PEDIDO'), findsOneWidget);
+  });
+
+  testWidgets('la ayuda de Pedidos se abre sola la primera vez', (
+    tester,
+  ) async {
+    final repo = RepositorioPedidosFake();
+    await mostrarDashboard(
+      tester,
+      pedidos: PedidosDependencies.conRepositorio(repo),
+    );
+    // Esta persona nunca vio la ayuda de Pedidos.
+    SharedPreferences.setMockInitialValues({
+      'ayuda_vista_inicio': true,
+      'ayuda_vista_productos': true,
+      'ayuda_vista_configuracion': true,
+      'ayuda_vista_rubro': true,
+      'ayuda_vista_plantilla': true,
+    });
+    await tester.tap(find.text('Pedidos').first);
+    await tester.pump();
+    repo.emitir(FiltroPedidos.nuevos, const []);
+    repo.emitir(FiltroPedidos.activos, const []);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(AuthenticatedShell.helpDialogKey), findsOneWidget);
+    expect(find.byKey(const Key('pedidos-contextual-panel')), findsOneWidget);
+
+    // Y queda marcada: la próxima vez ya no se abre sola.
+    final preferencias = await SharedPreferences.getInstance();
+    expect(preferencias.getBool('ayuda_vista_pedidos'), isTrue);
   });
 
   testWidgets('al salir de Pedidos se cierran sus listeners', (tester) async {

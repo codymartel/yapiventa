@@ -333,6 +333,8 @@ class _PedidosFlowState extends State<PedidosFlow> with WidgetsBindingObserver {
           children: [
             FiltrosPedidos(
               pestana: pestana,
+              nuevos: p.pedidosDe(PestanaPedidos.nuevos).length,
+              enVivo: !p.pausado,
               pestanas: _pestanasCompactas,
               etiquetaPestana: (t) => etiquetaDePestana(p, t),
               conteoNuevos: p.conteo(PestanaPedidos.nuevos),

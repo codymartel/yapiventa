@@ -3,8 +3,9 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/models/estado_pedido.dart';
 
-/// Etiqueta corta de color: el estado del pedido («Nuevo», «Vencido»…). El
-/// color nunca va solo: siempre lleva el texto.
+/// Etiqueta corta de esquinas chicas, como en la maqueta: el estado del pedido
+/// («Nuevo», «Vencido»…) o un dato neutro («Delivery», «Recojo»). El color
+/// nunca va solo: siempre lleva el texto.
 class PildoraPedido extends StatelessWidget {
   const PildoraPedido({
     super.key,
@@ -34,6 +35,14 @@ class PildoraPedido extends StatelessWidget {
     );
   }
 
+  /// Dato neutro (gris): tipo de entrega, etc.
+  const PildoraPedido.neutra({
+    super.key,
+    required this.texto,
+    this.icono,
+    this.escala = 1,
+  }) : color = AppColors.muted;
+
   final String texto;
   final Color color;
   final IconData? icono;
@@ -54,18 +63,21 @@ class PildoraPedido extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final neutra = color == AppColors.muted;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      padding: EdgeInsets.symmetric(horizontal: 7 * escala, vertical: 1.5),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(999),
+        color: neutra
+            ? Colors.white.withValues(alpha: 0.07)
+            : color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icono != null) ...[
-            Icon(icono, size: 12, color: color),
-            const SizedBox(width: 4),
+            Icon(icono, size: 11 * escala, color: color),
+            const SizedBox(width: 3),
           ],
           Flexible(
             child: Text(
@@ -74,7 +86,7 @@ class PildoraPedido extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 color: color,
-                fontSize: 12 * escala,
+                fontSize: 10.5 * escala,
                 fontWeight: FontWeight.w700,
               ),
             ),
