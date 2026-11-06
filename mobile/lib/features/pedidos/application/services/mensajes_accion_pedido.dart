@@ -48,6 +48,36 @@ abstract final class MensajesAccionPedido {
         '$cambiadas.';
   }
 
+  /// Resultado de confirmar varios pedidos a la vez. [primerMotivo] es el
+  /// porqué del primero que no se pudo confirmar (no se repite por cada uno).
+  static String confirmadosEnLote(
+    int confirmados,
+    int bloqueados,
+    String? primerMotivo,
+  ) {
+    final partes = <String>[];
+    if (confirmados > 0) {
+      partes.add(
+        confirmados == 1
+            ? 'Se confirmó 1 pedido.'
+            : 'Se confirmaron $confirmados pedidos.',
+      );
+    }
+    if (bloqueados > 0) {
+      partes.add(
+        bloqueados == 1
+            ? '1 no se pudo confirmar.'
+            : '$bloqueados no se pudieron confirmar.',
+      );
+      if (primerMotivo != null && primerMotivo.isNotEmpty) {
+        partes.add(primerMotivo);
+      }
+    }
+    return partes.isEmpty
+        ? 'No había pedidos por confirmar.'
+        : partes.join(' ');
+  }
+
   static String cancelado(int lineasSinDevolver) {
     if (lineasSinDevolver == 0) return 'Pedido cancelado.';
     final lineas = lineasSinDevolver == 1

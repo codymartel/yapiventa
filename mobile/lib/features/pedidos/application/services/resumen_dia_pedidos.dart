@@ -55,6 +55,15 @@ abstract final class ResumenDiaPedidos {
     'dic',
   ];
 
+  /// «16:12»: la hora de Lima de un momento. (Hasta que el país del negocio
+  /// fije la zona horaria.)
+  static String horaLima(DateTime momento) {
+    final lima = momento.toUtc().add(_utcLima);
+    final h = lima.hour.toString().padLeft(2, '0');
+    final m = lima.minute.toString().padLeft(2, '0');
+    return '$h:$m';
+  }
+
   /// «2026-11-05» → «5 nov 2026». Si la clave no tiene esa forma, se devuelve
   /// tal cual.
   static String etiquetaDia(String clave) {

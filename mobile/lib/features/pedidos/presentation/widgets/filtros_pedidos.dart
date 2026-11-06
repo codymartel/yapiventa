@@ -19,6 +19,7 @@ class FiltrosPedidos extends StatelessWidget {
     required this.onPestana,
     required this.onHistorial,
     required this.onCancelarVencidos,
+    this.mostrarNumeros = true,
   });
 
   final PestanaPedidos pestana;
@@ -31,6 +32,9 @@ class FiltrosPedidos extends StatelessWidget {
   final VoidCallback onHistorial;
   final VoidCallback onCancelarVencidos;
 
+  /// Los tres números de arriba (celular y tableta). En PC van en su propia fila.
+  final bool mostrarNumeros;
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -38,18 +42,19 @@ class FiltrosPedidos extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              _Numero(conteoNuevos, 'Nuevos', AppColors.aviso),
-              _Numero(conteoActivos, 'Activos', AppColors.azulTexto),
-              _Numero(
-                MensajesAccionPedido.dinero(porCobrarCentavos),
-                'Por cobrar (cargados)',
-                AppColors.aviso,
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
+          if (mostrarNumeros)
+            Row(
+              children: [
+                _Numero(conteoNuevos, 'Nuevos', AppColors.aviso),
+                _Numero(conteoActivos, 'Activos', AppColors.azulTexto),
+                _Numero(
+                  MensajesAccionPedido.dinero(porCobrarCentavos),
+                  'Por cobrar (cargados)',
+                  AppColors.aviso,
+                ),
+              ],
+            ),
+          if (mostrarNumeros) const SizedBox(height: 8),
           // Wrap: con letra grande o pantalla angosta, Historial baja de línea
           // en vez de salirse.
           Wrap(

@@ -1,5 +1,8 @@
 import 'package:flutter/foundation.dart';
 
+import '../../application/services/busqueda_pedidos.dart';
+import '../../application/services/indicadores_pedidos.dart';
+import '../../application/services/por_preparar_pedidos.dart';
 import '../../application/services/transiciones_pedido.dart';
 import '../../application/use_cases/avanzar_pedido.dart';
 import '../../application/use_cases/cancelar_pedido.dart';
@@ -74,6 +77,8 @@ class PedidosProvider extends ChangeNotifier {
   late final EscuchaPedidos _escucha;
   late final AccionesPedidos _acciones;
   PestanaPedidos _pestana = PestanaPedidos.nuevos;
+  String _busqueda = '';
+  final Set<String> _seleccionados = {};
   bool _disposed = false;
 
   // ── Lectura ───────────────────────────────────────────────────────────
@@ -114,18 +119,71 @@ class PedidosProvider extends ChangeNotifier {
     return null;
   }
 
+  /// Los números de arriba (PC y TV), sacados de lo YA cargado: 0 lecturas.
+  IndicadoresPedidos get indicadores => IndicadoresPedidos.calcular(
+    nuevos: _escucha.lista(PestanaPedidos.nuevos).pedidos,
+    activos: _escucha.lista(PestanaPedidos.activos).pedidos,
+    ahora: _reloj(),
+  );
+
   /// Lo que falta cobrar entre los pedidos YA cargados (Nuevos y Activos), en
   /// céntimos. No es el total del negocio: solo lo cargado, sin lecturas extra.
-  int get porCobrarCargadoCentavos {
-    var suma = 0;
-    for (final lista in _escucha.listas) {
-      for (final pedido in lista.pedidos) {
-        if (pedido.estadoPago == EstadoPago.pendiente) {
-          suma += pedido.totalCentavos;
-        }
-      }
+  int get porCobrarCargadoCentavos => indicadores.porCobrarCentavos;
+
+  /// «Por preparar ahora»: suma de lo pedido en los nuevos y confirmados
+  /// cargados.
+  List<ItemPorPreparar> get porPreparar => PorPrepararPedidos.sumar([
+    for (final lista in _escucha.listas) ...lista.pedidos,
+  ]);
+
+  // ── Búsqueda y selección (PC) ─────────────────────────────────────────
+
+  String get busqueda => _busqueda;
+
+  /// Los pedidos de la pestaña que coinciden con la búsqueda (solo entre los
+  /// cargados: 0 lecturas).
+  List<Pedido> get pedidosFiltrados =>
+      BusquedaPedidos.filtrar(pedidosActuales, _busqueda);
+
+  void actualizarBusqueda(String texto) {
+    if (texto == _busqueda) return;
+    _busqueda = texto;
+    _notificar();
+  }
+
+  Set<String> get seleccionados => Set.unmodifiable(_seleccionados);
+  bool estaSeleccionado(String pedidoId) => _seleccionados.contains(pedidoId);
+
+  void alternarSeleccion(String pedidoId) {
+    if (!_seleccionados.remove(pedidoId)) _seleccionados.add(pedidoId);
+    _notificar();
+  }
+
+  /// Marca o desmarca todos los que se ven (los filtrados de la pestaña).
+  void seleccionarVisibles(bool marcar) {
+    final ids = pedidosFiltrados.map((p) => p.id);
+    if (marcar) {
+      _seleccionados.addAll(ids);
+    } else {
+      _seleccionados.removeAll(ids);
     }
-    return suma;
+    _notificar();
+  }
+
+  void limpiarSeleccion() {
+    if (_seleccionados.isEmpty) return;
+    _seleccionados.clear();
+    _notificar();
+  }
+
+  /// Confirma los seleccionados que sigan nuevos, de uno en uno. La selección
+  /// se limpia al terminar.
+  Future<ResultadoAccion> confirmarSeleccionados() async {
+    final pedidos = [for (final id in _seleccionados) ?buscar(id)];
+    final resultado = await _acciones.confirmarVarios(pedidos);
+    _seleccionados.clear();
+    _notificar();
+    return resultado;
   }
 
   void seleccionarPestana(PestanaPedidos p) {

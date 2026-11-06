@@ -14,10 +14,12 @@ import '../../pedidos_dependencies.dart';
 import '../providers/pedidos_provider.dart';
 import 'aviso_conexion_pedidos.dart';
 import 'detalle_pedido.dart';
+import 'detalle_vivo_pedido.dart';
 import 'dialogo_cancelar_pedido.dart';
 import 'dialogo_entregar_pedido.dart';
 import 'filtros_pedidos.dart';
 import 'historial_pedidos_vista.dart';
+import 'pedidos_vista_pc.dart';
 import 'tarjeta_pedido.dart';
 
 /// Abre un enlace afuera de la app (WhatsApp). Se puede cambiar en pruebas.
@@ -31,7 +33,8 @@ Future<bool> _abrirEnlaceReal(Uri uri) =>
 ///     desde abajo;
 ///   - 600 px o más: lista y detalle lado a lado (tableta o celular
 ///     horizontal) o, en tableta vertical, la lista con un panel lateral.
-/// PC (5b) y TV (5c) llegan en pasos aparte.
+/// En PC (1 100 px o más) usa `PedidosVistaPc`: tabla, números del día y
+/// detalle completo. La TV llega en su propio paso.
 ///
 /// Los listeners se pausan si la pestaña o la app lleva más de
 /// [tiempoParaPausar] oculta (la web no guarda caché: volver a abrirlos
@@ -155,6 +158,10 @@ class _PedidosFlowState extends State<PedidosFlow> with WidgetsBindingObserver {
     _avisar(await _provider.cancelarVencidos());
   }
 
+  Future<void> _confirmarSeleccionados() async {
+    _avisar(await _provider.confirmarSeleccionados());
+  }
+
   Future<void> _whatsapp(Pedido pedido) async {
     final nombre = pedido.cliente.nombre.trim();
     final url = EnlaceWhatsapp.construir(
@@ -218,7 +225,7 @@ class _PedidosFlowState extends State<PedidosFlow> with WidgetsBindingObserver {
         value: _provider,
         child: FractionallySizedBox(
           heightFactor: 0.92,
-          child: _DetalleVivo(
+          child: DetalleVivoPedido(
             pedidoId: pedido.id,
             reloj: _reloj,
             acciones: _acciones,
@@ -238,13 +245,25 @@ class _PedidosFlowState extends State<PedidosFlow> with WidgetsBindingObserver {
       child: LayoutBuilder(
         builder: (context, c) {
           final ancho = c.maxWidth;
+          if (ancho >= 1100) {
+            return PedidosVistaPc(
+              reloj: _reloj,
+              seleccionadoId: _seleccionadoId,
+              onSeleccionar: (p) => setState(() => _seleccionadoId = p.id),
+              onCerrarDetalle: () => setState(() => _seleccionadoId = null),
+              acciones: _acciones,
+              onHistorial: _abrirHistorial,
+              onCancelarVencidos: _cancelarVencidos,
+              onConfirmarSeleccionados: _confirmarSeleccionados,
+            );
+          }
           if (ancho < 600) {
             return _lista(enHoja: true);
           }
           final vertical = c.maxHeight >= ancho;
           final detalle = _seleccionadoId == null
               ? null
-              : _DetalleVivo(
+              : DetalleVivoPedido(
                   pedidoId: _seleccionadoId!,
                   reloj: _reloj,
                   acciones: _acciones,
@@ -383,44 +402,6 @@ class _VerMas extends StatelessWidget {
         }
       },
       child: const Text('Ver más'),
-    );
-  }
-}
-
-/// El detalle de un pedido siempre al día: se vuelve a buscar en el provider
-/// cada vez que algo cambia. Si el pedido ya no está en las listas (se
-/// entregó, se canceló), se cierra solo.
-class _DetalleVivo extends StatelessWidget {
-  const _DetalleVivo({
-    required this.pedidoId,
-    required this.reloj,
-    required this.acciones,
-    required this.onVacio,
-  });
-
-  final String pedidoId;
-  final DateTime Function() reloj;
-  final AccionesDetallePedido Function(Pedido) acciones;
-  final VoidCallback onVacio;
-
-  @override
-  Widget build(BuildContext context) {
-    return Consumer<PedidosProvider>(
-      builder: (context, p, _) {
-        final pedido = p.buscar(pedidoId);
-        if (pedido == null) {
-          WidgetsBinding.instance.addPostFrameCallback((_) => onVacio());
-          return const SizedBox.shrink();
-        }
-        final ahora = reloj();
-        return DetallePedido(
-          pedido: pedido,
-          ahora: ahora,
-          vencido: TransicionesPedido.estaVencido(pedido, ahora),
-          procesando: p.procesando(pedido.id),
-          acciones: acciones(pedido),
-        );
-      },
     );
   }
 }

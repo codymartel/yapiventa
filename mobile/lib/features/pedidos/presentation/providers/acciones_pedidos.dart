@@ -86,6 +86,34 @@ class AccionesPedidos {
     });
   }
 
+  /// Confirma varios pedidos nuevos, de uno en uno (cada uno es su propia
+  /// transacción: si falta stock en uno, los demás siguen). Devuelve cuántos
+  /// se confirmaron y el motivo del primero que no.
+  Future<ResultadoAccion> confirmarVarios(List<Pedido> pedidos) async {
+    var confirmados = 0;
+    var bloqueados = 0;
+    String? primerMotivo;
+    for (final pedido in pedidos) {
+      if (pedido.estado != EstadoPedido.nuevo) continue;
+      final r = await confirmar(pedido);
+      if (!r.hizoAlgo) continue;
+      if (r.fallo) {
+        bloqueados++;
+        primerMotivo ??= r.mensaje;
+      } else {
+        confirmados++;
+      }
+    }
+    return ResultadoAccion(
+      bloqueados > 0 ? TipoResultado.aviso : TipoResultado.exito,
+      MensajesAccionPedido.confirmadosEnLote(
+        confirmados,
+        bloqueados,
+        primerMotivo,
+      ),
+    );
+  }
+
   Future<ResultadoAccion> cancelar(Pedido pedido) {
     return _ejecutar(pedido.id, () async {
       final sinDevolver = await _cancelarPedido(

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../application/services/mensajes_accion_pedido.dart';
+import '../../application/services/resumen_dia_pedidos.dart';
 import '../../application/services/tiempo_transcurrido.dart';
 import '../../application/services/transiciones_pedido.dart';
 import '../../domain/models/estado_pedido.dart';
@@ -37,6 +38,7 @@ class DetallePedido extends StatelessWidget {
     required this.vencido,
     required this.procesando,
     this.acciones = const AccionesDetallePedido(),
+    this.completo = false,
   });
 
   final Pedido pedido;
@@ -44,6 +46,9 @@ class DetallePedido extends StatelessWidget {
   final bool vencido;
   final bool procesando;
   final AccionesDetallePedido acciones;
+
+  /// En PC se agrega el historial del pedido (cuándo cambió de estado).
+  final bool completo;
 
   @override
   Widget build(BuildContext context) {
@@ -82,7 +87,10 @@ class DetallePedido extends StatelessWidget {
                 children: [
                   PildoraPedido.estado(pedido.estado, vencido: vencido),
                   Text(
-                    TiempoTranscurrido.hace(pedido.fecha, ahora),
+                    completo && pedido.fecha != null
+                        ? 'llegó a las ${ResumenDiaPedidos.horaLima(pedido.fecha!)} · '
+                              '${TiempoTranscurrido.hace(pedido.fecha, ahora)}'
+                        : TiempoTranscurrido.hace(pedido.fecha, ahora),
                     style: const TextStyle(color: AppColors.muted),
                   ),
                 ],
@@ -117,6 +125,15 @@ class DetallePedido extends StatelessWidget {
                 ),
               _Seccion('Productos y cuenta'),
               LineasYTotalesPedido(pedido: pedido),
+              if (completo && pedido.historial.isNotEmpty) ...[
+                _Seccion('Historial'),
+                for (final cambio in pedido.historial)
+                  _Dato(
+                    Icons.schedule,
+                    '${ResumenDiaPedidos.horaLima(cambio.fecha)} · '
+                    '${cambio.estado.etiqueta}',
+                  ),
+              ],
               if (pedido.estado == EstadoPedido.cancelado &&
                   pedido.reembolso == EstadoReembolso.pendiente)
                 const Padding(
