@@ -62,7 +62,7 @@ class CalculoCombo {
         continue;
       }
       final precio = fila?.precioCentavos ?? producto.precioCentavos;
-      suma += precio * parte.cantidad;
+      suma += _importe(producto, precio, parte.cantidad);
 
       final stock = _stock(producto, fila);
       if (stock == null) continue;
@@ -93,9 +93,23 @@ class CalculoCombo {
     return null;
   }
 
-  /// null = stock infinito (no limita).
+  /// null = stock infinito (no limita). Una parte por medida se cuenta en su
+  /// unidad BASE (g, ml...), igual que al descontar el stock en un pedido.
   static int? _stock(Producto producto, FilaVenta? fila) {
     if (producto.esStockInfinito) return null;
+    if (producto.esPorMedida) {
+      return fila == null ? producto.stockBase ?? 0 : fila.stockBase ?? 0;
+    }
     return fila?.stock ?? producto.stock;
+  }
+
+  /// Lo que cuesta [cantidad] de una parte. Por medida, el precio es el de
+  /// [cantidadReferenciaBase] unidades base: se divide hacia abajo, una vez.
+  static int _importe(Producto producto, int precioCentavos, int cantidad) {
+    if (!producto.esPorMedida) return precioCentavos * cantidad;
+    final referencia = producto.cantidadReferenciaBase < 1
+        ? 1
+        : producto.cantidadReferenciaBase;
+    return (precioCentavos * cantidad) ~/ referencia;
   }
 }

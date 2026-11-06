@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/features/productos/application/services/calculo_combo.dart';
 import 'package:mobile/features/productos/domain/models/estructura_producto.dart';
+import 'package:mobile/features/productos/domain/models/familia_unidad.dart';
+import 'package:mobile/features/productos/domain/models/modo_venta.dart';
 import 'package:mobile/features/productos/domain/models/producto.dart';
 
 Producto _producto(
@@ -145,5 +147,77 @@ void main() {
     ], (id) => polo);
 
     expect(r.sinDatos, isTrue);
+  });
+
+  group('una parte por medida (cantidad en unidad base)', () {
+    // Queso a S/ 24,00 el kg (precio de 1 000 g), con 3 200 g en stock.
+    final queso = Producto(
+      id: 'queso',
+      negocioId: 'n',
+      nombre: 'Queso andino',
+      modoVenta: ModoVenta.medida,
+      medidaFamilia: FamiliaUnidad.peso,
+      medidaUnidad: 'kg',
+      precioCentavos: 2400,
+      cantidadReferenciaBase: 1000,
+      stockBase: 3200,
+      stock: 3,
+    );
+
+    test('el precio es por la cantidad de referencia: 350 g = 840', () {
+      final r = CalculoCombo.calcular(const [
+        ParteCombo(productoId: 'queso', cantidad: 350),
+      ], (id) => queso);
+
+      expect(r.sumaCentavos, 840);
+    });
+
+    test('redondea hacia abajo una sola vez: 333 g = 799', () {
+      final r = CalculoCombo.calcular(const [
+        ParteCombo(productoId: 'queso', cantidad: 333),
+      ], (id) => queso);
+
+      expect(r.sumaCentavos, 799);
+    });
+
+    test('el stock se mira en gramos, no en kg: 3 200 ÷ 350 = 9 combos', () {
+      final r = CalculoCombo.calcular(const [
+        ParteCombo(productoId: 'queso', cantidad: 350),
+      ], (id) => queso);
+
+      expect(r.stock, 9);
+      expect(r.limita, 'Queso andino');
+    });
+
+    test('mezclada con una parte que se cuenta limita la más escasa', () {
+      final r = CalculoCombo.calcular(const [
+        ParteCombo(productoId: 'queso', cantidad: 500),
+        ParteCombo(productoId: 'papas', cantidad: 1),
+      ], (id) => id == 'queso' ? queso : papas);
+
+      // queso 3 200 ÷ 500 = 6; papas 7 ÷ 1 = 7
+      expect(r.stock, 6);
+      expect(r.sumaCentavos, 1200 + 600);
+    });
+
+    test('sin stockBase cuenta como 0 (no usa el stock en kg)', () {
+      final sinBase = Producto(
+        id: 'queso',
+        negocioId: 'n',
+        nombre: 'Queso andino',
+        modoVenta: ModoVenta.medida,
+        medidaFamilia: FamiliaUnidad.peso,
+        medidaUnidad: 'kg',
+        precioCentavos: 2400,
+        cantidadReferenciaBase: 1000,
+        stock: 3,
+      );
+
+      final r = CalculoCombo.calcular(const [
+        ParteCombo(productoId: 'queso', cantidad: 350),
+      ], (id) => sinBase);
+
+      expect(r.stock, 0);
+    });
   });
 }
