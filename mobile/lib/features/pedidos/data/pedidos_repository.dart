@@ -294,32 +294,7 @@ class PedidosRepository implements RepositorioPedidos {
 
       // Se devuelve lo guardado en el pedido (no se recalcula). Un pedido
       // nuevo no descontó nada: no lee ningún producto.
-      final productos = <String, Producto>{};
-      var omitidos = 0;
-      final ids = {for (final d in pedido.stockDescontado) d.productoId};
-      for (final id in ids) {
-        final producto = await _ayudas.leerProducto(tx, negocioId, id);
-        if (producto != null) {
-          productos[id] = producto;
-        } else {
-          omitidos += pedido.stockDescontado
-              .where((d) => d.productoId == id)
-              .length;
-        }
-      }
-
-      for (final entrada in productos.entries) {
-        final aplicado = CalculoStockPedido.aplicar(
-          entrada.value,
-          pedido.stockDescontado,
-          devolver: true,
-        );
-        omitidos += aplicado.omitidos;
-        tx.update(
-          _ayudas.producto(negocioId, entrada.key),
-          _ayudas.camposDeStock(aplicado.producto),
-        );
-      }
+      final omitidos = await _ayudas.devolverStock(tx, negocioId, pedido);
       tx.update(ref, {
         'estado': EstadoPedido.cancelado.valor,
         'reembolso': TransicionesPedido.reembolsoAlCancelar(pedido).valor,

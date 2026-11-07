@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mobile/features/productos/data/mappers/producto_firestore_mapper.dart';
 import 'package:mobile/features/productos/domain/models/producto.dart';
 
+import '../application/services/calculo_stock_pedido.dart';
 import '../domain/models/estado_pedido.dart';
 import '../domain/models/pedido.dart';
 import 'pedido_mapper.dart';
@@ -86,6 +87,45 @@ class AyudasPedidosFirestore {
       'stockBase': datos['stockBase'],
       'modelos': datos['modelos'],
     };
+  }
+
+  /// Devuelve al stock lo que el pedido descontó (lo guardado en
+  /// `stockDescontado`, no se recalcula). Lee los productos y luego escribe sus
+  /// campos de stock: el llamador debe haber hecho ANTES todas sus demás
+  /// lecturas. Devuelve cuántas líneas no se pudieron devolver porque su
+  /// producto ya no existe (0 = todo devuelto). Un pedido que no descontó nada
+  /// no lee ningún producto.
+  Future<int> devolverStock(
+    Transaction tx,
+    String negocioId,
+    Pedido pedido,
+  ) async {
+    final productos = <String, Producto>{};
+    var omitidos = 0;
+    final ids = {for (final d in pedido.stockDescontado) d.productoId};
+    for (final id in ids) {
+      final producto = await leerProducto(tx, negocioId, id);
+      if (producto != null) {
+        productos[id] = producto;
+      } else {
+        omitidos += pedido.stockDescontado
+            .where((d) => d.productoId == id)
+            .length;
+      }
+    }
+    for (final entrada in productos.entries) {
+      final aplicado = CalculoStockPedido.aplicar(
+        entrada.value,
+        pedido.stockDescontado,
+        devolver: true,
+      );
+      omitidos += aplicado.omitidos;
+      tx.update(
+        producto(negocioId, entrada.key),
+        camposDeStock(aplicado.producto),
+      );
+    }
+    return omitidos;
   }
 
   List<Map<String, dynamic>> historialCon(Pedido pedido, EstadoPedido nuevo) {
