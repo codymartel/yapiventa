@@ -108,11 +108,16 @@ class AyudasPedidosFirestore {
   /// lecturas. Devuelve cuántas líneas no se pudieron devolver porque su
   /// producto ya no existe (0 = todo devuelto). Un pedido que no descontó nada
   /// no lee ningún producto.
+  ///
+  /// Con [restarVendidos] también baja en 1 el contador `vendidos` de cada
+  /// producto de las líneas (los combos, que no tienen stock propio, se leen
+  /// una vez para comprobar que existen). Se usa al anular una venta de Caja.
   Future<int> devolverStock(
     Transaction tx,
     String negocioId,
-    Pedido pedido,
-  ) async {
+    Pedido pedido, {
+    bool restarVendidos = false,
+  }) async {
     final productos = <String, Producto>{};
     var omitidos = 0;
     final ids = {for (final d in pedido.stockDescontado) d.productoId};
@@ -126,6 +131,21 @@ class AyudasPedidosFirestore {
             .length;
       }
     }
+
+    final deLasLineas = restarVendidos
+        ? {
+            for (final l in pedido.lineas)
+              if (l.productoId.isNotEmpty) l.productoId,
+          }
+        : <String>{};
+    final combosQueExisten = <String>[];
+    for (final id in deLasLineas.difference(ids)) {
+      if (await leerProducto(tx, negocioId, id) != null) {
+        combosQueExisten.add(id);
+      }
+    }
+
+    // ── Escrituras ────────────────────────────────────────────────────
     for (final entrada in productos.entries) {
       final aplicado = CalculoStockPedido.aplicar(
         entrada.value,
@@ -133,10 +153,16 @@ class AyudasPedidosFirestore {
         devolver: true,
       );
       omitidos += aplicado.omitidos;
-      tx.update(
-        producto(negocioId, entrada.key),
-        camposDeStock(aplicado.producto),
-      );
+      tx.update(producto(negocioId, entrada.key), {
+        ...camposDeStock(aplicado.producto),
+        if (deLasLineas.contains(entrada.key))
+          'vendidos': FieldValue.increment(-1),
+      });
+    }
+    for (final id in combosQueExisten) {
+      tx.update(producto(negocioId, id), {
+        'vendidos': FieldValue.increment(-1),
+      });
     }
     return omitidos;
   }

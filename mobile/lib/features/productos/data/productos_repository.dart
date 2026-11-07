@@ -109,7 +109,10 @@ class ProductosRepository implements RepositorioProductos {
   Future<Producto> crearProducto(String negocioId, Producto producto) async {
     final datos = ProductoFirestoreMapper.paraFirestore(producto)
       ..['negocioId'] = negocioId
-      ..['fechaCreacion'] = FieldValue.serverTimestamp();
+      ..['fechaCreacion'] = FieldValue.serverTimestamp()
+      // Ventas del producto (lo suben las ventas de Caja). Solo se crea aquí:
+      // guardar una edición no lo escribe, así no se reinicia.
+      ..['vendidos'] = 0;
     final documento = await _db
         .collection('negocios')
         .doc(negocioId)

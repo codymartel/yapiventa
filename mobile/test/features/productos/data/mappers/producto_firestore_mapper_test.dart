@@ -75,6 +75,9 @@ void main() {
       'partes',
       'partesProductoIds',
       'sumaPartesCentavos',
+      // Para el catálogo de Caja (3g).
+      'nombreBusqueda',
+      'tipoCaja',
     });
     expect(datos['fechaVencimiento'], isA<Timestamp>());
     expect((datos['fechaVencimiento'] as Timestamp).toDate(), fecha);

@@ -154,16 +154,28 @@ class VentasMostradorRepository implements RepositorioVentasMostrador {
       }
 
       // ── Escrituras ──────────────────────────────────────────────────
-      for (final id in {for (final d in calculo.descuentos) d.productoId}) {
+      // `vendidos` sube 1 por producto de las líneas (cuenta ventas, no
+      // unidades). Los combos no tienen stock propio: solo suben `vendidos`.
+      final deLasLineas = {
+        for (final l in solicitud.lineas)
+          if (l.productoId.isNotEmpty) l.productoId,
+      };
+      final conStock = {for (final d in calculo.descuentos) d.productoId};
+      for (final id in conStock) {
         final nuevo = CalculoStockPedido.aplicar(
           productos[id]!,
           calculo.descuentos,
           devolver: false,
         ).producto;
-        tx.update(
-          _ayudas.producto(negocioId, id),
-          _ayudas.camposDeStock(nuevo),
-        );
+        tx.update(_ayudas.producto(negocioId, id), {
+          ..._ayudas.camposDeStock(nuevo),
+          if (deLasLineas.contains(id)) 'vendidos': FieldValue.increment(1),
+        });
+      }
+      for (final id in deLasLineas.difference(conStock)) {
+        tx.update(_ayudas.producto(negocioId, id), {
+          'vendidos': FieldValue.increment(1),
+        });
       }
 
       tx.set(ref, {
@@ -246,7 +258,12 @@ class VentasMostradorRepository implements RepositorioVentasMostrador {
       );
 
       // Se devuelve lo guardado en el pedido (no se recalcula).
-      final sinDevolver = await _ayudas.devolverStock(tx, negocioId, pedido);
+      final sinDevolver = await _ayudas.devolverStock(
+        tx,
+        negocioId,
+        pedido,
+        restarVendidos: true,
+      );
 
       // ── Escrituras ──────────────────────────────────────────────────
       tx.update(ref, {

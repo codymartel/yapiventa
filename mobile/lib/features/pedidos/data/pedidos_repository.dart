@@ -295,7 +295,13 @@ class PedidosRepository implements RepositorioPedidos {
 
       // Se devuelve lo guardado en el pedido (no se recalcula). Un pedido
       // nuevo no descontó nada: no lee ningún producto.
-      final omitidos = await _ayudas.devolverStock(tx, negocioId, pedido);
+      // Una venta de Caja (delivery en proceso) ya sumó a `vendidos`.
+      final omitidos = await _ayudas.devolverStock(
+        tx,
+        negocioId,
+        pedido,
+        restarVendidos: pedido.origen == OrigenPedido.mostrador,
+      );
       tx.update(ref, {
         'estado': EstadoPedido.cancelado.valor,
         'reembolso': TransicionesPedido.reembolsoAlCancelar(pedido).valor,

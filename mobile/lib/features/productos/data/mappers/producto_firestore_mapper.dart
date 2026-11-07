@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../application/services/campos_catalogo_producto.dart';
 import '../../domain/models/modo_venta.dart';
 import '../../domain/models/producto.dart';
 import 'estructura_producto_mapper.dart';
@@ -190,6 +191,9 @@ abstract final class ProductoFirestoreMapper {
         producto.partes,
       ),
       'sumaPartesCentavos': producto.sumaPartesCentavos,
+      // Para el catálogo de Caja (se recalculan en cada guardado).
+      'nombreBusqueda': CamposCatalogoProducto.nombreBusqueda(producto.nombre),
+      'tipoCaja': CamposCatalogoProducto.tipoCaja(producto),
     };
   }
 }
