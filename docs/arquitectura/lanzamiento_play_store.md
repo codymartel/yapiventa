@@ -35,9 +35,10 @@ Plan acordado el **2026-11-07**. Sirve para abrir una **conversación nueva** y 
 6. **Logo (elegido el 2026-11-07, falta guardar los archivos):** la idea 3, **«sello con nombre»**: una **Y** minimalista dentro
    de un sello cuadrado inclinado (-6°), el nombre «YapiVenta» y, al final del nombre, una **bolsita de producto con ✓ verde**
    (como comprado). Colores de `app_colors.dart`: azul `#2457B3`/`#3D72D4`, `#8AB2FF`, texto `#E8EDF5`, fondo `#0D1526`,
-   ✓ `#4ADE80` (en fondo claro `#16A34A`). **El ícono de la app es solo el sello** (la bolsa no se lee en 32 px). Entregables
-   pendientes (piden «sí» para crear archivos): SVG oscuro, SVG claro y SVG del sello en `docs/branding/`; PNG de **ícono de
-   512 px** y **gráfico de 1 024 × 500** para Play; y el ícono de Android (zona segura) en el paso del paquete nuevo.
+   ✓ `#4ADE80` (en fondo claro `#16A34A`). **El ícono de la app es solo el sello** (la bolsa no se lee en 32 px). **Archivos guardados en
+   `docs/branding/`** (ver su `LEEME.md`): logo oscuro y claro en SVG, sello solo, **ícono de 512 px** (SVG y PNG) y **gráfico
+   de funciones de 1 024 × 500** (SVG y PNG) para Play, con el nombre convertido a trazos de Roboto (Apache 2.0). **Falta** el
+   ícono de Android (capas adaptativas y `mipmap`), que va en el paso 1 del paquete nuevo.
    **Antes de gastar en registrar la marca, revisar derechos (ver sección 5).**
 
 ## 4. Pasos técnicos, en orden

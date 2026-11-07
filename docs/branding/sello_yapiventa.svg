@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120" role="img">
+  <title>Sello de YapiVenta</title>
+  <g transform="translate(60,60) rotate(-6) scale(1.2)">
+    <rect x="-42" y="-42" width="84" height="84" rx="15" fill="none" stroke="#8AB2FF" stroke-width="3.5"/>
+    <rect x="-35" y="-35" width="70" height="70" rx="11" fill="none" stroke="#8AB2FF" stroke-width="1.0" opacity="0.55"/>
+    <path d="M-16 -20 L0 1 M16 -20 L0 1 M0 1 L0 23" fill="none" stroke="#E8EDF5" stroke-width="8.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>
