@@ -66,6 +66,14 @@
           }
         },
         {
+          "client_id": "359947632947-od9ud7ilhho4lp8ogpriaif9mj9h51mr.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.yapiventa.app",
+            "certificate_hash": "bc9acb4b818d314df74960e55af843b7ebdcd6e3"
+          }
+        },
+        {
           "client_id": "359947632947-ld74sn7ih88gll1p3oo9km24lbsi516s.apps.googleusercontent.com",
           "client_type": 3
         }
