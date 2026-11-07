@@ -10,15 +10,22 @@ import 'package:mobile/features/cuenta/presentation/widgets/eliminar_cuenta_dial
 import 'package:provider/provider.dart';
 
 class _AuthFalso implements CuentaAuth {
+  final bool _usaClave;
+
+  /// Como Firebase: sin sesión (usuario ya borrado) no se puede preguntar.
   @override
-  bool usaClave;
+  bool get usaClave {
+    if (usuarioBorrado) throw StateError('No hay una sesión iniciada.');
+    return _usaClave;
+  }
+
   Object? errorAlReautenticar;
   bool googleElegido = true;
   int reautenticaciones = 0;
   bool usuarioBorrado = false;
   bool googleOlvidado = false;
 
-  _AuthFalso({this.usaClave = true});
+  _AuthFalso({this._usaClave = true});
 
   @override
   Future<void> reautenticarConClave(String clave) async {
@@ -97,6 +104,20 @@ void main() {
     expect(auth.usuarioBorrado, isTrue);
     expect(auth.googleOlvidado, isTrue);
   });
+
+  test(
+    'después de borrar, el diálogo puede seguir preguntando usaClave',
+    () async {
+      final provider = crear();
+      expect(provider.usaClave, isTrue);
+
+      expect(await provider.eliminar(clave: 'buena'), isTrue);
+
+      expect(auth.usuarioBorrado, isTrue);
+      expect(() => provider.usaClave, returnsNormally);
+      expect(provider.usaClave, isTrue);
+    },
+  );
 
   test(
     'cuenta de Google: cerrar el selector no es error ni borra nada',

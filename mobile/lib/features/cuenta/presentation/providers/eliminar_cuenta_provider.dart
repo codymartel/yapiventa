@@ -23,7 +23,10 @@ class EliminarCuentaProvider extends ChangeNotifier {
 
   bool get trabajando => _trabajando;
   String? get error => _error;
-  bool get usaClave => _auth.usaClave;
+
+  /// Se lee una vez, antes de borrar: después ya no hay sesión que preguntar
+  /// y el diálogo se sigue redibujando mientras se cierra.
+  late final bool usaClave = _auth.usaClave;
 
   /// Reautentica y borra todo. Devuelve true si la cuenta quedó eliminada.
   /// Si el usuario cierra el selector de Google, no pasa nada (false, sin error).
@@ -33,7 +36,7 @@ class EliminarCuentaProvider extends ChangeNotifier {
     _error = null;
     notifyListeners();
     try {
-      if (_auth.usaClave) {
+      if (usaClave) {
         if (clave.isEmpty) {
           _error = 'Escribe tu contraseña para confirmar.';
           return false;
