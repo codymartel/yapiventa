@@ -29,8 +29,10 @@ Firebase: proyecto `yapiventa`, plan **Spark** (sin Cloud Functions por ahora). 
 
 ## Separación de responsabilidades
 - **Capas:** widget (pantalla) → provider (estado) → service / dominio (lógica pura, sin Flutter) → repository (datos). La UI no habla con Firestore; el provider no construye widgets; la lógica pura no vive en carpetas de widgets (va a `application/services` o `domain`).
-- **Cuándo dividir un archivo:** si pasa de ~500 líneas (o va a pasar con el cambio), **preguntar siempre** antes de seguir. Se divide si además tiene más de una responsabilidad y se toca ahora; un archivo grande pero estable no se toca.
-- **Cómo dividir:** por responsabilidad, no por tamaño. No crear archivos de menos de ~50 líneas salvo que se reusen.
+- **Regla de tamaño y responsabilidad (obligatoria, también en las pruebas):** ningún archivo tiene **más de 2 responsabilidades** ni **pasa de 500 líneas**. Se mide **antes de escribir** (¿cuántas cosas distintas hará este archivo?) y **otra vez al terminar** (`wc -l` y contar clases públicas). Si no cumple, se divide en el mismo paso, sin esperar a que el usuario lo pida.
+- **Qué cuenta como una responsabilidad** (un archivo puede tener 1 o 2 de esta lista, nunca 3): (1) datos del dominio (modelos y sus enums); (2) lógica pura (cálculos, reglas, textos); (3) acceso a datos (un repositorio de **un** tipo de operación: escribir ventas **o** leer informes, no ambos); (4) estado de una pantalla (provider); (5) dibujar **una** pantalla o pieza; (6) abrir y armar la navegación (hoja, diálogo, rutas); (7) un contrato (interfaz) con sus tipos de petición y respuesta. Pistas de que hay de más: más de 3 clases públicas sin parentesco, funciones sueltas que no son de la clase principal, o un widget que además decide cómo se abre.
+- **Cuándo dividir:** al crear el archivo si ya se sabe que pasará; al terminar el paso si pasó. Si un archivo **viejo** incumple y se va a tocar, se **pregunta** antes (un archivo grande pero estable que no se toca se deja, y se anota en «Archivos grandes conocidos»).
+- **Cómo dividir:** por responsabilidad, no por tamaño. No crear archivos de menos de ~50 líneas salvo que se reusen. Lo repetido en dos o más archivos (chips, botones) se comparte en uno solo.
 - **Commit aparte:** primero el que solo divide (pruebas intactas y en verde), después el cambio de funcionalidad.
 
 ## Lecturas de Firebase (preguntar y optimizar siempre)
