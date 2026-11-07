@@ -1,4 +1,7 @@
+import '../../domain/models/pedido.dart';
 import '../../domain/repositories/repositorio_pedidos.dart';
+import 'resumen_dia_pedidos.dart';
+import 'resumen_ventas_dia_calculo.dart';
 import '../use_cases/cancelar_vencidos.dart';
 
 // ═════════════════════════════════════════════════════════════════════════
@@ -85,6 +88,31 @@ abstract final class MensajesAccionPedido {
         : '$lineasSinDevolver productos que ya no existen';
     return 'Pedido cancelado. No se pudo devolver el stock de $lineas.';
   }
+
+  /// Símbolo del MVP (solo Perú). Único lugar de este archivo.
+  static const String _simbolo = 'S/';
+
+  /// Texto de confirmación antes de anular una venta de Caja. Dice qué pasa
+  /// con el stock y cuánto bajan las ventas, y de qué día.
+  static String confirmarAnulacion(Pedido pedido, DateTime ahora) {
+    final momento = ResumenVentasDiaCalculo.momentoDeEntrega(pedido) ?? ahora;
+    final dia = ResumenDiaPedidos.claveDia(momento);
+    final cuando = dia == ResumenDiaPedidos.claveDia(ahora)
+        ? 'las ventas de hoy'
+        : 'las ventas del ${ResumenDiaPedidos.etiquetaDia(dia)}';
+    return '¿Anular esta venta? El stock vuelve y $cuando bajan '
+        '${dinero(pedido.totalCentavos, simbolo: _simbolo)}.';
+  }
+
+  static String anulada(int lineasSinDevolver) {
+    if (lineasSinDevolver == 0) return 'Venta anulada.';
+    final lineas = lineasSinDevolver == 1
+        ? '1 producto ya no existe'
+        : '$lineasSinDevolver productos ya no existen';
+    return 'Venta anulada. $lineas: su stock no se pudo devolver.';
+  }
+
+  static const String yaAnulada = 'Esta venta ya estaba anulada.';
 
   static String vencidos(ResultadoCancelarVencidos r) {
     if (r.canceladas == 0 && r.omitidas == 0 && r.fallidas == 0) {

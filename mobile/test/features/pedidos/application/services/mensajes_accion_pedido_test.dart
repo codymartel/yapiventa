@@ -2,7 +2,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/features/pedidos/application/services/mensajes_accion_pedido.dart';
 import 'package:mobile/features/pedidos/application/use_cases/cancelar_vencidos.dart';
 import 'package:mobile/features/pedidos/domain/models/descuento_stock.dart';
+import 'package:mobile/features/pedidos/domain/models/estado_pedido.dart';
+import 'package:mobile/features/pedidos/domain/models/pedido.dart';
 import 'package:mobile/features/pedidos/domain/repositories/repositorio_pedidos.dart';
+
+import '../../helpers/pedidos_de_prueba.dart';
 
 void main() {
   group('dinero', () {
@@ -130,6 +134,55 @@ void main() {
           const ResultadoCancelarVencidos(canceladas: 1),
         ),
         'Se canceló 1 pedido.',
+      );
+    });
+  });
+
+  group('anulación', () {
+    // Vendida el 5 nov a las 14:32 en Lima (19:32 UTC).
+    final vendida = DateTime.utc(2026, 11, 5, 19, 32);
+    final pedido =
+        pedidoDe(
+          [lineaSimple(cantidad: 4, precioCentavos: 435)],
+          estado: EstadoPedido.entregado,
+          origen: OrigenPedido.mostrador,
+          totalCentavos: 1740,
+        ).copyWith(
+          historial: [
+            CambioEstado(estado: EstadoPedido.entregado, fecha: vendida),
+          ],
+        );
+
+    test('confirmación de una venta de hoy: dice cuánto bajan las ventas', () {
+      expect(
+        MensajesAccionPedido.confirmarAnulacion(
+          pedido,
+          DateTime.utc(2026, 11, 5, 22),
+        ),
+        '¿Anular esta venta? El stock vuelve y las ventas de hoy bajan '
+        'S/ 17,40.',
+      );
+    });
+
+    test('de otro día: nombra el día de la venta', () {
+      expect(
+        MensajesAccionPedido.confirmarAnulacion(
+          pedido,
+          DateTime.utc(2026, 11, 7, 15),
+        ),
+        contains('las ventas del 5 nov 2026 bajan S/ 17,40'),
+      );
+    });
+
+    test('mensajes del resultado', () {
+      expect(MensajesAccionPedido.anulada(0), 'Venta anulada.');
+      expect(
+        MensajesAccionPedido.anulada(1),
+        'Venta anulada. 1 producto ya no existe: su stock no se pudo devolver.',
+      );
+      expect(
+        MensajesAccionPedido.anulada(2),
+        contains('2 productos ya no existen'),
       );
     });
   });

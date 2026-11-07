@@ -84,6 +84,17 @@ class ResultadoVentaMostrador {
   final List<String> lineasCambiadas;
 }
 
+/// Resultado de anular una venta entregada.
+class ResultadoAnulacion {
+  const ResultadoAnulacion({this.yaAnulada = false, this.sinDevolver = 0});
+
+  /// Un toque repetido (u otro cajero): ya estaba anulada, no se tocó nada.
+  final bool yaAnulada;
+
+  /// Líneas cuyo stock no se pudo devolver porque el producto ya no existe.
+  final int sinDevolver;
+}
+
 /// Registro de ventas de mostrador. La implementación vive en `data/`.
 abstract class RepositorioVentasMostrador {
   /// Registra la venta en UNA transacción: crea el pedido, descuenta el stock
@@ -92,4 +103,9 @@ abstract class RepositorioVentasMostrador {
     String negocioId,
     SolicitudVentaMostrador solicitud,
   );
+
+  /// Anula una venta de Caja ya entregada, en UNA transacción: devuelve al
+  /// stock lo que se descontó, resta del resumen del día de la venta y la deja
+  /// cancelada (no se borra). Lanza [StateError] si no se puede anular.
+  Future<ResultadoAnulacion> anular(String negocioId, String pedidoId);
 }

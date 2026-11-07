@@ -206,4 +206,53 @@ void main() {
       }
     });
   });
+
+  group('puedeAnular y anulada', () {
+    final venta = [lineaSimple(cantidad: 1, precioCentavos: 450)];
+
+    test('solo una venta de Caja ya entregada se anula', () {
+      for (final estado in EstadoPedido.values) {
+        final pedido = pedidoDe(
+          venta,
+          estado: estado,
+          origen: OrigenPedido.mostrador,
+        );
+        expect(
+          TransicionesPedido.puedeAnular(pedido),
+          estado == EstadoPedido.entregado,
+          reason: estado.valor,
+        );
+      }
+    });
+
+    test('un pedido de la tienda entregado no se anula', () {
+      final pedido = pedidoDe(venta, estado: EstadoPedido.entregado);
+      expect(TransicionesPedido.puedeAnular(pedido), isFalse);
+    });
+
+    test('anulada = cancelada que antes pasó por entregado', () {
+      final hora = DateTime.utc(2026, 11, 5, 19);
+      final anulada =
+          pedidoDe(
+            venta,
+            estado: EstadoPedido.cancelado,
+            origen: OrigenPedido.mostrador,
+          ).copyWith(
+            historial: [
+              CambioEstado(estado: EstadoPedido.entregado, fecha: hora),
+              CambioEstado(estado: EstadoPedido.cancelado, fecha: hora),
+            ],
+          );
+      final cancelada = pedidoDe(venta, estado: EstadoPedido.cancelado)
+          .copyWith(
+            historial: [
+              CambioEstado(estado: EstadoPedido.cancelado, fecha: hora),
+            ],
+          );
+
+      expect(anulada.anulada, isTrue);
+      expect(cancelada.anulada, isFalse);
+      expect(TransicionesPedido.puedeAnular(anulada), isFalse);
+    });
+  });
 }

@@ -113,6 +113,12 @@ class Pedido {
   final EstadoReembolso reembolso;
   final List<CambioEstado> historial;
 
+  /// Una venta que ya se había entregado y luego se anuló (no se borra: queda
+  /// cancelada y tachada). Se reconoce porque su historial pasó por entregado.
+  bool get anulada =>
+      estado == EstadoPedido.cancelado &&
+      historial.any((c) => c.estado == EstadoPedido.entregado);
+
   Pedido copyWith({
     EstadoPedido? estado,
     EstadoPago? estadoPago,

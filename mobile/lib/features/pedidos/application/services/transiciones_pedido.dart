@@ -10,6 +10,7 @@ import '../../domain/models/pedido.dart';
 //   nuevo → confirmado → listo (recojo) | enCamino (delivery) → entregado
 //
 // Se cancela solo estando nuevo o confirmado (después el producto ya salió).
+// Una venta de Caja ya entregada se anula (devuelve el stock y resta del día).
 // Pasar de nuevo a confirmado es lo único que mueve stock.
 // ═════════════════════════════════════════════════════════════════════════
 abstract final class TransicionesPedido {
@@ -45,6 +46,14 @@ abstract final class TransicionesPedido {
   /// Solo hasta confirmado: después el producto ya salió.
   static bool puedeCancelar(EstadoPedido estado) {
     return estado == EstadoPedido.nuevo || estado == EstadoPedido.confirmado;
+  }
+
+  /// Anular es para lo que YA se entregó, y solo en ventas registradas en
+  /// Caja. Un pedido de la tienda entregado no se anula. (Lo que sigue en
+  /// proceso se cancela, ver [puedeCancelar].)
+  static bool puedeAnular(Pedido pedido) {
+    return pedido.estado == EstadoPedido.entregado &&
+        pedido.origen == OrigenPedido.mostrador;
   }
 
   /// Cobrar se puede marcar hasta después de entregar (pago contra entrega).

@@ -5,7 +5,9 @@ import '../application/services/calculo_stock_pedido.dart';
 import '../application/services/contadores_venta.dart';
 import '../application/services/resumen_dia_pedidos.dart';
 import '../application/services/resumen_ventas_dia_calculo.dart';
+import '../application/services/transiciones_pedido.dart';
 import '../application/services/verificacion_total_pedido.dart';
+import '../domain/models/contadores_dia.dart';
 import '../domain/models/estado_pedido.dart';
 import '../domain/models/pedido.dart';
 import '../domain/models/resumen_ventas_dia.dart';
@@ -188,35 +190,18 @@ class VentasMostradorRepository implements RepositorioVentasMostrador {
       });
 
       if (entregada) {
-        final contadores = ContadoresVenta.sumar(
-          resumenActual.contadores,
-          ContadoresVenta.aporteDe(pedido, ahora),
-        );
-        tx.set(
+        _guardarResumen(
+          tx,
           refResumen,
-          {
-            'ventasCentavos':
-                resumenActual.ventasCentavos + pedido.totalCentavos,
-            'entregados': resumenActual.entregados + 1,
-            'ultimosEntregados': ResumenVentasDiaMapper.entregadosAMapas(
-              ResumenVentasDiaCalculo.conNuevoEntregado(
-                resumenActual.ultimosEntregados,
-                ResumenVentasDiaCalculo.entregadoDe(pedido, ahora),
-              ),
-            ),
-            'actualizadoEn': FieldValue.serverTimestamp(),
-            ...ContadoresDiaMapper.aCampos(contadores),
-          },
-          // Reemplaza estos campos enteros (un merge normal juntaría los
-          // mapas con lo que ya había).
-          SetOptions(
-            mergeFields: [
-              'ventasCentavos',
-              'entregados',
-              'ultimosEntregados',
-              'actualizadoEn',
-              ...ContadoresDiaMapper.camposContadores,
-            ],
+          ventasCentavos: resumenActual.ventasCentavos + pedido.totalCentavos,
+          entregados: resumenActual.entregados + 1,
+          ultimosEntregados: ResumenVentasDiaCalculo.conNuevoEntregado(
+            resumenActual.ultimosEntregados,
+            ResumenVentasDiaCalculo.entregadoDe(pedido, ahora),
+          ),
+          contadores: ContadoresVenta.sumar(
+            resumenActual.contadores,
+            ContadoresVenta.aporteDe(pedido, ahora),
           ),
         );
       }
@@ -227,6 +212,101 @@ class VentasMostradorRepository implements RepositorioVentasMostrador {
         registrada: true,
       );
     });
+  }
+
+  /// Lecturas: el pedido, el resumen del día de la venta y los productos que
+  /// se descontaron. Escrituras: el pedido, los productos y el resumen. Una
+  /// venta de 2 productos: 4 lecturas y 4 escrituras.
+  @override
+  Future<ResultadoAnulacion> anular(String negocioId, String pedidoId) {
+    if (pedidoId.trim().isEmpty) {
+      throw ArgumentError.value(pedidoId, 'pedidoId', 'La venta no tiene id.');
+    }
+    final ref = _ayudas.pedidos(negocioId).doc(pedidoId.trim());
+    return _db.runTransaction((tx) async {
+      final pedido = await _ayudas.leerPedido(tx, ref);
+      // Un toque repetido (u otro cajero): no se resta dos veces.
+      if (pedido.anulada) return const ResultadoAnulacion(yaAnulada: true);
+      if (!TransicionesPedido.puedeAnular(pedido)) {
+        throw StateError('Esta venta ya no se puede anular.');
+      }
+
+      // Se resta del día en que se vendió (no de hoy), con la misma hora que
+      // se usó al sumar.
+      final ahora = _ayudas.ahora();
+      final momento = ResumenVentasDiaCalculo.momentoDeEntrega(pedido) ?? ahora;
+      final refResumen = _ayudas.resumen(
+        negocioId,
+        ResumenDiaPedidos.claveDia(momento),
+      );
+      final resumenActual = ResumenVentasDiaMapper.desdeFirestore(
+        refResumen.id,
+        (await tx.get(refResumen)).data(),
+      );
+
+      // Se devuelve lo guardado en el pedido (no se recalcula).
+      final sinDevolver = await _ayudas.devolverStock(tx, negocioId, pedido);
+
+      // ── Escrituras ──────────────────────────────────────────────────
+      tx.update(ref, {
+        'estado': EstadoPedido.cancelado.valor,
+        'historial': _ayudas.historialCon(pedido, EstadoPedido.cancelado),
+        'actualizadoEn': FieldValue.serverTimestamp(),
+      });
+      _guardarResumen(
+        tx,
+        refResumen,
+        ventasCentavos: _noNegativo(
+          resumenActual.ventasCentavos - pedido.totalCentavos,
+        ),
+        entregados: _noNegativo(resumenActual.entregados - 1),
+        ultimosEntregados: ResumenVentasDiaCalculo.sinEntregado(
+          resumenActual.ultimosEntregados,
+          pedido.id,
+        ),
+        contadores: ContadoresVenta.restar(
+          resumenActual.contadores,
+          ContadoresVenta.aporteDe(pedido, momento),
+        ),
+      );
+      return ResultadoAnulacion(sinDevolver: sinDevolver);
+    });
+  }
+
+  static int _noNegativo(int valor) => valor < 0 ? 0 : valor;
+
+  /// Escribe el resumen del día con los valores ya calculados.
+  void _guardarResumen(
+    Transaction tx,
+    DocumentReference<Map<String, dynamic>> refResumen, {
+    required int ventasCentavos,
+    required int entregados,
+    required List<EntregadoReciente> ultimosEntregados,
+    required ContadoresDia contadores,
+  }) {
+    tx.set(
+      refResumen,
+      {
+        'ventasCentavos': ventasCentavos,
+        'entregados': entregados,
+        'ultimosEntregados': ResumenVentasDiaMapper.entregadosAMapas(
+          ultimosEntregados,
+        ),
+        'actualizadoEn': FieldValue.serverTimestamp(),
+        ...ContadoresDiaMapper.aCampos(contadores),
+      },
+      // Reemplaza estos campos enteros (un merge normal juntaría los mapas
+      // con lo que ya había y no quitaría lo que llegó a 0).
+      SetOptions(
+        mergeFields: [
+          'ventasCentavos',
+          'entregados',
+          'ultimosEntregados',
+          'actualizadoEn',
+          ...ContadoresDiaMapper.camposContadores,
+        ],
+      ),
+    );
   }
 
   /// Errores de programación (no del cajero): la cuenta debe cuadrar.

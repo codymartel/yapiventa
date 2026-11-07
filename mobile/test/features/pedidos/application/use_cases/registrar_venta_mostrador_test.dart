@@ -23,6 +23,11 @@ class _RepositorioFalso implements RepositorioVentasMostrador {
     pedidas.add(solicitud);
     return respuesta;
   }
+
+  @override
+  Future<ResultadoAnulacion> anular(String negocioId, String pedidoId) async {
+    return const ResultadoAnulacion();
+  }
 }
 
 void main() {

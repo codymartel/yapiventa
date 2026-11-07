@@ -37,6 +37,27 @@ abstract final class ResumenVentasDiaCalculo {
     );
   }
 
+  /// Cuándo se entregó (= cuándo sumó al resumen): el último paso «entregado»
+  /// del historial. Sin historial, la fecha del pedido. Sirve para saber de
+  /// qué día restar al anular.
+  static DateTime? momentoDeEntrega(Pedido pedido) {
+    for (final cambio in pedido.historial.reversed) {
+      if (cambio.estado == EstadoPedido.entregado) return cambio.fecha;
+    }
+    return pedido.fecha;
+  }
+
+  /// Los entregados recientes sin [pedidoId] (al anular esa venta).
+  static List<EntregadoReciente> sinEntregado(
+    List<EntregadoReciente> actuales,
+    String pedidoId,
+  ) {
+    return [
+      for (final e in actuales)
+        if (e.pedidoId != pedidoId) e,
+    ];
+  }
+
   /// [nuevo] va primero; si el mismo pedido ya estaba, se reemplaza; se guardan
   /// como máximo [maximoRecientes].
   static List<EntregadoReciente> conNuevoEntregado(
