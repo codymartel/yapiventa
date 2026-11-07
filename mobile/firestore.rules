@@ -138,7 +138,7 @@ service cloud.firestore {
         d.totalCentavos is int &&
         (d.totalCentavos == suma || (suma < 0 && d.totalCentavos == 0)) &&
         d.get('reembolso', 'ninguno') == 'ninguno' &&
-        d.stockDescontado is list && d.stockDescontado.size() <= 60 &&
+        d.stockDescontado is list && d.stockDescontado.size() <= 300 &&
         d.historial is list && d.historial.size() >= 1 && d.historial.size() <= 2 &&
         (!('actualizadoEn' in d) || d.actualizadoEn == request.time);
     }
