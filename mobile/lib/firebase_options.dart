@@ -52,7 +52,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyDn9c0O0lEtVsKl-_pWoUknWsWqtdrLGaI',
-    appId: '1:359947632947:android:67993841ad6953dd1ebe46',
+    appId: '1:359947632947:android:55415bca434bbab51ebe46',
     messagingSenderId: '359947632947',
     projectId: 'yapiventa',
     storageBucket: 'yapiventa.firebasestorage.app',

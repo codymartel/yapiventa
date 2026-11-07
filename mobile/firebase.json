@@ -4,7 +4,7 @@
       "android": {
         "default": {
           "projectId": "yapiventa",
-          "appId": "1:359947632947:android:67993841ad6953dd1ebe46",
+          "appId": "1:359947632947:android:55415bca434bbab51ebe46",
           "fileOutput": "android/app/google-services.json"
         }
       },
@@ -12,7 +12,7 @@
         "lib/firebase_options.dart": {
           "projectId": "yapiventa",
           "configurations": {
-            "android": "1:359947632947:android:67993841ad6953dd1ebe46",
+            "android": "1:359947632947:android:55415bca434bbab51ebe46",
             "ios": "1:359947632947:ios:9da06812f7d4778e1ebe46",
             "macos": "1:359947632947:ios:9da06812f7d4778e1ebe46",
             "web": "1:359947632947:web:4dc78637cedac4081ebe46",

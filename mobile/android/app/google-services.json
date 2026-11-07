@@ -48,6 +48,50 @@
           ]
         }
       }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:359947632947:android:55415bca434bbab51ebe46",
+        "android_client_info": {
+          "package_name": "com.yapiventa.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "359947632947-23u0anisgpjlhplpquajfsc10lrn9c8b.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.yapiventa.app",
+            "certificate_hash": "0d45a4322b27993b71000c71d0fc2445c6785b80"
+          }
+        },
+        {
+          "client_id": "359947632947-ld74sn7ih88gll1p3oo9km24lbsi516s.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDn9c0O0lEtVsKl-_pWoUknWsWqtdrLGaI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "359947632947-ld74sn7ih88gll1p3oo9km24lbsi516s.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "359947632947-5ffhgmg3m6olopob2una34nt26ikchq7.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.mobile"
+              }
+            }
+          ]
+        }
+      }
     }
   ],
   "configuration_version": "1"

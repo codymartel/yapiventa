@@ -1,5 +1,5 @@
 name: mobile
-description: "A new Flutter project."
+description: "YapiVenta: panel para que pequeños negocios armen su catálogo, su tienda web y reciban pedidos."
 publish_to: 'none'
 
 version: 1.0.0+1
