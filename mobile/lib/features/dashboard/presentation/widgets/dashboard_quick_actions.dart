@@ -3,17 +3,8 @@ import '../../../../core/theme/app_colors.dart';
 
 class DashboardQuickActions extends StatelessWidget {
   final VoidCallback onAgregarProducto;
-  final VoidCallback onActualizarStock;
-  final VoidCallback onVerPedidos;
-  final VoidCallback onResponderQueja;
 
-  const DashboardQuickActions({
-    super.key,
-    required this.onAgregarProducto,
-    required this.onActualizarStock,
-    required this.onVerPedidos,
-    required this.onResponderQueja,
-  });
+  const DashboardQuickActions({super.key, required this.onAgregarProducto});
 
   @override
   Widget build(BuildContext context) {
@@ -24,24 +15,6 @@ class DashboardQuickActions extends StatelessWidget {
         icono: Icons.add_box_outlined,
         color: const Color(0xFF4E8BFF),
         onTap: onAgregarProducto,
-      ),
-      _Accion(
-        texto: 'Actualizar stock',
-        icono: Icons.inventory_outlined,
-        color: const Color(0xFF8D7CFF),
-        onTap: onActualizarStock,
-      ),
-      _Accion(
-        texto: 'Ver pedidos',
-        icono: Icons.receipt_long_outlined,
-        color: const Color(0xFF35C59A),
-        onTap: onVerPedidos,
-      ),
-      _Accion(
-        texto: 'Responder queja',
-        icono: Icons.mark_chat_unread_outlined,
-        color: const Color(0xFFFF718B),
-        onTap: onResponderQueja,
       ),
     ];
 
@@ -72,7 +45,7 @@ class DashboardQuickActions extends StatelessWidget {
           const SizedBox(height: 16),
           LayoutBuilder(
             builder: (context, constraints) {
-              final columnas = constraints.maxWidth >= 700 ? 4 : 2;
+              final columnas = 2;
               const espacio = 10.0;
               final ancho =
                   (constraints.maxWidth - espacio * (columnas - 1)) / columnas;

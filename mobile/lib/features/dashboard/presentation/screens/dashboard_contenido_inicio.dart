@@ -51,18 +51,6 @@ class DashboardContenidoInicio extends StatelessWidget {
               context,
               'Completa primero las etapas pendientes de configuración.',
             ),
-      onActualizarStock: () => mostrarAvisoDashboard(
-        context,
-        'El módulo de stock estará disponible próximamente.',
-      ),
-      onVerPedidos: () => mostrarAvisoDashboard(
-        context,
-        'El módulo de pedidos estará disponible próximamente.',
-      ),
-      onResponderQueja: () => mostrarAvisoDashboard(
-        context,
-        'El módulo de reclamaciones estará disponible próximamente.',
-      ),
     );
   }
 }

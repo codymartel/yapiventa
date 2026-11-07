@@ -7,7 +7,6 @@ import '../../../negocio/domain/models/progreso_configuracion.dart';
 import '../providers/dashboard_provider.dart';
 import '../state/dashboard_ui_state.dart';
 import 'dashboard_quick_actions.dart';
-import 'dashboard_recent_orders.dart';
 import 'dashboard_sales_chart.dart';
 import 'dashboard_setup_panel.dart';
 import 'dashboard_summary_cards.dart';
@@ -17,9 +16,6 @@ class DashboardHomeContent extends StatelessWidget {
   final ProgresoConfiguracion progreso;
   final ValueChanged<EtapaConfiguracion> onAbrirEtapa;
   final VoidCallback onAgregarProducto;
-  final VoidCallback onActualizarStock;
-  final VoidCallback onVerPedidos;
-  final VoidCallback onResponderQueja;
 
   const DashboardHomeContent({
     super.key,
@@ -27,9 +23,6 @@ class DashboardHomeContent extends StatelessWidget {
     required this.progreso,
     required this.onAbrirEtapa,
     required this.onAgregarProducto,
-    required this.onActualizarStock,
-    required this.onVerPedidos,
-    required this.onResponderQueja,
   });
 
   @override
@@ -58,17 +51,7 @@ class DashboardHomeContent extends StatelessWidget {
                   const SizedBox(height: 18),
                   DashboardSalesChart(puntos: state.ventasUltimos7Dias),
                   const SizedBox(height: 18),
-                  DashboardQuickActions(
-                    onAgregarProducto: onAgregarProducto,
-                    onActualizarStock: onActualizarStock,
-                    onVerPedidos: onVerPedidos,
-                    onResponderQueja: onResponderQueja,
-                  ),
-                  const SizedBox(height: 18),
-                  DashboardRecentOrders(
-                    pedidos: state.pedidosRecientes,
-                    onVerTodos: onVerPedidos,
-                  ),
+                  DashboardQuickActions(onAgregarProducto: onAgregarProducto),
                 ],
               ),
             ),

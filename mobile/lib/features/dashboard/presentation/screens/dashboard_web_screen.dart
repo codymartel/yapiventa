@@ -2,15 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/widgets/authenticated_shell.dart';
 import '../../../auth/domain/politica_acceso.dart';
-import '../../../auth/presentation/providers/acceso_provider.dart';
 import '../../../negocio/catalogo_negocio_dependencies.dart';
 import '../../../negocio/data/negocio_repository.dart';
 import '../../../negocio/domain/models/progreso_configuracion.dart';
 import '../../../negocio/domain/models/seleccion_plantilla_info.dart';
 import '../../../negocio/presentation/providers/configuracion_negocio_provider.dart';
-import '../../../negocio/presentation/widgets/configuracion_negocio_flow.dart';
 import '../../../negocio/presentation/widgets/seleccion_negocio_content.dart';
-import '../../../negocio/presentation/widgets/seleccion_negocio_flow.dart';
 import '../../../negocio/presentation/widgets/seleccion_plantilla_flow.dart';
 import '../../../negocio/seleccion_plantilla_dependencies.dart';
 import '../../../productos/presentation/widgets/productos_flow.dart';
@@ -29,6 +26,8 @@ import '../widgets/dashboard_top_bar.dart';
 import '../widgets/plantilla_contextual_panel.dart';
 import 'abrir_tienda_publica.dart';
 import 'dashboard_contenido_inicio.dart';
+import 'rutas_inicio_dashboard.dart';
+import 'seccion_dashboard.dart';
 
 export 'abrir_tienda_publica.dart' show AbrirUrlDashboard;
 
@@ -54,6 +53,9 @@ class DashboardWebScreen extends StatefulWidget {
   final CatalogoNegocioDependencies? catalogoDependencies;
   final SeleccionPlantillaDependencies? seleccionPlantillaDependencies;
 
+  /// Menú visible. Por defecto, la versión 1 (`destinosPanelV1`).
+  final Set<DashboardDestination> destinosVisibles;
+
   const DashboardWebScreen({
     super.key,
     this.abrirUrl,
@@ -68,24 +70,23 @@ class DashboardWebScreen extends StatefulWidget {
     this.pedidosDependencies,
     this.catalogoDependencies,
     this.seleccionPlantillaDependencies,
+    this.destinosVisibles = destinosPanelV1,
   });
 
   @override
   State<DashboardWebScreen> createState() => _DashboardWebScreenState();
 }
 
-enum _Seccion { inicio, rubro, configuracion, productos, plantilla, pedidos }
-
 class _DashboardWebScreenState extends State<DashboardWebScreen> {
   /// Sección activa. Una sola variable en vez de una bandera por sección:
   /// así nunca quedan dos abiertas a la vez.
-  _Seccion _seccion = _Seccion.inicio;
+  SeccionDashboard _seccion = SeccionDashboard.inicio;
 
-  bool get _rubroAbierta => _seccion == _Seccion.rubro;
-  bool get _configuracionAbierta => _seccion == _Seccion.configuracion;
-  bool get _productosAbierta => _seccion == _Seccion.productos;
-  bool get _plantillaAbierta => _seccion == _Seccion.plantilla;
-  bool get _pedidosAbierta => _seccion == _Seccion.pedidos;
+  bool get _rubroAbierta => _seccion == SeccionDashboard.rubro;
+  bool get _configuracionAbierta => _seccion == SeccionDashboard.configuracion;
+  bool get _productosAbierta => _seccion == SeccionDashboard.productos;
+  bool get _plantillaAbierta => _seccion == SeccionDashboard.plantilla;
+  bool get _pedidosAbierta => _seccion == SeccionDashboard.pedidos;
 
   /// Se marca en la primera visita para montar la rama Productos de forma
   /// perezosa: al entrar al dashboard no existe ninguna instancia del flow.
@@ -109,15 +110,28 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
   ConfiguracionNegocioProvider? _providerConfiguracion;
   late final NavigatorObserver _observadorInterno;
   late final ValueNotifier<ProgresoConfiguracion> _progresoNotifier;
+  late final RutasInicioDashboard _rutas;
 
   @override
   void initState() {
     super.initState();
     _rubroContextual = _rubroCompatible(widget.progreso.catalogo.rubro);
     _progresoNotifier = ValueNotifier<ProgresoConfiguracion>(widget.progreso);
+    _rutas = RutasInicioDashboard(
+      uid: widget.uid,
+      negocioId: widget.negocioId,
+      progreso: _progresoNotifier,
+      rubroActual: () => widget.progreso.catalogo.rubro,
+      providerConfiguracion: () => _providerConfiguracion,
+      vieneDeProducto: () => _vieneDeProducto,
+      alVolverAlProducto: _volverAlProductoDesdeConfiguracion,
+      recargarProgreso: widget.recargarProgreso,
+      alCambiarRubro: _cambiarRubroContextual,
+      alAbrirEtapa: _abrirEtapa,
+    );
     _observadorInterno = ObservadorRutasInternas(() {
       if (!mounted || (!_rubroAbierta && !_configuracionAbierta)) return;
-      setState(() => _seccion = _Seccion.inicio);
+      setState(() => _seccion = SeccionDashboard.inicio);
     });
   }
 
@@ -147,38 +161,20 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<DashboardProvider>().state;
-    final seccionAyuda = _pedidosAbierta
-        ? 'pedidos'
-        : _plantillaAbierta
-        ? 'plantilla'
-        : _productosAbierta
-        ? 'productos'
-        : _configuracionAbierta
-        ? 'configuracion'
-        : _rubroAbierta
-        ? 'rubro'
-        : 'inicio';
     return AuthenticatedShell(
-      ayudaSeccionId: seccionAyuda,
+      ayudaSeccionId: _seccion.ayudaId,
       navigationBuilder: (_, closeNavigation) => DashboardSidebar(
-        destinoActivo: _plantillaAbierta
-            ? DashboardDestination.plantilla
-            : _pedidosAbierta
-            ? DashboardDestination.pedidos
-            : _productosAbierta
-            ? DashboardDestination.productos
-            : _configuracionAbierta
-            ? DashboardDestination.configuracion
-            : DashboardDestination.inicio,
+        destinoActivo: _seccion.destinoActivo,
         onSeleccionar: (destino) {
           closeNavigation?.call();
           _seleccionarDestino(context, destino);
         },
         estaHabilitado: _destinoHabilitado,
+        destinosVisibles: widget.destinosVisibles,
       ),
       topBarBuilder: (context, openNavigation, openHelp) => DashboardTopBar(
         nombreNegocio: _nombreNegocio(state),
-        onElegirPlantilla: () => _elegirPlantilla(context),
+        onElegirPlantilla: () => _abrirPlantilla(context, widget.progreso),
         onVerTienda: () => _verTiendaWeb(context),
         onAbrirMenu: openNavigation,
         onAbrirAyuda: openHelp,
@@ -208,9 +204,9 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
               key: DashboardWebScreen.navegadorInicioClave,
               observers: [_observadorInterno],
               onGenerateInitialRoutes: (navigator, inicial) => [
-                _crearRutaDeInicio(RouteSettings(name: inicial)),
+                _rutas.crearInicio(RouteSettings(name: inicial)),
               ],
-              onGenerateRoute: _crearRutaInterna,
+              onGenerateRoute: _rutas.crear,
             ),
           ),
           if (_productosVisitada)
@@ -231,75 +227,9 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
     );
   }
 
-  Route<dynamic> _crearRutaInterna(RouteSettings settings) {
-    if (settings.name == RutasAcceso.rubro) {
-      return _crearRutaDeRubro(settings);
-    }
-    if (settings.name == RutasAcceso.negocio &&
-        _providerConfiguracion != null) {
-      return _crearRutaDeConfiguracion(settings);
-    }
-    return _crearRutaDeInicio(settings);
-  }
-
-  Route<dynamic> _crearRutaDeConfiguracion(RouteSettings settings) {
-    final provider = _providerConfiguracion!;
-    return MaterialPageRoute<Object?>(
-      settings: settings,
-      builder: (rutaContexto) =>
-          ChangeNotifierProvider<ConfiguracionNegocioProvider>.value(
-            value: provider,
-            child: ConfiguracionNegocioFlow(
-              uid: widget.uid,
-              negocioId: widget.negocioId,
-              onVolver: () => _regresarAInicio(rutaContexto),
-              onCompletado: () => _regresarAInicio(rutaContexto),
-              onVolverAlProducto: _vieneDeProducto
-                  ? _volverAlProductoDesdeConfiguracion
-                  : null,
-              onRecargarProgreso: widget.recargarProgreso == null
-                  ? null
-                  : (uid, negocioId) => widget.recargarProgreso!(),
-            ),
-          ),
-    );
-  }
-
-  Route<dynamic> _crearRutaDeInicio(RouteSettings settings) {
-    return MaterialPageRoute<Object?>(
-      settings: settings,
-      builder: (rutaContexto) => ValueListenableBuilder<ProgresoConfiguracion>(
-        valueListenable: _progresoNotifier,
-        builder: (rutaContexto, progreso, _) => DashboardContenidoInicio(
-          progreso: progreso,
-          onAbrirEtapa: (etapa) => _abrirEtapa(rutaContexto, progreso, etapa),
-        ),
-      ),
-    );
-  }
-
-  Route<dynamic> _crearRutaDeRubro(RouteSettings settings) {
-    return MaterialPageRoute<Object?>(
-      settings: settings,
-      builder: (rutaContexto) => SeleccionNegocioFlow(
-        rubroInicial: widget.progreso.catalogo.rubro,
-        onTipoSeleccionado: (rubro) async =>
-            rutaContexto.read<AccesoProvider>().guardarRubro(rubro),
-        onRubroCambiado: (rubro) {
-          if (!mounted || _rubroContextual == rubro) return;
-          setState(() => _rubroContextual = rubro);
-        },
-        onVolver: () => _regresarAInicio(rutaContexto),
-        onCompletado: () => _regresarAInicio(rutaContexto),
-      ),
-    );
-  }
-
-  void _regresarAInicio(BuildContext context) {
-    final navegador = Navigator.of(context);
-    if (navegador.canPop()) {
-      navegador.pop();
-    }
+  void _cambiarRubroContextual(String rubro) {
+    if (!mounted || _rubroContextual == rubro) return;
+    setState(() => _rubroContextual = rubro);
   }
 
   void _abrirEtapa(
@@ -329,7 +259,7 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
     }
     setState(() {
       _rubroContextual = _rubroCompatible(progreso.catalogo.rubro);
-      _seccion = _Seccion.rubro;
+      _seccion = SeccionDashboard.rubro;
     });
     Navigator.of(rutaContexto).pushNamed(RutasAcceso.rubro);
   }
@@ -354,7 +284,7 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
       repository: rutaContexto.read<NegocioRepository>(),
     );
     setState(() {
-      _seccion = _Seccion.configuracion;
+      _seccion = SeccionDashboard.configuracion;
     });
     DashboardWebScreen.navegadorInicioClave.currentState!.pushNamed(
       RutasAcceso.negocio,
@@ -384,7 +314,7 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
     );
     setState(() {
       _vieneDeProducto = false;
-      _seccion = _Seccion.productos;
+      _seccion = SeccionDashboard.productos;
       _productosVisitada = true;
     });
     _volverAlProducto.value++;
@@ -400,7 +330,7 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
       return;
     }
     setState(() {
-      _seccion = _Seccion.productos;
+      _seccion = SeccionDashboard.productos;
       _productosVisitada = true;
     });
   }
@@ -411,7 +341,7 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
       return;
     }
     setState(() {
-      _seccion = _Seccion.plantilla;
+      _seccion = SeccionDashboard.plantilla;
       _plantillaVisitada = true;
     });
   }
@@ -425,7 +355,7 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
       );
       return;
     }
-    setState(() => _seccion = _Seccion.pedidos);
+    setState(() => _seccion = SeccionDashboard.pedidos);
   }
 
   Widget _crearRamaPedidos() {
@@ -457,14 +387,14 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
   void _volverDesdePlantilla() {
     if (!mounted) return;
     setState(() {
-      _seccion = _Seccion.productos;
+      _seccion = SeccionDashboard.productos;
       _productosVisitada = true;
     });
   }
 
   void _completarPlantilla() {
     if (!mounted) return;
-    setState(() => _seccion = _Seccion.inicio);
+    setState(() => _seccion = SeccionDashboard.inicio);
   }
 
   Widget _crearRamaProductos() {
@@ -473,8 +403,8 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
       negocioId: widget.negocioId,
       catalogoInicial: widget.progreso.catalogo,
       onVolver: () {
-        if (!mounted) return;
-        if (_productosAbierta) setState(() => _seccion = _Seccion.inicio);
+        if (!mounted || !_productosAbierta) return;
+        setState(() => _seccion = SeccionDashboard.inicio);
       },
       onElegirPlantilla: (_) => _abrirPlantilla(context, widget.progreso),
       onProgressChanged: widget.recargarProgreso,
@@ -494,7 +424,7 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
     switch (destino) {
       case DashboardDestination.inicio:
         if (_productosAbierta || _plantillaAbierta || _pedidosAbierta) {
-          setState(() => _seccion = _Seccion.inicio);
+          setState(() => _seccion = SeccionDashboard.inicio);
         }
         return;
       case DashboardDestination.productos:
@@ -507,28 +437,15 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
         _abrirPedidos(context);
         return;
       case DashboardDestination.ventas:
-        _mostrarProximamente(context, 'Ventas estará disponible próximamente.');
-        return;
       case DashboardDestination.quejas:
-        _mostrarProximamente(
-          context,
-          'Reclamaciones estará disponible próximamente.',
-        );
+      case DashboardDestination.plan:
+      case DashboardDestination.ayuda:
+        // Escondidos en el menú (ver destinosPanelV1): no hay nada que abrir.
         return;
       case DashboardDestination.configuracion:
         _abrirConfiguracion(context, widget.progreso);
         return;
-      case DashboardDestination.plan:
-        _mostrarProximamente(context, 'Plan estará disponible próximamente.');
-        return;
-      case DashboardDestination.ayuda:
-        _mostrarProximamente(context, 'Ayuda estará disponible próximamente.');
-        return;
     }
-  }
-
-  Future<void> _elegirPlantilla(BuildContext context) async {
-    _abrirPlantilla(context, widget.progreso);
   }
 
   Future<void> _verTiendaWeb(BuildContext context) async {
@@ -543,10 +460,6 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
       abrirUrl: widget.abrirUrl,
       alBloquear: () => _mostrarBloqueado(context),
     );
-  }
-
-  void _mostrarProximamente(BuildContext context, String mensaje) {
-    mostrarAvisoDashboard(context, mensaje);
   }
 
   bool _destinoHabilitado(DashboardDestination destino) {

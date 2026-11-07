@@ -14,16 +14,28 @@ enum DashboardDestination {
   ayuda,
 }
 
+/// Destinos que se muestran en la versión 1 (prueba cerrada en Google Play).
+/// Lo que aún no está listo se esconde en vez de decir «próximamente».
+/// Para reactivar uno, súmalo aquí.
+const destinosPanelV1 = <DashboardDestination>{
+  DashboardDestination.inicio,
+  DashboardDestination.productos,
+  DashboardDestination.plantilla,
+  DashboardDestination.configuracion,
+};
+
 class DashboardSidebar extends StatelessWidget {
   final DashboardDestination destinoActivo;
   final ValueChanged<DashboardDestination> onSeleccionar;
   final bool Function(DashboardDestination destino) estaHabilitado;
+  final Set<DashboardDestination> destinosVisibles;
 
   const DashboardSidebar({
     super.key,
     required this.destinoActivo,
     required this.onSeleccionar,
     required this.estaHabilitado,
+    this.destinosVisibles = destinosPanelV1,
   });
 
   @override
@@ -77,9 +89,14 @@ class DashboardSidebar extends StatelessWidget {
                     icono: Icons.tune_rounded,
                     texto: 'Configuración',
                   ),
-                  const SizedBox(height: 20),
-                  Divider(color: AppColors.bordeSutil, height: 1),
-                  const SizedBox(height: 8),
+                  if (destinosVisibles.contains(DashboardDestination.plan) ||
+                      destinosVisibles.contains(
+                        DashboardDestination.ayuda,
+                      )) ...[
+                    const SizedBox(height: 20),
+                    Divider(color: AppColors.bordeSutil, height: 1),
+                    const SizedBox(height: 8),
+                  ],
                   _item(
                     destino: DashboardDestination.plan,
                     icono: Icons.workspace_premium_outlined,
@@ -104,6 +121,7 @@ class DashboardSidebar extends StatelessWidget {
     required IconData icono,
     required String texto,
   }) {
+    if (!destinosVisibles.contains(destino)) return const SizedBox.shrink();
     final activo = destino == destinoActivo;
     final habilitado = estaHabilitado(destino);
     return Semantics(

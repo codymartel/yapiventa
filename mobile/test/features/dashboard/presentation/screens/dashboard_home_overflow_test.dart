@@ -142,8 +142,7 @@ void main() {
         expect(find.text('S/ 320.75'), findsOneWidget);
         expect(find.text('Acciones rápidas'), findsOneWidget);
         expect(find.text('Agregar producto'), findsOneWidget);
-        expect(find.text('Pedidos recientes'), findsOneWidget);
-        expect(find.text('Ver todos'), findsOneWidget);
+        expect(find.text('Pedidos recientes'), findsNothing);
         expect(tester.takeException(), isNull);
       }
     },
@@ -166,7 +165,7 @@ void main() {
       expect(tester.getSize(grafico).height, greaterThan(0));
       expect(find.text('Ventas de los últimos 7 días'), findsOneWidget);
       expect(find.text('Comparación por canal'), findsOneWidget);
-      expect(find.byType(DashboardRecentOrders), findsOneWidget);
+      expect(find.byType(DashboardRecentOrders), findsNothing);
       expect(tester.takeException(), isNull);
     }
   });

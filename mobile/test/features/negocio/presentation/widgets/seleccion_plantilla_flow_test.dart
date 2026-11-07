@@ -506,7 +506,7 @@ void main() {
 
     expect(llamadas, 0);
     expect(
-      find.text('La vista web estará disponible próximamente'),
+      find.text('Guarda primero tu plantilla para ver la tienda'),
       findsOneWidget,
     );
   });

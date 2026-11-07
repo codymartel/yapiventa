@@ -164,7 +164,7 @@ class _SeleccionPlantillaFlowState extends State<SeleccionPlantillaFlow> {
     if (!provider.cargado ||
         provider.plantillaGuardada == null ||
         provider.slug.isEmpty) {
-      _mostrarMensaje('La vista web estará disponible próximamente');
+      _mostrarMensaje('Guarda primero tu plantilla para ver la tienda');
       return;
     }
     await widget.onVerTienda(provider.slug);

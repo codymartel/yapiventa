@@ -65,6 +65,7 @@ void main() {
     _DependenciasProductos? dependencias,
     _DependenciasPlantilla? dependenciasPlantilla,
     PedidosDependencies? pedidos,
+    Set<DashboardDestination>? destinosVisibles,
     String? negocioId = 'negocio-1',
     Size size = const Size(1400, 1000),
     TextScaler textScaler = TextScaler.noScaling,
@@ -110,6 +111,8 @@ void main() {
                 negocioId: negocioId,
                 abrirUrl: abridor.call,
                 pedidosDependencies: pedidos,
+                destinosVisibles:
+                    destinosVisibles ?? DashboardDestination.values.toSet(),
                 progreso: progreso ?? _progresoCompleto(),
                 email: 'ana@example.com',
                 onAbrirEtapa: (etapa) {
@@ -330,6 +333,33 @@ void main() {
     expect(find.text('Seleccion de rubro'), findsNothing);
   });
 
+  testWidgets('el menú de la versión 1 esconde lo que no está listo', (
+    tester,
+  ) async {
+    await mostrarDashboard(tester, destinosVisibles: destinosPanelV1);
+
+    for (final texto in [
+      'Inicio',
+      'Productos',
+      'Plantilla web',
+      'Configuración',
+    ]) {
+      expect(find.text(texto), findsWidgets, reason: texto);
+    }
+    final menu = find.byType(DashboardSidebar);
+    for (final texto in ['Pedidos', 'Ventas', 'Reclamaciones', 'Plan']) {
+      expect(
+        find.descendant(of: menu, matching: find.text(texto)),
+        findsNothing,
+        reason: texto,
+      );
+    }
+    expect(find.textContaining('próximamente'), findsNothing);
+    expect(find.text('Ver pedidos'), findsNothing);
+    expect(find.text('Actualizar stock'), findsNothing);
+    expect(find.text('Responder queja'), findsNothing);
+  });
+
   testWidgets('bloquea módulos ajenos mientras el onboarding está pendiente', (
     tester,
   ) async {
@@ -500,7 +530,7 @@ void main() {
     expect(find.text('Resumen de tu negocio'), findsOneWidget);
     expect(find.text('Ventas de los últimos 7 días'), findsOneWidget);
     expect(find.text('Acciones rápidas'), findsOneWidget);
-    expect(find.text('Pedidos recientes'), findsOneWidget);
+    expect(find.text('Pedidos recientes'), findsNothing);
 
     final navegacion = tester.getRect(
       find.byKey(const Key('authenticated-shell-navigation')),
