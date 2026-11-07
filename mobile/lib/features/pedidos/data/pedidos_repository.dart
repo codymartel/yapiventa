@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mobile/features/productos/domain/models/producto.dart';
 
 import '../application/services/calculo_stock_pedido.dart';
+import '../application/services/contadores_venta.dart';
 import '../application/services/resumen_dia_pedidos.dart';
 import '../application/services/resumen_ventas_dia_calculo.dart';
 import '../application/services/transiciones_pedido.dart';
@@ -345,25 +346,26 @@ class PedidosRepository implements RepositorioPedidos {
       tx.update(ref, {
         'estado': nuevo.valor,
         'estadoPago': ?pago?.valor,
-        'historial': _ayudas.historialCon(pedido, nuevo),
+        'historial': _ayudas.historialCon(pedido, nuevo, en: ahora),
         'actualizadoEn': FieldValue.serverTimestamp(),
       });
       if (entregando) {
-        final entregado = ResumenVentasDiaCalculo.entregadoDe(
-          pedido.copyWith(estadoPago: pago),
-          ahora,
-        );
-        tx.set(refResumen, {
-          'ventasCentavos': resumenActual.ventasCentavos + pedido.totalCentavos,
-          'entregados': resumenActual.entregados + 1,
-          'ultimosEntregados': ResumenVentasDiaMapper.entregadosAMapas(
-            ResumenVentasDiaCalculo.conNuevoEntregado(
-              resumenActual.ultimosEntregados,
-              entregado,
-            ),
+        // Con el pago ya marcado, como queda el pedido al entregarse.
+        final entregadoAhora = pedido.copyWith(estadoPago: pago);
+        _ayudas.guardarResumenVentas(
+          tx,
+          refResumen,
+          ventasCentavos: resumenActual.ventasCentavos + pedido.totalCentavos,
+          entregados: resumenActual.entregados + 1,
+          ultimosEntregados: ResumenVentasDiaCalculo.conNuevoEntregado(
+            resumenActual.ultimosEntregados,
+            ResumenVentasDiaCalculo.entregadoDe(entregadoAhora, ahora),
           ),
-          'actualizadoEn': FieldValue.serverTimestamp(),
-        }, SetOptions(merge: true));
+          contadores: ContadoresVenta.sumar(
+            resumenActual.contadores,
+            ContadoresVenta.aporteDe(entregadoAhora, ahora),
+          ),
+        );
       }
     });
   }

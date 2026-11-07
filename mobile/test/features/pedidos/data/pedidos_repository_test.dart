@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mobile/features/pedidos/data/resumen_ventas_dia_mapper.dart';
 import 'package:mobile/features/pedidos/data/pedidos_repository.dart';
 import 'package:mobile/features/pedidos/domain/models/estado_pedido.dart';
 import 'package:mobile/features/pedidos/domain/models/filtro_pedidos.dart';
@@ -698,6 +699,54 @@ void main() {
 
       final r = await leerResumen();
       expect((r!['ultimosEntregados'] as List).single['cobrado'], isTrue);
+    });
+
+    test('entregar suma los contadores del día (3b)', () async {
+      await pedidos().doc('p1').set(_pedido(estado: 'en_camino'));
+
+      await repo.avanzar(
+        _negocio,
+        'p1',
+        EstadoPedido.entregado,
+        pago: EstadoPago.pagado,
+      );
+
+      final r = ResumenVentasDiaMapper.desdeFirestore(
+        '2026-11-05',
+        await leerResumen(),
+      );
+      // Reloj 17:00 UTC = 12:00 en Lima. Pedido de la tienda: no es mostrador.
+      expect(r.contadores.porEntrega, {'delivery': 1840});
+      expect(r.contadores.porHora, {'12': 1840});
+      expect(r.contadores.porProducto.keys, containsAll(['queso', 'gaseosa']));
+      expect(r.contadores.mostrador, 0);
+      expect(r.contadores.anuladas, 0);
+    });
+
+    test('dos entregas acumulan y no pisan los contadores', () async {
+      await pedidos().doc('p1').set(_pedido(estado: 'en_camino'));
+      await pedidos().doc('p2').set(_pedido(estado: 'en_camino'));
+
+      await repo.avanzar(_negocio, 'p1', EstadoPedido.entregado);
+      await repo.avanzar(_negocio, 'p2', EstadoPedido.entregado);
+
+      final r = ResumenVentasDiaMapper.desdeFirestore(
+        '2026-11-05',
+        await leerResumen(),
+      );
+      expect(r.ventasCentavos, 3680);
+      expect(r.entregados, 2);
+      expect(r.contadores.porEntrega, {'delivery': 3680});
+    });
+
+    test('la hora del historial es la misma del resumen', () async {
+      await pedidos().doc('p1').set(_pedido(estado: 'en_camino'));
+
+      await repo.avanzar(_negocio, 'p1', EstadoPedido.entregado);
+
+      final historial = (await leerPedido('p1'))['historial'] as List;
+      final entregado = historial.last['fecha'] as Timestamp;
+      expect(entregado.toDate().toUtc(), DateTime.utc(2026, 11, 5, 17));
     });
 
     test(

@@ -7,13 +7,11 @@ import '../application/services/resumen_dia_pedidos.dart';
 import '../application/services/resumen_ventas_dia_calculo.dart';
 import '../application/services/transiciones_pedido.dart';
 import '../application/services/verificacion_total_pedido.dart';
-import '../domain/models/contadores_dia.dart';
 import '../domain/models/estado_pedido.dart';
 import '../domain/models/pedido.dart';
 import '../domain/models/resumen_ventas_dia.dart';
 import '../domain/repositories/repositorio_ventas_mostrador.dart';
 import 'ayudas_pedidos_firestore.dart';
-import 'contadores_dia_mapper.dart';
 import 'pedido_mapper.dart';
 import 'resumen_ventas_dia_mapper.dart';
 
@@ -30,6 +28,9 @@ import 'resumen_ventas_dia_mapper.dart';
 ///   Delivery             → nace CONFIRMADA (stock ya descontado) y sigue en
 ///                          Pedidos; suma a las ventas cuando se entregue.
 class VentasMostradorRepository implements RepositorioVentasMostrador {
+  /// Más de un mes por informe no hace falta (y cuesta lecturas).
+  static const int maximoDiasInforme = 31;
+
   VentasMostradorRepository({FirebaseFirestore? db, DateTime Function()? reloj})
     : _db = db ?? FirebaseFirestore.instance,
       _ayudas = AyudasPedidosFirestore(
@@ -190,7 +191,7 @@ class VentasMostradorRepository implements RepositorioVentasMostrador {
       });
 
       if (entregada) {
-        _guardarResumen(
+        _ayudas.guardarResumenVentas(
           tx,
           refResumen,
           ventasCentavos: resumenActual.ventasCentavos + pedido.totalCentavos,
@@ -253,7 +254,7 @@ class VentasMostradorRepository implements RepositorioVentasMostrador {
         'historial': _ayudas.historialCon(pedido, EstadoPedido.cancelado),
         'actualizadoEn': FieldValue.serverTimestamp(),
       });
-      _guardarResumen(
+      _ayudas.guardarResumenVentas(
         tx,
         refResumen,
         ventasCentavos: _noNegativo(
@@ -273,41 +274,38 @@ class VentasMostradorRepository implements RepositorioVentasMostrador {
     });
   }
 
-  static int _noNegativo(int valor) => valor < 0 ? 0 : valor;
-
-  /// Escribe el resumen del día con los valores ya calculados.
-  void _guardarResumen(
-    Transaction tx,
-    DocumentReference<Map<String, dynamic>> refResumen, {
-    required int ventasCentavos,
-    required int entregados,
-    required List<EntregadoReciente> ultimosEntregados,
-    required ContadoresDia contadores,
-  }) {
-    tx.set(
-      refResumen,
-      {
-        'ventasCentavos': ventasCentavos,
-        'entregados': entregados,
-        'ultimosEntregados': ResumenVentasDiaMapper.entregadosAMapas(
-          ultimosEntregados,
-        ),
-        'actualizadoEn': FieldValue.serverTimestamp(),
-        ...ContadoresDiaMapper.aCampos(contadores),
-      },
-      // Reemplaza estos campos enteros (un merge normal juntaría los mapas
-      // con lo que ya había y no quitaría lo que llegó a 0).
-      SetOptions(
-        mergeFields: [
-          'ventasCentavos',
-          'entregados',
-          'ultimosEntregados',
-          'actualizadoEn',
-          ...ContadoresDiaMapper.camposContadores,
-        ],
-      ),
-    );
+  @override
+  Future<List<ResumenVentasDia>> obtenerResumenes(
+    String negocioId,
+    String desde,
+    String hasta,
+  ) async {
+    final formato = RegExp(r'^\d{4}-\d{2}-\d{2}$');
+    if (!formato.hasMatch(desde) ||
+        !formato.hasMatch(hasta) ||
+        desde.compareTo(hasta) > 0) {
+      throw ArgumentError('El rango de días no es válido: $desde a $hasta.');
+    }
+    final dias =
+        DateTime.parse(hasta).difference(DateTime.parse(desde)).inDays + 1;
+    if (dias > maximoDiasInforme) {
+      throw ArgumentError(
+        'Un informe cubre como máximo $maximoDiasInforme días.',
+      );
+    }
+    final resultado = await _ayudas
+        .resumenes(negocioId)
+        .where(FieldPath.documentId, isGreaterThanOrEqualTo: desde)
+        .where(FieldPath.documentId, isLessThanOrEqualTo: hasta)
+        .limit(maximoDiasInforme)
+        .get();
+    return [
+      for (final doc in resultado.docs)
+        ResumenVentasDiaMapper.desdeFirestore(doc.id, doc.data()),
+    ];
   }
+
+  static int _noNegativo(int valor) => valor < 0 ? 0 : valor;
 
   /// Errores de programación (no del cajero): la cuenta debe cuadrar.
   void _comprobarSolicitud(SolicitudVentaMostrador s) {

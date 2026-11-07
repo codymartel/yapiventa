@@ -3,9 +3,13 @@ import 'package:mobile/features/productos/data/mappers/producto_firestore_mapper
 import 'package:mobile/features/productos/domain/models/producto.dart';
 
 import '../application/services/calculo_stock_pedido.dart';
+import '../domain/models/contadores_dia.dart';
 import '../domain/models/estado_pedido.dart';
 import '../domain/models/pedido.dart';
+import '../domain/models/resumen_ventas_dia.dart';
+import 'contadores_dia_mapper.dart';
 import 'pedido_mapper.dart';
+import 'resumen_ventas_dia_mapper.dart';
 
 // ═════════════════════════════════════════════════════════════════════════
 // AyudasPedidosFirestore
@@ -55,6 +59,15 @@ class AyudasPedidosFirestore {
       throw StateError('No se encontró un negocioId para operar los pedidos.');
     }
     return _db.collection('negocios').doc(id).collection('resumenes').doc(dia);
+  }
+
+  /// negocios/{id}/resumenes: todos los resúmenes diarios (para los informes).
+  CollectionReference<Map<String, dynamic>> resumenes(String negocioId) {
+    final id = negocioId.trim();
+    if (id.isEmpty) {
+      throw StateError('No se encontró un negocioId para operar los pedidos.');
+    }
+    return _db.collection('negocios').doc(id).collection('resumenes');
   }
 
   Pedido pedido(DocumentSnapshot<Map<String, dynamic>> doc) {
@@ -128,10 +141,51 @@ class AyudasPedidosFirestore {
     return omitidos;
   }
 
-  List<Map<String, dynamic>> historialCon(Pedido pedido, EstadoPedido nuevo) {
+  /// El historial con un cambio más. [en] fija la hora (para que coincida con
+  /// la que se usa en el resumen del día); sin ella, la hora del dispositivo.
+  List<Map<String, dynamic>> historialCon(
+    Pedido pedido,
+    EstadoPedido nuevo, {
+    DateTime? en,
+  }) {
     return PedidoMapper.historialAMapas([
       ...pedido.historial,
-      CambioEstado(estado: nuevo, fecha: _reloj()),
+      CambioEstado(estado: nuevo, fecha: en ?? _reloj()),
     ]);
+  }
+
+  /// Escribe el resumen del día de ventas con los valores ya calculados
+  /// (cobrar, entregar y anular). Reemplaza esos campos enteros: un merge
+  /// normal juntaría los mapas con lo que ya había y no quitaría lo que llegó
+  /// a 0.
+  void guardarResumenVentas(
+    Transaction tx,
+    DocumentReference<Map<String, dynamic>> refResumen, {
+    required int ventasCentavos,
+    required int entregados,
+    required List<EntregadoReciente> ultimosEntregados,
+    required ContadoresDia contadores,
+  }) {
+    tx.set(
+      refResumen,
+      {
+        'ventasCentavos': ventasCentavos,
+        'entregados': entregados,
+        'ultimosEntregados': ResumenVentasDiaMapper.entregadosAMapas(
+          ultimosEntregados,
+        ),
+        'actualizadoEn': FieldValue.serverTimestamp(),
+        ...ContadoresDiaMapper.aCampos(contadores),
+      },
+      SetOptions(
+        mergeFields: [
+          'ventasCentavos',
+          'entregados',
+          'ultimosEntregados',
+          'actualizadoEn',
+          ...ContadoresDiaMapper.camposContadores,
+        ],
+      ),
+    );
   }
 }

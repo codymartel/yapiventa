@@ -2,9 +2,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/features/pedidos/application/services/calculo_venta_mostrador.dart';
+import 'package:mobile/features/pedidos/data/pedidos_repository.dart';
 import 'package:mobile/features/pedidos/data/pedido_mapper.dart';
 import 'package:mobile/features/pedidos/data/resumen_ventas_dia_mapper.dart';
 import 'package:mobile/features/pedidos/data/ventas_mostrador_repository.dart';
+import 'package:mobile/features/pedidos/domain/models/estado_pedido.dart';
 import 'package:mobile/features/pedidos/domain/models/descuento_pago.dart';
 import 'package:mobile/features/pedidos/domain/models/linea_pedido.dart';
 import 'package:mobile/features/pedidos/domain/models/pedido.dart';
@@ -279,6 +281,49 @@ void main() {
       );
       expect((await leerProducto('gaseosa'))!.stock, 22, reason: 'sin cambios');
     });
+
+    test(
+      'un delivery de Caja entregado SÍ se anula y resta todo (3b)',
+      () async {
+        await repo.registrar(
+          _negocio,
+          solicitud(
+            bodega,
+            pago: 'yape',
+            entrega: TipoEntrega.delivery,
+            enLocal: false,
+            cliente: const ClientePedido(
+              nombre: 'Ana',
+              telefono: '987654321',
+              direccion: 'Av. Lima 1',
+            ),
+            zona: 'Centro',
+            delivery: 300,
+          ),
+        );
+        // Se entrega desde Pedidos (en camino → entregado): ahí suma al día.
+        final pedidos = PedidosRepository(db: db, reloj: () => ahora);
+        await pedidos.avanzar(_negocio, 'venta0001', EstadoPedido.enCamino);
+        await pedidos.avanzar(_negocio, 'venta0001', EstadoPedido.entregado);
+        var r = await resumen('2026-11-05');
+        expect(r.ventasCentavos, 2040);
+        expect(r.contadores.mostrador, 1);
+        expect(r.contadores.porEntrega, {'delivery': 2040});
+
+        await repo.anular(_negocio, 'venta0001');
+
+        r = await resumen('2026-11-05');
+        expect(r.ventasCentavos, 0);
+        expect(r.entregados, 0);
+        expect(r.contadores.mostrador, 0);
+        expect(r.contadores.porEntrega, isEmpty);
+        expect(r.contadores.porPago, isEmpty);
+        expect(r.contadores.porProducto, isEmpty);
+        expect(r.contadores.anuladas, 1);
+        expect((await leerProducto('gaseosa'))!.stock, 24);
+        expect((await leerPedido('venta0001')).anulada, isTrue);
+      },
+    );
 
     test('un pedido de la tienda entregado no se anula', () async {
       await db

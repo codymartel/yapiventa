@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/features/pedidos/application/use_cases/anular_venta_mostrador.dart';
+import 'package:mobile/features/pedidos/domain/models/resumen_ventas_dia.dart';
 import 'package:mobile/features/pedidos/domain/repositories/repositorio_ventas_mostrador.dart';
 
 class _Repo implements RepositorioVentasMostrador {
@@ -11,6 +12,13 @@ class _Repo implements RepositorioVentasMostrador {
     String negocioId,
     SolicitudVentaMostrador solicitud,
   ) async => const ResultadoVentaMostrador();
+
+  @override
+  Future<List<ResumenVentasDia>> obtenerResumenes(
+    String negocioId,
+    String desde,
+    String hasta,
+  ) async => const [];
 
   @override
   Future<ResultadoAnulacion> anular(String negocioId, String pedidoId) async {
