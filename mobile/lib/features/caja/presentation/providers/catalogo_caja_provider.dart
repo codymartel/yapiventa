@@ -127,6 +127,15 @@ class CatalogoCajaProvider extends ChangeNotifier {
     _cargarPrimera();
   }
 
+  /// Cambia tipo y categoría a la vez y consulta UNA sola vez (un filtro
+  /// rápido reemplaza al anterior: no son dos consultas).
+  void aplicarFiltro({String? tipo, String? categoria}) {
+    if (_tipo == tipo && _categoria == categoria) return;
+    _tipo = tipo;
+    _categoria = categoria;
+    _cargarPrimera();
+  }
+
   void cambiarTipo(String? tipo) {
     if (_tipo == tipo) return;
     _tipo = tipo;

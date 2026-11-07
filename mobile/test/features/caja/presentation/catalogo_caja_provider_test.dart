@@ -220,6 +220,33 @@ void main() {
       );
     });
 
+    test(
+      'aplicarFiltro cambia tipo y categoría con UNA sola consulta',
+      () async {
+        await p.iniciar();
+        p.cambiarTipo('combo');
+        await _espera();
+        final antes = repo.consultas.length;
+
+        p.aplicarFiltro(categoria: 'Bebidas');
+        await _espera();
+
+        expect(repo.consultas.length, antes + 1);
+        expect(repo.consultas.last.categoria, 'Bebidas');
+        expect(repo.consultas.last.tipo, isNull);
+        expect(p.tipo, isNull);
+      },
+    );
+
+    test('aplicarFiltro con lo mismo que ya hay no consulta', () async {
+      await p.iniciar();
+
+      p.aplicarFiltro();
+      await _espera();
+
+      expect(repo.consultas, hasLength(1));
+    });
+
     test('«solo con stock» filtra lo cargado y NO consulta', () async {
       await p.iniciar();
 
