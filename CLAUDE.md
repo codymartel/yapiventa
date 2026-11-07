@@ -82,6 +82,7 @@ Tienda pública (desde `web/`): `firebase deploy --only hosting:tienda`.
 - Navegador integrado: la emulación de 375 px recorta las capturas; probar con el panel a ~800 px (menos de 900 px ya activa el modo celular). El selector de fotos es del sistema: la foto la elige el usuario.
 
 ## Estado del proyecto (actualizar al cerrar cada sesión)
+**DECISIÓN 2026-11-07 (manda sobre el orden de abajo): lanzar YA a Google Play, en prueba cerrada, solo el panel (la app de `mobile/`).** La tienda pública y Caja se agregan después como actualizaciones diarias. Plan, pasos, decisiones pendientes y el primer mensaje para la conversación nueva: **`docs/arquitectura/lanzamiento_play_store.md`** (leerlo primero). Falta: paquete propio (hoy `com.example.mobile`), keystore de release, política de privacidad, borrar cuenta, esconder los 8 «próximamente», probar en teléfono real y la cuenta de Play (el usuario tiene 5 de 12 testers). **Caja quedó en pausa en 4c-3** (hecho: datos 3a–3g, 4a, 4b, 4c-1 y 4c-2; ver la bitácora `docs/bitacora/2026-11-07.md`). Reglas de Firestore: en la nube falta republicar el tope de 300 entradas de `stockDescontado` (hoy 60).
 Leer `docs/arquitectura/plano_producto.md` (sección 7: hoja de ruta) y la última bitácora de `docs/bitacora/`.
 **Decisiones 2026-11-06 (ver `docs/bitacora/2026-11-06.md`):**
 - **MVP solo Perú** (S/, `PEN`, hora de Lima; publicar la app solo en Perú). «País y moneda» queda para después del lanzamiento (especificación M.1–M.7 en la bitácora). En lo nuevo, el símbolo y la moneda van en un solo lugar por archivo.
