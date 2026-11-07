@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/widgets/authenticated_shell.dart';
+import '../../../../core/widgets/enlaces_legales.dart';
 
 class DashboardTopBar extends StatelessWidget {
   final String nombreNegocio;
@@ -99,6 +100,12 @@ class DashboardTopBar extends StatelessWidget {
                 tooltip: 'Cuenta',
                 icon: const Icon(Icons.account_circle_outlined),
                 onSelected: (value) {
+                  if (value == 'privacidad') {
+                    abrirEnlaceLegal(UrlsLegales.privacidad);
+                  }
+                  if (value == 'terminos') {
+                    abrirEnlaceLegal(UrlsLegales.terminos);
+                  }
                   if (value == 'logout') onCerrarSesion();
                   if (value == 'eliminar') onEliminarCuenta?.call();
                 },
@@ -106,6 +113,22 @@ class DashboardTopBar extends StatelessWidget {
                   PopupMenuItem<String>(
                     enabled: false,
                     child: Text(email.isEmpty ? 'Mi cuenta' : email),
+                  ),
+                  const PopupMenuItem<String>(
+                    value: 'privacidad',
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(Icons.privacy_tip_outlined),
+                      title: Text('Política de privacidad'),
+                    ),
+                  ),
+                  const PopupMenuItem<String>(
+                    value: 'terminos',
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(Icons.description_outlined),
+                      title: Text('Términos de uso'),
+                    ),
                   ),
                   const PopupMenuItem<String>(
                     value: 'logout',

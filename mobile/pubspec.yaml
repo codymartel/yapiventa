@@ -2,7 +2,7 @@ name: mobile
 description: "YapiVenta: panel para que pequeños negocios armen su catálogo, su tienda web y reciban pedidos."
 publish_to: 'none'
 
-version: 1.0.0+1
+version: 1.0.0+2
 
 environment:
   sdk: ^3.12.2

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/enlaces_legales.dart';
 import '../widgets/beneficio_item.dart';
 import 'login_form_screen.dart';
 import 'register_screen.dart';
@@ -50,7 +51,8 @@ class LoginScreen extends StatelessWidget {
               );
             }
 
-            final isSmallScreen = constraints.maxHeight < 680 || constraints.maxWidth < 360;
+            final isSmallScreen =
+                constraints.maxHeight < 680 || constraints.maxWidth < 360;
             return SingleChildScrollView(
               padding: EdgeInsets.fromLTRB(24, isSmallScreen ? 32 : 48, 24, 32),
               child: _ContenidoLogin(isSmallScreen: isSmallScreen),
@@ -74,10 +76,7 @@ class _PanelVisual extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            AppColors.navy,
-            AppColors.fondo,
-          ],
+          colors: [AppColors.navy, AppColors.fondo],
         ),
         border: Border.all(color: AppColors.border, width: 0.5),
       ),
@@ -86,7 +85,11 @@ class _PanelVisual extends StatelessWidget {
           Positioned(
             top: 40,
             left: 40,
-            child: _Chip(icono: '📦', texto: 'Producto agregado', delta: '+12 hoy'),
+            child: _Chip(
+              icono: '📦',
+              texto: 'Producto agregado',
+              delta: '+12 hoy',
+            ),
           ),
           Positioned(
             top: 140,
@@ -167,7 +170,10 @@ class _Chip extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(texto, style: TextStyle(color: AppColors.texto, fontSize: 12)),
+              Text(
+                texto,
+                style: TextStyle(color: AppColors.texto, fontSize: 12),
+              ),
               Text(
                 delta,
                 style: TextStyle(
@@ -273,13 +279,25 @@ class _ContenidoLogin extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 4),
           child: Column(
             children: [
-              const BeneficioItem(icono: '📦', texto: 'Gestión de productos y stock'),
+              const BeneficioItem(
+                icono: '📦',
+                texto: 'Gestión de productos y stock',
+              ),
               Divider(color: AppColors.border, height: 0.5),
-              const BeneficioItem(icono: '🌐', texto: 'Página web automática con tu link'),
+              const BeneficioItem(
+                icono: '🌐',
+                texto: 'Página web automática con tu link',
+              ),
               Divider(color: AppColors.border, height: 0.5),
-              const BeneficioItem(icono: '📊', texto: 'Estadísticas de tu negocio'),
+              const BeneficioItem(
+                icono: '📊',
+                texto: 'Estadísticas de tu negocio',
+              ),
               Divider(color: AppColors.border, height: 0.5),
-              const BeneficioItem(icono: '📱', texto: 'Pedidos por WhatsApp directo'),
+              const BeneficioItem(
+                icono: '📱',
+                texto: 'Pedidos por WhatsApp directo',
+              ),
             ],
           ),
         ),
@@ -325,9 +343,9 @@ class _ContenidoLogin extends StatelessWidget {
               foregroundColor: AppColors.texto,
             ),
             onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const RegisterScreen()),
-              );
+              Navigator.of(
+                context,
+              ).push(MaterialPageRoute(builder: (_) => const RegisterScreen()));
             },
             child: Text(
               'Crear cuenta nueva',
@@ -347,6 +365,8 @@ class _ContenidoLogin extends StatelessWidget {
             style: TextStyle(fontSize: 12, color: AppColors.hint),
           ),
         ),
+        const SizedBox(height: 8),
+        const Align(alignment: Alignment.centerLeft, child: EnlacesLegales()),
       ],
     );
   }

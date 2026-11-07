@@ -360,6 +360,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Cerrar sesión'), findsOneWidget);
+    expect(find.text('Política de privacidad'), findsOneWidget);
+    expect(find.text('Términos de uso'), findsOneWidget);
     expect(find.text('Eliminar mi cuenta'), findsNothing);
   });
 
