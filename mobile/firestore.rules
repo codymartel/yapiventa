@@ -63,16 +63,7 @@ service cloud.firestore {
         d.estadoPago == 'pendiente' &&
         d.tipoEntrega in ['delivery', 'recojo'] &&
         d.fecha == request.time &&
-        d.cliente is map &&
-        d.cliente.keys().hasOnly(['nombre', 'telefono', 'direccion', 'correo']) &&
-        d.cliente.get('nombre', '') is string &&
-        d.cliente.get('nombre', '').size() <= 80 &&
-        d.cliente.get('telefono', '') is string &&
-        d.cliente.get('telefono', '').size() <= 20 &&
-        d.cliente.get('direccion', '') is string &&
-        d.cliente.get('direccion', '').size() <= 200 &&
-        d.cliente.get('correo', '') is string &&
-        d.cliente.get('correo', '').size() <= 120 &&
+        clientePedidoValido(d.cliente) &&
         d.get('zona', '') is string && d.get('zona', '').size() <= 60 &&
         d.get('metodoPago', '') is string && d.get('metodoPago', '').size() <= 30 &&
         d.get('notas', '') is string && d.get('notas', '').size() <= 500 &&
@@ -90,8 +81,88 @@ service cloud.firestore {
         d.get('historial', []).size() <= 1;
     }
 
+    // Cliente de un pedido (tienda o mostrador): solo texto y tamaños acotados.
+    function clientePedidoValido(c) {
+      return c is map &&
+        c.keys().hasOnly(['nombre', 'telefono', 'direccion', 'correo']) &&
+        c.get('nombre', '') is string &&
+        c.get('nombre', '').size() <= 80 &&
+        c.get('telefono', '') is string &&
+        c.get('telefono', '').size() <= 20 &&
+        c.get('direccion', '') is string &&
+        c.get('direccion', '').size() <= 200 &&
+        c.get('correo', '') is string &&
+        c.get('correo', '').size() <= 120;
+    }
+
+    // Venta de MOSTRADOR (Caja): la crea SOLO el dueño del negocio. En el local
+    // y recojo nace entregada y cobrada; el delivery nace confirmado. Lleva el
+    // stock descontado (lo que anular devuelve) y su historial. Sin get(): la
+    // regla de dueño del documento ya lo comprueba.
+    function ventaMostradorValida(negocioId, d) {
+      let suma = d.subtotalCentavos + d.deliveryCentavos - d.descuentoCentavos;
+      return d.keys().hasOnly([
+          'negocioId', 'clave', 'estado', 'origen', 'enLocal', 'tipoEntrega',
+          'fecha', 'cliente', 'zona', 'deliveryCentavos', 'descuentoCentavos',
+          'subtotalCentavos', 'totalCentavos', 'lineas', 'metodoPago',
+          'estadoPago', 'notas', 'stockDescontado', 'reembolso', 'historial',
+          'actualizadoEn'
+        ]) &&
+        d.keys().hasAll([
+          'negocioId', 'clave', 'estado', 'origen', 'tipoEntrega', 'fecha',
+          'cliente', 'deliveryCentavos', 'descuentoCentavos',
+          'subtotalCentavos', 'totalCentavos', 'lineas', 'estadoPago',
+          'stockDescontado', 'historial'
+        ]) &&
+        d.negocioId == negocioId &&
+        d.clave is string && d.clave.size() == 6 &&
+        d.origen == 'mostrador' &&
+        ((d.tipoEntrega == 'recojo' && d.estado == 'entregado' &&
+            d.estadoPago == 'pagado') ||
+          (d.tipoEntrega == 'delivery' && d.estado == 'confirmado' &&
+            d.estadoPago in ['pendiente', 'pagado'])) &&
+        d.get('enLocal', false) is bool &&
+        (d.get('enLocal', false) == false || d.tipoEntrega == 'recojo') &&
+        d.fecha == request.time &&
+        clientePedidoValido(d.cliente) &&
+        d.get('zona', '') is string && d.get('zona', '').size() <= 60 &&
+        d.get('metodoPago', '') is string && d.get('metodoPago', '').size() <= 30 &&
+        d.get('notas', '') is string && d.get('notas', '').size() <= 500 &&
+        d.lineas is list && d.lineas.size() >= 1 && d.lineas.size() <= 30 &&
+        d.subtotalCentavos is int &&
+        d.subtotalCentavos >= 0 && d.subtotalCentavos <= 100000000 &&
+        d.deliveryCentavos is int &&
+        d.deliveryCentavos >= 0 && d.deliveryCentavos <= 1000000 &&
+        d.descuentoCentavos is int &&
+        d.descuentoCentavos >= 0 && d.descuentoCentavos <= 100000000 &&
+        d.totalCentavos is int &&
+        (d.totalCentavos == suma || (suma < 0 && d.totalCentavos == 0)) &&
+        d.get('reembolso', 'ninguno') == 'ninguno' &&
+        d.stockDescontado is list && d.stockDescontado.size() <= 60 &&
+        d.historial is list && d.historial.size() >= 1 && d.historial.size() <= 2 &&
+        (!('actualizadoEn' in d) || d.actualizadoEn == request.time);
+    }
+
+    // Contadores del día: enteros >= 0 y mapas de como máximo 251 entradas
+    // (250 productos distintos por día más «otros»).
+    function contadoresDiaValidos(d) {
+      return (!('mostradorCentavos' in d) ||
+          (d.mostradorCentavos is int && d.mostradorCentavos >= 0)) &&
+        (!('mostrador' in d) || (d.mostrador is int && d.mostrador >= 0)) &&
+        (!('anuladas' in d) || (d.anuladas is int && d.anuladas >= 0)) &&
+        (!('anuladasCentavos' in d) ||
+          (d.anuladasCentavos is int && d.anuladasCentavos >= 0)) &&
+        (!('porPago' in d) || (d.porPago is map && d.porPago.size() <= 251)) &&
+        (!('porEntrega' in d) || (d.porEntrega is map && d.porEntrega.size() <= 251)) &&
+        (!('porHora' in d) || (d.porHora is map && d.porHora.size() <= 251)) &&
+        (!('porProducto' in d) || (d.porProducto is map && d.porProducto.size() <= 251)) &&
+        (!('porVariante' in d) || (d.porVariante is map && d.porVariante.size() <= 251)) &&
+        (!('porCombo' in d) || (d.porCombo is map && d.porCombo.size() <= 251));
+    }
+
     // Resumen de ventas de un día (negocios/{id}/resumenes/AAAA-MM-DD): solo
-    // enteros >= 0, como máximo 5 entregados recientes y ningún campo extra.
+    // enteros >= 0, como máximo 5 entregados recientes, los contadores del día
+    // (ver contadoresDiaValidos) y ningún campo extra.
     function resumenDiaValido(d) {
       return d.keys().hasOnly([
           'ventasCentavos',
@@ -99,8 +170,19 @@ service cloud.firestore {
           'confirmados',
           'sumaMinutosConfirmar',
           'ultimosEntregados',
-          'actualizadoEn'
+          'actualizadoEn',
+          'mostradorCentavos',
+          'mostrador',
+          'anuladas',
+          'anuladasCentavos',
+          'porPago',
+          'porEntrega',
+          'porHora',
+          'porProducto',
+          'porVariante',
+          'porCombo'
         ]) &&
+        contadoresDiaValidos(d) &&
         (!('ventasCentavos' in d) || (d.ventasCentavos is int && d.ventasCentavos >= 0)) &&
         (!('entregados' in d) || (d.entregados is int && d.entregados >= 0)) &&
         (!('confirmados' in d) || (d.confirmados is int && d.confirmados >= 0)) &&
@@ -243,11 +325,15 @@ service cloud.firestore {
 
       // negocios/{negocioId}/pedidos/{pedidoId}
       //   Cualquiera (tienda pública anónima) CREA un pedido nuevo con la forma
-      //   válida; nadie puede leerlo ni cambiarlo desde fuera.
+      //   válida; nadie puede leerlo ni cambiarlo desde fuera. Solo el dueño
+      //   crea una venta de mostrador (origen 'mostrador', ya entregada o
+      //   confirmada): la tienda anónima no puede usar ese origen.
       //   El propietario lee y cambia solo estado, pago, reembolso, stock
       //   descontado e historial. Nunca se borra.
       match /pedidos/{pedidoId} {
-        allow create: if pedidoNuevoValido(negocioId, request.resource.data);
+        allow create: if pedidoNuevoValido(negocioId, request.resource.data) ||
+          (esDuenoNegocio(negocioId) &&
+            ventaMostradorValida(negocioId, request.resource.data));
         allow read: if esDuenoNegocio(negocioId);
         allow update: if esDuenoNegocio(negocioId) &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly([
