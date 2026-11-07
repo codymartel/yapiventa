@@ -2,9 +2,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/features/pedidos/application/services/periodo_informe.dart';
 import 'package:mobile/features/pedidos/application/use_cases/obtener_informe_ventas.dart';
 import 'package:mobile/features/pedidos/domain/models/resumen_ventas_dia.dart';
-import 'package:mobile/features/pedidos/domain/repositories/repositorio_ventas_mostrador.dart';
+import 'package:mobile/features/pedidos/domain/repositories/repositorio_resumenes_ventas.dart';
 
-class _Repo implements RepositorioVentasMostrador {
+class _Repo implements RepositorioResumenesVentas {
   final List<(String, String, String)> consultas = [];
   final Map<String, ResumenVentasDia> guardados = {};
 
@@ -20,16 +20,6 @@ class _Repo implements RepositorioVentasMostrador {
         if (r.dia.compareTo(desde) >= 0 && r.dia.compareTo(hasta) <= 0) r,
     ];
   }
-
-  @override
-  Future<ResultadoVentaMostrador> registrar(
-    String negocioId,
-    SolicitudVentaMostrador solicitud,
-  ) async => const ResultadoVentaMostrador();
-
-  @override
-  Future<ResultadoAnulacion> anular(String negocioId, String pedidoId) async =>
-      const ResultadoAnulacion();
 }
 
 void main() {

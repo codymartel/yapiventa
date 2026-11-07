@@ -11,51 +11,10 @@ import '../../application/services/carrito_caja.dart';
 import '../../application/services/constructor_linea_caja.dart';
 import '../../application/services/mensajes_cobro_caja.dart';
 import '../../domain/models/opciones_caja.dart';
-
-/// Cómo terminó un intento de cobrar.
-enum TipoCobroCaja {
-  /// Se registró la venta.
-  exito,
-
-  /// Un toque repetido: ya estaba registrada, no se cobró de nuevo.
-  yaRegistrada,
-
-  /// Faltan datos o sobran caracteres: no se intentó cobrar.
-  faltanDatos,
-
-  /// El stock, un producto o los precios lo impiden: no se escribió nada.
-  bloqueado,
-
-  /// Sin conexión u otro fallo: se puede reintentar sin cobrar dos veces.
-  error,
-
-  /// Ya había un cobro en curso (doble toque) o las ventas están bloqueadas.
-  ignorado,
-}
-
-class ResultadoCobroCaja {
-  const ResultadoCobroCaja(
-    this.tipo, {
-    this.mensaje = '',
-    this.pedidoId = '',
-    this.clave = '',
-    this.totalCentavos = 0,
-  });
-
-  final TipoCobroCaja tipo;
-  final String mensaje;
-
-  /// De la venta registrada (para «Anular» en el aviso).
-  final String pedidoId;
-  final String clave;
-  final int totalCentavos;
-
-  bool get registrada =>
-      tipo == TipoCobroCaja.exito || tipo == TipoCobroCaja.yaRegistrada;
-}
+import '../../domain/models/resultado_cobro_caja.dart';
 
 /// 20 caracteres al azar: el id de la venta desde que se empieza a armar.
-String generarIdVenta() {
+String _idAleatorio() {
   const letras =
       'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   final azar = Random.secure();
@@ -83,7 +42,7 @@ class VentaCajaProvider extends ChangeNotifier {
     this.opcionesPago = const [],
     this.zonas = const [],
     String Function()? generarId,
-  }) : _generarId = generarId ?? generarIdVenta,
+  }) : _generarId = generarId ?? _idAleatorio,
        _pago = opcionesPago.isEmpty ? null : opcionesPago.first {
     _idVenta = _generarId();
   }

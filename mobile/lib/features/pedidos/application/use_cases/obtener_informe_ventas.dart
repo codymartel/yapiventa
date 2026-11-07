@@ -1,5 +1,5 @@
 import '../../domain/models/informe_ventas.dart';
-import '../../domain/repositories/repositorio_ventas_mostrador.dart';
+import '../../domain/repositories/repositorio_resumenes_ventas.dart';
 import '../services/calculo_informe_ventas.dart';
 import '../services/periodo_informe.dart';
 
@@ -10,7 +10,7 @@ import '../services/periodo_informe.dart';
 class ObtenerInformeVentas {
   const ObtenerInformeVentas(this._repositorio);
 
-  final RepositorioVentasMostrador _repositorio;
+  final RepositorioResumenesVentas _repositorio;
 
   Future<InformeComparado> call({
     required String negocioId,

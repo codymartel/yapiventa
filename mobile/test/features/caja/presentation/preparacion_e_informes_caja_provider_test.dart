@@ -5,6 +5,7 @@ import 'package:mobile/features/caja/presentation/providers/informes_caja_provid
 import 'package:mobile/features/caja/presentation/providers/preparacion_catalogo_provider.dart';
 import 'package:mobile/features/pedidos/application/services/periodo_informe.dart';
 import 'package:mobile/features/pedidos/application/use_cases/obtener_informe_ventas.dart';
+import 'package:mobile/features/pedidos/data/resumenes_ventas_repository.dart';
 import 'package:mobile/features/pedidos/data/ventas_mostrador_repository.dart';
 import 'package:mobile/features/productos/application/use_cases/preparar_catalogo_caja.dart';
 import 'package:mobile/features/productos/data/catalogo_caja_repository.dart';
@@ -185,7 +186,7 @@ void main() {
       db = FakeFirebaseFirestore();
       p = InformesCajaProvider(
         negocioId: 'n1',
-        obtener: ObtenerInformeVentas(VentasMostradorRepository(db: db)),
+        obtener: ObtenerInformeVentas(ResumenesVentasRepository(db: db)),
         reloj: () => jueves,
       );
       await resumen('2026-11-05', 3000, 3);
@@ -244,6 +245,7 @@ void main() {
     final db = FakeFirebaseFirestore();
     final deps = CajaDependencies.conRepositorios(
       ventas: VentasMostradorRepository(db: db),
+      resumenes: ResumenesVentasRepository(db: db),
       catalogo: CatalogoCajaRepository(db),
       relleno: RellenoCatalogoCajaRepository(db),
     );

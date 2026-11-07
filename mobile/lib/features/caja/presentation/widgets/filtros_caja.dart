@@ -4,6 +4,7 @@ import 'package:mobile/features/productos/domain/models/consulta_catalogo_caja.d
 import '../../../../core/theme/app_colors.dart';
 import '../../application/services/filtros_rapidos_caja.dart';
 import '../providers/catalogo_caja_provider.dart';
+import 'chip_caja.dart';
 import 'hoja_filtros_avanzados.dart';
 
 /// Los filtros de la lista de Caja (maqueta B1): una fila que se desliza con
@@ -51,7 +52,7 @@ class FiltrosCaja extends StatelessWidget {
               scrollDirection: Axis.horizontal,
               child: Row(
                 children: [
-                  _Chip(
+                  ChipCaja(
                     etiqueta: avanzados > 0
                         ? 'Avanzados · $avanzados'
                         : 'Avanzados',
@@ -65,7 +66,7 @@ class FiltrosCaja extends StatelessWidget {
                   ),
                   for (final f in rapidos) ...[
                     const SizedBox(width: 8),
-                    _Chip(
+                    ChipCaja(
                       etiqueta: f.etiqueta,
                       activo: f.estaActivo(provider.tipo, provider.categoria),
                       onTap: () => provider.aplicarFiltro(
@@ -132,65 +133,6 @@ class _MenuOrden extends StatelessWidget {
       child: SizedBox(
         height: 44,
         child: Align(alignment: Alignment.centerLeft, child: texto),
-      ),
-    );
-  }
-}
-
-class _Chip extends StatelessWidget {
-  const _Chip({
-    required this.etiqueta,
-    required this.activo,
-    required this.onTap,
-    this.icono,
-  });
-
-  final String etiqueta;
-  final bool activo;
-  final VoidCallback onTap;
-  final IconData? icono;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      selected: activo,
-      label: etiqueta,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: onTap,
-        child: Container(
-          constraints: const BoxConstraints(minHeight: 40),
-          padding: const EdgeInsets.symmetric(horizontal: 14),
-          decoration: BoxDecoration(
-            color: activo ? AppColors.blueLt.withValues(alpha: 0.22) : null,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: activo ? AppColors.blueLt : AppColors.bordeMedio,
-            ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (icono != null) ...[
-                Icon(
-                  icono,
-                  size: 16,
-                  color: activo ? AppColors.azulTexto : AppColors.muted,
-                ),
-                const SizedBox(width: 6),
-              ],
-              Text(
-                etiqueta,
-                style: TextStyle(
-                  color: activo ? AppColors.azulTexto : AppColors.muted,
-                  fontSize: 13,
-                  fontWeight: activo ? FontWeight.w600 : FontWeight.w400,
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

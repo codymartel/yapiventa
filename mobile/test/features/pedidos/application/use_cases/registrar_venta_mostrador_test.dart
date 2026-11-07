@@ -3,7 +3,6 @@ import 'package:mobile/features/pedidos/application/services/validacion_venta_mo
 import 'package:mobile/features/pedidos/application/use_cases/registrar_venta_mostrador.dart';
 import 'package:mobile/features/pedidos/domain/models/descuento_pago.dart';
 import 'package:mobile/features/pedidos/domain/models/pedido.dart';
-import 'package:mobile/features/pedidos/domain/models/resumen_ventas_dia.dart';
 import 'package:mobile/features/pedidos/domain/repositories/repositorio_ventas_mostrador.dart';
 
 import '../../helpers/pedidos_de_prueba.dart';
@@ -24,13 +23,6 @@ class _RepositorioFalso implements RepositorioVentasMostrador {
     pedidas.add(solicitud);
     return respuesta;
   }
-
-  @override
-  Future<List<ResumenVentasDia>> obtenerResumenes(
-    String negocioId,
-    String desde,
-    String hasta,
-  ) async => const [];
 
   @override
   Future<ResultadoAnulacion> anular(String negocioId, String pedidoId) async {

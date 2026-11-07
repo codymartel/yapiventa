@@ -4,9 +4,9 @@ import 'package:mobile/features/productos/domain/models/estructura_producto.dart
 import '../../../../core/theme/app_colors.dart';
 import '../../application/services/mensajes_cobro_caja.dart';
 
-// Las piezas de la hoja del producto (maqueta, pantalla «Producto»): títulos,
-// chips de elección, filas con su stock, extras y el stepper de cantidad.
-// Solo dibujan: el estado vive en `HojaProductoCaja`.
+// Las piezas sueltas de la hoja del producto (maqueta, pantalla «Producto»):
+// título de sección, chip de elección, fila con su stock y stepper de
+// cantidad. Solo dibujan; el estado vive en `HojaProductoCaja`.
 
 class TituloSeccion extends StatelessWidget {
   const TituloSeccion(this.texto, {super.key});
@@ -24,66 +24,6 @@ class TituloSeccion extends StatelessWidget {
           fontSize: 11,
           fontWeight: FontWeight.w700,
           letterSpacing: 0.6,
-        ),
-      ),
-    );
-  }
-}
-
-/// Un chip de elección (modelo, extra, cantidad rápida).
-class OpcionChip extends StatelessWidget {
-  const OpcionChip({
-    super.key,
-    required this.etiqueta,
-    required this.activa,
-    required this.onTap,
-    this.habilitada = true,
-  });
-
-  final String etiqueta;
-  final bool activa;
-  final bool habilitada;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      selected: activa,
-      enabled: habilitada,
-      child: Opacity(
-        opacity: habilitada ? 1 : 0.45,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: habilitada ? onTap : null,
-          child: Container(
-            constraints: const BoxConstraints(minHeight: 44),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: activa ? AppColors.blueLt.withValues(alpha: 0.22) : null,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: activa ? AppColors.blueLt : AppColors.bordeMedio,
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (activa) ...[
-                  const Icon(Icons.check, size: 16, color: AppColors.azulTexto),
-                  const SizedBox(width: 6),
-                ],
-                Text(
-                  etiqueta,
-                  style: TextStyle(
-                    color: activa ? AppColors.azulTexto : AppColors.muted,
-                    fontSize: 13,
-                    fontWeight: activa ? FontWeight.w600 : FontWeight.w400,
-                  ),
-                ),
-              ],
-            ),
-          ),
         ),
       ),
     );
@@ -165,13 +105,6 @@ class FilaOpcion extends StatelessWidget {
   }
 }
 
-/// El texto de un extra: «Ají extra + S/ 1,00» (o «gratis»).
-String etiquetaExtra(ExtraProducto e) {
-  return e.precioCentavos > 0
-      ? '${e.nombre} + ${MensajesCobroCaja.dinero(e.precioCentavos)}'
-      : '${e.nombre} (gratis)';
-}
-
 /// El stepper de cantidad: dos botones de 44 px y el número en medio.
 class StepperCantidad extends StatelessWidget {
   const StepperCantidad({
@@ -226,13 +159,3 @@ class StepperCantidad extends StatelessWidget {
     );
   }
 }
-
-/// Lo que se muestra del stock de una fila («3 disp.»).
-String stockDeFila(FilaVenta f, {required bool porMedida}) {
-  if (porMedida) return '';
-  return '${f.stock} disp.';
-}
-
-/// Para reutilizar el texto del producto en el encabezado.
-String lineaPrecioStock(String precio, String stock) =>
-    stock.isEmpty ? precio : '$precio · hay $stock';

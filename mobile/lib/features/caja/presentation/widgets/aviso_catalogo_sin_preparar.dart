@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../providers/preparacion_catalogo_provider.dart';
+import 'botones_caja.dart';
 
 /// El aviso ámbar que queda fijo en Caja si el vendedor eligió «Más tarde»
 /// (maqueta B10, pantalla 6): dice qué límites tiene Caja mientras tanto y
@@ -70,14 +71,9 @@ class AvisoCatalogoSinPreparar extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            OutlinedButton(
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size.fromHeight(48),
-                foregroundColor: AppColors.azulTexto,
-                side: const BorderSide(color: AppColors.hint),
-              ),
-              onPressed: provider.preparar,
-              child: const Text('Preparar ahora'),
+            BotonSecundarioCaja(
+              texto: 'Preparar ahora',
+              onTap: provider.preparar,
             ),
           ],
         );

@@ -145,6 +145,51 @@ abstract final class CalculoHojaProducto {
     return p.esPorMedida ? (p.stockBase ?? 0) : p.stock;
   }
 
+  /// Lo que está elegido al abrir la hoja: nada, salvo lo que no se puede
+  /// elegir distinto (un solo modelo y, dentro de él, una sola fila). Por
+  /// medida empieza sin cantidad (hay que elegir cuánto); lo demás, en 1.
+  static SeleccionProductoCaja seleccionInicial(Producto p) {
+    final porMedida = p.esPorMedida && !p.esCombo;
+    var sel = SeleccionProductoCaja(cantidad: porMedida ? 0 : 1);
+    if (p.tieneModelos && !p.esCombo && p.modelos.length == 1) {
+      sel = elegirModelo(p, sel, p.modelos.first.id);
+    }
+    return sel;
+  }
+
+  /// Elegir un modelo: si tiene una sola fila, esa fila se elige sola.
+  static SeleccionProductoCaja elegirModelo(
+    Producto p,
+    SeleccionProductoCaja s,
+    String modeloId,
+  ) {
+    var nueva = s.conModelo(modeloId);
+    final modelo = p.modelos.where((m) => m.id == modeloId).firstOrNull;
+    if (modelo != null && modelo.filas.length == 1) {
+      nueva = nueva.copyWith(filaId: modelo.filas.first.id);
+    }
+    return nueva;
+  }
+
+  /// Qué falta elegir, dicho con la palabra del vendedor («Falta elegir:
+  /// color», «Falta elegir: talla»). Sin artículos: no hay que acertar el
+  /// género. null si no falta nada.
+  static String? faltaElegir(
+    Producto p,
+    SeleccionProductoCaja s,
+    ResumenHojaProducto r,
+  ) {
+    if (r.linea != null) return null;
+    if (p.tieneModelos && !p.esCombo) {
+      final hayModelo = p.modelos.any((m) => m.id == s.modeloId);
+      final palabra = hayModelo
+          ? (p.tituloFilas.trim().isEmpty ? 'cómo se vende' : p.tituloFilas)
+          : (p.tituloModelos.trim().isEmpty ? 'modelo' : p.tituloModelos);
+      return 'Falta elegir: ${palabra.trim().toLowerCase()}.';
+    }
+    return r.falta;
+  }
+
   /// Hasta dónde sube el stepper de un producto que se cuenta.
   static int maximoDe(Producto p, SeleccionProductoCaja s) {
     final stock = stockDe(p, s);

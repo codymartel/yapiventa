@@ -3,6 +3,7 @@ import 'package:mobile/features/productos/domain/models/producto.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../providers/catalogo_caja_provider.dart';
+import 'botones_caja.dart';
 import 'buscador_caja.dart';
 import 'filtros_caja.dart';
 import 'tarjeta_producto_caja.dart';
@@ -132,15 +133,7 @@ class _Pie extends StatelessWidget {
             ),
           ),
         if (provider.hayMas)
-          OutlinedButton(
-            style: OutlinedButton.styleFrom(
-              minimumSize: const Size.fromHeight(48),
-              foregroundColor: AppColors.azulTexto,
-              side: const BorderSide(color: AppColors.hint),
-            ),
-            onPressed: provider.verMas,
-            child: const Text('Ver más'),
-          ),
+          BotonSecundarioCaja(texto: 'Ver más', onTap: provider.verMas),
       ],
     );
   }
@@ -180,13 +173,9 @@ class _Mensaje extends StatelessWidget {
             ),
             if (accion != null) ...[
               const SizedBox(height: 16),
-              FilledButton(
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size(160, 48),
-                  backgroundColor: AppColors.blue,
-                ),
-                onPressed: onAccion,
-                child: Text(accion!),
+              SizedBox(
+                width: 200,
+                child: BotonPrincipalCaja(texto: accion!, onTap: onAccion),
               ),
             ],
           ],

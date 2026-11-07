@@ -4,6 +4,7 @@ import 'package:mobile/features/productos/domain/repositories/repositorio_rellen
 import '../../../../core/theme/app_colors.dart';
 import '../../application/services/textos_preparacion_catalogo.dart';
 import '../providers/preparacion_catalogo_provider.dart';
+import 'botones_caja.dart';
 
 // ═════════════════════════════════════════════════════════════════════════
 // ContenidoPreparacionCatalogo
@@ -144,9 +145,9 @@ class _Confirmar extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        _BotonPrincipal(texto: 'Preparar ahora', onTap: onPreparar),
+        BotonPrincipalCaja(texto: 'Preparar ahora', onTap: onPreparar),
         const SizedBox(height: 8),
-        _BotonSecundario(texto: 'Más tarde', onTap: onMasTarde),
+        BotonSecundarioCaja(texto: 'Más tarde', onTap: onMasTarde),
       ],
     );
   }
@@ -259,7 +260,7 @@ class _Lista extends StatelessWidget {
           ),
         ],
         const SizedBox(height: 20),
-        _BotonPrincipal(texto: 'Empezar a vender', onTap: onEmpezar),
+        BotonPrincipalCaja(texto: 'Empezar a vender', onTap: onEmpezar),
       ],
     );
   }
@@ -327,53 +328,13 @@ class _Aviso extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         if (secundario == null)
-          _BotonSecundario(texto: principal, onTap: onPrincipal)
+          BotonSecundarioCaja(texto: principal, onTap: onPrincipal)
         else ...[
-          _BotonPrincipal(texto: principal, onTap: onPrincipal),
+          BotonPrincipalCaja(texto: principal, onTap: onPrincipal),
           const SizedBox(height: 8),
-          _BotonSecundario(texto: secundario!, onTap: onSecundario!),
+          BotonSecundarioCaja(texto: secundario!, onTap: onSecundario!),
         ],
       ],
-    );
-  }
-}
-
-class _BotonPrincipal extends StatelessWidget {
-  const _BotonPrincipal({required this.texto, required this.onTap});
-
-  final String texto;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return FilledButton(
-      style: FilledButton.styleFrom(
-        minimumSize: const Size.fromHeight(48),
-        backgroundColor: AppColors.blue,
-        foregroundColor: Colors.white,
-      ),
-      onPressed: onTap,
-      child: Text(texto),
-    );
-  }
-}
-
-class _BotonSecundario extends StatelessWidget {
-  const _BotonSecundario({required this.texto, required this.onTap});
-
-  final String texto;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return OutlinedButton(
-      style: OutlinedButton.styleFrom(
-        minimumSize: const Size.fromHeight(48),
-        foregroundColor: AppColors.azulTexto,
-        side: const BorderSide(color: AppColors.hint),
-      ),
-      onPressed: onTap,
-      child: Text(texto),
     );
   }
 }

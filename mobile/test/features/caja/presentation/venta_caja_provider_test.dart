@@ -1,12 +1,12 @@
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/features/caja/domain/models/opciones_caja.dart';
+import 'package:mobile/features/caja/domain/models/resultado_cobro_caja.dart';
 import 'package:mobile/features/caja/presentation/providers/venta_caja_provider.dart';
 import 'package:mobile/features/pedidos/application/use_cases/registrar_venta_mostrador.dart';
 import 'package:mobile/features/pedidos/data/ventas_mostrador_repository.dart';
 import 'package:mobile/features/pedidos/domain/models/descuento_pago.dart';
 import 'package:mobile/features/pedidos/domain/models/descuento_stock.dart';
-import 'package:mobile/features/pedidos/domain/models/resumen_ventas_dia.dart';
 import 'package:mobile/features/pedidos/domain/repositories/repositorio_ventas_mostrador.dart';
 import 'package:mobile/features/productos/data/mappers/producto_firestore_mapper.dart';
 import 'package:mobile/features/productos/domain/models/producto.dart';
@@ -47,13 +47,6 @@ class _RepoFalso implements RepositorioVentasMostrador {
   @override
   Future<ResultadoAnulacion> anular(String negocioId, String pedidoId) async =>
       const ResultadoAnulacion();
-
-  @override
-  Future<List<ResumenVentasDia>> obtenerResumenes(
-    String negocioId,
-    String desde,
-    String hasta,
-  ) async => const [];
 }
 
 void main() {

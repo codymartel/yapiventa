@@ -1,6 +1,9 @@
 import 'package:mobile/features/productos/application/services/campos_catalogo_producto.dart';
 import 'package:mobile/features/productos/application/services/textos_tarjeta_producto.dart';
+import 'package:mobile/features/productos/domain/models/estructura_producto.dart';
 import 'package:mobile/features/productos/domain/models/producto.dart';
+
+import 'mensajes_cobro_caja.dart';
 
 // ═════════════════════════════════════════════════════════════════════════
 // TextosProductoCaja
@@ -31,4 +34,21 @@ abstract final class TextosProductoCaja {
       _ => '',
     };
   }
+
+  /// El texto de un extra: «Ají extra + S/ 1,00» (o «Ají extra (gratis)»).
+  static String etiquetaExtra(ExtraProducto e) {
+    return e.precioCentavos > 0
+        ? '${e.nombre} + ${MensajesCobroCaja.dinero(e.precioCentavos)}'
+        : '${e.nombre} (gratis)';
+  }
+
+  /// Lo que se muestra del stock de una fila («3 disp.»); vacío por medida.
+  static String stockDeFila(FilaVenta f, {required bool porMedida}) {
+    if (porMedida) return '';
+    return '${f.stock} disp.';
+  }
+
+  /// «S/ 4,50 · hay 22 uds.» (o solo el precio si no hay stock que decir).
+  static String precioYStock(String precio, String stock) =>
+      stock.isEmpty ? precio : '$precio · hay $stock';
 }

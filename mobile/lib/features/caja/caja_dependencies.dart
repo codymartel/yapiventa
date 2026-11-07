@@ -1,7 +1,9 @@
 import 'package:mobile/features/pedidos/application/use_cases/anular_venta_mostrador.dart';
 import 'package:mobile/features/pedidos/application/use_cases/obtener_informe_ventas.dart';
 import 'package:mobile/features/pedidos/application/use_cases/registrar_venta_mostrador.dart';
+import 'package:mobile/features/pedidos/data/resumenes_ventas_repository.dart';
 import 'package:mobile/features/pedidos/data/ventas_mostrador_repository.dart';
+import 'package:mobile/features/pedidos/domain/repositories/repositorio_resumenes_ventas.dart';
 import 'package:mobile/features/pedidos/domain/repositories/repositorio_ventas_mostrador.dart';
 import 'package:mobile/features/productos/application/use_cases/buscar_productos_caja.dart';
 import 'package:mobile/features/productos/application/use_cases/preparar_catalogo_caja.dart';
@@ -30,6 +32,7 @@ class CajaDependencies {
   factory CajaDependencies.production() {
     return CajaDependencies.conRepositorios(
       ventas: VentasMostradorRepository(),
+      resumenes: ResumenesVentasRepository(),
       catalogo: CatalogoCajaRepository(),
       relleno: RellenoCatalogoCajaRepository(),
     );
@@ -37,13 +40,14 @@ class CajaDependencies {
 
   factory CajaDependencies.conRepositorios({
     required RepositorioVentasMostrador ventas,
+    required RepositorioResumenesVentas resumenes,
     required RepositorioCatalogoCaja catalogo,
     required RepositorioRellenoCatalogo relleno,
   }) {
     return CajaDependencies(
       registrarVenta: RegistrarVentaMostrador(ventas),
       anularVenta: AnularVentaMostrador(ventas),
-      obtenerInforme: ObtenerInformeVentas(ventas),
+      obtenerInforme: ObtenerInformeVentas(resumenes),
       buscarProductos: BuscarProductosCaja(catalogo),
       prepararCatalogo: PrepararCatalogoCaja(relleno),
     );

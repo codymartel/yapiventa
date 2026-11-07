@@ -1,10 +1,10 @@
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mobile/features/pedidos/data/ventas_mostrador_repository.dart';
+import 'package:mobile/features/pedidos/data/resumenes_ventas_repository.dart';
 
 void main() {
   late FakeFirebaseFirestore db;
-  late VentasMostradorRepository repo;
+  late ResumenesVentasRepository repo;
 
   Future<void> guardar(String negocio, String dia, int ventas) {
     return db
@@ -17,7 +17,7 @@ void main() {
 
   setUp(() async {
     db = FakeFirebaseFirestore();
-    repo = VentasMostradorRepository(db: db);
+    repo = ResumenesVentasRepository(db: db);
     await guardar('n1', '2026-10-31', 100);
     await guardar('n1', '2026-11-01', 200);
     await guardar('n1', '2026-11-03', 300);

@@ -1,7 +1,6 @@
 import '../models/descuento_stock.dart';
 import '../models/linea_pedido.dart';
 import '../models/pedido.dart';
-import '../models/resumen_ventas_dia.dart';
 
 // ═════════════════════════════════════════════════════════════════════════
 // Venta de mostrador: lo que se pide al repositorio y lo que devuelve
@@ -109,15 +108,4 @@ abstract class RepositorioVentasMostrador {
   /// stock lo que se descontó, resta del resumen del día de la venta y la deja
   /// cancelada (no se borra). Lanza [StateError] si no se puede anular.
   Future<ResultadoAnulacion> anular(String negocioId, String pedidoId);
-
-  /// Los resúmenes diarios de [desde] a [hasta] (AAAA-MM-DD, ambos incluidos)
-  /// con UNA consulta por rango. Un día sin ventas no tiene documento, así que
-  /// no viene en la lista: se leen como máximo tantos documentos como días con
-  /// ventas (tope 31). Lanza [ArgumentError] si el rango es inválido o pasa de
-  /// 31 días.
-  Future<List<ResumenVentasDia>> obtenerResumenes(
-    String negocioId,
-    String desde,
-    String hasta,
-  );
 }
