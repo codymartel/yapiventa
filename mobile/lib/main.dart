@@ -11,6 +11,8 @@ import 'features/auth/presentation/providers/acceso_provider.dart';
 import 'features/auth/presentation/providers/auth_provider.dart';
 import 'features/auth/presentation/screens/login_screen.dart';
 import 'features/auth/presentation/screens/verificacion_email_screen.dart';
+import 'features/cuenta/cuenta_dependencies.dart';
+import 'features/cuenta/presentation/widgets/eliminar_cuenta_dialogo.dart';
 import 'features/dashboard/presentation/providers/dashboard_provider.dart';
 import 'features/dashboard/presentation/screens/dashboard_web_screen.dart';
 import 'features/negocio/data/negocio_repository.dart';
@@ -200,6 +202,13 @@ class _RutaConAcceso extends StatelessWidget {
             onAbrirEtapa: (etapa) =>
                 Navigator.of(context).pushNamed(PoliticaAcceso.rutaDe(etapa)),
             onCerrarSesion: () => context.read<AuthProvider>().cerrarSesion(),
+            onEliminarCuenta: () => mostrarEliminarCuenta(
+              context,
+              crearProvider: () => crearEliminarCuentaProvider(
+                uid: acceso.uid!,
+                negocioId: acceso.negocioId,
+              ),
+            ),
             productosDependencies: productosDependencies,
             catalogoDependencies: catalogoDependencies,
             seleccionPlantillaDependencies: seleccionPlantillaDependencies,

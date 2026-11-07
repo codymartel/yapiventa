@@ -66,6 +66,7 @@ void main() {
     _DependenciasPlantilla? dependenciasPlantilla,
     PedidosDependencies? pedidos,
     Set<DashboardDestination>? destinosVisibles,
+    VoidCallback? onEliminarCuenta,
     String? negocioId = 'negocio-1',
     Size size = const Size(1400, 1000),
     TextScaler textScaler = TextScaler.noScaling,
@@ -120,6 +121,7 @@ void main() {
                   Navigator.of(context).pushNamed(PoliticaAcceso.rutaDe(etapa));
                 },
                 onCerrarSesion: () {},
+                onEliminarCuenta: onEliminarCuenta,
                 productosDependencies: deps.productos,
                 catalogoDependencies: deps.catalogo,
                 seleccionPlantillaDependencies:
@@ -331,6 +333,34 @@ void main() {
     expect(escenario.etapasAbiertas, isEmpty);
     expect(find.byType(SeleccionNegocioFlow), findsOneWidget);
     expect(find.text('Seleccion de rubro'), findsNothing);
+  });
+
+  testWidgets(
+    '«Eliminar mi cuenta» aparece en el menú de la cuenta y la abre',
+    (tester) async {
+      var abierta = 0;
+      await mostrarDashboard(tester, onEliminarCuenta: () => abierta++);
+
+      await tester.tap(find.byTooltip('Cuenta'));
+      await tester.pumpAndSettle();
+      expect(find.text('Eliminar mi cuenta'), findsOneWidget);
+      await tester.tap(find.text('Eliminar mi cuenta'));
+      await tester.pumpAndSettle();
+
+      expect(abierta, 1);
+    },
+  );
+
+  testWidgets('sin la función, el menú de la cuenta no ofrece eliminarla', (
+    tester,
+  ) async {
+    await mostrarDashboard(tester);
+
+    await tester.tap(find.byTooltip('Cuenta'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Cerrar sesión'), findsOneWidget);
+    expect(find.text('Eliminar mi cuenta'), findsNothing);
   });
 
   testWidgets('el menú de la versión 1 esconde lo que no está listo', (

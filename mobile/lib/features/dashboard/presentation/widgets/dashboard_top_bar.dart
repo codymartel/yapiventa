@@ -11,6 +11,7 @@ class DashboardTopBar extends StatelessWidget {
   final VoidCallback? onAbrirAyuda;
   final String email;
   final VoidCallback onCerrarSesion;
+  final VoidCallback? onEliminarCuenta;
 
   const DashboardTopBar({
     super.key,
@@ -21,6 +22,7 @@ class DashboardTopBar extends StatelessWidget {
     this.onAbrirAyuda,
     required this.email,
     required this.onCerrarSesion,
+    this.onEliminarCuenta,
   });
 
   @override
@@ -82,10 +84,7 @@ class DashboardTopBar extends StatelessWidget {
                   key: AuthenticatedShell.helpButtonKey,
                   onPressed: onAbrirAyuda,
                   tooltip: 'Ayuda',
-                  icon: const Text(
-                    'ⓘ',
-                    style: TextStyle(fontSize: 20),
-                  ),
+                  icon: const Text('ⓘ', style: TextStyle(fontSize: 20)),
                 ),
                 SizedBox(width: separacion),
               ],
@@ -101,6 +100,7 @@ class DashboardTopBar extends StatelessWidget {
                 icon: const Icon(Icons.account_circle_outlined),
                 onSelected: (value) {
                   if (value == 'logout') onCerrarSesion();
+                  if (value == 'eliminar') onEliminarCuenta?.call();
                 },
                 itemBuilder: (context) => [
                   PopupMenuItem<String>(
@@ -115,6 +115,21 @@ class DashboardTopBar extends StatelessWidget {
                       title: Text('Cerrar sesión'),
                     ),
                   ),
+                  if (onEliminarCuenta != null)
+                    const PopupMenuItem<String>(
+                      value: 'eliminar',
+                      child: ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Icon(
+                          Icons.delete_forever_outlined,
+                          color: AppColors.error,
+                        ),
+                        title: Text(
+                          'Eliminar mi cuenta',
+                          style: TextStyle(color: AppColors.error),
+                        ),
+                      ),
+                    ),
                 ],
               ),
               SizedBox(width: separacion),

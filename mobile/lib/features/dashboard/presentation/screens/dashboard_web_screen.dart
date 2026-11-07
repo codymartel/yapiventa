@@ -46,14 +46,13 @@ class DashboardWebScreen extends StatefulWidget {
   final Future<void> Function()? recargarProgreso;
   final ValueChanged<EtapaConfiguracion> onAbrirEtapa;
   final VoidCallback onCerrarSesion;
+  final VoidCallback? onEliminarCuenta;
   final ProductosDependencies? productosDependencies;
 
-  /// Se arma sola (producción) si no se pasa: solo se crea al abrir Pedidos.
   final PedidosDependencies? pedidosDependencies;
   final CatalogoNegocioDependencies? catalogoDependencies;
   final SeleccionPlantillaDependencies? seleccionPlantillaDependencies;
 
-  /// Menú visible. Por defecto, la versión 1 (`destinosPanelV1`).
   final Set<DashboardDestination> destinosVisibles;
 
   const DashboardWebScreen({
@@ -66,6 +65,7 @@ class DashboardWebScreen extends StatefulWidget {
     this.recargarProgreso,
     required this.onAbrirEtapa,
     required this.onCerrarSesion,
+    this.onEliminarCuenta,
     this.productosDependencies,
     this.pedidosDependencies,
     this.catalogoDependencies,
@@ -180,6 +180,7 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
         onAbrirAyuda: openHelp,
         email: widget.email,
         onCerrarSesion: widget.onCerrarSesion,
+        onEliminarCuenta: widget.onEliminarCuenta,
       ),
       contextualPanel: _pedidosAbierta
           ? const PedidosContextualPanel()

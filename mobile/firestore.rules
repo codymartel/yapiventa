@@ -14,6 +14,14 @@ service cloud.firestore {
         get(/databases/$(database)/documents/negocios/$(negocioId)).data.propietarioUid == request.auth.uid;
     }
 
+    // El negocio está marcado para borrarse junto con la cuenta de su dueño.
+    // Solo entonces el dueño puede borrar sus pedidos y resúmenes (el resto
+    // del tiempo no se borra nada). La app lo marca antes de borrar.
+    function negocioEnBorrado(negocioId) {
+      return esDuenoNegocio(negocioId) &&
+        get(/databases/$(database)/documents/negocios/$(negocioId)).data.get('eliminando', false) == true;
+    }
+
     function esDuenoNegocioDespues(negocioId) {
       return isSignedIn() && negocioId is string &&
         getAfter(/databases/$(database)/documents/negocios/$(negocioId)).data.propietarioUid == request.auth.uid;
@@ -277,7 +285,8 @@ service cloud.firestore {
           'negocioId'
         ]) &&
         negocioIdValidoEnActualizacion();
-      allow delete: if false;
+      // Solo el propio usuario borra su perfil (eliminar cuenta).
+      allow delete: if isSignedIn() && request.auth.uid == userId;
 
       // users/{userId}/plan/{planId} — privado al propietario.
       match /plan/{planId} {
@@ -300,6 +309,7 @@ service cloud.firestore {
         resource.data.propietarioUid == request.auth.uid &&
         request.resource.data.propietarioUid == resource.data.propietarioUid &&
         request.resource.data.webActiva is bool &&
+        request.resource.data.get('eliminando', false) is bool &&
         (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['webActiva']) ||
           cambioWebPrivadoSincronizado(
             negocioId,
@@ -329,7 +339,7 @@ service cloud.firestore {
       //   crea una venta de mostrador (origen 'mostrador', ya entregada o
       //   confirmada): la tienda anónima no puede usar ese origen.
       //   El propietario lee y cambia solo estado, pago, reembolso, stock
-      //   descontado e historial. Nunca se borra.
+      //   descontado e historial. Nunca se borra, salvo al eliminar la cuenta.
       match /pedidos/{pedidoId} {
         allow create: if pedidoNuevoValido(negocioId, request.resource.data) ||
           (esDuenoNegocio(negocioId) &&
@@ -344,19 +354,21 @@ service cloud.firestore {
             'historial',
             'actualizadoEn'
           ]);
-        allow delete: if false;
+        // Solo al eliminar la cuenta (negocio marcado `eliminando`).
+        allow delete: if negocioEnBorrado(negocioId);
       }
 
       // negocios/{negocioId}/resumenes/{dia}
       //   Resumen de ventas de un día (id AAAA-MM-DD). Solo el propietario lo
       //   lee y lo actualiza (el panel lo escribe dentro de la transacción de
-      //   confirmar y entregar). Nunca se borra.
+      //   confirmar y entregar). Nunca se borra, salvo al eliminar la cuenta.
       match /resumenes/{dia} {
         allow read: if esDuenoNegocio(negocioId);
         allow create, update: if esDuenoNegocio(negocioId) &&
           dia.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$') &&
           resumenDiaValido(request.resource.data);
-        allow delete: if false;
+        // Solo al eliminar la cuenta (negocio marcado `eliminando`).
+        allow delete: if negocioEnBorrado(negocioId);
       }
 
       // negocios/{negocioId}/productos/{productoId}
