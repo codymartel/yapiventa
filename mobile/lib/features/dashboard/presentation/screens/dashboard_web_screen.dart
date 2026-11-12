@@ -7,7 +7,6 @@ import '../../../negocio/data/negocio_repository.dart';
 import '../../../negocio/domain/models/progreso_configuracion.dart';
 import '../../../negocio/domain/models/seleccion_plantilla_info.dart';
 import '../../../negocio/presentation/providers/configuracion_negocio_provider.dart';
-import '../../../negocio/presentation/widgets/seleccion_negocio_content.dart';
 import '../../../negocio/presentation/widgets/seleccion_plantilla_flow.dart';
 import '../../../negocio/seleccion_plantilla_dependencies.dart';
 import '../../../productos/presentation/widgets/productos_flow.dart';
@@ -17,7 +16,6 @@ import '../../../pedidos/presentation/widgets/pedidos_contextual_panel.dart';
 import '../../../pedidos/presentation/widgets/pedidos_flow.dart';
 import '../../../productos/productos_dependencies.dart';
 import '../providers/dashboard_provider.dart';
-import '../state/dashboard_ui_state.dart';
 import '../widgets/dashboard_attention_panel.dart';
 import '../widgets/configuracion_contextual_panel.dart';
 import '../widgets/rubro_contextual_panel.dart';
@@ -115,7 +113,7 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
   @override
   void initState() {
     super.initState();
-    _rubroContextual = _rubroCompatible(widget.progreso.catalogo.rubro);
+    _rubroContextual = rubroCompatibleDashboard(widget.progreso.catalogo.rubro);
     _progresoNotifier = ValueNotifier<ProgresoConfiguracion>(widget.progreso);
     _rutas = RutasInicioDashboard(
       uid: widget.uid,
@@ -145,7 +143,9 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
       _providerConfiguracion?.dispose();
       _providerConfiguracion = null;
       if (!_rubroAbierta) {
-        _rubroContextual = _rubroCompatible(widget.progreso.catalogo.rubro);
+        _rubroContextual = rubroCompatibleDashboard(
+          widget.progreso.catalogo.rubro,
+        );
       }
     }
   }
@@ -169,11 +169,11 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
           closeNavigation?.call();
           _seleccionarDestino(context, destino);
         },
-        estaHabilitado: _destinoHabilitado,
+        estaHabilitado: (d) => destinoHabilitado(d, widget.progreso),
         destinosVisibles: widget.destinosVisibles,
       ),
       topBarBuilder: (context, openNavigation, openHelp) => DashboardTopBar(
-        nombreNegocio: _nombreNegocio(state),
+        nombreNegocio: nombreNegocioDashboard(widget.progreso, state),
         onElegirPlantilla: () => _abrirPlantilla(context, widget.progreso),
         onVerTienda: () => _verTiendaWeb(context),
         onAbrirMenu: openNavigation,
@@ -259,15 +259,10 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
       return;
     }
     setState(() {
-      _rubroContextual = _rubroCompatible(progreso.catalogo.rubro);
+      _rubroContextual = rubroCompatibleDashboard(progreso.catalogo.rubro);
       _seccion = SeccionDashboard.rubro;
     });
     Navigator.of(rutaContexto).pushNamed(RutasAcceso.rubro);
-  }
-
-  String _rubroCompatible(String rubro) {
-    if (rubro == 'Farmacia' || rubro == 'Ferretería') return 'Otros';
-    return SeleccionNegocioContent.esRubroDisponible(rubro) ? rubro : 'Otros';
   }
 
   void _abrirConfiguracion(
@@ -418,7 +413,7 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
   }
 
   void _seleccionarDestino(BuildContext context, DashboardDestination destino) {
-    if (!_destinoHabilitado(destino)) {
+    if (!destinoHabilitado(destino, widget.progreso)) {
       _mostrarBloqueado(context);
       return;
     }
@@ -461,33 +456,6 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
       abrirUrl: widget.abrirUrl,
       alBloquear: () => _mostrarBloqueado(context),
     );
-  }
-
-  bool _destinoHabilitado(DashboardDestination destino) {
-    return switch (destino) {
-      DashboardDestination.inicio => true,
-      DashboardDestination.productos => PoliticaAcceso.permite(
-        RutasAcceso.productos,
-        widget.progreso,
-      ),
-      DashboardDestination.plantilla => PoliticaAcceso.permite(
-        RutasAcceso.plantilla,
-        widget.progreso,
-      ),
-      DashboardDestination.configuracion => PoliticaAcceso.permite(
-        RutasAcceso.negocio,
-        widget.progreso,
-      ),
-      _ => widget.progreso.completo,
-    };
-  }
-
-  String _nombreNegocio(DashboardUiState state) {
-    final nombre =
-        widget.progreso.catalogo.configuracionInicial['nombreNegocio'];
-    return nombre is String && nombre.trim().isNotEmpty
-        ? nombre.trim()
-        : state.nombreNegocio;
   }
 
   void _mostrarBloqueado(BuildContext context) {
