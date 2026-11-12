@@ -54,6 +54,7 @@ class ResultadoVentaMostrador {
     this.clave = '',
     this.registrada = false,
     this.yaRegistrada = false,
+    this.descuentos = const [],
     this.faltas = const [],
     this.sinProducto = const [],
     this.precioCambio = false,
@@ -70,6 +71,10 @@ class ResultadoVentaMostrador {
 
   /// Un toque repetido: la venta ya estaba registrada, no se hizo nada más.
   final bool yaRegistrada;
+
+  /// Lo que se descontó del stock en ESTA llamada (vacío si ya estaba
+  /// registrada): la lista de Caja lo resta en memoria, sin releer.
+  final List<DescuentoStock> descuentos;
 
   /// Lo que no alcanza (nombre, pide, hay).
   final List<FaltaStock> faltas;

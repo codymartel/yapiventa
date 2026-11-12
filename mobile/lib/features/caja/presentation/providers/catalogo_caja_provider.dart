@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:mobile/features/pedidos/application/services/calculo_stock_pedido.dart';
+import 'package:mobile/features/pedidos/domain/models/descuento_stock.dart';
 import 'package:mobile/features/productos/application/services/campos_catalogo_producto.dart';
 import 'package:mobile/features/productos/application/use_cases/buscar_productos_caja.dart';
 import 'package:mobile/features/productos/domain/models/consulta_catalogo_caja.dart';
@@ -169,6 +171,30 @@ class CatalogoCajaProvider extends ChangeNotifier {
   Future<void> reiniciar() {
     _memoria.clear();
     return _cargarPrimera();
+  }
+
+  // ── Stock en memoria ──────────────────────────────────────────────────
+
+  /// Tras cobrar (o anular, con [devolver]) ajusta el stock de lo YA cargado,
+  /// en todas las consultas guardadas: 0 lecturas (recargar costaría 20 por
+  /// venta). Lo que no está cargado se leerá con su stock real cuando toque.
+  void ajustarStock(List<DescuentoStock> descuentos, {bool devolver = false}) {
+    if (descuentos.isEmpty) return;
+    final tocados = {for (final d in descuentos) d.productoId};
+    for (final pagina in _memoria.values) {
+      for (var i = 0; i < pagina.productos.length; i++) {
+        final producto = pagina.productos[i];
+        if (!tocados.contains(producto.id)) continue;
+        pagina.productos[i] = CalculoStockPedido.aplicar(
+          producto,
+          descuentos,
+          devolver: devolver,
+        ).producto;
+      }
+    }
+    final actual = _memoria[_clave];
+    if (actual != null) _mostrar(actual);
+    _avisar();
   }
 
   // ── Carga ─────────────────────────────────────────────────────────────

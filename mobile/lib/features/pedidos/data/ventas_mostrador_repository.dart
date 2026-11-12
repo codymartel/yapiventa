@@ -220,6 +220,7 @@ class VentasMostradorRepository implements RepositorioVentasMostrador {
         pedidoId: ref.id,
         clave: pedido.clave,
         registrada: true,
+        descuentos: calculo.descuentos,
       );
     });
   }

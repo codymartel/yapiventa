@@ -1,6 +1,8 @@
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/features/caja/caja_dependencies.dart';
+import 'package:mobile/features/caja/data/dia_caja_repository.dart';
+import 'package:mobile/features/caja/data/gastos_caja_repository.dart';
 import 'package:mobile/features/caja/presentation/providers/informes_caja_provider.dart';
 import 'package:mobile/features/caja/presentation/providers/preparacion_catalogo_provider.dart';
 import 'package:mobile/features/pedidos/application/services/periodo_informe.dart';
@@ -248,6 +250,8 @@ void main() {
       resumenes: ResumenesVentasRepository(db: db),
       catalogo: CatalogoCajaRepository(db),
       relleno: RellenoCatalogoCajaRepository(db),
+      gastos: GastosCajaRepository(db: db),
+      dia: DiaCajaRepository(db: db),
     );
 
     final venta = deps.crearVenta('n1');

@@ -1,7 +1,7 @@
-import 'dart:math';
-
 import 'package:flutter/foundation.dart';
 import 'package:mobile/features/pedidos/application/services/calculo_venta_mostrador.dart';
+import 'package:mobile/features/pedidos/application/services/validacion_venta_mostrador.dart';
+import 'package:mobile/features/pedidos/application/use_cases/anular_venta_mostrador.dart';
 import 'package:mobile/features/pedidos/application/use_cases/registrar_venta_mostrador.dart';
 import 'package:mobile/features/pedidos/domain/models/descuento_pago.dart';
 import 'package:mobile/features/pedidos/domain/models/pedido.dart';
@@ -9,17 +9,10 @@ import 'package:mobile/features/productos/domain/models/producto.dart';
 
 import '../../application/services/carrito_caja.dart';
 import '../../application/services/constructor_linea_caja.dart';
+import '../../application/services/id_aleatorio_caja.dart';
 import '../../application/services/mensajes_cobro_caja.dart';
 import '../../domain/models/opciones_caja.dart';
 import '../../domain/models/resultado_cobro_caja.dart';
-
-/// 20 caracteres al azar: el id de la venta desde que se empieza a armar.
-String _idAleatorio() {
-  const letras =
-      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  final azar = Random.secure();
-  return List.generate(20, (_) => letras[azar.nextInt(letras.length)]).join();
-}
 
 // ═════════════════════════════════════════════════════════════════════════
 // VentaCajaProvider
@@ -39,16 +32,18 @@ class VentaCajaProvider extends ChangeNotifier {
   VentaCajaProvider({
     required this.negocioId,
     required this._registrar,
+    this._anular,
     this.opcionesPago = const [],
     this.zonas = const [],
     String Function()? generarId,
-  }) : _generarId = generarId ?? _idAleatorio,
+  }) : _generarId = generarId ?? idAleatorioCaja,
        _pago = opcionesPago.isEmpty ? null : opcionesPago.first {
     _idVenta = _generarId();
   }
 
   final String negocioId;
   final RegistrarVentaMostrador _registrar;
+  final AnularVentaMostrador? _anular;
   final String Function() _generarId;
   final List<OpcionPagoCaja> opcionesPago;
   final List<ZonaCaja> zonas;
@@ -93,8 +88,33 @@ class VentaCajaProvider extends ChangeNotifier {
     descuento: _pago?.descuento ?? DescuentoPago.ninguno,
   );
 
-  bool get puedeCobrar =>
-      !_cobrando && !_bloqueado && !_carrito.vacio && _pago != null;
+  /// Qué falta o sobra para cobrar, con las mismas reglas que aplica el caso
+  /// de uso (delivery pide cliente, teléfono, zona y dirección).
+  ResultadoValidacionVenta get validacion => ValidacionVentaMostrador.validar(
+    lineas: _carrito.lineas,
+    metodoPago: _pago?.id ?? '',
+    tipoEntrega: _entrega.tipo,
+    cliente: _clienteDeLaVenta,
+    zona: esDelivery ? (_zona?.nombre ?? '') : '',
+    nota: _notas,
+  );
+
+  /// «Falta: teléfono y dirección», para escribirlo bajo el botón apagado.
+  /// null si se puede cobrar o si el carrito está vacío (no hay qué avisar).
+  String? get motivoNoCobrar {
+    if (_carrito.vacio) return null;
+    if (_bloqueado) return MensajesCobroCaja.ventasBloqueadas;
+    final v = validacion;
+    return v.ok ? null : v.mensaje;
+  }
+
+  bool get puedeCobrar => !_cobrando && !_bloqueado && validacion.ok;
+
+  ClientePedido get _clienteDeLaVenta => ClientePedido(
+    nombre: _cliente.trim(),
+    telefono: _telefono.trim(),
+    direccion: esDelivery ? _direccion.trim() : '',
+  );
 
   // ── Carrito ───────────────────────────────────────────────────────────
 
@@ -210,11 +230,7 @@ class VentaCajaProvider extends ChangeNotifier {
         tipoEntrega: _entrega.tipo,
         enLocal: _entrega.enLocal,
         metodoPago: _pago?.id ?? '',
-        cliente: ClientePedido(
-          nombre: _cliente.trim(),
-          telefono: _telefono.trim(),
-          direccion: esDelivery ? _direccion.trim() : '',
-        ),
+        cliente: _clienteDeLaVenta,
         zona: esDelivery ? (_zona?.nombre ?? '') : '',
         deliveryCentavos: _deliveryCentavos,
         descuento: _pago?.descuento ?? DescuentoPago.ninguno,
@@ -244,6 +260,7 @@ class VentaCajaProvider extends ChangeNotifier {
         pedidoId: res.pedidoId,
         clave: res.clave,
         totalCentavos: total,
+        descuentos: res.descuentos,
       );
     } on ArgumentError {
       return const ResultadoCobroCaja(
@@ -258,6 +275,27 @@ class VentaCajaProvider extends ChangeNotifier {
     } finally {
       _cobrando = false;
       notifyListeners();
+    }
+  }
+
+  /// «Anular» del aviso tras cobrar: devuelve el stock y resta del día. La
+  /// venta queda anulada, no se borra. `ok` dice si la lista debe devolver el
+  /// stock en memoria (false si ya estaba anulada o falló).
+  Future<({bool ok, String mensaje})> anularVenta(String pedidoId) async {
+    final anular = _anular;
+    if (anular == null) {
+      return (ok: false, mensaje: MensajesCobroCaja.noSeAnulo);
+    }
+    try {
+      final r = await anular(negocioId: negocioId, pedidoId: pedidoId);
+      if (r.yaAnulada) {
+        return (ok: false, mensaje: MensajesCobroCaja.yaAnulada);
+      }
+      return (ok: true, mensaje: MensajesCobroCaja.anulada(r.sinDevolver));
+    } on StateError {
+      return (ok: false, mensaje: MensajesCobroCaja.yaNoSeAnula);
+    } catch (_) {
+      return (ok: false, mensaje: MensajesCobroCaja.noSeAnulo);
     }
   }
 

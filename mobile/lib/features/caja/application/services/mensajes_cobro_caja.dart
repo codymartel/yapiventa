@@ -28,6 +28,20 @@ abstract final class MensajesCobroCaja {
   static const String ventasBloqueadas =
       'Espera a que termine de prepararse el catálogo.';
 
+  static const String yaAnulada = 'Esa venta ya estaba anulada.';
+
+  static const String yaNoSeAnula =
+      'Esta venta ya no se puede anular desde aquí.';
+
+  static const String noSeAnulo =
+      'No se pudo anular la venta. Revisa tu conexión e inténtalo de nuevo.';
+
+  /// [sinDevolver]: líneas cuyo producto ya no existe (su stock no volvió).
+  static String anulada(int sinDevolver) => sinDevolver <= 0
+      ? 'Venta anulada. El stock volvió.'
+      : 'Venta anulada. $sinDevolver producto(s) ya no existen: su stock '
+            'no se devolvió.';
+
   /// Por qué NO se cobró (no se escribió nada). null si sí se registró.
   static String? noSeCobro(ResultadoRegistroVenta r) {
     final invalida = r.invalida;

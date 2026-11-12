@@ -1,3 +1,5 @@
+import '../../../pedidos/domain/models/descuento_stock.dart';
+
 // ═════════════════════════════════════════════════════════════════════════
 // TipoCobroCaja · ResultadoCobroCaja
 // ═════════════════════════════════════════════════════════════════════════
@@ -32,6 +34,7 @@ class ResultadoCobroCaja {
     this.pedidoId = '',
     this.clave = '',
     this.totalCentavos = 0,
+    this.descuentos = const [],
   });
 
   final TipoCobroCaja tipo;
@@ -41,6 +44,10 @@ class ResultadoCobroCaja {
   final String pedidoId;
   final String clave;
   final int totalCentavos;
+
+  /// Lo que la venta descontó del stock: la lista lo resta en memoria y, si
+  /// se anula desde el aviso, lo devuelve (sin releer el catálogo).
+  final List<DescuentoStock> descuentos;
 
   bool get registrada =>
       tipo == TipoCobroCaja.exito || tipo == TipoCobroCaja.yaRegistrada;

@@ -168,6 +168,37 @@ service cloud.firestore {
         (!('porCombo' in d) || (d.porCombo is map && d.porCombo.size() <= 251));
     }
 
+    // Gastos de Caja dentro del resumen del día: enteros >= 0 y mapas cortos
+    // (formas de pago y motivos son listas cerradas).
+    function gastosDiaValidos(d) {
+      return (!('gastosCentavos' in d) ||
+          (d.gastosCentavos is int && d.gastosCentavos >= 0)) &&
+        (!('gastos' in d) || (d.gastos is int && d.gastos >= 0)) &&
+        (!('porGastoPago' in d) ||
+          (d.porGastoPago is map && d.porGastoPago.size() <= 20)) &&
+        (!('porGastoMotivo' in d) ||
+          (d.porGastoMotivo is map && d.porGastoMotivo.size() <= 20));
+    }
+
+    // Un gasto NUEVO de Caja (negocios/{id}/gastos/{id}): monto entero mayor
+    // que cero (tope S/ 100 000,00), motivo de la lista cerrada, forma de pago
+    // como clave corta, día AAAA-MM-DD, fecha del servidor, nace sin anular y
+    // no lleva campos extra.
+    function gastoNuevoValido(d) {
+      return d.keys().hasOnly([
+          'montoCentavos', 'motivo', 'metodoPago', 'dia', 'nota', 'fecha',
+          'anulado'
+        ]) &&
+        d.montoCentavos is int && d.montoCentavos > 0 &&
+        d.montoCentavos <= 10000000 &&
+        d.motivo in ['comida', 'pasaje', 'mercaderia', 'servicios', 'otro'] &&
+        d.metodoPago is string && d.metodoPago.matches('^[a-z0-9_-]{1,30}$') &&
+        d.dia is string && d.dia.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$') &&
+        (!('nota' in d) || (d.nota is string && d.nota.size() <= 120)) &&
+        d.fecha == request.time &&
+        d.anulado == false;
+    }
+
     // Resumen de ventas de un día (negocios/{id}/resumenes/AAAA-MM-DD): solo
     // enteros >= 0, como máximo 5 entregados recientes, los contadores del día
     // (ver contadoresDiaValidos) y ningún campo extra.
@@ -188,9 +219,14 @@ service cloud.firestore {
           'porHora',
           'porProducto',
           'porVariante',
-          'porCombo'
+          'porCombo',
+          'gastosCentavos',
+          'gastos',
+          'porGastoPago',
+          'porGastoMotivo'
         ]) &&
         contadoresDiaValidos(d) &&
+        gastosDiaValidos(d) &&
         (!('ventasCentavos' in d) || (d.ventasCentavos is int && d.ventasCentavos >= 0)) &&
         (!('entregados' in d) || (d.entregados is int && d.entregados >= 0)) &&
         (!('confirmados' in d) || (d.confirmados is int && d.confirmados >= 0)) &&
@@ -368,6 +404,24 @@ service cloud.firestore {
           dia.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$') &&
           resumenDiaValido(request.resource.data);
         // Solo al eliminar la cuenta (negocio marcado `eliminando`).
+        allow delete: if negocioEnBorrado(negocioId);
+      }
+
+      // negocios/{negocioId}/gastos/{gastoId}
+      //   Gastos rápidos de Caja. Solo el propietario los lee, los crea y los
+      //   anula. Anular es lo único que se puede cambiar (de no anulado a
+      //   anulado, una sola vez): el monto y lo demás no se editan. Nunca se
+      //   borran, salvo al eliminar la cuenta.
+      match /gastos/{gastoId} {
+        allow read: if esDuenoNegocio(negocioId);
+        allow create: if esDuenoNegocio(negocioId) &&
+          gastoNuevoValido(request.resource.data);
+        allow update: if esDuenoNegocio(negocioId) &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['anulado', 'anuladoEn']) &&
+          resource.data.anulado == false &&
+          request.resource.data.anulado == true &&
+          request.resource.data.anuladoEn == request.time;
         allow delete: if negocioEnBorrado(negocioId);
       }
 
