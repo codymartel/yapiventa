@@ -16,6 +16,15 @@ abstract final class ValidacionGastoCaja {
   /// «10», «10,5» o «10.50» → céntimos. null si no es un monto válido.
   static int? montoDeTexto(String texto) => textoACentavos(texto);
 
+  /// Al revés, para llenar el campo al corregir: 1000 → «10», 750 → «7,50».
+  static String textoDeMonto(int centavos) {
+    if (centavos <= 0) return '';
+    final soles = centavos ~/ 100;
+    final resto = centavos % 100;
+    if (resto == 0) return '$soles';
+    return '$soles,${resto.toString().padLeft(2, '0')}';
+  }
+
   /// La clave de la forma de pago, igual a la que usan las ventas (así el
   /// efectivo gastado se resta del efectivo vendido).
   static String clavePago(String metodoPago) =>

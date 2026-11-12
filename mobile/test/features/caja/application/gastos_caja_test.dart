@@ -25,6 +25,13 @@ class _RepoFalso implements RepositorioGastosCaja {
     anulados.add(gastoId);
     return const ResultadoAnularGasto();
   }
+
+  @override
+  Future<ResultadoCorregirGasto> corregir(
+    String negocioId, {
+    required String viejoId,
+    required GastoCaja correcto,
+  }) => throw UnimplementedError();
 }
 
 void main() {

@@ -102,9 +102,16 @@ class ResumenesVacios implements RepositorioResumenesVentas {
   ) async => const [];
 }
 
-class GastosFalsos implements RepositorioGastosCaja {
+class GastosFalsos implements RepositorioGastosCaja, RepositorioGastosDelDia {
   final List<GastoCaja> guardados = [];
   final List<String> anulados = [];
+
+  /// Correcciones pedidas: (id del viejo, gasto correcto).
+  final List<(String, GastoCaja)> corregidos = [];
+
+  /// Lo que devuelve «Gastos de hoy».
+  List<GastoCaja> deHoy = [];
+  int lecturasDeHoy = 0;
   Object? falla;
 
   @override
@@ -118,6 +125,28 @@ class GastosFalsos implements RepositorioGastosCaja {
   Future<ResultadoAnularGasto> anular(String negocioId, String gastoId) async {
     anulados.add(gastoId);
     return const ResultadoAnularGasto();
+  }
+
+  @override
+  Future<ResultadoCorregirGasto> corregir(
+    String negocioId, {
+    required String viejoId,
+    required GastoCaja correcto,
+  }) async {
+    if (falla != null) throw falla!;
+    corregidos.add((viejoId, correcto));
+    return ResultadoCorregirGasto.corregido;
+  }
+
+  @override
+  Future<List<GastoCaja>> delDia(
+    String negocioId,
+    String dia, {
+    int limite = 20,
+  }) async {
+    lecturasDeHoy++;
+    if (falla != null) throw falla!;
+    return deHoy.where((g) => g.dia == dia).take(limite).toList();
   }
 }
 
@@ -171,6 +200,7 @@ class BancoCaja {
     relleno: RellenoListo(),
     gastos: gastos,
     dia: dia,
+    gastosDelDia: gastos,
     // El mismo día que el reloj de Caja: antes el gasto usaba la hora real y
     // la prueba fallaba cualquier día que no fuera el 2026-11-11.
     reloj: () => DateTime.utc(2026, 11, 11, 17),

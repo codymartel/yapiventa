@@ -123,8 +123,10 @@ class ContenidoAyudaCaja extends StatelessWidget {
         _Fila(
           Icons.block,
           'Si te equivocaste',
-          'Toca «Anular» en el aviso. El gasto queda anulado, nunca se '
-              'borra.',
+          'Toca «Anular» en el aviso. ¿Ya pasó? Toca «Gastos» en los '
+              'números del día y luego «Corregir»: pones el monto bueno y '
+              'el día se arregla solo. Nada se borra: el gasto malo queda '
+              'tachado.',
           ultimo: true,
         ),
       ],

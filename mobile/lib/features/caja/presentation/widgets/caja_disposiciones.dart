@@ -41,6 +41,7 @@ class DisposicionCaja extends StatelessWidget {
     required this.onVerVenta,
     required this.onGasto,
     required this.onAyuda,
+    this.onVerGastos,
   });
 
   final CatalogoCajaProvider catalogo;
@@ -54,6 +55,9 @@ class DisposicionCaja extends StatelessWidget {
   final VoidCallback onVerVenta;
   final VoidCallback onGasto;
   final VoidCallback onAyuda;
+
+  /// Tocar «Gastos» en los números del día: abre «Gastos de hoy».
+  final VoidCallback? onVerGastos;
 
   /// Ancho mínimo para poner la venta al costado en un celular de lado (la
   /// lista necesita unos 340 px para su buscador y sus filtros).
@@ -96,6 +100,7 @@ class DisposicionCaja extends StatelessWidget {
                   estilo: forma == FormaCaja.pc
                       ? EstiloDiaCaja.tablero
                       : EstiloDiaCaja.tarjetas,
+                  onVerGastos: onVerGastos,
                 ),
                 const SizedBox(height: 10),
               ],
@@ -123,6 +128,7 @@ class DisposicionCaja extends StatelessWidget {
                 conNumeros: bajo,
                 onGasto: onGasto,
                 onAyuda: onAyuda,
+                onVerGastos: onVerGastos,
               ),
             Expanded(
               child: alLado
@@ -170,12 +176,14 @@ class _Cabecera extends StatelessWidget {
     required this.conNumeros,
     required this.onGasto,
     required this.onAyuda,
+    this.onVerGastos,
   });
 
   final DiaCajaProvider dia;
   final bool conNumeros;
   final VoidCallback onGasto;
   final VoidCallback onAyuda;
+  final VoidCallback? onVerGastos;
 
   @override
   Widget build(BuildContext context) {
@@ -185,7 +193,11 @@ class _Cabecera extends StatelessWidget {
         children: [
           Expanded(
             child: conNumeros
-                ? BarraDiaCaja(provider: dia, estilo: EstiloDiaCaja.fila)
+                ? BarraDiaCaja(
+                    provider: dia,
+                    estilo: EstiloDiaCaja.fila,
+                    onVerGastos: onVerGastos,
+                  )
                 : ListenableBuilder(
                     listenable: dia,
                     builder: (context, _) {

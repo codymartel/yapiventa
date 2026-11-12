@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gastos de hoy</title>
+<style>
+/* Colores de app_colors.dart (tema oscuro). Pocos marcos: separadores finos. */
+:root{--fondo:#070C18;--sup:#0D1526;--card:#111D33;--azul:#2457B3;--azulTxt:#8AB2FF;--texto:#E8EDF5;--muted:#9AA9C2;--hint:#8191AA;--dim:#2A3A55;--borde:rgba(61,114,212,.30);--error:#F87171;--ok:#4ADE80}
+*{box-sizing:border-box}body{margin:0;background:#03060d;color:var(--texto);font:14px/1.45 system-ui,Segoe UI,Roboto,sans-serif;padding:24px 16px}
+h1{font-size:18px;margin:0 0 4px}p.nota{color:var(--muted);margin:0 0 20px;max-width:900px}
+.fila{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start}
+.titulo{color:var(--hint);font-size:12px;margin:0 0 8px}
+.cel{width:360px;background:var(--fondo);border:1px solid #1d2a44;border-radius:18px;overflow:hidden}
+.tarjetas{display:flex;gap:8px;padding:12px 16px}
+.t{flex:1;background:var(--card);border:1px solid var(--borde);border-radius:12px;padding:8px 10px}
+.t small{display:flex;justify-content:space-between;color:var(--muted);font-size:11px}.t b{display:block;font-size:18px}.t i{color:var(--hint);font-size:11px;font-style:normal}
+.t .flecha{color:var(--azulTxt)}
+.hoja{background:var(--sup);border-radius:20px 20px 0 0;padding:8px 16px 16px;margin-top:40px}
+.agarre{width:36px;height:4px;border-radius:2px;background:var(--dim);margin:0 auto 8px}
+.cab{display:flex;align-items:center}.cab h2{font-size:17px;margin:0;flex:1}.cab a{color:var(--azulTxt);padding:12px 8px}
+.sub{color:var(--muted);font-size:13px;margin:0 0 4px}
+.listo{color:var(--ok);font-size:13px;margin:4px 0}
+.g{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--dim)}
+.g .izq{flex:1}.g b{display:block;font-size:15px}.g span{color:var(--muted);font-size:12px}
+.g .monto{font-weight:600;font-size:15px}
+.g .btn{width:96px;text-align:center;color:var(--azulTxt);min-height:44px;display:flex;align-items:center;justify-content:center}
+.anulado b,.anulado .monto{text-decoration:line-through;color:var(--hint)}
+.form label{display:block;color:var(--muted);font-size:12px;margin:12px 0 4px}
+.monto-g{border:1px solid var(--hint);border-radius:16px;padding:12px;font-size:34px;font-weight:700;text-align:center}
+.monto-g span{font-size:20px;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}.chip{border:1px solid var(--hint);border-radius:22px;padding:10px 14px;color:var(--muted)}.chip.on{background:var(--azul);border-color:var(--azul);color:#fff}
+.prim{background:var(--azul);color:#fff;border-radius:12px;text-align:center;padding:13px;margin-top:14px;font-weight:600}
+.secu{color:var(--error);text-align:center;padding:12px}
+.antes{font-weight:600}.que{color:var(--muted);font-size:13px}
+</style></head><body>
+<h1>Corregir un gasto mal anotado</h1>
+<p class="nota">En Caja, la tarjeta «Gastos» (con su flecha) abre la lista de hoy. Cada gasto tiene «Corregir»: se abre el mismo formulario ya lleno; al guardar, el gasto malo queda tachado (no se borra) y se guarda el bueno, todo junto. Los números del día se arreglan solos. En PC es un diálogo; de lado, la tarjeta está en la fila delgada de arriba («Gastos 110,00 ›»).</p>
+<div class="fila">
+ <div><p class="titulo">1. Toca «Gastos» en los números del día</p>
+  <div class="cel">
+   <div class="tarjetas">
+    <div class="t"><small>Ventas de hoy</small><b>S/ 245,00</b><i>6 ventas</i></div>
+    <div class="t"><small>Efectivo en caja</small><b>S/ 135,00</b><i>de hoy</i></div>
+    <div class="t"><small>Gastos <span class="flecha">›</span></small><b>S/ 110,00</b><i>2 gastos</i></div>
+   </div>
+   <div class="hoja">
+    <div class="agarre"></div>
+    <div class="cab"><h2>Gastos de hoy</h2><a>Cerrar</a></div>
+    <p class="sub">¿Anotaste algo mal? Toca «Corregir».</p>
+    <div class="g"><div class="izq"><b>Comida</b><span>13:05 · Yape</span></div><div class="monto">S/ 10,00</div><div class="btn">Corregir</div></div>
+    <div class="g"><div class="izq"><b>Mercadería</b><span>9:40 · Efectivo</span></div><div class="monto">S/ 100,00</div><div class="btn">Corregir</div></div>
+    <div class="g anulado"><div class="izq"><b>Pasaje</b><span>8:15 · Efectivo · anulado</span></div><div class="monto">S/ 5,00</div><div class="btn"></div></div>
+   </div>
+  </div></div>
+ <div><p class="titulo">2. «Corregir» abre el gasto ya lleno</p>
+  <div class="cel">
+   <div class="hoja form">
+    <div class="agarre"></div>
+    <div class="cab"><h2>Corregir gasto</h2><a>Cancelar</a></div>
+    <div class="antes">Antes: S/ 100,00 · Mercadería · 9:40</div>
+    <div class="que">El de S/ 100,00 queda tachado y se guarda el de S/ 10,00. Los números del día se arreglan solos.</div>
+    <label>¿Cuánto fue de verdad?</label><div class="monto-g"><span>S/ </span>10</div>
+    <label>¿EN QUÉ?</label><div class="chips"><span class="chip">Comida</span><span class="chip">Pasaje</span><span class="chip on">Mercadería</span><span class="chip">Servicios</span><span class="chip">Otro</span></div>
+    <label>¿DE DÓNDE SALIÓ?</label><div class="chips"><span class="chip on">Efectivo</span><span class="chip">Yape</span></div>
+    <div class="prim">Guardar corrección · S/ 10,00</div>
+    <div class="secu">Anular este gasto (sin poner otro)</div>
+   </div>
+  </div></div>
+ <div><p class="titulo">3. De vuelta en la lista</p>
+  <div class="cel">
+   <div class="hoja">
+    <div class="agarre"></div>
+    <div class="cab"><h2>Gastos de hoy</h2><a>Cerrar</a></div>
+    <p class="sub">¿Anotaste algo mal? Toca «Corregir».</p>
+    <p class="listo">✓ Gasto corregido · ahora es S/ 10,00</p>
+    <div class="g"><div class="izq"><b>Mercadería</b><span>ahora · Efectivo</span></div><div class="monto">S/ 10,00</div><div class="btn">Corregir</div></div>
+    <div class="g"><div class="izq"><b>Comida</b><span>13:05 · Yape</span></div><div class="monto">S/ 10,00</div><div class="btn">Corregir</div></div>
+    <div class="g anulado"><div class="izq"><b>Mercadería</b><span>9:40 · Efectivo · anulado</span></div><div class="monto">S/ 100,00</div><div class="btn"></div></div>
+   </div>
+  </div></div>
+</div>
+</body></html>

@@ -2,17 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:mobile/features/productos/domain/models/producto.dart';
 
 import '../../caja_dependencies.dart';
+import '../../domain/models/gasto_caja.dart';
 import '../../domain/models/opciones_caja.dart';
 import '../../domain/models/resultado_cobro_caja.dart';
 import '../providers/catalogo_caja_provider.dart';
 import '../providers/dia_caja_provider.dart';
 import '../providers/gasto_caja_provider.dart';
+import '../providers/gastos_de_hoy_provider.dart';
 import '../providers/preparacion_catalogo_provider.dart';
 import '../providers/venta_caja_provider.dart';
 import 'avisos_caja.dart';
 import 'caja_contextual_panel.dart';
 import 'caja_disposiciones.dart';
 import 'hoja_gasto_caja.dart';
+import 'hoja_gastos_de_hoy.dart';
 import 'mostrar_hoja_producto.dart';
 import 'preparacion_catalogo_host.dart';
 import 'ticket_caja.dart';
@@ -27,6 +30,8 @@ import 'ticket_caja.dart';
 //   Cobrar            → registra, baja el stock de la lista EN MEMORIA (0
 //                       lecturas) y avisa con «Anular» 8 segundos
 //   Gasto             → su hoja → se guarda y avisa con «Anular»
+//   «Gastos» del día  → «Gastos de hoy» → Corregir (el formulario lleno: el
+//                       viejo queda anulado y nace el correcto) o anular
 //   ¿Cómo funciona?   → la ayuda
 //
 // Lecturas: 20 del catálogo y 1 del día al abrir; el día escucha UN documento
@@ -166,6 +171,33 @@ class _CajaFlowState extends State<CajaFlow> {
     avisarCaja(context, r.mensaje, error: !r.ok);
   }
 
+  /// «Gastos de hoy»: se lee una vez al abrir (1 lectura por gasto, tope de
+  /// 20) y se cierra al salir. Los números del día se arreglan solos.
+  Future<void> _verGastos() async {
+    final lista = widget.dependencias.crearGastosDeHoy(widget.negocioId)
+      ..cargar();
+    await mostrarHojaGastosDeHoy(
+      context,
+      provider: lista,
+      opcionesPago: widget.opcionesPago,
+      onCorregir: (g) => _corregirGasto(lista, g),
+    );
+    lista.dispose();
+  }
+
+  Future<void> _corregirGasto(GastosDeHoyProvider lista, GastoCaja g) async {
+    final form = widget.dependencias.crearCorreccionGasto(
+      widget.negocioId,
+      original: g,
+      opcionesPago: widget.opcionesPago,
+    );
+    final r = await mostrarHojaGasto(context, provider: form);
+    form.dispose();
+    if (r == null) return;
+    lista.aplicar(g.id, r);
+    _dia.revisarDia();
+  }
+
   @override
   Widget build(BuildContext context) {
     return PreparacionCatalogoHost(
@@ -186,6 +218,7 @@ class _CajaFlowState extends State<CajaFlow> {
             onCobrar: _cobrar,
             onVerVenta: _verVenta,
             onGasto: _anotarGasto,
+            onVerGastos: _verGastos,
             onAyuda: () => mostrarAyudaCaja(context),
           );
         },

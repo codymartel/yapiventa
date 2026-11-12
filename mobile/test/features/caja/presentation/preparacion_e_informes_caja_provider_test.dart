@@ -252,6 +252,7 @@ void main() {
       relleno: RellenoCatalogoCajaRepository(db),
       gastos: GastosCajaRepository(db: db),
       dia: DiaCajaRepository(db: db),
+      gastosDelDia: DiaCajaRepository(db: db),
     );
 
     final venta = deps.crearVenta('n1');

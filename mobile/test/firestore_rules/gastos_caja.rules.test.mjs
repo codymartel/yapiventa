@@ -8,14 +8,19 @@ import {
   initializeTestEnvironment,
 } from '@firebase/rules-unit-testing';
 import {
+  collection,
   deleteDoc,
   doc,
   getDoc,
+  getDocs,
+  limit,
+  query,
   serverTimestamp,
   setDoc,
   setLogLevel,
   Timestamp,
   updateDoc,
+  where,
   writeBatch,
 } from 'firebase/firestore';
 
@@ -229,4 +234,86 @@ test('sumar gastos no borra las ventas que ya tenía el resumen', async () => {
   if (guardado.ventasCentavos !== 30000 || guardado.gastosCentavos !== 1000) {
     throw new Error('El resumen perdió las ventas o no guardó los gastos.');
   }
+});
+
+// Corregir un gasto (S/ 100 → S/ 10) no necesita reglas nuevas: es anular el
+// viejo + crear el correcto + ajustar el resumen, en UNA transacción.
+test('corregir: anular el viejo y crear el correcto en el mismo lote', async () => {
+  await sembrar({
+    [GASTO]: { ...gastoGuardado, montoCentavos: 10000, motivo: 'mercaderia' },
+    [RESUMEN]: {
+      ventasCentavos: 30000,
+      gastosCentavos: 10000,
+      gastos: 1,
+      porGastoPago: { efectivo: 10000 },
+      porGastoMotivo: { mercaderia: 10000 },
+    },
+  });
+  const db = dbDe(DUENO);
+  const lote = writeBatch(db);
+  lote.update(doc(db, GASTO), { anulado: true, anuladoEn: serverTimestamp() });
+  lote.set(
+    doc(db, `negocios/${NEGOCIO}/gastos/g2`),
+    gastoNuevo({ montoCentavos: 1000, motivo: 'mercaderia' }),
+  );
+  lote.update(doc(db, RESUMEN), {
+    gastosCentavos: 1000,
+    gastos: 1,
+    porGastoPago: { efectivo: 1000 },
+    porGastoMotivo: { mercaderia: 1000 },
+    actualizadoEn: serverTimestamp(),
+  });
+  await assertSucceeds(lote.commit());
+
+  const resumen = (await getDoc(doc(db, RESUMEN))).data();
+  if (resumen.gastosCentavos !== 1000 || resumen.ventasCentavos !== 30000) {
+    throw new Error('El resumen no quedó en S/ 10 de gasto o perdió las ventas.');
+  }
+});
+
+test('corregir un gasto ya anulado se rechaza entero (nada a medias)', async () => {
+  await sembrar({ [GASTO]: { ...gastoGuardado, anulado: true } });
+  const db = dbDe(DUENO);
+  const lote = writeBatch(db);
+  lote.update(doc(db, GASTO), { anulado: true, anuladoEn: serverTimestamp() });
+  lote.set(doc(db, `negocios/${NEGOCIO}/gastos/g2`), gastoNuevo());
+  await assertFails(lote.commit());
+  let existe = true;
+  await testEnv.withSecurityRulesDisabled(async (contexto) => {
+    const nuevo = await getDoc(doc(contexto.firestore(), `negocios/${NEGOCIO}/gastos/g2`));
+    existe = nuevo.exists();
+  });
+  if (existe) throw new Error('Se creó el correcto sin anular el viejo.');
+});
+
+test('corregir no puede cambiar el monto del gasto viejo', async () => {
+  await sembrar({ [GASTO]: gastoGuardado });
+  const db = dbDe(DUENO);
+  const lote = writeBatch(db);
+  lote.update(doc(db, GASTO), {
+    anulado: true,
+    anuladoEn: serverTimestamp(),
+    montoCentavos: 100,
+  });
+  lote.set(doc(db, `negocios/${NEGOCIO}/gastos/g2`), gastoNuevo());
+  await assertFails(lote.commit());
+});
+
+test('«Gastos de hoy»: el dueño lista los del día; otro y anónimo no', async () => {
+  await sembrar({
+    [GASTO]: gastoGuardado,
+    [`negocios/${NEGOCIO}/gastos/g9`]: { ...gastoGuardado, anulado: true },
+  });
+  const consulta = (db) =>
+    getDocs(
+      query(
+        collection(db, `negocios/${NEGOCIO}/gastos`),
+        where('dia', '==', '2026-11-11'),
+        limit(20),
+      ),
+    );
+  const lista = await assertSucceeds(consulta(dbDe(DUENO)));
+  if (lista.size !== 2) throw new Error(`Esperaba 2 gastos, llegaron ${lista.size}.`);
+  await assertFails(consulta(dbDe(OTRO)));
+  await assertFails(consulta(dbAnonima()));
 });

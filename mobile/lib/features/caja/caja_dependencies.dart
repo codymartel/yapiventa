@@ -15,11 +15,13 @@ import 'package:mobile/features/productos/domain/repositories/repositorio_rellen
 import 'application/use_cases/gastos_caja.dart';
 import 'data/dia_caja_repository.dart';
 import 'data/gastos_caja_repository.dart';
+import 'domain/models/gasto_caja.dart';
 import 'domain/models/opciones_caja.dart';
 import 'domain/repositories/repositorios_gastos_caja.dart';
 import 'presentation/providers/catalogo_caja_provider.dart';
 import 'presentation/providers/dia_caja_provider.dart';
 import 'presentation/providers/gasto_caja_provider.dart';
+import 'presentation/providers/gastos_de_hoy_provider.dart';
 import 'presentation/providers/informes_caja_provider.dart';
 import 'presentation/providers/preparacion_catalogo_provider.dart';
 import 'presentation/providers/venta_caja_provider.dart';
@@ -35,17 +37,21 @@ class CajaDependencies {
     required this.prepararCatalogo,
     required this.registrarGasto,
     required this.anularGasto,
+    required this.corregirGasto,
+    required this.gastosDeHoy,
     required this.diaCaja,
   });
 
   factory CajaDependencies.production() {
+    final dia = DiaCajaRepository();
     return CajaDependencies.conRepositorios(
       ventas: VentasMostradorRepository(),
       resumenes: ResumenesVentasRepository(),
       catalogo: CatalogoCajaRepository(),
       relleno: RellenoCatalogoCajaRepository(),
       gastos: GastosCajaRepository(),
-      dia: DiaCajaRepository(),
+      dia: dia,
+      gastosDelDia: dia,
     );
   }
 
@@ -56,6 +62,7 @@ class CajaDependencies {
     required RepositorioRellenoCatalogo relleno,
     required RepositorioGastosCaja gastos,
     required RepositorioDiaCaja dia,
+    required RepositorioGastosDelDia gastosDelDia,
     // El reloj del gasto (el día en que se anota). Solo las pruebas lo fijan.
     DateTime Function()? reloj,
   }) {
@@ -67,6 +74,8 @@ class CajaDependencies {
       prepararCatalogo: PrepararCatalogoCaja(relleno),
       registrarGasto: RegistrarGastoCaja(gastos, reloj: reloj),
       anularGasto: AnularGastoCaja(gastos),
+      corregirGasto: CorregirGastoCaja(gastos),
+      gastosDeHoy: GastosDeHoyCaja(gastosDelDia, reloj: reloj),
       diaCaja: dia,
     );
   }
@@ -78,6 +87,8 @@ class CajaDependencies {
   final PrepararCatalogoCaja prepararCatalogo;
   final RegistrarGastoCaja registrarGasto;
   final AnularGastoCaja anularGasto;
+  final CorregirGastoCaja corregirGasto;
+  final GastosDeHoyCaja gastosDeHoy;
   final RepositorioDiaCaja diaCaja;
 
   VentaCajaProvider crearVenta(
@@ -104,6 +115,27 @@ class CajaDependencies {
       anular: anularGasto,
       opcionesPago: opcionesPago,
     );
+  }
+
+  /// El formulario lleno para corregir [original] (S/ 100 → S/ 10).
+  GastoCajaProvider crearCorreccionGasto(
+    String negocioId, {
+    required GastoCaja original,
+    List<OpcionPagoCaja> opcionesPago = const [],
+  }) {
+    return GastoCajaProvider.corrigiendo(
+      negocioId: negocioId,
+      original: original,
+      corregir: corregirGasto,
+      anular: anularGasto,
+      registrar: registrarGasto,
+      opcionesPago: opcionesPago,
+    );
+  }
+
+  /// La lista «Gastos de hoy» (se lee una vez al abrirla).
+  GastosDeHoyProvider crearGastosDeHoy(String negocioId) {
+    return GastosDeHoyProvider(negocioId: negocioId, leer: gastosDeHoy);
   }
 
   DiaCajaProvider crearDia(String negocioId, {DateTime Function()? reloj}) {

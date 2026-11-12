@@ -19,17 +19,22 @@ enum EstiloDiaCaja {
 
 /// Los números del día en vivo: ventas, efectivo en caja y gastos, con lo
 /// vendido separado en local y tienda web. Lee el [DiaCajaProvider] (UN
-/// documento). Si falla la conexión lo dice con texto y ofrece «Reintentar»;
+/// documento). «Gastos» se puede tocar para ver y corregir los de hoy. Si falla la conexión lo dice con texto y ofrece «Reintentar»;
 /// los números que quedan pueden estar viejos.
 class BarraDiaCaja extends StatelessWidget {
   const BarraDiaCaja({
     super.key,
     required this.provider,
     this.estilo = EstiloDiaCaja.tarjetas,
+    this.onVerGastos,
   });
 
   final DiaCajaProvider provider;
   final EstiloDiaCaja estilo;
+
+  /// Con valor, «Gastos» se puede tocar: abre «Gastos de hoy» (para ver y
+  /// corregir).
+  final VoidCallback? onVerGastos;
 
   @override
   Widget build(BuildContext context) {
@@ -46,12 +51,17 @@ class BarraDiaCaja extends StatelessWidget {
               const SizedBox(height: 8),
             ],
             switch (estilo) {
-              EstiloDiaCaja.tarjetas => _Tarjetas(dia: dia),
-              EstiloDiaCaja.fila => _Fila(
+              EstiloDiaCaja.tarjetas => _Tarjetas(
+                datos: _datos(dia, todos: false, onVerGastos: onVerGastos),
                 dia: dia,
+              ),
+              EstiloDiaCaja.fila => _Fila(
+                datos: _datos(dia, todos: true, onVerGastos: onVerGastos),
                 onReintentar: provider.error ? provider.reintentar : null,
               ),
-              EstiloDiaCaja.tablero => _Tablero(dia: dia),
+              EstiloDiaCaja.tablero => _Tablero(
+                datos: _datos(dia, todos: true, onVerGastos: onVerGastos),
+              ),
             },
           ],
         );
@@ -61,7 +71,13 @@ class BarraDiaCaja extends StatelessWidget {
 }
 
 class _Dato {
-  const _Dato(this.titulo, this.centavos, this.nota, {this.corto = ''});
+  const _Dato(
+    this.titulo,
+    this.centavos,
+    this.nota, {
+    this.corto = '',
+    this.onTap,
+  });
 
   final String titulo;
   final int centavos;
@@ -69,9 +85,16 @@ class _Dato {
 
   /// El título de la fila delgada («Hoy», «Web»…).
   final String corto;
+
+  /// Con valor, el dato se puede tocar (hoy solo «Gastos»).
+  final VoidCallback? onTap;
 }
 
-List<_Dato> _datos(DiaCaja dia, {required bool todos}) {
+List<_Dato> _datos(
+  DiaCaja dia, {
+  required bool todos,
+  VoidCallback? onVerGastos,
+}) {
   final ventas = _Dato(
     'Ventas de hoy',
     dia.ventasCentavos,
@@ -89,6 +112,7 @@ List<_Dato> _datos(DiaCaja dia, {required bool todos}) {
     dia.gastosCentavos,
     TextosDiaCaja.cuantosGastos(dia.gastos.cantidad),
     corto: 'Gastos',
+    onTap: onVerGastos,
   );
   if (!todos) return [ventas, efectivo, gastos];
   return [
@@ -117,13 +141,13 @@ List<_Dato> _datos(DiaCaja dia, {required bool todos}) {
 }
 
 class _Tarjetas extends StatelessWidget {
-  const _Tarjetas({required this.dia});
+  const _Tarjetas({required this.datos, required this.dia});
 
+  final List<_Dato> datos;
   final DiaCaja dia;
 
   @override
   Widget build(BuildContext context) {
-    final datos = _datos(dia, todos: false);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
@@ -147,13 +171,12 @@ class _Tarjetas extends StatelessWidget {
 }
 
 class _Tablero extends StatelessWidget {
-  const _Tablero({required this.dia});
+  const _Tablero({required this.datos});
 
-  final DiaCaja dia;
+  final List<_Dato> datos;
 
   @override
   Widget build(BuildContext context) {
-    final datos = _datos(dia, todos: true);
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -176,51 +199,76 @@ class _Tarjeta extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final negativo = dato.centavos < 0;
+    final onTap = dato.onTap;
+    final radio = BorderRadius.circular(12);
     return Semantics(
       label:
           '${dato.titulo}: ${TextosDiaCaja.plata(dato.centavos)}, '
-          '${dato.nota}',
+          '${dato.nota}${onTap == null ? '' : '. Toca para ver y corregir'}',
+      button: onTap != null,
       excludeSemantics: true,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        decoration: BoxDecoration(
-          color: AppColors.card,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.bordeMedio),
+      child: Material(
+        color: AppColors.card,
+        shape: RoundedRectangleBorder(
+          borderRadius: radio,
+          side: BorderSide(color: AppColors.bordeMedio),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              dato.titulo,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: AppColors.muted, fontSize: 11),
-            ),
-            const SizedBox(height: 2),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerLeft,
-              child: Text(
-                TextosDiaCaja.plata(dato.centavos),
-                style: TextStyle(
-                  color: negativo ? AppColors.aviso : AppColors.texto,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  fontFeatures: const [FontFeature.tabularFigures()],
-                ),
-              ),
-            ),
-            Text(
-              dato.nota,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: AppColors.hint, fontSize: 11),
-            ),
-          ],
+        child: InkWell(
+          borderRadius: radio,
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            child: _contenido(negativo, conFlecha: onTap != null),
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _contenido(bool negativo, {required bool conFlecha}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                dato.titulo,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: AppColors.muted, fontSize: 11),
+              ),
+            ),
+            if (conFlecha)
+              const Icon(
+                Icons.chevron_right,
+                size: 16,
+                color: AppColors.azulTexto,
+              ),
+          ],
+        ),
+        const SizedBox(height: 2),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            TextosDiaCaja.plata(dato.centavos),
+            style: TextStyle(
+              color: negativo ? AppColors.aviso : AppColors.texto,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              fontFeatures: const [FontFeature.tabularFigures()],
+            ),
+          ),
+        ),
+        Text(
+          dato.nota,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(color: AppColors.hint, fontSize: 11),
+        ),
+      ],
     );
   }
 }
@@ -257,17 +305,35 @@ class _LocalYWeb extends StatelessWidget {
 }
 
 class _Fila extends StatelessWidget {
-  const _Fila({required this.dia, this.onReintentar});
+  const _Fila({required this.datos, this.onReintentar});
 
-  final DiaCaja dia;
+  final List<_Dato> datos;
 
   /// Con valor: no hay conexión. Se dice con texto en la misma fila y al
   /// tocarlo se vuelve a intentar.
   final VoidCallback? onReintentar;
 
+  /// Un dato que se puede tocar («Gastos ›»): la zona de toque mide 44 px de
+  /// alto aunque el chip se vea delgado.
+  Widget _tocable(_Dato dato, Widget chip) {
+    final onTap = dato.onTap;
+    if (onTap == null) return chip;
+    return Semantics(
+      button: true,
+      label: '${dato.titulo}. Toca para ver y corregir',
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 44),
+          child: Center(widthFactor: 1, child: chip),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final datos = _datos(dia, todos: true);
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
@@ -289,29 +355,43 @@ class _Fila extends StatelessWidget {
           ],
           for (var i = 0; i < datos.length; i++) ...[
             if (i > 0) const SizedBox(width: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: AppColors.card,
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.bordeMedio),
-              ),
-              child: Text.rich(
-                TextSpan(
-                  text: '${datos[i].corto} ',
-                  style: const TextStyle(color: AppColors.muted, fontSize: 12),
-                  children: [
-                    TextSpan(
-                      text: TextosDiaCaja.numero(datos[i].centavos),
-                      style: TextStyle(
-                        color: datos[i].centavos < 0
-                            ? AppColors.aviso
-                            : AppColors.texto,
-                        fontWeight: FontWeight.w700,
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
+            _tocable(
+              datos[i],
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: AppColors.card,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.bordeMedio),
+                ),
+                child: Text.rich(
+                  TextSpan(
+                    text: '${datos[i].corto} ',
+                    style: const TextStyle(
+                      color: AppColors.muted,
+                      fontSize: 12,
                     ),
-                  ],
+                    children: [
+                      TextSpan(
+                        text: TextosDiaCaja.numero(datos[i].centavos),
+                        style: TextStyle(
+                          color: datos[i].centavos < 0
+                              ? AppColors.aviso
+                              : AppColors.texto,
+                          fontWeight: FontWeight.w700,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                      if (datos[i].onTap != null)
+                        const TextSpan(
+                          text: ' ›',
+                          style: TextStyle(color: AppColors.azulTexto),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),

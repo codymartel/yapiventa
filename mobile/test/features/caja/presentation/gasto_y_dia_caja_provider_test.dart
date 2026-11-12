@@ -35,6 +35,13 @@ class _RepoGastos implements RepositorioGastosCaja {
     anulados.add(gastoId);
     return ResultadoAnularGasto(yaAnulado: yaAnulado);
   }
+
+  @override
+  Future<ResultadoCorregirGasto> corregir(
+    String negocioId, {
+    required String viejoId,
+    required GastoCaja correcto,
+  }) => throw UnimplementedError();
 }
 
 class _RepoDia implements RepositorioDiaCaja {
