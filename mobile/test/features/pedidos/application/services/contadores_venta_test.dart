@@ -157,9 +157,19 @@ void main() {
       () {
         expect(ContadoresVenta.clavePago(' Yape '), 'yape');
         expect(ContadoresVenta.clavePago(''), 'sin_indicar');
-        expect(ContadoresVenta.clavePago('Tarjeta/Visa!'), 'otro');
+        expect(ContadoresVenta.clavePago('Tarjeta/Visa!'), 'tarjeta_visa');
       },
     );
+
+    test('una forma de pago propia con espacios o tildes no cae en «otro»', () {
+      expect(ContadoresVenta.clavePago('Tarjeta Visa'), 'tarjeta_visa');
+      expect(ContadoresVenta.clavePago('  Pago   móvil  '), 'pago_movil');
+      expect(ContadoresVenta.clavePago('Niubiz ñ'), 'niubiz_n');
+      expect(ContadoresVenta.clavePago('¡¡!!'), 'otro');
+      final larga = ContadoresVenta.clavePago('${'a' * 29} bbbbb');
+      expect(larga, 'a' * 29);
+      expect(larga.length, lessThanOrEqualTo(30));
+    });
 
     test('la hora de Lima: 04:59 UTC es 23 del día anterior', () {
       expect(ContadoresVenta.claveHora(DateTime.utc(2026, 11, 6, 4, 59)), '23');

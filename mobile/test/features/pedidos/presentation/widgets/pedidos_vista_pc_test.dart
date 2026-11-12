@@ -114,6 +114,32 @@ void main() {
     expect(find.text('Vencidos (+12 h)'), findsOneWidget);
   });
 
+  testWidgets('con una sola entrega dice «1 entregado», en singular', (
+    tester,
+  ) async {
+    await abrir(
+      tester,
+      nuevos: [_pedido('a')],
+      resumen: const ResumenVentasDia(
+        dia: '2026-11-05',
+        ventasCentavos: 1840,
+        entregados: 1,
+      ),
+    );
+
+    expect(find.text('1 entregado · ticket 18,40'), findsOneWidget);
+  });
+
+  testWidgets('si la suma falla, «cargados» va en el detalle y no se corta', (
+    tester,
+  ) async {
+    repo.sumaPorCobrar = null;
+    await abrir(tester, nuevos: [_pedido('a')]);
+
+    expect(find.text('Por cobrar (cargados)'), findsNothing);
+    expect(find.text('de lo cargado · 1 pedido'), findsOneWidget);
+  });
+
   testWidgets('sin entregas el ticket y el tiempo son «—», no un cero falso', (
     tester,
   ) async {

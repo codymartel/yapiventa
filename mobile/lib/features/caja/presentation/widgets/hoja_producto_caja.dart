@@ -6,6 +6,7 @@ import '../../application/services/calculo_hoja_producto.dart';
 import '../../application/services/mensajes_cobro_caja.dart';
 import 'bloques_hoja_producto.dart';
 import 'botones_caja.dart';
+import 'hoja_caja.dart';
 import 'mostrar_hoja_producto.dart';
 import 'secciones_seleccion_producto.dart';
 
@@ -21,7 +22,7 @@ import 'secciones_seleccion_producto.dart';
 //   - combo: su precio propio y la cantidad.
 // Todo se calcula con `CalculoHojaProducto` (enteros). Dos botones: «Agregar
 // y cobrar» y «Agregar y seguir», apagados mientras falte algo, con el motivo
-// dicho en texto. Cómo se abre (hoja o diálogo) está en `mostrarHojaProducto`.
+// dicho en texto, fijos abajo. Cómo se abre está en `mostrarHojaProducto`.
 // ═════════════════════════════════════════════════════════════════════════
 class HojaProductoCaja extends StatefulWidget {
   const HojaProductoCaja({
@@ -109,15 +110,21 @@ class _HojaProductoCajaState extends State<HojaProductoCaja> {
           cantidadElegida: _sel.cantidad,
           falta: CalculoHojaProducto.faltaElegir(_p, _sel, resumen),
         ),
+      ],
+    );
+    // Fijo abajo: con el teclado abierto («Otra cantidad») sigue a la vista.
+    final pie = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
         if (_errorAgregar != null)
           Padding(
-            padding: const EdgeInsets.only(top: 8),
+            padding: const EdgeInsets.only(bottom: 8),
             child: Text(
               _errorAgregar!,
               style: const TextStyle(color: AppColors.error, fontSize: 13),
             ),
           ),
-        const SizedBox(height: 12),
         BotonPrincipalCaja(
           texto: resumen.puedeAgregar
               ? 'Agregar y cobrar · ${MensajesCobroCaja.dinero(resumen.subtotalCentavos)}'
@@ -135,14 +142,6 @@ class _HojaProductoCajaState extends State<HojaProductoCaja> {
         ),
       ],
     );
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        16,
-        16,
-        16,
-        16 + MediaQuery.viewInsetsOf(context).bottom,
-      ),
-      child: SingleChildScrollView(child: cuerpo),
-    );
+    return CuerpoConPieFijo(cuerpo: cuerpo, pie: pie);
   }
 }

@@ -96,16 +96,20 @@ void main() {
       expect(repo.rellenos, 0, reason: 'nada se escribe sin el «sí»');
     });
 
-    testWidgets('PC (900 px o más): diálogo centrado, no hoja', (tester) async {
-      await abrir(tester, ancho: 1000, alto: 700);
+    testWidgets('PC (1 100 px o más): diálogo centrado, no hoja', (
+      tester,
+    ) async {
+      await abrir(tester, ancho: 1100, alto: 700);
 
       expect(find.byType(Dialog), findsOneWidget);
       expect(find.byType(BottomSheet), findsNothing);
       expect(find.text('Prepara tu catálogo para Caja'), findsOneWidget);
     });
 
-    testWidgets('899 px todavía es hoja; 900 px ya es diálogo', (tester) async {
-      await abrir(tester, ancho: 899, alto: 700);
+    testWidgets('tableta (1 099 px) todavía es hoja, como el resto de Caja', (
+      tester,
+    ) async {
+      await abrir(tester, ancho: 1099, alto: 700);
       expect(find.byType(BottomSheet), findsOneWidget);
     });
 
@@ -237,7 +241,7 @@ void main() {
     testWidgets('en PC el mismo proceso ocurre dentro del diálogo', (
       tester,
     ) async {
-      await abrir(tester, ancho: 1000, alto: 700);
+      await abrir(tester, ancho: 1100, alto: 700);
 
       await tester.tap(find.text('Preparar ahora'));
       await tester.pumpAndSettle();

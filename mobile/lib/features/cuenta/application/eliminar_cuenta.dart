@@ -1,7 +1,7 @@
 import '../data/eliminar_cuenta_repository.dart';
 
 /// Elimina por completo la cuenta de un vendedor: su negocio, productos,
-/// pedidos, resúmenes, página pública, plan, perfil y su usuario de acceso.
+/// pedidos, resúmenes, gastos de Caja, página pública, plan, perfil y su usuario de acceso.
 ///
 /// Hay que reautenticar al usuario ANTES de llamarlo (Firebase lo exige para
 /// borrar un usuario). Se puede repetir: si un intento se corta a medias, el
@@ -9,7 +9,7 @@ import '../data/eliminar_cuenta_repository.dart';
 /// que siempre pueda volver a intentarlo.
 ///
 /// Costo: una sola vez por cuenta, una lectura y un borrado por cada pedido,
-/// resumen y producto del negocio.
+/// resumen, gasto y producto del negocio.
 class EliminarCuenta {
   final EliminarCuentaRepository _datos;
   final Future<void> Function() _borrarUsuarioDeAcceso;
@@ -23,6 +23,7 @@ class EliminarCuenta {
       if (slug != null) {
         await _datos.borrarSubcoleccionDelNegocio(id, 'pedidos');
         await _datos.borrarSubcoleccionDelNegocio(id, 'resumenes');
+        await _datos.borrarSubcoleccionDelNegocio(id, 'gastos');
         await _datos.borrarSubcoleccionDelNegocio(id, 'productos');
         if (slug.isNotEmpty) await _datos.borrarPaginaPublica(slug);
         await _datos.borrarNegocio(id);

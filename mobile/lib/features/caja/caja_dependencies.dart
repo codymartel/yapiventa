@@ -56,6 +56,8 @@ class CajaDependencies {
     required RepositorioRellenoCatalogo relleno,
     required RepositorioGastosCaja gastos,
     required RepositorioDiaCaja dia,
+    // El reloj del gasto (el día en que se anota). Solo las pruebas lo fijan.
+    DateTime Function()? reloj,
   }) {
     return CajaDependencies(
       registrarVenta: RegistrarVentaMostrador(ventas),
@@ -63,7 +65,7 @@ class CajaDependencies {
       obtenerInforme: ObtenerInformeVentas(resumenes),
       buscarProductos: BuscarProductosCaja(catalogo),
       prepararCatalogo: PrepararCatalogoCaja(relleno),
-      registrarGasto: RegistrarGastoCaja(gastos),
+      registrarGasto: RegistrarGastoCaja(gastos, reloj: reloj),
       anularGasto: AnularGastoCaja(gastos),
       diaCaja: dia,
     );

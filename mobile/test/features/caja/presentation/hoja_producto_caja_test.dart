@@ -164,6 +164,33 @@ void main() {
       expect(banco.ultima!.cantidad, 350);
     });
 
+    for (final (nombre, ancho, alto, teclado) in [
+      ('celular', 390.0, 780.0, 320.0),
+      ('celular de lado', 780.0, 390.0, 200.0),
+    ]) {
+      testWidgets('$nombre con el teclado abierto: los botones quedan fijos y '
+          'a la vista, nada se desborda', (tester) async {
+        await banco.abrir(
+          tester,
+          quesoPorMedida(stockBase: 3200),
+          ancho: ancho,
+          alto: alto,
+        );
+        await tester.tap(find.text('Otra cantidad'));
+        await tester.pump();
+        await tester.enterText(find.byType(TextField), '350');
+        tester.view.viewInsets = FakeViewPadding(bottom: teclado);
+        await tester.pumpAndSettle();
+
+        expect(tester.takeException(), isNull);
+        for (final texto in ['Agregar y cobrar', 'Agregar y seguir']) {
+          final rect = tester.getRect(banco.boton(texto));
+          expect(rect.bottom, lessThanOrEqualTo(alto - teclado));
+          expect(rect.height, greaterThanOrEqualTo(44));
+        }
+      });
+    }
+
     testWidgets('las cantidades que pasan del stock quedan apagadas', (
       tester,
     ) async {

@@ -145,11 +145,11 @@ void main() {
       expect(find.byType(BottomSheet), findsOneWidget);
     });
 
-    testWidgets('PC (900 px o más): diálogo', (tester) async {
+    testWidgets('PC (1 100 px o más): diálogo', (tester) async {
       await banco.abrir(
         tester,
         productoSimple(stock: 5),
-        ancho: 1000,
+        ancho: 1100,
         alto: 700,
       );
 

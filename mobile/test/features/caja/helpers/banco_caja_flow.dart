@@ -171,6 +171,9 @@ class BancoCaja {
     relleno: RellenoListo(),
     gastos: gastos,
     dia: dia,
+    // El mismo día que el reloj de Caja: antes el gasto usaba la hora real y
+    // la prueba fallaba cualquier día que no fuera el 2026-11-11.
+    reloj: () => DateTime.utc(2026, 11, 11, 17),
   );
 
   /// Abre Caja en una pantalla de [ancho] × [alto]. [teclado] simula el

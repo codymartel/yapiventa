@@ -41,7 +41,8 @@ class TarjetaHistorialDia extends StatelessWidget {
                 ),
               ),
               Text(
-                '${resumen.nEntregados} entregados · '
+                '${resumen.nEntregados} '
+                '${resumen.nEntregados == 1 ? 'entregado' : 'entregados'} · '
                 '${MensajesAccionPedido.dinero(resumen.entregadosCentavos)}',
                 style: const TextStyle(color: AppColors.ok, fontSize: 13),
               ),

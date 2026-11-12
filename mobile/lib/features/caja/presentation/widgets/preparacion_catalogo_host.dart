@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../application/services/tamanos_caja.dart';
 import '../providers/preparacion_catalogo_provider.dart';
 import 'contenido_preparacion_catalogo.dart';
 
@@ -9,8 +10,8 @@ import 'contenido_preparacion_catalogo.dart';
 // ═════════════════════════════════════════════════════════════════════════
 // Envuelve la pantalla de Caja. Pregunta si hace falta preparar el catálogo
 // (1 lectura, nada se escribe) y, si hace falta, muestra el aviso:
-//   - menos de 900 px: hoja desde abajo;
-//   - 900 px o más: diálogo centrado.
+//   - menos de 1 100 px (celular y tableta): hoja desde abajo;
+//   - 1 100 px o más (PC y TV): diálogo centrado.
 // El mismo modal acompaña todo el proceso (aviso → preparando → listo, error
 // o «demasiados»). Mientras prepara NO se puede cerrar (atrás ni tocar fuera).
 // Cerrarlo en cualquier otro estado equivale a «Más tarde» (o a «Empezar a
@@ -28,8 +29,9 @@ class PreparacionCatalogoHost extends StatefulWidget {
     this.alCambiarBloqueo,
   });
 
-  /// 900 px: desde aquí el aviso es un diálogo (menos, una hoja).
-  static const double anchoDialogo = 900;
+  /// 1 100 px: desde aquí el aviso es un diálogo (menos, una hoja), igual
+  /// que las demás hojas de Caja.
+  static const double anchoDialogo = TamanosCaja.anchoPc;
 
   final PreparacionCatalogoProvider provider;
   final Widget child;

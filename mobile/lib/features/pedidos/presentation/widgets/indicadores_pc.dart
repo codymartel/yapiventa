@@ -57,14 +57,13 @@ class IndicadoresPc extends StatelessWidget {
         valor: MensajesAccionPedido.dinero(
           porCobrarCentavos ?? indicadores.porCobrarCentavos,
         ),
-        etiqueta: porCobrarCentavos == null
-            ? 'Por cobrar (cargados)'
-            : 'Por cobrar',
+        // «cargados» va en el detalle: en la etiqueta no cabía y se cortaba.
+        etiqueta: 'Por cobrar',
         detalle: porCobrarCentavos != null
             ? 'de todo el negocio'
             : (indicadores.porCobrarPedidos == 1
-                  ? '1 pedido'
-                  : '${indicadores.porCobrarPedidos} pedidos'),
+                  ? 'de lo cargado · 1 pedido'
+                  : 'de lo cargado · ${indicadores.porCobrarPedidos} pedidos'),
         color: AppColors.aviso,
         escala: escala,
       ),
@@ -79,7 +78,8 @@ class IndicadoresPc extends StatelessWidget {
         valor: MensajesAccionPedido.dinero(resumen.ventasCentavos),
         etiqueta: 'Ventas de hoy',
         detalle:
-            '${resumen.entregados} entregados · ticket '
+            '${resumen.entregados} '
+            '${resumen.entregados == 1 ? 'entregado' : 'entregados'} · ticket '
             '${ticket == null ? '—' : MensajesAccionPedido.dinero(ticket)}',
         color: AppColors.ok,
         escala: escala,

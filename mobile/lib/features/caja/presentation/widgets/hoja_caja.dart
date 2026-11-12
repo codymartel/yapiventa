@@ -3,15 +3,17 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../application/services/tamanos_caja.dart';
 
-/// Abre una hoja de Caja: desde abajo en celular y tableta, diálogo centrado
-/// en PC. El contenido debe ser un [MarcoHojaCaja], que se encarga del
-/// teclado, del poco alto y de deslizarse por dentro.
+/// Abre una hoja de Caja: desde abajo en celular y tableta (menos de
+/// 1 100 px), diálogo centrado en PC. El contenido se encarga del teclado y
+/// de deslizarse por dentro (un [MarcoHojaCaja] o un [CuerpoConPieFijo]).
+/// Con [arrastrable] en false la hoja no se cierra arrastrándola.
 Future<T?> mostrarHojaCaja<T>(
   BuildContext context, {
   required WidgetBuilder builder,
+  double anchoMaximo = TamanosCaja.anchoDialogo,
+  bool arrastrable = true,
 }) {
-  final forma = TamanosCaja.forma(MediaQuery.sizeOf(context).width);
-  if (!forma.esFamiliaMovil) {
+  if (esHojaEnDialogo(context)) {
     return showDialog<T>(
       context: context,
       builder: (c) => Dialog(
@@ -20,7 +22,7 @@ Future<T?> mostrarHojaCaja<T>(
         clipBehavior: Clip.antiAlias,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: TamanosCaja.anchoDialogo),
+          constraints: BoxConstraints(maxWidth: anchoMaximo),
           child: builder(c),
         ),
       ),
@@ -30,6 +32,7 @@ Future<T?> mostrarHojaCaja<T>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
+    enableDrag: arrastrable,
     backgroundColor: AppColors.superficie,
     clipBehavior: Clip.antiAlias,
     shape: const RoundedRectangleBorder(
@@ -37,6 +40,51 @@ Future<T?> mostrarHojaCaja<T>(
     ),
     builder: builder,
   );
+}
+
+/// true en PC y TV (1 100 px o más): ahí las hojas de Caja son diálogos.
+bool esHojaEnDialogo(BuildContext context) =>
+    !TamanosCaja.forma(MediaQuery.sizeOf(context).width).esFamiliaMovil;
+
+/// Una hoja sencilla cuyo [pie] (los botones) nunca se encoge: [cuerpo] se
+/// desliza por dentro y el pie queda fijo y a la vista, también con el
+/// teclado abierto (la hoja sube con él; el diálogo se aparta solo).
+class CuerpoConPieFijo extends StatelessWidget {
+  const CuerpoConPieFijo({super.key, required this.cuerpo, required this.pie});
+
+  final Widget cuerpo;
+  final Widget pie;
+
+  @override
+  Widget build(BuildContext context) {
+    final mq = MediaQuery.of(context);
+    final enDialogo = esHojaEnDialogo(context);
+    final teclado = enDialogo ? 0.0 : mq.viewInsets.bottom;
+    final libre =
+        mq.size.height - teclado - mq.padding.top - (enDialogo ? 64 : 24);
+    return Padding(
+      padding: EdgeInsets.only(bottom: teclado),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: libre < 160 ? 160 : libre),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: cuerpo,
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+              child: pie,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 // ═════════════════════════════════════════════════════════════════════════

@@ -3,10 +3,11 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../providers/catalogo_caja_provider.dart';
 import 'chip_caja.dart';
+import 'hoja_caja.dart';
 
-/// Abre los filtros avanzados: hoja desde abajo en celular (menos de 900 px) y
-/// diálogo en PC. Solo lo que no cabe en los filtros rápidos: una categoría y
-/// «Solo con stock» (el orden está en su menú). Cada cambio se aplica al
+/// Abre los filtros avanzados: hoja desde abajo en celular y tableta (menos
+/// de 1 100 px) y diálogo en PC. Solo lo que no cabe en los filtros
+/// rápidos: una categoría y «Solo con stock» (el orden está en su menú). Cada cambio se aplica al
 /// instante a la lista de atrás; «Listo» cierra.
 Future<void> mostrarFiltrosAvanzados(
   BuildContext context, {
@@ -17,28 +18,7 @@ Future<void> mostrarFiltrosAvanzados(
     provider: provider,
     categorias: categorias,
   );
-  if (MediaQuery.sizeOf(context).width >= 900) {
-    return showDialog<void>(
-      context: context,
-      builder: (c) => Dialog(
-        backgroundColor: AppColors.superficie,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 440),
-          child: contenido,
-        ),
-      ),
-    );
-  }
-  return showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
-    backgroundColor: AppColors.superficie,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
-    builder: (_) => contenido,
-  );
+  return mostrarHojaCaja<void>(context, builder: (_) => contenido);
 }
 
 class _ContenidoFiltros extends StatelessWidget {

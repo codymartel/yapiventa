@@ -71,12 +71,31 @@ abstract final class ContadoresVenta {
     );
   }
 
-  /// «Yape » → «yape»; vacío → «sin_indicar»; con signos raros → «otro».
+  /// «Yape » → «yape»; «Tarjeta Visa» → «tarjeta_visa»; «Pago móvil» →
+  /// «pago_movil»; vacío → «sin_indicar»; sin letras ni números → «otro».
+  /// Antes una forma propia con espacios se juntaba con las demás en «otro».
   static String clavePago(String metodoPago) {
-    final limpio = metodoPago.trim().toLowerCase();
+    var limpio = metodoPago.trim().toLowerCase();
     if (limpio.isEmpty) return claveSinPago;
-    return RegExp(r'^[a-z0-9_-]{1,30}$').hasMatch(limpio) ? limpio : 'otro';
+    _sinTildes.forEach((con, sin) => limpio = limpio.replaceAll(con, sin));
+    limpio = limpio
+        .replaceAll(RegExp(r'[^a-z0-9_-]+'), '_')
+        .replaceAll(RegExp(r'^[_-]+|[_-]+$'), '');
+    if (limpio.length > 30) {
+      limpio = limpio.substring(0, 30).replaceAll(RegExp(r'[_-]+$'), '');
+    }
+    return limpio.isEmpty ? 'otro' : limpio;
   }
+
+  static const _sinTildes = {
+    'á': 'a',
+    'é': 'e',
+    'í': 'i',
+    'ó': 'o',
+    'ú': 'u',
+    'ü': 'u',
+    'ñ': 'n',
+  };
 
   static String claveEntrega(Pedido pedido) {
     if (pedido.tipoEntrega == TipoEntrega.delivery) return 'delivery';

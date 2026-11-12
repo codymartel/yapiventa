@@ -116,7 +116,8 @@ class TextosTarjetaProducto {
         ? TotalesProducto.stockTotal(producto.modelos)
         : producto.stock;
     final nombre = _nombrePresentacion(producto);
-    if (nombre == null) return '$unidades uds.';
+    if (nombre == null) return unidades == 1 ? '1 ud.' : '$unidades uds.';
+    if (unidades == 1) return '1 ${nombre.trim().toLowerCase()}';
     return '$unidades ${LecturaUnidadesProducto.plural(nombre)}';
   }
 

@@ -23,6 +23,11 @@ class AppTheme {
         error: AppColors.error,
         outline: AppColors.border,
       ),
+      // Los avisos flotan sobre el contenido: pegados abajo tapaban los
+      // botones fijos de las hojas y de las listas.
+      snackBarTheme: const SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+      ),
       dividerTheme: DividerThemeData(color: AppColors.bordeSutil, space: 1),
       cardTheme: CardThemeData(
         color: AppColors.card,

@@ -104,7 +104,7 @@ void main() {
         stock: 1,
       );
       expect(TextosTarjetaProducto.stock(botellas), '12 botellas');
-      expect(TextosTarjetaProducto.stock(unidades), '1 unidades');
+      expect(TextosTarjetaProducto.stock(unidades), '1 unidad');
     });
   });
 

@@ -62,6 +62,7 @@ void main() {
           'marcar',
           'pedidos',
           'resumenes',
+          'gastos',
           'productos',
           'publica',
           'negocio',
