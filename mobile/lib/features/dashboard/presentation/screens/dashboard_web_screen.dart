@@ -8,7 +8,6 @@ import '../../../negocio/catalogo_negocio_dependencies.dart';
 import '../../../negocio/data/negocio_repository.dart';
 import '../../../negocio/domain/models/progreso_configuracion.dart';
 import '../../../negocio/domain/models/seleccion_plantilla_info.dart';
-import '../../../negocio/presentation/providers/configuracion_negocio_provider.dart';
 import '../../../negocio/presentation/widgets/seleccion_plantilla_flow.dart';
 import '../../../negocio/seleccion_plantilla_dependencies.dart';
 import '../../../productos/presentation/widgets/productos_flow.dart';
@@ -26,6 +25,7 @@ import '../widgets/dashboard_top_bar.dart';
 import '../widgets/plantilla_contextual_panel.dart';
 import 'abrir_tienda_publica.dart';
 import 'dashboard_contenido_inicio.dart';
+import 'negocio_dashboard.dart';
 import 'rama_caja_dashboard.dart';
 import 'rutas_inicio_dashboard.dart';
 import 'seccion_dashboard.dart';
@@ -108,14 +108,11 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
   /// Se arma una sola vez, al abrir Pedidos por primera vez.
   PedidosDependencies? _pedidosDependencias;
 
-  /// Configuración se abrió desde el formulario de un producto: muestra
-  /// «Guardar y volver al producto».
-  bool _vieneDeProducto = false;
-
-  /// Cada +1 le dice a Productos que reabra el formulario que quedó a medias.
-  final ValueNotifier<int> _volverAlProducto = ValueNotifier<int>(0);
+  late final NegocioDashboard _negocio = NegocioDashboard(
+    negocioId: widget.negocioId,
+    navegador: DashboardWebScreen.navegadorInicioClave,
+  );
   late String _rubroContextual;
-  ConfiguracionNegocioProvider? _providerConfiguracion;
   late final NavigatorObserver _observadorInterno;
   late final ValueNotifier<ProgresoConfiguracion> _progresoNotifier;
   late final RutasInicioDashboard _rutas;
@@ -130,8 +127,8 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
       negocioId: widget.negocioId,
       progreso: _progresoNotifier,
       rubroActual: () => widget.progreso.catalogo.rubro,
-      providerConfiguracion: () => _providerConfiguracion,
-      vieneDeProducto: () => _vieneDeProducto,
+      providerConfiguracion: () => _negocio.provider,
+      vieneDeProducto: () => _negocio.vieneDeProducto,
       alVolverAlProducto: _volverAlProductoDesdeConfiguracion,
       recargarProgreso: widget.recargarProgreso,
       alCambiarRubro: _cambiarRubroContextual,
@@ -150,8 +147,7 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
       _progresoNotifier.value = widget.progreso;
     }
     if (oldWidget.progreso.catalogo.rubro != widget.progreso.catalogo.rubro) {
-      _providerConfiguracion?.dispose();
-      _providerConfiguracion = null;
+      _negocio.olvidarProvider();
       if (!_rubroAbierta) {
         _rubroContextual = rubroCompatibleDashboard(
           widget.progreso.catalogo.rubro,
@@ -162,8 +158,7 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
 
   @override
   void dispose() {
-    _providerConfiguracion?.dispose();
-    _volverAlProducto.dispose();
+    _negocio.dispose();
     _progresoNotifier.dispose();
     super.dispose();
   }
@@ -196,8 +191,8 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
           ? const PedidosContextualPanel()
           : _cajaAbierta
           ? const CajaContextualPanel()
-          : _configuracionAbierta && _providerConfiguracion != null
-          ? ConfiguracionContextualPanel(provider: _providerConfiguracion!)
+          : _configuracionAbierta && _negocio.provider != null
+          ? ConfiguracionContextualPanel(provider: _negocio.provider!)
           : _plantillaAbierta
           ? const PlantillaContextualPanel()
           : _productosAbierta
@@ -287,58 +282,43 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
     BuildContext rutaContexto,
     ProgresoConfiguracion progreso,
   ) {
-    if (!PoliticaAcceso.permite(RutasAcceso.negocio, progreso)) {
+    if (!NegocioDashboard.permitida(progreso)) {
       _mostrarBloqueado(rutaContexto);
       return;
     }
-    _providerConfiguracion ??= ConfiguracionNegocioProvider(
-      rubro: progreso.catalogo.rubro,
-      negocioId: widget.negocioId,
-      configuracionInicial: progreso.catalogo.configuracionInicial,
-      repository: rutaContexto.read<NegocioRepository>(),
-    );
-    setState(() {
-      _seccion = SeccionDashboard.configuracion;
-    });
-    DashboardWebScreen.navegadorInicioClave.currentState!.pushNamed(
-      RutasAcceso.negocio,
-    );
+    setState(() => _seccion = SeccionDashboard.configuracion);
+    _negocio.abrir(progreso, rutaContexto.read<NegocioRepository>());
   }
 
   /// Desde el formulario de producto: Configuración → Catálogo → Unidades de
   /// venta, donde se crean las presentaciones propias.
   void _abrirUnidadesDeVenta() {
     if (!mounted) return;
-    DashboardWebScreen.navegadorInicioClave.currentState?.popUntil(
-      (ruta) => ruta.isFirst,
-    );
-    _vieneDeProducto = true;
+    _negocio
+      ..cerrarRutas()
+      ..vieneDeProducto = true;
     _abrirConfiguracion(context, widget.progreso);
-    _providerConfiguracion
-      ?..irAPaso(1)
-      ..cambiarCatalogoPestana(1);
+    _negocio.irAUnidadesDeVenta();
   }
 
   /// «Guardar y volver al producto»: cierra Configuración, abre Productos y le
   /// avisa que reabra el formulario que quedó a medias.
   void _volverAlProductoDesdeConfiguracion() {
     if (!mounted) return;
-    DashboardWebScreen.navegadorInicioClave.currentState?.popUntil(
-      (ruta) => ruta.isFirst,
-    );
+    _negocio.cerrarRutas();
     setState(() {
-      _vieneDeProducto = false;
+      _negocio.vieneDeProducto = false;
       _seccion = SeccionDashboard.productos;
       _productosVisitada = true;
     });
-    _volverAlProducto.value++;
+    _negocio.volverAlProducto.value++;
   }
 
   void _abrirProductos(
     BuildContext rutaContexto,
     ProgresoConfiguracion progreso,
   ) {
-    _vieneDeProducto = false;
+    _negocio.vieneDeProducto = false;
     if (!PoliticaAcceso.permite(RutasAcceso.productos, progreso)) {
       _mostrarBloqueado(rutaContexto);
       return;
@@ -424,7 +404,7 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
       onElegirPlantilla: (_) => _abrirPlantilla(context, widget.progreso),
       onProgressChanged: widget.recargarProgreso,
       onAbrirCatalogo: _abrirUnidadesDeVenta,
-      volverAlProducto: _volverAlProducto,
+      volverAlProducto: _negocio.volverAlProducto,
       productosDependencies: widget.productosDependencies,
       catalogoDependencies: widget.catalogoDependencies,
       mostrarPanelesLaterales: false,
