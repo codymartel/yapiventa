@@ -68,7 +68,7 @@ class SeccionMedidaProducto extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             'Tu unidad habitual es $unidad (se cambia en '
-            'Configuración → Medidas).',
+            'Negocio → Medidas).',
             key: const Key('unidad-habitual'),
             style: TextStyle(color: AppColors.muted, fontSize: 13),
           ),
@@ -240,7 +240,7 @@ class _FamiliaFija extends StatelessWidget {
         AvisoAmarillo(
           key: const Key('aviso-medida-desactivada'),
           mensaje:
-              'Desactivaste «$nombre» en Configuración → Medidas. Este '
+              'Desactivaste «$nombre» en Negocio → Medidas. Este '
               'producto sigue vendiéndose así; puedes cambiar nombre, precio '
               'y stock. Para cambiar la unidad o la regla, vuelve a activarla.',
         ),

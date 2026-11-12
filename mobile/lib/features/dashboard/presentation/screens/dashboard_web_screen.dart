@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/widgets/authenticated_shell.dart';
+import '../../../apariencia/presentation/screens/configuracion_app_screen.dart';
 import '../../../auth/domain/politica_acceso.dart';
 import '../../../caja/caja_dependencies.dart';
 import '../../../caja/presentation/widgets/caja_contextual_panel.dart';
@@ -15,6 +16,7 @@ import '../../../productos/presentation/widgets/productos_contextual_panel.dart'
 import '../../../pedidos/pedidos_dependencies.dart';
 import '../../../pedidos/presentation/widgets/pedidos_contextual_panel.dart';
 import '../../../pedidos/presentation/widgets/pedidos_flow.dart';
+import '../../../planes/presentation/screens/planes_screen.dart';
 import '../../../productos/productos_dependencies.dart';
 import '../providers/dashboard_provider.dart';
 import '../widgets/dashboard_attention_panel.dart';
@@ -86,15 +88,25 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
   SeccionDashboard _seccion = SeccionDashboard.inicio;
 
   bool get _rubroAbierta => _seccion == SeccionDashboard.rubro;
-  bool get _configuracionAbierta => _seccion == SeccionDashboard.configuracion;
+  bool get _negocioAbierta => _seccion == SeccionDashboard.negocio;
   bool get _productosAbierta => _seccion == SeccionDashboard.productos;
   bool get _plantillaAbierta => _seccion == SeccionDashboard.plantilla;
   bool get _pedidosAbierta => _seccion == SeccionDashboard.pedidos;
   bool get _cajaAbierta => _seccion == SeccionDashboard.caja;
 
+  /// Configuración (apariencia) y Plan: pantallas de solo texto y ajustes,
+  /// sin Firebase y sin ayuda contextual.
+  bool get _seccionSimple =>
+      _seccion == SeccionDashboard.apariencia ||
+      _seccion == SeccionDashboard.plan;
+
   /// La sección abierta tiene su propia rama (no es el navegador de Inicio).
   bool get _ramaPropia =>
-      _productosAbierta || _plantillaAbierta || _pedidosAbierta || _cajaAbierta;
+      _productosAbierta ||
+      _plantillaAbierta ||
+      _pedidosAbierta ||
+      _cajaAbierta ||
+      _seccionSimple;
 
   /// Se marca en la primera visita para montar la rama Productos de forma
   /// perezosa: al entrar al dashboard no existe ninguna instancia del flow.
@@ -135,7 +147,7 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
       alAbrirEtapa: _abrirEtapa,
     );
     _observadorInterno = ObservadorRutasInternas(() {
-      if (!mounted || (!_rubroAbierta && !_configuracionAbierta)) return;
+      if (!mounted || (!_rubroAbierta && !_negocioAbierta)) return;
       setState(() => _seccion = SeccionDashboard.inicio);
     });
   }
@@ -187,11 +199,13 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
         onCerrarSesion: widget.onCerrarSesion,
         onEliminarCuenta: widget.onEliminarCuenta,
       ),
-      contextualPanel: _pedidosAbierta
+      contextualPanel: _seccionSimple
+          ? null
+          : _pedidosAbierta
           ? const PedidosContextualPanel()
           : _cajaAbierta
           ? const CajaContextualPanel()
-          : _configuracionAbierta && _negocio.provider != null
+          : _negocioAbierta && _negocio.provider != null
           ? ConfiguracionContextualPanel(provider: _negocio.provider!)
           : _plantillaAbierta
           ? const PlantillaContextualPanel()
@@ -236,6 +250,9 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
               progreso: widget.progreso,
               dependencias: widget.cajaDependencies,
             ),
+          if (_seccion == SeccionDashboard.apariencia)
+            const ConfiguracionAppScreen(),
+          if (_seccion == SeccionDashboard.plan) const PlanesScreen(),
         ],
       ),
     );
@@ -286,7 +303,7 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
       _mostrarBloqueado(rutaContexto);
       return;
     }
-    setState(() => _seccion = SeccionDashboard.configuracion);
+    setState(() => _seccion = SeccionDashboard.negocio);
     _negocio.abrir(progreso, rutaContexto.read<NegocioRepository>());
   }
 
@@ -434,12 +451,17 @@ class _DashboardWebScreenState extends State<DashboardWebScreen> {
       case DashboardDestination.ventas:
         _abrirVentas(context, SeccionDashboard.caja);
         return;
-      case DashboardDestination.quejas:
+      case DashboardDestination.configuracion:
+        setState(() => _seccion = SeccionDashboard.apariencia);
+        return;
       case DashboardDestination.plan:
+        setState(() => _seccion = SeccionDashboard.plan);
+        return;
+      case DashboardDestination.quejas:
       case DashboardDestination.ayuda:
         // Escondidos en el menú (ver destinosPanelV1): no hay nada que abrir.
         return;
-      case DashboardDestination.configuracion:
+      case DashboardDestination.negocio:
         _abrirConfiguracion(context, widget.progreso);
         return;
     }

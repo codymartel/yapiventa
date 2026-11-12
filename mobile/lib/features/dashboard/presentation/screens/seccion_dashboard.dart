@@ -10,11 +10,15 @@ import '../widgets/dashboard_sidebar.dart';
 enum SeccionDashboard {
   inicio('inicio', DashboardDestination.inicio),
   rubro('rubro', DashboardDestination.inicio),
-  configuracion('configuracion', DashboardDestination.configuracion),
+  // Conserva la clave de ayuda vieja: quien ya vio la ayuda de la antigua
+  // «Configuración» no la vuelve a ver abrirse sola.
+  negocio('configuracion', DashboardDestination.negocio),
   productos('productos', DashboardDestination.productos),
   plantilla('plantilla', DashboardDestination.plantilla),
   pedidos('pedidos', DashboardDestination.pedidos),
-  caja('caja', DashboardDestination.ventas);
+  caja('caja', DashboardDestination.ventas),
+  apariencia('apariencia', DashboardDestination.configuracion),
+  plan('plan', DashboardDestination.plan);
 
   const SeccionDashboard(this.ayudaId, this.destinoActivo);
 
@@ -22,15 +26,18 @@ enum SeccionDashboard {
   final DashboardDestination destinoActivo;
 }
 
-/// Si un ítem del menú se puede abrir: Inicio siempre; Productos, Plantilla
-/// y Configuración según la etapa de configuración; el resto (Pedidos,
-/// Ventas…) solo con la configuración completa.
+/// Si un ítem del menú se puede abrir: Inicio, Configuración (apariencia) y
+/// Plan siempre; Productos, Plantilla y Negocio según la etapa de
+/// configuración; el resto (Pedidos, Ventas…) solo con la configuración
+/// completa.
 bool destinoHabilitado(
   DashboardDestination destino,
   ProgresoConfiguracion progreso,
 ) {
   return switch (destino) {
-    DashboardDestination.inicio => true,
+    DashboardDestination.inicio ||
+    DashboardDestination.configuracion ||
+    DashboardDestination.plan => true,
     DashboardDestination.productos => PoliticaAcceso.permite(
       RutasAcceso.productos,
       progreso,
@@ -39,7 +46,7 @@ bool destinoHabilitado(
       RutasAcceso.plantilla,
       progreso,
     ),
-    DashboardDestination.configuracion => PoliticaAcceso.permite(
+    DashboardDestination.negocio => PoliticaAcceso.permite(
       RutasAcceso.negocio,
       progreso,
     ),

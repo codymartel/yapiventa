@@ -102,14 +102,14 @@ void main() {
     await mostrar(t);
 
     final menu = find.byType(DashboardSidebar);
-    for (final texto in ['Inicio', 'Productos', 'Pedidos', 'Ventas']) {
+    for (final texto in ['Inicio', 'Productos', 'Pedidos', 'Ventas', 'Plan']) {
       expect(
         find.descendant(of: menu, matching: find.text(texto)),
         findsOneWidget,
         reason: texto,
       );
     }
-    for (final texto in ['Reclamaciones', 'Plan']) {
+    for (final texto in ['Reclamaciones']) {
       expect(
         find.descendant(of: menu, matching: find.text(texto)),
         findsNothing,

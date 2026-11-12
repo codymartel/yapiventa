@@ -376,12 +376,14 @@ void main() {
       'Plantilla web',
       'Pedidos',
       'Ventas',
+      'Negocio',
       'Configuración',
+      'Plan',
     ]) {
       expect(find.text(texto), findsWidgets, reason: texto);
     }
     final menu = find.byType(DashboardSidebar);
-    for (final texto in ['Reclamaciones', 'Plan']) {
+    for (final texto in ['Reclamaciones']) {
       expect(
         find.descendant(of: menu, matching: find.text(texto)),
         findsNothing,
@@ -821,7 +823,7 @@ void main() {
         progreso: _progresoConRubro(),
       );
 
-      await tester.tap(_textoSidebar('Configuración'));
+      await tester.tap(_textoSidebar('Negocio'));
       await tester.pumpAndSettle();
 
       final proveedor = Provider.of<ConfiguracionNegocioProvider>(
@@ -1432,7 +1434,7 @@ void main() {
     (tester) async {
       final escenario = await mostrarDashboard(tester);
 
-      await tester.tap(find.text('Configuración'));
+      await tester.tap(find.text('Negocio'));
       await tester.pumpAndSettle();
 
       expect(
@@ -1446,7 +1448,7 @@ void main() {
       final sidebar = tester.widget<DashboardSidebar>(
         find.byType(DashboardSidebar),
       );
-      expect(sidebar.destinoActivo, DashboardDestination.configuracion);
+      expect(sidebar.destinoActivo, DashboardDestination.negocio);
     },
   );
 
@@ -1455,7 +1457,7 @@ void main() {
   ) async {
     await mostrarDashboard(tester, progreso: _progresoConRubro());
 
-    await tester.tap(find.text('Configuración'));
+    await tester.tap(find.text('Negocio'));
     await tester.pumpAndSettle();
 
     expect(find.byType(AuthenticatedShell), findsOneWidget);
@@ -1478,7 +1480,7 @@ void main() {
       final estadoNavigator = tester.state<NavigatorState>(navegador);
       final shellElemento = tester.element(find.byType(AuthenticatedShell));
 
-      await tester.tap(find.text('Configuración'));
+      await tester.tap(find.text('Negocio'));
       await tester.pumpAndSettle();
 
       expect(
@@ -1511,7 +1513,7 @@ void main() {
         findsNothing,
       );
 
-      await tester.tap(find.text('Configuración'));
+      await tester.tap(find.text('Negocio'));
       await tester.pumpAndSettle();
 
       expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
@@ -1534,7 +1536,7 @@ void main() {
       expect(_botonAyuda(), findsOneWidget);
       expect(_dialogoAyuda(), findsNothing);
 
-      await tester.tap(_textoSidebar('Configuración'));
+      await tester.tap(_textoSidebar('Negocio'));
       await tester.pumpAndSettle();
 
       expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
@@ -1572,7 +1574,7 @@ void main() {
     (tester) async {
       await mostrarDashboard(tester, progreso: _progresoConRubro());
 
-      await tester.tap(find.text('Configuración'));
+      await tester.tap(find.text('Negocio'));
       await tester.pumpAndSettle();
       expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
 
@@ -1606,7 +1608,7 @@ void main() {
     (tester) async {
       await mostrarDashboard(tester, progreso: _progresoConNegocio());
 
-      await tester.tap(find.text('Configuración'));
+      await tester.tap(find.text('Negocio'));
       await tester.pumpAndSettle();
       expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
 
@@ -1653,7 +1655,7 @@ void main() {
       final sidebar = tester.widget<DashboardSidebar>(
         find.byType(DashboardSidebar),
       );
-      expect(sidebar.destinoActivo, DashboardDestination.configuracion);
+      expect(sidebar.destinoActivo, DashboardDestination.negocio);
     },
   );
 
@@ -1662,7 +1664,7 @@ void main() {
     (tester) async {
       await mostrarDashboard(tester, progreso: _progresoConNegocio());
 
-      await tester.tap(find.text('Configuración'));
+      await tester.tap(find.text('Negocio'));
       await tester.pumpAndSettle();
       expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
 
@@ -1715,7 +1717,7 @@ void main() {
       final sidebar = tester.widget<DashboardSidebar>(
         find.byType(DashboardSidebar),
       );
-      expect(sidebar.destinoActivo, DashboardDestination.configuracion);
+      expect(sidebar.destinoActivo, DashboardDestination.negocio);
     },
   );
 
@@ -1724,7 +1726,7 @@ void main() {
     (tester) async {
       await mostrarDashboard(tester, progreso: _progresoConNegocio());
 
-      await tester.tap(find.text('Configuración'));
+      await tester.tap(find.text('Negocio'));
       await tester.pumpAndSettle();
       expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
 
@@ -1769,7 +1771,7 @@ void main() {
       final sidebar = tester.widget<DashboardSidebar>(
         find.byType(DashboardSidebar),
       );
-      expect(sidebar.destinoActivo, DashboardDestination.configuracion);
+      expect(sidebar.destinoActivo, DashboardDestination.negocio);
     },
   );
 
@@ -1778,7 +1780,7 @@ void main() {
     (tester) async {
       await mostrarDashboard(tester, progreso: _progresoConRubro());
 
-      await tester.tap(find.text('Configuración'));
+      await tester.tap(find.text('Negocio'));
       await tester.pumpAndSettle();
       expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
 
@@ -1791,7 +1793,7 @@ void main() {
       final sidebar = tester.widget<DashboardSidebar>(
         find.byType(DashboardSidebar),
       );
-      expect(sidebar.destinoActivo, DashboardDestination.configuracion);
+      expect(sidebar.destinoActivo, DashboardDestination.negocio);
       expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
       expect(find.byType(DashboardAttentionPanel), findsNothing);
       expect(
@@ -1826,7 +1828,7 @@ void main() {
     (tester) async {
       await mostrarDashboard(tester, progreso: _progresoConRubro());
 
-      await tester.tap(find.text('Configuración'));
+      await tester.tap(find.text('Negocio'));
       await tester.pumpAndSettle();
       expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
 
@@ -1845,7 +1847,7 @@ void main() {
       var sidebar = tester.widget<DashboardSidebar>(
         find.byType(DashboardSidebar),
       );
-      expect(sidebar.destinoActivo, DashboardDestination.configuracion);
+      expect(sidebar.destinoActivo, DashboardDestination.negocio);
       expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
       expect(find.byType(DashboardAttentionPanel), findsNothing);
       expect(
@@ -1871,7 +1873,7 @@ void main() {
       await tester.pumpAndSettle();
 
       sidebar = tester.widget<DashboardSidebar>(find.byType(DashboardSidebar));
-      expect(sidebar.destinoActivo, DashboardDestination.configuracion);
+      expect(sidebar.destinoActivo, DashboardDestination.negocio);
       expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
       expect(find.byType(DashboardAttentionPanel), findsNothing);
     },
@@ -1882,7 +1884,7 @@ void main() {
     (tester) async {
       await mostrarDashboard(tester, progreso: _progresoConRubro());
 
-      await tester.tap(find.text('Configuración'));
+      await tester.tap(find.text('Negocio'));
       await tester.pumpAndSettle();
       expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
 
@@ -1898,7 +1900,7 @@ void main() {
       var sidebar = tester.widget<DashboardSidebar>(
         find.byType(DashboardSidebar),
       );
-      expect(sidebar.destinoActivo, DashboardDestination.configuracion);
+      expect(sidebar.destinoActivo, DashboardDestination.negocio);
       expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
       expect(find.byType(DashboardAttentionPanel), findsNothing);
 
@@ -1907,7 +1909,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Zonas de delivery *'), findsOneWidget);
       sidebar = tester.widget<DashboardSidebar>(find.byType(DashboardSidebar));
-      expect(sidebar.destinoActivo, DashboardDestination.configuracion);
+      expect(sidebar.destinoActivo, DashboardDestination.negocio);
       expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
       expect(find.byType(DashboardAttentionPanel), findsNothing);
       expect(
@@ -1940,7 +1942,7 @@ void main() {
       final estadoNavigator = tester.state<NavigatorState>(navegador);
       final shellElemento = tester.element(find.byType(AuthenticatedShell));
 
-      await tester.tap(find.text('Configuración'));
+      await tester.tap(find.text('Negocio'));
       await tester.pumpAndSettle();
 
       final elemento = tester.element(find.byType(ConfiguracionNegocioFlow));
@@ -1995,7 +1997,7 @@ void main() {
         tester.element(find.byType(DashboardSidebar)),
         listen: false,
       );
-      expect(sidebar.destinoActivo, DashboardDestination.configuracion);
+      expect(sidebar.destinoActivo, DashboardDestination.negocio);
       expect(find.byType(DashboardAttentionPanel), findsNothing);
       expect(identical(enArbol, escenario.provider), isTrue);
     },
@@ -2005,7 +2007,7 @@ void main() {
     tester,
   ) async {
     await mostrarDashboard(tester, progreso: _progresoConRubro());
-    await tester.tap(_textoSidebar('Configuración'));
+    await tester.tap(_textoSidebar('Negocio'));
     await tester.pumpAndSettle();
 
     expect(
@@ -2125,7 +2127,7 @@ void main() {
     tester,
   ) async {
     await mostrarDashboard(tester, progreso: _progresoConRubro());
-    await tester.tap(_textoSidebar('Configuración'));
+    await tester.tap(_textoSidebar('Negocio'));
     await tester.pumpAndSettle();
 
     expect(
@@ -2194,7 +2196,7 @@ void main() {
       expect(find.byType(ConfiguracionContextualPanel), findsNothing);
       await _cerrarAyuda(tester);
 
-      await tester.tap(_textoSidebar('Configuración'));
+      await tester.tap(_textoSidebar('Negocio'));
       await tester.pumpAndSettle();
 
       expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
@@ -2262,7 +2264,7 @@ void main() {
         await tester.tap(find.byTooltip('Abrir menú'));
         await tester.pumpAndSettle();
       }
-      await tester.tap(_textoSidebar('Configuración'));
+      await tester.tap(_textoSidebar('Negocio'));
       await tester.pumpAndSettle();
 
       expect(find.byType(ConfiguracionNegocioFlow), findsOneWidget);
@@ -2428,7 +2430,7 @@ void main() {
         },
       );
 
-      await tester.tap(find.text('Configuración'));
+      await tester.tap(find.text('Negocio'));
       await tester.pumpAndSettle();
 
       final elemento = tester.element(find.byType(ConfiguracionNegocioFlow));
@@ -2871,7 +2873,7 @@ void main() {
       escenario.actualizarProgreso(_progresoConRubro());
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Configuración'));
+      await tester.tap(find.text('Negocio'));
       await tester.pumpAndSettle();
       expect(
         escenario.etapasAbiertas,
@@ -2939,7 +2941,7 @@ void main() {
 
       await tester.tap(find.text('Productos').first);
       await tester.pump();
-      await tester.tap(find.text('Configuración').first);
+      await tester.tap(find.text('Negocio').first);
       await tester.pump();
       await tester.tap(find.byTooltip('Elegir plantilla'));
       await tester.pump();

@@ -50,7 +50,7 @@ class EntregaPagoCaja extends StatelessWidget {
           const SizedBox(height: 6),
           if (p.zonas.isEmpty)
             const AvisoCaja(
-              'Aún no tienes zonas de delivery. Agrégalas en Configuración '
+              'Aún no tienes zonas de delivery. Agrégalas en Negocio '
               'para vender con delivery.',
             )
           else

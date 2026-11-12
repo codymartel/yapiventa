@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 
 import 'core/theme/app_colors.dart';
 import 'core/theme/app_theme.dart';
+import 'features/apariencia/domain/tamano_letra.dart';
+import 'features/apariencia/presentation/providers/apariencia_provider.dart';
 import 'features/auth/data/auth_repository.dart';
 import 'features/auth/data/user_repository.dart';
 import 'features/auth/domain/politica_acceso.dart';
@@ -31,7 +33,10 @@ import 'firebase_options.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  runApp(const MyApp());
+  // Se lee del equipo antes de abrir: la primera pantalla ya sale con la letra
+  // elegida (0 lecturas de Firebase).
+  final apariencia = await AparienciaProvider.cargar();
+  runApp(MyApp(apariencia: apariencia));
 }
 
 class MyApp extends StatelessWidget {
@@ -43,6 +48,9 @@ class MyApp extends StatelessWidget {
   final SeleccionPlantillaDependencies? seleccionPlantillaDependencies;
   final String? initialRoute;
 
+  /// Tamaño de letra elegido en Configuración. Sin él (pruebas), «Normal».
+  final AparienciaProvider? apariencia;
+
   const MyApp({
     super.key,
     this.authRepository,
@@ -52,6 +60,7 @@ class MyApp extends StatelessWidget {
     this.catalogoDependencies,
     this.seleccionPlantillaDependencies,
     this.initialRoute,
+    this.apariencia,
   });
 
   @override
@@ -62,6 +71,12 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         Provider<NegocioRepository>.value(value: negocioRepository),
+        if (apariencia != null)
+          ChangeNotifierProvider<AparienciaProvider>.value(value: apariencia!)
+        else
+          ChangeNotifierProvider<AparienciaProvider>(
+            create: (_) => AparienciaProvider(),
+          ),
         ChangeNotifierProvider(
           create: (_) => AuthProvider(
             repository: authRepository,
@@ -81,6 +96,21 @@ class MyApp extends StatelessWidget {
         title: 'YapiVenta',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.oscuro,
+        builder: (context, child) {
+          final tamano = context.watch<AparienciaProvider>().tamanoLetra;
+          // «Normal» deja la escala del teléfono tal cual (en Android 14
+          // puede no ser lineal y no conviene reemplazarla).
+          if (tamano == TamanoLetra.normal) return child!;
+          final medios = MediaQuery.of(context);
+          return MediaQuery(
+            data: medios.copyWith(
+              textScaler: TextScaler.linear(
+                tamano.escalaCon(medios.textScaler.scale(1)),
+              ),
+            ),
+            child: child!,
+          );
+        },
         initialRoute: initialRoute,
         onGenerateInitialRoutes: (rutaInicial) => [
           _crearRuta(

@@ -77,7 +77,7 @@ void main() {
       await tester.pump();
 
       expect(
-        find.textContaining('¿No ves tu presentación? Créala en Configuración'),
+        find.textContaining('¿No ves tu presentación? Créala en Negocio'),
         findsOneWidget,
       );
       await tester.tap(find.byKey(const Key('crear-presentacion-en-catalogo')));

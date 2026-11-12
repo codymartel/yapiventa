@@ -18,7 +18,7 @@ class SelectorModoVenta extends StatelessWidget {
   /// Texto que explica por qué "Por medida" está apagado.
   static const avisoMedidaInactiva =
       'Para vender por peso, volumen o longitud, activa una medida en '
-      'Configuración → Catálogo → Medidas.';
+      'Negocio → Catálogo → Medidas.';
 
   final List<ModoVenta> modosDisponibles;
   final ModoVenta? seleccionado;

@@ -9,6 +9,11 @@ enum DashboardDestination {
   pedidos,
   ventas,
   quejas,
+
+  /// Datos del negocio: catálogo, entrega y pagos (antes «Configuración»).
+  negocio,
+
+  /// Apariencia de la app en este equipo (tamaño de letra).
   configuracion,
   plan,
   ayuda,
@@ -23,7 +28,10 @@ const destinosPanelV1 = <DashboardDestination>{
   DashboardDestination.plantilla,
   DashboardDestination.pedidos,
   DashboardDestination.ventas,
+  DashboardDestination.negocio,
   DashboardDestination.configuracion,
+  // Excepción pedida por el usuario: «Pronto tendremos planes».
+  DashboardDestination.plan,
 };
 
 class DashboardSidebar extends StatelessWidget {
@@ -87,18 +95,24 @@ class DashboardSidebar extends StatelessWidget {
                     texto: 'Reclamaciones',
                   ),
                   _item(
-                    destino: DashboardDestination.configuracion,
-                    icono: Icons.tune_rounded,
-                    texto: 'Configuración',
+                    destino: DashboardDestination.negocio,
+                    icono: Icons.storefront_outlined,
+                    texto: 'Negocio',
                   ),
-                  if (destinosVisibles.contains(DashboardDestination.plan) ||
-                      destinosVisibles.contains(
-                        DashboardDestination.ayuda,
-                      )) ...[
+                  if (const [
+                    DashboardDestination.configuracion,
+                    DashboardDestination.plan,
+                    DashboardDestination.ayuda,
+                  ].any(destinosVisibles.contains)) ...[
                     const SizedBox(height: 20),
                     Divider(color: AppColors.bordeSutil, height: 1),
                     const SizedBox(height: 8),
                   ],
+                  _item(
+                    destino: DashboardDestination.configuracion,
+                    icono: Icons.settings_outlined,
+                    texto: 'Configuración',
+                  ),
                   _item(
                     destino: DashboardDestination.plan,
                     icono: Icons.workspace_premium_outlined,

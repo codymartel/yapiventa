@@ -88,7 +88,7 @@ class SeccionPresentacionProducto extends StatelessWidget {
               key: const Key('crear-presentacion-en-catalogo'),
               onPressed: onAbrirCatalogo,
               child: const Text(
-                '¿No ves tu presentación? Créala en Configuración → Catálogo',
+                '¿No ves tu presentación? Créala en Negocio → Catálogo',
                 style: TextStyle(fontSize: 13),
               ),
             ),
