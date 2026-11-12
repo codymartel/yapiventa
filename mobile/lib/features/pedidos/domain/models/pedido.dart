@@ -2,6 +2,7 @@ import 'cobro_pedido.dart';
 import 'descuento_stock.dart';
 import 'estado_pedido.dart';
 import 'linea_pedido.dart';
+import 'pedido_por.dart';
 
 // ═════════════════════════════════════════════════════════════════════════
 // Pedido
@@ -70,6 +71,7 @@ class Pedido {
     this.origen = OrigenPedido.tienda,
     this.tipoEntrega = TipoEntrega.delivery,
     this.enLocal = false,
+    this.pedidoPor,
     this.fecha,
     this.cliente = const ClientePedido(),
     this.zona = '',
@@ -98,6 +100,10 @@ class Pedido {
   /// Venta de mostrador atendida en el local (el cliente se lleva el producto
   /// ahí mismo). Se guarda como «recojo»; este campo la distingue de un recojo.
   final bool enLocal;
+
+  /// Venta de Caja «En tienda» que el cliente pidió antes para recoger (por
+  /// WhatsApp, Facebook…). null si no lo pidió antes, en delivery y en la web.
+  final PedidoPor? pedidoPor;
 
   /// Momento en que llegó (hora del servidor). null mientras se escribe.
   final DateTime? fecha;
@@ -140,6 +146,7 @@ class Pedido {
       origen: origen,
       tipoEntrega: tipoEntrega,
       enLocal: enLocal,
+      pedidoPor: pedidoPor,
       fecha: fecha,
       cliente: cliente,
       zona: zona,

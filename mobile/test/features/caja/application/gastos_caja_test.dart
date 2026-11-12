@@ -58,6 +58,28 @@ void main() {
       }
     });
 
+    test('paso R: fuera de restaurante solo En tienda y Delivery', () {
+      expect(TextosEntregaCaja.entregas(rubro: 'Bodega'), [
+        EntregaCaja.local,
+        EntregaCaja.delivery,
+      ]);
+      expect(TextosEntregaCaja.entregas(rubro: ' restaurante '), [
+        EntregaCaja.local,
+        EntregaCaja.recojo,
+        EntregaCaja.delivery,
+      ]);
+    });
+
+    test('paso R: «¿Lo pidió antes?» solo en tienda y no en restaurante', () {
+      bool pregunta(EntregaCaja e, String rubro) =>
+          TextosEntregaCaja.preguntaPedidoPor(e, rubro: rubro);
+
+      expect(pregunta(EntregaCaja.local, 'Ropa'), isTrue);
+      expect(pregunta(EntregaCaja.delivery, 'Ropa'), isFalse);
+      expect(pregunta(EntregaCaja.local, 'Restaurante'), isFalse);
+      expect(pregunta(EntregaCaja.recojo, 'Restaurante'), isFalse);
+    });
+
     test('la ayuda del cliente cambia con la entrega y el rubro', () {
       expect(
         TextosEntregaCaja.ayudaCliente(EntregaCaja.local, rubro: 'Restaurante'),

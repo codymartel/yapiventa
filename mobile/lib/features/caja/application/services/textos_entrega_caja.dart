@@ -3,16 +3,30 @@ import '../../domain/models/opciones_caja.dart';
 // ═════════════════════════════════════════════════════════════════════════
 // TextosEntregaCaja
 // ═════════════════════════════════════════════════════════════════════════
-// Cómo le dice cada rubro a las tres entregas de Caja. La entrega que se
-// GUARDA no cambia (local, recojo o delivery): solo cambia la palabra que lee
-// el cajero. El rubro sugiere, no prohíbe: los seis rubros tienen las tres.
+// Qué entregas ve cada rubro en Caja y cómo les dice. La entrega que se
+// GUARDA no cambia (local, recojo o delivery): solo cambia la palabra.
 //
 //   Restaurante → En mesa · Para llevar · Delivery
-//   Los demás   → En tienda · Recojo · Delivery
+//   Los demás   → En tienda · Delivery, y «En tienda» pregunta «¿Lo pidió
+//                 antes para recoger?» (paso R: el Recojo como entrega queda
+//                 solo para la tienda web)
 //
 // Función pura, sin Flutter.
 // ═════════════════════════════════════════════════════════════════════════
 abstract final class TextosEntregaCaja {
+  /// Los chips de entrega de ese rubro, en orden.
+  static List<EntregaCaja> entregas({required String rubro}) {
+    return _esRestaurante(rubro)
+        ? EntregaCaja.values
+        : const [EntregaCaja.local, EntregaCaja.delivery];
+  }
+
+  /// Si se pregunta «¿Lo pidió antes para recoger?»: solo «En tienda», y no
+  /// en restaurante (que ya tiene «Para llevar»).
+  static bool preguntaPedidoPor(EntregaCaja entrega, {required String rubro}) {
+    return entrega == EntregaCaja.local && !_esRestaurante(rubro);
+  }
+
   /// La palabra del chip de entrega para ese rubro.
   static String etiqueta(EntregaCaja entrega, {required String rubro}) {
     final restaurante = _esRestaurante(rubro);

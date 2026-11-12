@@ -114,9 +114,11 @@ service cloud.firestore {
           'fecha', 'cliente', 'zona', 'deliveryCentavos', 'descuentoCentavos',
           'subtotalCentavos', 'totalCentavos', 'lineas', 'metodoPago',
           'estadoPago', 'notas', 'stockDescontado', 'reembolso', 'historial',
-          'actualizadoEn', 'cobro'
+          'actualizadoEn', 'cobro', 'pedidoPor'
         ]) &&
         (!('cobro' in d) || cobroValido(d.cobro)) &&
+        (!('pedidoPor' in d) || (d.tipoEntrega == 'recojo' &&
+          d.pedidoPor in ['whatsapp', 'facebook', 'llamada', 'otro'])) &&
         d.keys().hasAll([
           'negocioId', 'clave', 'estado', 'origen', 'tipoEntrega', 'fecha',
           'cliente', 'deliveryCentavos', 'descuentoCentavos',

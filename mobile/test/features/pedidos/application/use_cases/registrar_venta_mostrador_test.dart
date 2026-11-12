@@ -3,6 +3,7 @@ import 'package:mobile/features/pedidos/application/services/validacion_venta_mo
 import 'package:mobile/features/pedidos/application/use_cases/registrar_venta_mostrador.dart';
 import 'package:mobile/features/pedidos/domain/models/descuento_pago.dart';
 import 'package:mobile/features/pedidos/domain/models/pedido.dart';
+import 'package:mobile/features/pedidos/domain/models/pedido_por.dart';
 import 'package:mobile/features/pedidos/domain/repositories/repositorio_ventas_mostrador.dart';
 
 import '../../helpers/pedidos_de_prueba.dart';
@@ -188,4 +189,36 @@ void main() {
 
     expect(repo.pedidas.single.cobrarAlEntregar, isTrue);
   });
+
+  test(
+    '«lo pidió antes» llega en la tienda y se descarta en delivery',
+    () async {
+      await caso.ejecutar(
+        negocioId: 'n1',
+        idVenta: 'v1',
+        lineas: bodega,
+        tipoEntrega: TipoEntrega.recojo,
+        enLocal: true,
+        metodoPago: 'efectivo',
+        pedidoPor: PedidoPor.whatsapp,
+      );
+      await caso.ejecutar(
+        negocioId: 'n1',
+        idVenta: 'v2',
+        lineas: bodega,
+        tipoEntrega: TipoEntrega.delivery,
+        metodoPago: 'efectivo',
+        cliente: const ClientePedido(
+          nombre: 'Carla',
+          telefono: '987654321',
+          direccion: 'Av. Larco 123',
+        ),
+        zona: 'Miraflores',
+        pedidoPor: PedidoPor.whatsapp,
+      );
+
+      expect(repo.pedidas.first.pedidoPor, PedidoPor.whatsapp);
+      expect(repo.pedidas.last.pedidoPor, isNull);
+    },
+  );
 }

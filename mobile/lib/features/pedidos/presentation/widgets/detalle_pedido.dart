@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/theme/app_colors.dart';
-import '../../application/services/mensajes_accion_pedido.dart';
 import '../../application/services/resumen_dia_pedidos.dart';
+import '../../application/services/texto_entrega_pedido.dart';
 import '../../application/services/tiempo_transcurrido.dart';
 import '../../application/services/transiciones_pedido.dart';
 import '../../domain/models/estado_pedido.dart';
@@ -108,7 +108,7 @@ class DetallePedido extends StatelessWidget {
                 pedido.tipoEntrega == TipoEntrega.delivery
                     ? Icons.local_shipping_outlined
                     : Icons.storefront_outlined,
-                _textoEntrega(),
+                TextoEntregaPedido.de(pedido),
               ),
               if (pedido.notas.trim().isNotEmpty)
                 _Dato(
@@ -153,21 +153,6 @@ class DetallePedido extends StatelessWidget {
         _Pie(pedido: pedido, procesando: procesando, acciones: acciones),
       ],
     );
-  }
-
-  String _textoEntrega() {
-    final lugar = [
-      if (pedido.cliente.direccion.trim().isNotEmpty)
-        pedido.cliente.direccion.trim(),
-      if (pedido.zona.trim().isNotEmpty) pedido.zona.trim(),
-    ].join(' · ');
-    if (pedido.tipoEntrega == TipoEntrega.recojo) {
-      return 'Recojo en el local';
-    }
-    final delivery = pedido.deliveryCentavos > 0
-        ? ' (delivery ${MensajesAccionPedido.dinero(pedido.deliveryCentavos)})'
-        : '';
-    return lugar.isEmpty ? 'Delivery$delivery' : '$lugar$delivery';
   }
 
   String _textoPago() {

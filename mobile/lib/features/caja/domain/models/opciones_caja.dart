@@ -34,7 +34,8 @@ class ZonaCaja {
 }
 
 /// Dónde se entrega: «En el local» y «Recojo» se guardan como recojo (el local
-/// además marca `enLocal`); delivery lleva cliente, zona y dirección.
+/// además marca `enLocal`); delivery lleva cliente, zona y dirección. «Recojo»
+/// solo lo ve el restaurante («Para llevar»); ver `TextosEntregaCaja`.
 enum EntregaCaja {
   local('En el local'),
   recojo('Recojo'),

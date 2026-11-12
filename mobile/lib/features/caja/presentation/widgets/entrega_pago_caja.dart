@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:mobile/features/pedidos/domain/models/pedido_por.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../application/services/textos_dia_caja.dart';
 import '../../application/services/textos_entrega_caja.dart';
-import '../../domain/models/opciones_caja.dart';
 import '../providers/venta_caja_provider.dart';
 import 'chip_caja.dart';
 import 'piezas_caja.dart';
 
 /// Cómo se entrega y cómo se paga la venta. Las formas de pago y las zonas
 /// son las que configuró CADA negocio (no hay una lista fija); la palabra de
-/// cada entrega cambia con el rubro. Con delivery aparecen la zona (con su
-/// costo) y «Cobrar al entregar».
+/// cada entrega cambia con el rubro. «En tienda» pregunta si lo pidió antes
+/// para recoger; con delivery aparecen la zona (con su costo) y «Cobrar al
+/// entregar».
 class EntregaPagoCaja extends StatelessWidget {
   const EntregaPagoCaja({
     super.key,
@@ -35,7 +36,7 @@ class EntregaPagoCaja extends StatelessWidget {
           spacing: 8,
           runSpacing: 8,
           children: [
-            for (final e in EntregaCaja.values)
+            for (final e in TextosEntregaCaja.entregas(rubro: rubro))
               ChipCaja(
                 etiqueta: TextosEntregaCaja.etiqueta(e, rubro: rubro),
                 activo: p.entrega == e,
@@ -44,6 +45,24 @@ class EntregaPagoCaja extends StatelessWidget {
               ),
           ],
         ),
+        if (TextosEntregaCaja.preguntaPedidoPor(p.entrega, rubro: rubro)) ...[
+          const SizedBox(height: 12),
+          const TituloSeccionCaja('¿Lo pidió antes para recoger?'),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final por in <PedidoPor?>[null, ...PedidoPor.values])
+                ChipCaja(
+                  etiqueta: por?.etiqueta ?? 'No',
+                  activo: p.pedidoPor == por,
+                  altoMinimo: 44,
+                  onTap: () => p.elegirPedidoPor(por),
+                ),
+            ],
+          ),
+        ],
         if (p.esDelivery) ...[
           const SizedBox(height: 12),
           const TituloSeccionCaja('Zona'),
@@ -76,7 +95,7 @@ class EntregaPagoCaja extends StatelessWidget {
         if (p.opcionesPago.isEmpty)
           const AvisoCaja(
             'Aún no tienes formas de pago activas. Actívalas en '
-            'Configuración para poder cobrar.',
+            'Negocio para poder cobrar.',
           )
         else
           Wrap(

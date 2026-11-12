@@ -6,6 +6,7 @@ import '../domain/models/descuento_stock.dart';
 import '../domain/models/estado_pedido.dart';
 import '../domain/models/linea_pedido.dart';
 import '../domain/models/pedido.dart';
+import '../domain/models/pedido_por.dart';
 
 // ═════════════════════════════════════════════════════════════════════════
 // PedidoMapper
@@ -30,6 +31,9 @@ abstract final class PedidoMapper {
         LecturaFirestore.texto(data['tipoEntrega']),
       ),
       enLocal: data['enLocal'] == true,
+      pedidoPor: PedidoPor.desdeValor(
+        LecturaFirestore.texto(data['pedidoPor']),
+      ),
       fecha: _fecha(data['fecha']),
       cliente: _cliente(data['cliente']),
       zona: LecturaFirestore.texto(data['zona']),

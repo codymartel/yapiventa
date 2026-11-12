@@ -1,6 +1,7 @@
 import '../models/descuento_stock.dart';
 import '../models/linea_pedido.dart';
 import '../models/pedido.dart';
+import '../models/pedido_por.dart';
 
 // ═════════════════════════════════════════════════════════════════════════
 // Venta de mostrador: lo que se pide al repositorio y lo que devuelve
@@ -15,6 +16,7 @@ class SolicitudVentaMostrador {
     required this.lineas,
     required this.tipoEntrega,
     this.enLocal = false,
+    this.pedidoPor,
     this.cliente = const ClientePedido(),
     this.zona = '',
     this.deliveryCentavos = 0,
@@ -34,6 +36,9 @@ class SolicitudVentaMostrador {
 
   /// Atendida en el local (se guarda como recojo).
   final bool enLocal;
+
+  /// Lo pidió antes para recoger (WhatsApp, Facebook…). Nunca en delivery.
+  final PedidoPor? pedidoPor;
   final ClientePedido cliente;
   final String zona;
   final int deliveryCentavos;

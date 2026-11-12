@@ -19,7 +19,7 @@ import {
 
 // Reglas del cobro de un pedido (`cobro`: dónde entró la plata a la caja) y
 // de lo «por cobrar» del resumen del día. Solo el dueño las escribe y con la
-// forma correcta.
+// forma correcta. También `pedidoPor` de la venta de mostrador (paso R).
 
 const projectId = 'yapiventa-cobros-caja-rules-tests';
 const rulesPath = fileURLToPath(new URL('../../firestore.rules', import.meta.url));
@@ -145,6 +145,38 @@ test('la venta de mostrador nace con su cobro (y sin él también)', async () =>
     setDoc(
       doc(db, `negocios/${NEGOCIO}/pedidos/v3`),
       ventaMostrador({ cobro: { ...cobro, centavos: -900 } }),
+    ),
+  );
+});
+
+test('la venta en tienda guarda por dónde la pidió antes (lista cerrada)', async () => {
+  const db = dbDe(DUENO);
+  const ref = (id) => doc(db, `negocios/${NEGOCIO}/pedidos/${id}`);
+  for (const por of ['whatsapp', 'facebook', 'llamada', 'otro']) {
+    await assertSucceeds(setDoc(ref(`r-${por}`), ventaMostrador({ pedidoPor: por })));
+  }
+  await assertFails(setDoc(ref('r1'), ventaMostrador({ pedidoPor: 'instagram' })));
+  await assertFails(setDoc(ref('r2'), ventaMostrador({ pedidoPor: '' })));
+  await assertFails(setDoc(ref('r3'), ventaMostrador({ pedidoPor: true })));
+});
+
+test('un delivery de Caja no lleva pedidoPor', async () => {
+  const db = dbDe(DUENO);
+  const delivery = {
+    enLocal: false,
+    tipoEntrega: 'delivery',
+    estado: 'confirmado',
+    zona: 'Centro',
+    cliente: { nombre: 'Ana', telefono: '999888777', direccion: 'Av. Lima 1' },
+    cobro: { dia: '2026-11-12', pago: 'efectivo', centavos: 900 },
+  };
+  await assertSucceeds(
+    setDoc(doc(db, `negocios/${NEGOCIO}/pedidos/d1`), ventaMostrador(delivery)),
+  );
+  await assertFails(
+    setDoc(
+      doc(db, `negocios/${NEGOCIO}/pedidos/d2`),
+      ventaMostrador({ ...delivery, pedidoPor: 'whatsapp' }),
     ),
   );
 });

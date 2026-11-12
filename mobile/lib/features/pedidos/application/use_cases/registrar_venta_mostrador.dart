@@ -1,6 +1,7 @@
 import '../../domain/models/descuento_pago.dart';
 import '../../domain/models/linea_pedido.dart';
 import '../../domain/models/pedido.dart';
+import '../../domain/models/pedido_por.dart';
 import '../../domain/repositories/repositorio_ventas_mostrador.dart';
 import '../services/calculo_venta_mostrador.dart';
 import '../services/validacion_venta_mostrador.dart';
@@ -36,6 +37,7 @@ class RegistrarVentaMostrador {
     required TipoEntrega tipoEntrega,
     required String metodoPago,
     bool enLocal = false,
+    PedidoPor? pedidoPor,
     ClientePedido cliente = const ClientePedido(),
     String zona = '',
     int deliveryCentavos = 0,
@@ -67,6 +69,8 @@ class RegistrarVentaMostrador {
         lineas: venta.lineas,
         tipoEntrega: tipoEntrega,
         enLocal: enLocal,
+        // En delivery no se recoge nada en la tienda: el dato se descarta.
+        pedidoPor: tipoEntrega == TipoEntrega.delivery ? null : pedidoPor,
         cliente: cliente,
         zona: zona,
         deliveryCentavos: venta.deliveryCentavos,

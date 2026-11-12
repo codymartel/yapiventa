@@ -5,6 +5,7 @@ import 'package:mobile/features/pedidos/application/use_cases/anular_venta_mostr
 import 'package:mobile/features/pedidos/application/use_cases/registrar_venta_mostrador.dart';
 import 'package:mobile/features/pedidos/domain/models/descuento_pago.dart';
 import 'package:mobile/features/pedidos/domain/models/pedido.dart';
+import 'package:mobile/features/pedidos/domain/models/pedido_por.dart';
 import 'package:mobile/features/productos/domain/models/producto.dart';
 
 import '../../application/services/carrito_caja.dart';
@@ -53,6 +54,7 @@ class VentaCajaProvider extends ChangeNotifier {
   EntregaCaja _entrega = EntregaCaja.local;
   OpcionPagoCaja? _pago;
   ZonaCaja? _zona;
+  PedidoPor? _pedidoPor;
   String _cliente = '';
   String _telefono = '';
   String _direccion = '';
@@ -66,6 +68,9 @@ class VentaCajaProvider extends ChangeNotifier {
   EntregaCaja get entrega => _entrega;
   OpcionPagoCaja? get pago => _pago;
   ZonaCaja? get zona => _zona;
+
+  /// «¿Lo pidió antes para recoger?»: null = No. Solo en el local.
+  PedidoPor? get pedidoPor => _pedidoPor;
   String get cliente => _cliente;
   String get telefono => _telefono;
   String get direccion => _direccion;
@@ -164,11 +169,20 @@ class VentaCajaProvider extends ChangeNotifier {
     if (!esDelivery) {
       _cobrarAlEntregar = false;
     }
+    if (!entrega.enLocal) {
+      _pedidoPor = null;
+    }
     notifyListeners();
   }
 
   void elegirPago(OpcionPagoCaja? pago) {
     _pago = pago;
+    notifyListeners();
+  }
+
+  /// Solo en el local; null = «No».
+  void elegirPedidoPor(PedidoPor? valor) {
+    _pedidoPor = _entrega.enLocal ? valor : null;
     notifyListeners();
   }
 
@@ -229,6 +243,7 @@ class VentaCajaProvider extends ChangeNotifier {
         lineas: _carrito.lineas,
         tipoEntrega: _entrega.tipo,
         enLocal: _entrega.enLocal,
+        pedidoPor: _entrega.enLocal ? _pedidoPor : null,
         metodoPago: _pago?.id ?? '',
         cliente: _clienteDeLaVenta,
         zona: esDelivery ? (_zona?.nombre ?? '') : '',
@@ -302,6 +317,7 @@ class VentaCajaProvider extends ChangeNotifier {
   void _limpiar() {
     _carrito = const CarritoCaja();
     _zona = null;
+    _pedidoPor = null;
     _cliente = '';
     _telefono = '';
     _direccion = '';
