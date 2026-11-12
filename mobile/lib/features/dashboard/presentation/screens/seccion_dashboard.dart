@@ -13,7 +13,8 @@ enum SeccionDashboard {
   configuracion('configuracion', DashboardDestination.configuracion),
   productos('productos', DashboardDestination.productos),
   plantilla('plantilla', DashboardDestination.plantilla),
-  pedidos('pedidos', DashboardDestination.pedidos);
+  pedidos('pedidos', DashboardDestination.pedidos),
+  caja('caja', DashboardDestination.ventas);
 
   const SeccionDashboard(this.ayudaId, this.destinoActivo);
 

@@ -163,6 +163,16 @@ class BancoCaja {
   final gastos = GastosFalsos();
   final dia = DiaFalso();
 
+  /// Las dependencias de Caja armadas con los repositorios falsos.
+  late final CajaDependencies dependencias = CajaDependencies.conRepositorios(
+    ventas: ventas,
+    resumenes: ResumenesVacios(),
+    catalogo: catalogo,
+    relleno: RellenoListo(),
+    gastos: gastos,
+    dia: dia,
+  );
+
   /// Abre Caja en una pantalla de [ancho] × [alto]. [teclado] simula el
   /// teclado en pantalla abierto (le quita ese alto por abajo).
   Future<void> abrir(
@@ -177,14 +187,6 @@ class BancoCaja {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
     addTearDown(dia.canal.close);
-    final deps = CajaDependencies.conRepositorios(
-      ventas: ventas,
-      resumenes: ResumenesVacios(),
-      catalogo: catalogo,
-      relleno: RellenoListo(),
-      gastos: gastos,
-      dia: dia,
-    );
     await tester.pumpWidget(
       MaterialApp(
         theme: ThemeData.dark(),
@@ -193,7 +195,7 @@ class BancoCaja {
             child: CajaFlow(
               negocioId: 'n1',
               rubro: rubro,
-              dependencias: deps,
+              dependencias: dependencias,
               opcionesPago: pagos,
               zonas: zonas,
               reloj: () => DateTime.utc(2026, 11, 11, 17),

@@ -21,6 +21,8 @@ const destinosPanelV1 = <DashboardDestination>{
   DashboardDestination.inicio,
   DashboardDestination.productos,
   DashboardDestination.plantilla,
+  DashboardDestination.pedidos,
+  DashboardDestination.ventas,
   DashboardDestination.configuracion,
 };
 

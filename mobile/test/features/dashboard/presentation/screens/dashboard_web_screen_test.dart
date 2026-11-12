@@ -365,7 +365,7 @@ void main() {
     expect(find.text('Eliminar mi cuenta'), findsNothing);
   });
 
-  testWidgets('el menú de la versión 1 esconde lo que no está listo', (
+  testWidgets('el menú de la versión 1 muestra lo listo y esconde lo demás', (
     tester,
   ) async {
     await mostrarDashboard(tester, destinosVisibles: destinosPanelV1);
@@ -374,12 +374,14 @@ void main() {
       'Inicio',
       'Productos',
       'Plantilla web',
+      'Pedidos',
+      'Ventas',
       'Configuración',
     ]) {
       expect(find.text(texto), findsWidgets, reason: texto);
     }
     final menu = find.byType(DashboardSidebar);
-    for (final texto in ['Pedidos', 'Ventas', 'Reclamaciones', 'Plan']) {
+    for (final texto in ['Reclamaciones', 'Plan']) {
       expect(
         find.descendant(of: menu, matching: find.text(texto)),
         findsNothing,
