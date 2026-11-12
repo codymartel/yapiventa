@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile/features/productos/domain/models/producto.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../application/services/tamanos_caja.dart';
 import '../providers/catalogo_caja_provider.dart';
 import 'botones_caja.dart';
 import 'buscador_caja.dart';
@@ -78,18 +79,43 @@ class _Lista extends StatelessWidget {
       return _Mensaje(icono: Icons.search_off, titulo: _textoVacio());
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.only(top: 8, bottom: 16),
-      itemCount: productos.length + 1,
-      separatorBuilder: (_, _) => const SizedBox(height: 8),
-      itemBuilder: (context, i) {
-        if (i < productos.length) {
-          return TarjetaProductoCaja(
-            producto: productos[i],
-            onElegir: onElegir,
-          );
-        }
-        return _Pie(provider: provider);
+    // Una columna en celular; 2 o 3 cuando la lista tiene ancho (tableta,
+    // celular de lado, PC). Son los mismos productos ya cargados.
+    return LayoutBuilder(
+      builder: (context, c) {
+        final columnas = TamanosCaja.columnasLista(c.maxWidth);
+        final filas = (productos.length / columnas).ceil();
+        return ListView.separated(
+          padding: const EdgeInsets.only(top: 8, bottom: 16),
+          itemCount: filas + 1,
+          separatorBuilder: (_, _) => const SizedBox(height: 8),
+          itemBuilder: (context, i) {
+            if (i >= filas) return _Pie(provider: provider);
+            if (columnas == 1) {
+              return TarjetaProductoCaja(
+                producto: productos[i],
+                onElegir: onElegir,
+              );
+            }
+            final desde = i * columnas;
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (var k = 0; k < columnas; k++) ...[
+                  if (k > 0) const SizedBox(width: 8),
+                  Expanded(
+                    child: desde + k < productos.length
+                        ? TarjetaProductoCaja(
+                            producto: productos[desde + k],
+                            onElegir: onElegir,
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+                ],
+              ],
+            );
+          },
+        );
       },
     );
   }
