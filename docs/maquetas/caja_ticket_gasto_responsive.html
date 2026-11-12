@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>YapiVenta · Caja: venta, día en vivo y gasto</title>
+<style>
+:root{--fondo:#070C18;--sup:#0D1526;--card:#111D33;--texto:#E8EDF5;--muted:#9AA9C2;--hint:#8191AA;--dim:#2A3A55;--azul:#3D72D4;--azb:#2457B3;--precio:#8AB2FF;--borde:rgba(61,114,212,.30);--sutil:rgba(61,114,212,.14);--warn:#FBBF24;--ok:#4ADE80;--err:#F87171;--out:#938F99}
+*{box-sizing:border-box}
+body{margin:0;background:#04070f;color:var(--texto);font:14px/1.4 system-ui,Roboto,sans-serif;padding:24px 16px 56px}
+h1{font-size:22px;margin:0 0 4px}
+h2{font-size:17px;margin:44px 0 4px;color:var(--precio)}
+h3{font-size:14px;margin:28px 0 8px;color:var(--texto)}
+p.s{color:var(--muted);margin:0 0 12px;max-width:980px}
+.band{background:var(--card);border:1px solid var(--borde);border-radius:12px;padding:12px 14px;max-width:1180px;color:var(--muted);margin:8px 0 16px;line-height:1.55}
+.band b{color:var(--texto)}
+.fila{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start}
+.cap{font-size:12px;color:var(--muted);max-width:390px;margin-top:8px;line-height:1.5}
+.cap b{color:var(--texto)}
+.tel{width:390px;height:780px;background:var(--fondo);border:1px solid #1d2a44;border-radius:22px;overflow:hidden;position:relative;display:flex;flex-direction:column}
+.tab{width:820px;height:620px;background:var(--fondo);border:1px solid #1d2a44;border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
+.pc{width:1180px;height:720px;background:var(--fondo);border:1px solid #1d2a44;border-radius:14px;overflow:hidden;display:flex;position:relative}
+.tv{width:1180px;height:560px;background:var(--fondo);border:1px solid #1d2a44;border-radius:14px;overflow:hidden;display:flex;flex-direction:column;padding:24px 32px;gap:18px}
+.i{width:1em;height:1em;vertical-align:-.13em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.bar{display:flex;align-items:center;gap:10px;padding:12px 16px;background:var(--sup);border-bottom:1px solid var(--dim);min-height:56px}
+.tt{font-weight:700;font-size:17px}
+.live{color:var(--ok);font-size:12px;font-weight:600}
+.live.off{color:var(--warn)}
+.gbtn{margin-left:auto;display:flex;align-items:center;gap:6px;min-height:44px;padding:0 14px;border-radius:999px;border:1px solid var(--out);color:var(--precio);font-weight:600;font-size:13px}
+.cuerpo{flex:1;overflow:hidden;padding:12px 16px;display:flex;flex-direction:column;gap:12px}
+.dia{display:flex;gap:8px}
+.dia div{flex:1;background:var(--card);border:1px solid var(--borde);border-radius:12px;padding:8px 10px;font-size:11px;color:var(--muted);min-width:0}
+.dia b{display:block;font-size:18px;color:var(--texto);font-variant-numeric:tabular-nums;white-space:nowrap}
+.dia small{display:block;font-size:11px;color:var(--hint);white-space:nowrap}
+.dia .neg b{color:var(--warn)}
+.dia .neg small{white-space:normal}
+.sbar{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--borde);border-radius:999px;padding:0 16px;min-height:48px;color:var(--hint)}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chips.nowrap{flex-wrap:nowrap;overflow:hidden}
+.chip{border:1px solid var(--borde);border-radius:999px;padding:0 14px;min-height:44px;display:flex;align-items:center;gap:6px;color:var(--muted);font-size:13px;white-space:nowrap}
+.chip.on{background:rgba(61,114,212,.22);border-color:var(--azul);color:var(--precio);font-weight:600}
+.prod{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--sutil);border-radius:12px;padding:10px 12px;min-height:56px}
+.prod .f{width:40px;height:40px;border-radius:10px;background:var(--fondo);border:1px solid var(--dim);flex:none;display:flex;align-items:center;justify-content:center;color:var(--hint)}
+.prod .n{flex:1;min-width:0}
+.prod .n b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prod .n small{color:var(--muted);font-size:12px}
+.prod .p{font-weight:700;color:var(--precio);text-align:right;font-variant-numeric:tabular-nums}
+.prod .p small{display:block;font-weight:400;color:var(--hint);font-size:11px}
+.prod .p small.w{color:var(--warn)}
+.prod .p small.chg{color:var(--ok)}
+.pie{padding:12px 16px 16px;background:var(--sup);border-top:1px solid var(--dim);display:flex;flex-direction:column;gap:8px}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;min-height:48px;border-radius:999px;font-weight:700;padding:0 18px;white-space:nowrap}
+.b1{background:var(--azb);color:#fff}
+.b2{border:1px solid var(--out);color:var(--precio);font-weight:500}
+.b0{background:rgba(255,255,255,.06);color:var(--hint);font-weight:600}
+.falta{font-size:12px;color:var(--warn);text-align:center}
+.vel{position:absolute;inset:0;background:rgba(0,0,0,.6)}
+.hoja{position:absolute;left:0;right:0;bottom:0;background:var(--sup);border-top:1px solid var(--borde);border-radius:20px 20px 0 0;padding:8px 16px 16px;display:flex;flex-direction:column;gap:12px}
+.asa{width:36px;height:4px;border-radius:2px;background:#3a4a68;margin:0 auto 2px}
+.hh{display:flex;align-items:center}
+.hh b{font-size:17px}
+.hh span{margin-left:auto;color:var(--precio);min-height:44px;display:flex;align-items:center}
+.sec{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:0}
+.lin{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid rgba(42,58,85,.6)}
+.lin:last-of-type{border-bottom:0}
+.lin .n{flex:1;min-width:0}
+.lin .n b{display:block;font-weight:600}
+.lin .n small{color:var(--muted);font-size:12px}
+.lin .r{font-weight:700;color:var(--precio);min-width:52px;text-align:right;font-variant-numeric:tabular-nums}
+.step{display:flex;align-items:center;background:var(--fondo);border-radius:999px;padding:2px}
+.step span{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--precio);font-size:18px}
+.step em{font-style:normal;min-width:28px;text-align:center;font-weight:700;font-variant-numeric:tabular-nums}
+.campo{display:flex;flex-direction:column;gap:4px}
+.campo label{font-size:12px;color:var(--muted)}
+.campo .in{display:flex;align-items:center;gap:8px;border:1px solid var(--out);border-radius:12px;padding:0 12px;min-height:48px;color:var(--hint)}
+.campo .in b{color:var(--texto);font-weight:500}
+.campo .in.err{border-color:var(--warn)}
+.campo .in.foco{border-color:var(--azul);box-shadow:0 0 0 3px rgba(61,114,212,.25)}
+.dos{display:flex;gap:8px}.dos>*{flex:1;min-width:0}
+.tot{display:flex;justify-content:space-between;align-items:baseline;padding-top:8px;border-top:1px solid var(--dim)}
+.tot span{color:var(--muted)}
+.tot b{font-size:22px;font-variant-numeric:tabular-nums}
+.monto{display:flex;align-items:baseline;justify-content:center;gap:8px;border:1px solid var(--azul);box-shadow:0 0 0 3px rgba(61,114,212,.25);border-radius:16px;min-height:72px;padding:8px 16px}
+.monto span{color:var(--muted);font-size:20px}
+.monto b{font-size:40px;font-variant-numeric:tabular-nums;line-height:1}
+.snack{position:absolute;left:12px;right:12px;bottom:92px;background:#E8EDF5;color:#0D1526;border-radius:14px;padding:0 6px 0 14px;min-height:52px;display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.45)}
+.snack u{margin-left:auto;text-decoration:none;color:var(--azb);font-weight:700;min-height:44px;padding:0 10px;display:flex;align-items:center;gap:6px}
+.snack i{font-style:normal;font-weight:500;color:#51607a;font-size:12px}
+.aviso{display:flex;gap:10px;border:1px solid rgba(251,191,36,.45);background:rgba(251,191,36,.08);border-radius:12px;padding:10px 12px;color:var(--warn);font-size:13px;align-items:center}
+.aviso.e{border-color:rgba(248,113,113,.45);background:rgba(248,113,113,.08);color:var(--err)}
+.aviso u{margin-left:auto;text-decoration:none;font-weight:700;white-space:nowrap}
+.sw{margin-left:auto;width:44px;height:26px;border-radius:13px;background:var(--azb);position:relative;flex:none}
+.sw::after{content:"";position:absolute;right:3px;top:3px;width:20px;height:20px;border-radius:50%;background:#fff}
+.sw.off{background:var(--dim)}.sw.off::after{right:auto;left:3px}
+.rowsw{display:flex;align-items:center;gap:10px;min-height:44px;color:var(--muted);font-size:13px}
+.split{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--muted);padding:0 2px;margin-top:-4px;white-space:nowrap}
+.split b{color:var(--texto);font-weight:600;font-variant-numeric:tabular-nums}
+.split i{font-style:normal;color:var(--hint)}
+/* horizontal y teclado */
+.hz{width:812px;height:375px;background:var(--fondo);border:1px solid #1d2a44;border-radius:18px;overflow:hidden;display:flex;flex-direction:column;position:relative}
+.kb{background:#1a2132;border-top:1px solid var(--dim);display:flex;flex-direction:column;gap:6px;padding:8px 6px;flex:none}
+.kb div{display:flex;gap:5px;justify-content:center}
+.kb span{flex:1;max-width:72px;height:34px;border-radius:6px;background:#2b3550;display:flex;align-items:center;justify-content:center;color:var(--texto);font-size:15px}
+.kb.num span{max-width:none;height:40px}
+.kb.bajo{padding:5px 6px;gap:4px}
+.kb.bajo span{height:26px}
+.kb.bajo .esp{max-width:320px}
+.hojaf{position:absolute;left:0;right:0;top:0;bottom:0;background:var(--sup);display:flex;flex-direction:column}
+.hojaf .cab{display:flex;align-items:center;gap:12px;padding:0 16px;min-height:48px;border-bottom:1px solid var(--dim)}
+.hojaf .cab b{font-size:16px}
+.hojaf .cab span{color:var(--precio);min-height:44px;display:flex;align-items:center;margin-left:auto}
+.cols{flex:1;display:flex;gap:16px;padding:12px 16px;min-height:0;overflow:hidden}
+.cols>div{flex:1;min-width:0;display:flex;flex-direction:column;gap:10px}
+.mini{min-height:44px;padding:0 16px;font-size:14px}
+.rodar{font-size:11px;color:var(--hint);text-align:center}
+.sube{position:absolute;left:0;right:0;bottom:0;display:flex;flex-direction:column}
+.sube .h{background:var(--sup);border-top:1px solid var(--borde);border-radius:20px 20px 0 0;padding:8px 16px 12px;display:flex;flex-direction:column;gap:10px}
+.tabh{width:1024px;height:560px;background:var(--fondo);border:1px solid #1d2a44;border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
+.pcb{width:1180px;height:470px;background:var(--fondo);border:1px solid #1d2a44;border-radius:14px;overflow:hidden;display:flex;position:relative}
+.kpi.fila1 div{display:flex;align-items:baseline;gap:4px;padding:6px 6px;white-space:nowrap}
+.kpi.fila1 b{font-size:13px;display:inline}
+.dlgb{position:absolute;left:50%;top:16px;bottom:16px;transform:translateX(-50%);width:440px;background:var(--sup);border:1px solid var(--borde);border-radius:20px;display:flex;flex-direction:column;box-shadow:0 24px 60px rgba(0,0,0,.6);overflow:hidden}
+.dlgb .cab{display:flex;align-items:center;padding:8px 20px;border-bottom:1px solid var(--dim)}
+.dlgb .cab b{font-size:17px}
+.dlgb .cab span{margin-left:auto;color:var(--precio);min-height:44px;display:flex;align-items:center}
+.dlgb .med{flex:1;overflow:hidden;padding:12px 20px;display:flex;flex-direction:column;gap:10px;min-height:0}
+.dlgb .abajo{padding:10px 20px 14px;border-top:1px solid var(--dim);display:flex;flex-direction:column;gap:6px}
+/* PC */
+.menu{width:200px;background:var(--sup);border-right:1px solid var(--dim);padding:16px 14px;color:var(--muted);display:flex;flex-direction:column;gap:2px}
+.menu b{color:var(--texto);font-size:16px;margin-bottom:10px}
+.menu span{display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;min-height:44px}
+.menu .on{color:var(--precio);font-weight:700;background:rgba(61,114,212,.15)}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.tabs{display:flex;gap:6px}
+.tb{border-radius:999px;padding:0 14px;background:var(--card);color:var(--muted);font-size:13px;min-height:40px;display:flex;align-items:center}
+.tb.on{background:var(--azb);color:#fff;font-weight:600}
+.kpi{display:flex;gap:10px}
+.kpi div{flex:1;background:var(--card);border:1px solid var(--borde);border-radius:12px;padding:8px 10px;font-size:11px;color:var(--muted);min-width:0}
+.kpi b{display:block;font-size:17px;color:var(--texto);line-height:1.2;font-variant-numeric:tabular-nums;white-space:nowrap}
+.kpi small{display:block;font-size:11px;color:var(--hint);white-space:nowrap}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.tk{width:340px;background:var(--sup);border-left:1px solid var(--dim);padding:16px;display:flex;flex-direction:column;gap:10px}
+.dlg{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:440px;background:var(--sup);border:1px solid var(--borde);border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:12px;box-shadow:0 24px 60px rgba(0,0,0,.6)}
+.kbd{margin-left:auto;font-size:11px;border:1px solid var(--dim);border-radius:6px;padding:1px 6px;color:var(--hint)}
+.tvk{display:flex;gap:16px}
+.tvk div{flex:1;background:var(--card);border:1px solid var(--borde);border-radius:16px;padding:16px 20px;color:var(--muted);font-size:16px}
+.tvk b{display:block;font-size:44px;color:var(--texto);line-height:1.1;font-variant-numeric:tabular-nums}
+.tvk small{font-size:14px;color:var(--hint)}
+table{width:100%;border-collapse:collapse;font-size:13px;max-width:1180px}
+th{text-align:left;color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em;padding:8px;border-bottom:1px solid var(--dim)}
+td{padding:8px;border-bottom:1px solid rgba(42,58,85,.5);vertical-align:top;color:var(--muted)}
+td b{color:var(--texto)}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<symbol id="search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+<symbol id="box" viewBox="0 0 24 24"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/></symbol>
+<symbol id="out" viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></symbol>
+<symbol id="check" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10"/></symbol>
+<symbol id="alert" viewBox="0 0 24 24"><path d="M12 3 2 20h20zM12 10v4M12 17.5v.5"/></symbol>
+<symbol id="home" viewBox="0 0 24 24"><path d="m3 11 9-8 9 8v9H3z"/></symbol>
+<symbol id="bag" viewBox="0 0 24 24"><path d="M5 8h14l-1 12H6zM9 8a3 3 0 0 1 6 0"/></symbol>
+<symbol id="till" viewBox="0 0 24 24"><rect x="3" y="10" width="18" height="10" rx="2"/><path d="M7 10V5h10v5M9 15h6"/></symbol>
+<symbol id="cog" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></symbol>
+</svg>
+
+<h1>Caja · la venta, el día en vivo y el gasto rápido</h1>
+<p class="s">Completa la maqueta aprobada <b>caja_por_rubro.html</b> con lo que faltaba dibujar: el ticket con delivery, el aviso «Anular», el día en vivo con gastos y la hoja de <b>Gasto</b>. Maqueta fija (sin funciones). Guía de calidad: Apple HIG (zonas de 44 px, hoja con agarre, cápsulas, un solo botón principal por pantalla) y UX Pro Max (etiqueta visible en cada campo, el error junto a su campo, deshacer en lugar de preguntar), con la identidad de YapiVenta.</p>
+
+<div class="band"><b>Dos familias de pantalla, igual que Pedidos.</b> <b>Familia 1 · Celular y tableta (menos de 1 100 px):</b> el mismo diseño; la venta y el gasto se abren en una hoja desde abajo y la tableta suma un panel lateral. <b>Familia 2 · PC, laptop y TV (1 100 px o más):</b> tablero con más números, el ticket fijo a la derecha y el gasto en un diálogo; en la TV (1 600 px o más) solo se mira.</div>
+
+<h2>Familia 1 · Celular y tableta</h2>
+<h3>Celular</h3>
+<div class="fila">
+
+<div><div class="tel">
+<div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span><span class="gbtn"><svg class="i"><use href="#out"/></svg>Gasto</span></div>
+<div class="cuerpo">
+<div class="dia"><div>Ventas de hoy<b>S/ 300,00</b><small>12 ventas</small></div><div>Efectivo en caja<b>S/ 200,00</b><small>de hoy</small></div><div>Gastos<b>S/ 0,00</b><small>ninguno</small></div></div>
+<div class="split"><i>Local</i><b>S/ 200,00</b><i>·</i><i>Tienda web</i><b>S/ 100,00</b></div>
+<div class="sbar"><svg class="i"><use href="#search"/></svg><span>Buscar productos</span></div>
+<div class="chips nowrap"><span class="chip on">Frecuentes</span><span class="chip">Simples</span><span class="chip">Por peso</span><span class="chip">Combos</span></div>
+<div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Gaseosa Inca 500 ml</b><small>Bebidas</small></div><div class="p">4,50<small>24 disp.</small></div></div>
+<div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Queso andino</b><small>Por peso · Lácteos</small></div><div class="p">24,00<small>3,2 kg</small></div></div>
+<div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Arroz costeño 1 kg</b><small>Abarrotes</small></div><div class="p">4,20<small class="w">Quedan 2</small></div></div>
+<div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Huevos de granja</b><small>Jaba de 30</small></div><div class="p">17,50<small>6 jabas</small></div></div>
+</div>
+<div class="pie"><div class="btn b1">Ver venta · 2 productos · S/ 17,40</div></div>
+</div><div class="cap"><b>1 · El día arriba, siempre a la vista.</b> Tres números: ventas de hoy, efectivo que debe haber en caja y gastos. Debajo, <b>separado</b>: cuánto fue del <b>local</b> y cuánto de la <b>tienda web</b>. Sale de <b>1 documento</b>. Arriba a la derecha, <b>Gasto</b>.</div></div>
+
+<div><div class="tel">
+<div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span></div><div class="vel"></div>
+<div class="hoja"><div class="asa"></div>
+<div class="hh"><b>Venta</b><span>Vaciar</span></div>
+<div>
+<div class="lin"><div class="n"><b>Gaseosa Inca 500 ml</b><small>2 × 4,50</small></div><div class="step"><span>−</span><em>2</em><span>+</span></div><div class="r">9,00</div></div>
+<div class="lin"><div class="n"><b>Queso andino</b><small>350 g · 24,00 el kg</small></div><div class="step"><span>−</span><em>350</em><span>+</span></div><div class="r">8,40</div></div>
+</div>
+<p class="sec">Entrega</p>
+<div class="chips"><span class="chip on">En tienda</span><span class="chip">Recojo</span><span class="chip">Delivery</span></div>
+<p class="sec">Forma de pago</p>
+<div class="chips"><span class="chip on">Efectivo</span><span class="chip">Yape</span><span class="chip">Plin</span><span class="chip">Transferencia</span></div>
+<div class="campo"><label>Nombre (opcional)</label><div class="in">Por ejemplo: Rosa</div></div>
+<div class="tot"><span>Total</span><b>S/ 17,40</b></div>
+<div class="btn b1">Cobrar S/ 17,40</div>
+</div></div><div class="cap"><b>2 · La venta en tienda.</b> Cambiar cantidad o quitar (con 0 se quita), entrega y pago en un toque. El nombre es opcional. Un solo botón principal. En Restaurante los chips dicen <b>En mesa · Para llevar · Delivery</b>.</div></div>
+
+<div><div class="tel">
+<div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span></div><div class="vel"></div>
+<div class="hoja"><div class="asa"></div>
+<div class="hh"><b>Venta</b><span>Vaciar</span></div>
+<div class="lin" style="border:0;padding:0"><div class="n"><b>2 productos</b><small>Gaseosa Inca ×2 · Queso 350 g</small></div><div class="r">17,40</div></div>
+<div class="chips"><span class="chip">En tienda</span><span class="chip">Recojo</span><span class="chip on">Delivery</span></div>
+<div class="dos"><div class="campo"><label>Nombre del cliente</label><div class="in"><b>Rosa Quispe</b></div></div><div class="campo"><label>Teléfono</label><div class="in"><b>987 654 321</b></div></div></div>
+<div class="campo"><label>Zona</label><div class="chips"><span class="chip on">Centro · 3,00</span><span class="chip">Norte · 5,00</span></div></div>
+<div class="campo"><label>Dirección</label><div class="in err">Calle, número y referencia</div></div>
+<div class="chips"><span class="chip on">Efectivo</span><span class="chip">Yape</span><span class="chip">Plin</span></div>
+<div class="rowsw">Cobrar al entregar<span class="sw off"></span></div>
+<div class="tot"><span>Total con delivery</span><b>S/ 20,40</b></div>
+<div class="btn b0">Cobrar S/ 20,40</div>
+<div class="falta">Falta: dirección</div>
+</div></div><div class="cap"><b>3 · Delivery.</b> Pide nombre, teléfono, zona y dirección. El botón queda apagado y dice <b>con texto</b> qué falta (no solo con color). Al cobrar, la venta sigue su camino en Pedidos.</div></div>
+
+<div><div class="tel">
+<div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span><span class="gbtn"><svg class="i"><use href="#out"/></svg>Gasto</span></div>
+<div class="cuerpo">
+<div class="dia"><div>Ventas de hoy<b>S/ 317,40</b><small>13 ventas</small></div><div>Efectivo en caja<b>S/ 217,40</b><small>de hoy</small></div><div>Gastos<b>S/ 0,00</b><small>ninguno</small></div></div>
+<div class="split"><i>Local</i><b>S/ 217,40</b><i>·</i><i>Tienda web</i><b>S/ 100,00</b></div>
+<div class="sbar"><svg class="i"><use href="#search"/></svg><span>Buscar productos</span></div>
+<div class="chips nowrap"><span class="chip on">Frecuentes</span><span class="chip">Simples</span><span class="chip">Por peso</span><span class="chip">Combos</span></div>
+<div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Gaseosa Inca 500 ml</b><small>Bebidas</small></div><div class="p">4,50<small class="chg">22 disp.</small></div></div>
+<div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Queso andino</b><small>Por peso · Lácteos</small></div><div class="p">24,00<small class="chg">2,85 kg</small></div></div>
+<div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Arroz costeño 1 kg</b><small>Abarrotes</small></div><div class="p">4,20<small class="w">Quedan 2</small></div></div>
+</div>
+<div class="snack"><svg class="i"><use href="#check"/></svg>Venta registrada · S/ 17,40<u>Anular <i>8 s</i></u></div>
+<div class="pie"><div class="btn b0">Agrega productos para vender</div></div>
+</div><div class="cap"><b>4 · Cobrado.</b> Aviso flotante con <b>Anular</b> durante 8 segundos (no tapa el botón de abajo). El stock de la lista baja <b>sin recargar</b> (0 lecturas) y los números del día suben solos.</div></div>
+
+<div><div class="tel">
+<div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span></div><div class="vel"></div>
+<div class="hoja"><div class="asa"></div>
+<div class="hh"><b>Gasto</b><span>Cancelar</span></div>
+<div class="campo"><label>¿Cuánto se gastó?</label><div class="monto"><span>S/</span><b>10</b></div></div>
+<p class="sec">¿En qué?</p>
+<div class="chips"><span class="chip on">Comida</span><span class="chip">Pasaje</span><span class="chip">Mercadería</span><span class="chip">Servicios</span><span class="chip">Otro</span></div>
+<p class="sec">¿De dónde salió?</p>
+<div class="chips"><span class="chip on">Efectivo</span><span class="chip">Yape</span><span class="chip">Plin</span><span class="chip">Transferencia</span></div>
+<div class="campo"><label>Nota (opcional)</label><div class="in"><b>Almuerzo</b></div></div>
+<div class="btn b1">Guardar gasto · S/ 10,00</div>
+</div></div><div class="cap"><b>5 · Gasto rápido.</b> Monto grande con teclado de números, 5 motivos fijos, de dónde salió la plata y una nota corta. Con el monto vacío o en 0 el botón se apaga y dice por qué.</div></div>
+
+<div><div class="tel">
+<div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span><span class="gbtn"><svg class="i"><use href="#out"/></svg>Gasto</span></div>
+<div class="cuerpo">
+<div class="dia"><div>Ventas de hoy<b>S/ 317,40</b><small>13 ventas</small></div><div>Efectivo en caja<b>S/ 207,40</b><small>de hoy</small></div><div>Gastos<b>S/ 10,00</b><small>1 gasto</small></div></div>
+<div class="split"><i>Local</i><b>S/ 217,40</b><i>·</i><i>Tienda web</i><b>S/ 100,00</b></div>
+<div class="sbar"><svg class="i"><use href="#search"/></svg><span>Buscar productos</span></div>
+<div class="chips nowrap"><span class="chip on">Frecuentes</span><span class="chip">Simples</span><span class="chip">Por peso</span><span class="chip">Combos</span></div>
+<div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Gaseosa Inca 500 ml</b><small>Bebidas</small></div><div class="p">4,50<small>22 disp.</small></div></div>
+<div class="prod"><div class="f"><svg class="i"><use href="#box"/></svg></div><div class="n"><b>Queso andino</b><small>Por peso · Lácteos</small></div><div class="p">24,00<small>2,85 kg</small></div></div>
+</div>
+<div class="snack"><svg class="i"><use href="#check"/></svg>Gasto guardado · Comida · S/ 10,00<u>Anular</u></div>
+<div class="pie"><div class="btn b0">Agrega productos para vender</div></div>
+</div><div class="cap"><b>6 · Gasto guardado.</b> «Efectivo en caja» baja de 217,40 a <b>207,40</b> y «Gastos» sube a 10,00. El gasto se puede <b>anular</b> (queda anulado, no se borra).</div></div>
+
+</div>
+
+<h3>Estados del celular</h3>
+<div class="fila">
+<div><div class="tel" style="height:340px">
+<div class="bar"><span class="tt">Caja</span><span class="live off">● Sin conexión</span><span class="gbtn"><svg class="i"><use href="#out"/></svg>Gasto</span></div>
+<div class="cuerpo">
+<div class="aviso"><svg class="i"><use href="#alert"/></svg>No se pudo actualizar el día. Los números pueden estar viejos.<u>Reintentar</u></div>
+<div class="dia"><div>Ventas de hoy<b>S/ 317,40</b><small>13 ventas</small></div><div>Efectivo en caja<b>S/ 207,40</b><small>de hoy</small></div><div>Gastos<b>S/ 10,00</b><small>1 gasto</small></div></div>
+<div class="split"><i>Local</i><b>S/ 217,40</b><i>·</i><i>Tienda web</i><b>S/ 100,00</b></div>
+<div class="aviso e"><svg class="i"><use href="#alert"/></svg>No se pudo cobrar. Revisa tu conexión e inténtalo de nuevo: no se cobrará dos veces.</div>
+</div></div><div class="cap"><b>Sin conexión.</b> Se dice con texto, se ofrece «Reintentar» y la venta se conserva: volver a tocar «Cobrar» no cobra dos veces.</div></div>
+
+<div><div class="tel" style="height:330px">
+<div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span><span class="gbtn"><svg class="i"><use href="#out"/></svg>Gasto</span></div>
+<div class="cuerpo">
+<div class="dia"><div>Ventas de hoy<b>S/ 0,00</b><small>sin ventas</small></div><div class="neg">Efectivo en caja<b>− S/ 10,00</b><small>salió más de lo que entró hoy</small></div><div>Gastos<b>S/ 10,00</b><small>1 gasto</small></div></div>
+<div class="aviso"><svg class="i"><use href="#alert"/></svg>No alcanza el stock: Arroz costeño 1 kg (pides 3, hay 2). No se cobró nada.</div>
+</div></div><div class="cap"><b>Gastar antes de vender</b> deja el efectivo en negativo, en ámbar y con su explicación. <b>Falta de stock:</b> dice qué producto, cuánto pides y cuánto hay.</div></div>
+</div>
+
+
+<h3>Celular horizontal: la lista y la venta lado a lado</h3>
+<div class="hz">
+<div class="bar" style="min-height:48px;padding:6px 16px"><span class="tt">Caja</span><span class="live">● En vivo</span><span class="split" style="margin:0 0 0 12px"><i>Hoy</i><b>S/ 317,40</b><i>·</i><i>Efectivo</i><b>S/ 207,40</b><i>·</i><i>Gastos</i><b>S/ 10,00</b></span><span class="gbtn"><svg class="i"><use href="#out"/></svg>Gasto</span></div>
+<div style="flex:1;display:flex;min-height:0">
+<div class="cuerpo" style="gap:8px;padding:10px 16px">
+<div class="sbar" style="min-height:44px"><svg class="i"><use href="#search"/></svg><span>Buscar productos</span></div>
+<div class="chips nowrap"><span class="chip on">Frecuentes</span><span class="chip">Simples</span><span class="chip">Por peso</span><span class="chip">Combos</span></div>
+<div class="prod"><div class="n"><b>Gaseosa Inca 500 ml</b><small>Bebidas</small></div><div class="p">4,50<small>22 disp.</small></div></div>
+<div class="prod"><div class="n"><b>Queso andino</b><small>Por peso</small></div><div class="p">24,00<small>2,85 kg</small></div></div>
+</div>
+<div class="tk" style="width:320px;padding:10px 14px;gap:8px">
+<div class="lin" style="padding:4px 0"><div class="n"><b>Gaseosa Inca 500 ml</b><small>2 × 4,50</small></div><div class="step"><span>−</span><em>2</em><span>+</span></div><div class="r">9,00</div></div>
+<div style="flex:1"></div>
+<div class="chips nowrap"><span class="chip on">En tienda</span><span class="chip">Recojo</span><span class="chip">Delivery</span></div>
+<div class="chips nowrap"><span class="chip on">Efectivo</span><span class="chip">Yape</span><span class="chip">Plin</span></div>
+<div class="btn b1">Cobrar S/ 9,00</div>
+</div></div></div>
+<div class="cap" style="max-width:812px"><b>Celular de lado.</b> Hay poco alto, así que nada se apila: los números del día pasan a una sola línea en la barra, la lista queda a la izquierda y la venta fija a la derecha. No hay que subir y bajar para cobrar.</div>
+
+<h3>Celular horizontal: el gasto en dos columnas</h3>
+<div class="hz">
+<div class="hojaf">
+<div class="cab"><b>Gasto</b><span>Cancelar</span></div>
+<div class="cols">
+<div><div class="campo"><label>¿Cuánto se gastó?</label><div class="monto" style="min-height:64px"><span>S/</span><b>10</b></div></div><div class="campo"><label>Nota (opcional)</label><div class="in"><b>Almuerzo</b></div></div></div>
+<div><p class="sec">¿En qué?</p><div class="chips"><span class="chip on">Comida</span><span class="chip">Pasaje</span><span class="chip">Mercadería</span><span class="chip">Servicios</span><span class="chip">Otro</span></div><p class="sec">¿De dónde salió?</p><div class="chips nowrap"><span class="chip on">Efectivo</span><span class="chip">Yape</span><span class="chip">Plin</span></div><div style="flex:1"></div><div class="btn b1">Guardar gasto · S/ 10,00</div></div>
+</div></div></div>
+<div class="cap" style="max-width:812px"><b>De lado, la hoja ocupa toda la pantalla y se parte en dos columnas:</b> a la izquierda lo que se escribe, a la derecha lo que se elige y el botón. Así no queda aplastada ni hay que deslizar.</div>
+
+<h3>Con el teclado abierto: el campo que se escribe y el botón siempre a la vista</h3>
+<div class="fila">
+<div><div class="tel">
+<div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span></div><div class="vel"></div>
+<div class="sube"><div class="h">
+<div class="asa"></div>
+<div class="hh"><b>Gasto</b><span>Cancelar</span></div>
+<div class="campo"><label>¿Cuánto se gastó?</label><div class="monto"><span>S/</span><b>10</b></div></div>
+<p class="sec">¿En qué?</p>
+<div class="chips nowrap"><span class="chip on">Comida</span><span class="chip">Pasaje</span><span class="chip">Mercadería</span><span class="chip">Servicios</span></div>
+<div class="rodar">Desliza para ver «¿De dónde salió?» y la nota</div>
+<div class="btn b1">Guardar gasto · S/ 10,00</div>
+</div><div class="kb num"><div><span>1</span><span>2</span><span>3</span></div><div><span>4</span><span>5</span><span>6</span></div><div><span>7</span><span>8</span><span>9</span></div><div><span>,</span><span>0</span><span>⌫</span></div></div></div>
+</div><div class="cap"><b>Vertical con teclado de números.</b> La hoja <b>sube con el teclado</b>: el monto queda visible, el resto se desliza y «Guardar» queda pegado justo encima del teclado.</div></div>
+
+<div><div class="tel">
+<div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span></div><div class="vel"></div>
+<div class="sube"><div class="h">
+<div class="asa"></div>
+<div class="hh"><b>Venta · Delivery</b><span>Vaciar</span></div>
+<div class="dos"><div class="campo"><label>Nombre del cliente</label><div class="in"><b>Rosa Quispe</b></div></div><div class="campo"><label>Teléfono</label><div class="in"><b>987 654 321</b></div></div></div>
+<div class="campo"><label>Dirección</label><div class="in foco"><b>Av. Lima 12</b></div></div>
+<div class="tot"><span>Total con delivery</span><b>S/ 20,40</b></div>
+<div class="btn b0">Cobrar S/ 20,40</div>
+<div class="falta">Falta: zona</div>
+</div><div class="kb"><div><span>q</span><span>w</span><span>e</span><span>r</span><span>t</span><span>y</span><span>u</span><span>i</span><span>o</span><span>p</span></div><div><span>a</span><span>s</span><span>d</span><span>f</span><span>g</span><span>h</span><span>j</span><span>k</span><span>l</span><span>ñ</span></div><div><span>z</span><span>x</span><span>c</span><span>v</span><span>b</span><span>n</span><span>m</span><span>⌫</span></div></div></div>
+</div><div class="cap"><b>Vertical con teclado de letras.</b> Al tocar «Dirección» la hoja se desliza sola hasta ese campo. El total y «Cobrar» no se esconden detrás del teclado, y lo que falta se sigue leyendo.</div></div>
+</div>
+
+<div class="hz" style="margin-top:20px">
+<div class="hojaf" style="bottom:auto;height:205px">
+<div class="cab" style="min-height:44px"><b>Venta · Delivery</b><span>Vaciar</span></div>
+<div style="flex:1;display:flex;gap:12px;align-items:flex-end;padding:8px 16px 6px;min-height:0">
+<div class="campo" style="flex:1"><label>Dirección</label><div class="in foco"><b>Av. Lima 12</b></div></div>
+<div class="btn b2 mini">Siguiente: zona</div>
+<div class="btn b0 mini">Cobrar S/ 20,40</div>
+</div>
+<div class="rodar" style="padding-bottom:6px">Falta: zona · desliza para ver los demás datos</div>
+</div>
+<div style="position:absolute;left:0;right:0;bottom:0"><div class="kb bajo"><div><span>q</span><span>w</span><span>e</span><span>r</span><span>t</span><span>y</span><span>u</span><span>i</span><span>o</span><span>p</span></div><div><span>a</span><span>s</span><span>d</span><span>f</span><span>g</span><span>h</span><span>j</span><span>k</span><span>l</span><span>ñ</span></div><div><span>z</span><span>x</span><span>c</span><span>v</span><span>b</span><span>n</span><span>m</span><span>⌫</span></div><div><span class="esp">espacio</span></div></div></div>
+</div>
+<div class="cap" style="max-width:812px"><b>Horizontal con teclado: el caso más apretado</b> (quedan unos 200 px de alto). Solo se muestra <b>el campo que se está escribiendo</b>, con su etiqueta, y al costado «Siguiente» y «Cobrar». Nada se aplasta: lo demás se desliza. Al cerrar el teclado vuelve la vista de dos columnas.</div>
+
+<div class="band"><b>Reglas para TODA hoja de Caja y de Pedidos</b> (venta, gasto, producto, filtros, detalle, cancelar): <b>1)</b> en celular y tableta sale <b>desde abajo</b>, con agarre; en PC es un diálogo. <b>2)</b> Su alto nunca pasa del espacio libre: si no entra, <b>se desliza por dentro</b> y el botón principal queda fijo abajo. <b>3)</b> Con el teclado abierto la hoja <b>sube con él</b> y lleva a la vista el campo que se escribe. <b>4)</b> De lado (poco alto) pasa a <b>pantalla completa en dos columnas</b>; de lado y con teclado, muestra solo el campo activo. <b>5)</b> Respeta la muesca y los bordes del teléfono. <b>6)</b> El teclado <b>nunca tapa</b> el campo que se escribe ni empuja la pantalla de atrás: solo se mueve la hoja. <b>7)</b> Al <b>cerrar el teclado</b> la hoja vuelve a su tamaño de antes, sin saltos, sin quedarse a media altura y sin perder lo escrito. <b>8)</b> Girar el teléfono con la hoja abierta <b>no la cierra ni borra</b> lo escrito.</div>
+
+<h3>Tableta (600 a 1 099 px): el mismo diseño, con el ticket al costado</h3>
+<div class="tab">
+<div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span><span class="gbtn"><svg class="i"><use href="#out"/></svg>Gasto</span></div>
+<div style="flex:1;display:flex;min-height:0">
+<div class="cuerpo">
+<div class="dia"><div>Ventas de hoy<b>S/ 317,40</b><small>13 ventas</small></div><div>Efectivo en caja<b>S/ 207,40</b><small>de hoy</small></div><div>Gastos<b>S/ 10,00</b><small>1 gasto</small></div></div>
+<div class="split"><i>Local</i><b>S/ 217,40</b><i>·</i><i>Tienda web</i><b>S/ 100,00</b></div>
+<div class="sbar"><svg class="i"><use href="#search"/></svg><span>Buscar productos</span></div>
+<div class="chips"><span class="chip on">Frecuentes</span><span class="chip">Simples</span><span class="chip">Por peso</span><span class="chip">Combos</span></div>
+<div class="grid" style="grid-template-columns:repeat(2,1fr)">
+<div class="prod"><div class="n"><b>Gaseosa Inca 500 ml</b><small>Bebidas</small></div><div class="p">4,50<small>22 disp.</small></div></div>
+<div class="prod"><div class="n"><b>Queso andino</b><small>Por peso</small></div><div class="p">24,00<small>2,85 kg</small></div></div>
+<div class="prod"><div class="n"><b>Arroz costeño 1 kg</b><small>Abarrotes</small></div><div class="p">4,20<small class="w">Quedan 2</small></div></div>
+<div class="prod"><div class="n"><b>Huevos de granja</b><small>Jaba de 30</small></div><div class="p">17,50<small>6 jabas</small></div></div>
+</div></div>
+<div class="tk" style="width:300px">
+<b style="font-size:16px">Venta</b>
+<div class="lin"><div class="n"><b>Arroz costeño 1 kg</b><small>1 × 4,20</small></div><div class="r">4,20</div></div>
+<div style="flex:1"></div>
+<div class="chips"><span class="chip on">En tienda</span><span class="chip">Recojo</span><span class="chip">Delivery</span></div>
+<div class="chips"><span class="chip on">Efectivo</span><span class="chip">Yape</span><span class="chip">Plin</span></div>
+<div class="tot"><span>Total</span><b>S/ 4,20</b></div>
+<div class="btn b1">Cobrar S/ 4,20</div>
+</div></div></div>
+<div class="cap" style="max-width:820px"><b>Tableta.</b> Mismos colores, botones y textos que el celular: la lista pasa a 2 columnas y el ticket queda fijo en un panel de 300 px. El gasto se abre en la misma hoja desde abajo.</div>
+
+<h3>Tableta horizontal (1 024 × 768): 3 columnas y el ticket al costado</h3>
+<div class="tabh">
+<div class="bar"><span class="tt">Caja</span><span class="live">● En vivo</span><span class="gbtn"><svg class="i"><use href="#out"/></svg>Gasto</span></div>
+<div style="flex:1;display:flex;min-height:0">
+<div class="cuerpo">
+<div class="dia"><div>Ventas de hoy<b>S/ 317,40</b><small>13 ventas</small></div><div>Efectivo en caja<b>S/ 207,40</b><small>de hoy</small></div><div>Gastos<b>S/ 10,00</b><small>1 gasto</small></div></div>
+<div class="split"><i>Local</i><b>S/ 217,40</b><i>·</i><i>Tienda web</i><b>S/ 100,00</b></div>
+<div class="sbar"><svg class="i"><use href="#search"/></svg><span>Buscar productos</span></div>
+<div class="chips"><span class="chip on">Frecuentes</span><span class="chip">Simples</span><span class="chip">Por peso</span><span class="chip">Combos</span></div>
+<div class="grid">
+<div class="prod"><div class="n"><b>Gaseosa Inca 500 ml</b><small>Bebidas</small></div><div class="p">4,50<small>22 disp.</small></div></div>
+<div class="prod"><div class="n"><b>Queso andino</b><small>Por peso</small></div><div class="p">24,00<small>2,85 kg</small></div></div>
+<div class="prod"><div class="n"><b>Arroz costeño 1 kg</b><small>Abarrotes</small></div><div class="p">4,20<small class="w">Quedan 2</small></div></div>
+<div class="prod"><div class="n"><b>Huevos de granja</b><small>Jaba de 30</small></div><div class="p">17,50<small>6 jabas</small></div></div>
+<div class="prod"><div class="n"><b>Azúcar rubia</b><small>Por peso</small></div><div class="p">4,60<small>18 kg</small></div></div>
+<div class="prod"><div class="n"><b>Leche gloria</b><small>Lácteos</small></div><div class="p">4,80<small>30 disp.</small></div></div>
+</div></div>
+<div class="tk">
+<b style="font-size:16px">Venta</b>
+<div class="lin"><div class="n"><b>Arroz costeño 1 kg</b><small>1 × 4,20</small></div><div class="step"><span>−</span><em>1</em><span>+</span></div><div class="r">4,20</div></div>
+<div style="flex:1"></div>
+<div class="chips"><span class="chip on">En tienda</span><span class="chip">Recojo</span><span class="chip">Delivery</span></div>
+<div class="chips"><span class="chip on">Efectivo</span><span class="chip">Yape</span><span class="chip">Plin</span></div>
+<div class="tot"><span>Total</span><b>S/ 4,20</b></div>
+<div class="btn b1">Cobrar S/ 4,20</div>
+</div></div></div>
+<div class="cap" style="max-width:1024px"><b>Tableta de lado.</b> Sigue siendo el diseño del celular (familia 1): la lista pasa a 3 columnas y el ticket crece a 340 px. Con el teclado abierto, el ticket desliza sus líneas y «Cobrar» queda fijo encima del teclado.</div>
+
+<h2>Familia 2 · PC, laptop y TV</h2>
+<h3>PC y laptop (1 100 a 1 599 px): tablero, ticket fijo y gasto en diálogo</h3>
+<div class="pc">
+<div class="menu"><b>YapiVenta</b><span><svg class="i"><use href="#home"/></svg>Inicio</span><span><svg class="i"><use href="#box"/></svg>Productos</span><span><svg class="i"><use href="#bag"/></svg>Pedidos</span><span class="on"><svg class="i"><use href="#till"/></svg>Caja</span><span><svg class="i"><use href="#cog"/></svg>Configuración</span></div>
+<div class="main">
+<div class="bar"><span class="tt">Caja</span><div class="tabs" style="margin-left:14px"><span class="tb on">Hoy</span><span class="tb">Historial</span><span class="tb">Informes</span></div><span class="live" style="margin-left:14px">● En vivo</span><span class="gbtn"><svg class="i"><use href="#out"/></svg>Gasto<span class="kbd">F4</span></span></div>
+<div style="padding:14px 20px;display:flex;flex-direction:column;gap:12px;flex:1;min-height:0">
+<div class="kpi"><div>Ventas de hoy<b>S/ 317,40</b><small>13 ventas</small></div><div>Tienda web<b>S/ 100,00</b><small>entregado</small></div><div>Local<b>S/ 217,40</b><small>en mostrador</small></div><div>Efectivo en caja<b>S/ 207,40</b><small>de hoy</small></div><div>Gastos<b>S/ 10,00</b><small>1 gasto</small></div><div>Queda del día<b>S/ 307,40</b><small>ventas − gastos</small></div></div>
+<div class="sbar"><svg class="i"><use href="#search"/></svg><span>Buscar productos</span><span class="kbd">F2</span></div>
+<div class="chips"><span class="chip on">Frecuentes</span><span class="chip">Simples</span><span class="chip">Por peso</span><span class="chip">Combos</span></div>
+<div class="grid">
+<div class="prod"><div class="n"><b>Gaseosa Inca 500 ml</b><small>Bebidas</small></div><div class="p">4,50<small>22 disp.</small></div></div>
+<div class="prod"><div class="n"><b>Queso andino</b><small>Por peso</small></div><div class="p">24,00<small>2,85 kg</small></div></div>
+<div class="prod"><div class="n"><b>Arroz costeño 1 kg</b><small>Abarrotes</small></div><div class="p">4,20<small class="w">Quedan 2</small></div></div>
+<div class="prod"><div class="n"><b>Huevos de granja</b><small>Jaba de 30</small></div><div class="p">17,50<small>6 jabas</small></div></div>
+<div class="prod"><div class="n"><b>Azúcar rubia</b><small>Por peso</small></div><div class="p">4,60<small>18 kg</small></div></div>
+<div class="prod"><div class="n"><b>Leche gloria</b><small>Lácteos</small></div><div class="p">4,80<small>30 disp.</small></div></div>
+</div></div></div>
+<div class="tk">
+<b style="font-size:16px">Venta</b>
+<div class="lin"><div class="n"><b>Gaseosa Inca 500 ml</b><small>2 × 4,50</small></div><div class="step"><span>−</span><em>2</em><span>+</span></div><div class="r">9,00</div></div>
+<div class="lin"><div class="n"><b>Queso andino</b><small>350 g</small></div><div class="r">8,40</div></div>
+<div style="flex:1"></div>
+<div class="chips"><span class="chip on">En tienda</span><span class="chip">Recojo</span><span class="chip">Delivery</span></div>
+<div class="chips"><span class="chip on">Efectivo</span><span class="chip">Yape</span><span class="chip">Plin</span></div>
+<div class="campo"><label>Nombre (opcional)</label><div class="in">Por ejemplo: Rosa</div></div>
+<div class="tot"><span>Total</span><b>S/ 17,40</b></div>
+<div class="btn b1">Cobrar S/ 17,40</div>
+</div></div>
+<div class="cap" style="max-width:1180px"><b>PC y laptop.</b> Seis números en vez de tres: se separa <b>tienda web</b> de <b>local</b> y aparece <b>Queda del día</b> (ventas − gastos). El ticket está siempre a la derecha; con Delivery, sus campos se abren dentro del mismo panel. Atajos: F2 buscar, F4 gasto.</div>
+
+<h3>PC y laptop: el gasto es un diálogo, no una hoja</h3>
+<div class="pc" style="height:580px">
+<div class="menu"><b>YapiVenta</b><span><svg class="i"><use href="#home"/></svg>Inicio</span><span class="on"><svg class="i"><use href="#till"/></svg>Caja</span></div>
+<div class="main"><div class="bar"><span class="tt">Caja</span><span class="live" style="margin-left:14px">● En vivo</span></div></div>
+<div class="vel"></div>
+<div class="dlg">
+<div class="hh"><b>Gasto</b><span>Cancelar</span></div>
+<div class="campo"><label>¿Cuánto se gastó?</label><div class="monto"><span>S/</span><b>10</b></div></div>
+<p class="sec">¿En qué?</p>
+<div class="chips"><span class="chip on">Comida</span><span class="chip">Pasaje</span><span class="chip">Mercadería</span><span class="chip">Servicios</span><span class="chip">Otro</span></div>
+<p class="sec">¿De dónde salió?</p>
+<div class="chips"><span class="chip on">Efectivo</span><span class="chip">Yape</span><span class="chip">Plin</span><span class="chip">Transferencia</span></div>
+<div class="campo"><label>Nota (opcional)</label><div class="in">Por ejemplo: almuerzo</div></div>
+<div class="btn b1">Guardar gasto · S/ 10,00</div>
+</div></div>
+<div class="cap" style="max-width:1180px"><b>Mismo contenido que en el celular</b>, centrado y de 440 px. Enter guarda, Esc cancela.</div>
+
+<h3>Laptop de poco alto (1 366 × 768 o la ventana achicada): nada se corta</h3>
+<div class="pcb">
+<div class="menu" style="padding:10px 14px"><b>YapiVenta</b><span><svg class="i"><use href="#home"/></svg>Inicio</span><span><svg class="i"><use href="#bag"/></svg>Pedidos</span><span class="on"><svg class="i"><use href="#till"/></svg>Caja</span></div>
+<div class="main">
+<div class="bar" style="min-height:48px;padding:4px 16px"><span class="tt">Caja</span><div class="tabs" style="margin-left:14px"><span class="tb on">Hoy</span><span class="tb">Historial</span><span class="tb">Informes</span></div><span class="live" style="margin-left:14px">● En vivo</span><span class="gbtn"><svg class="i"><use href="#out"/></svg>Gasto<span class="kbd">F4</span></span></div>
+<div style="padding:10px 20px;display:flex;flex-direction:column;gap:10px;flex:1;min-height:0;overflow:hidden">
+<div class="kpi fila1"><div>Hoy<b>317,40</b></div><div>Web<b>100,00</b></div><div>Local<b>217,40</b></div><div>Efectivo<b>207,40</b></div><div>Gastos<b>10,00</b></div><div>Queda<b>307,40</b></div></div>
+<div class="sbar" style="min-height:44px"><svg class="i"><use href="#search"/></svg><span>Buscar productos</span><span class="kbd">F2</span></div>
+<div class="chips"><span class="chip on">Frecuentes</span><span class="chip">Simples</span><span class="chip">Por peso</span><span class="chip">Combos</span></div>
+<div class="grid">
+<div class="prod"><div class="n"><b>Gaseosa Inca 500 ml</b><small>Bebidas</small></div><div class="p">4,50<small>22 disp.</small></div></div>
+<div class="prod"><div class="n"><b>Queso andino</b><small>Por peso</small></div><div class="p">24,00<small>2,85 kg</small></div></div>
+<div class="prod"><div class="n"><b>Arroz costeño 1 kg</b><small>Abarrotes</small></div><div class="p">4,20<small class="w">Quedan 2</small></div></div>
+<div class="prod"><div class="n"><b>Huevos de granja</b><small>Jaba de 30</small></div><div class="p">17,50<small>6 jabas</small></div></div>
+<div class="prod"><div class="n"><b>Azúcar rubia</b><small>Por peso</small></div><div class="p">4,60<small>18 kg</small></div></div>
+<div class="prod"><div class="n"><b>Leche gloria</b><small>Lácteos</small></div><div class="p">4,80<small>30 disp.</small></div></div>
+</div></div></div>
+<div class="tk" style="padding:10px 14px;gap:8px">
+<b style="font-size:16px">Venta</b>
+<div style="flex:1;min-height:0;overflow:hidden">
+<div class="lin" style="padding:4px 0"><div class="n"><b>Gaseosa Inca 500 ml</b><small>2 × 4,50</small></div><div class="r">9,00</div></div>
+<div class="lin" style="padding:4px 0"><div class="n"><b>Queso andino</b><small>350 g</small></div><div class="r">8,40</div></div>
+</div>
+<div class="chips nowrap"><span class="chip on">En tienda</span><span class="chip">Recojo</span><span class="chip">Delivery</span></div>
+<div class="chips nowrap"><span class="chip on">Efectivo</span><span class="chip">Yape</span><span class="chip">Plin</span></div>
+<div class="tot"><span>Total</span><b>S/ 17,40</b></div>
+<div class="btn b1">Cobrar S/ 17,40</div>
+</div></div>
+<div class="cap" style="max-width:1180px"><b>Laptop bajita.</b> Los seis números se quedan en <b>una fila delgada</b> en lugar de tarjetas altas. En el ticket, las líneas se deslizan y <b>el total y «Cobrar» nunca se van de la pantalla</b>. La lista de productos se desliza por su cuenta.</div>
+
+<div class="pcb" style="margin-top:20px;height:510px">
+<div class="menu" style="padding:10px 14px"><b>YapiVenta</b><span class="on"><svg class="i"><use href="#till"/></svg>Caja</span></div>
+<div class="main"><div class="bar" style="min-height:48px"><span class="tt">Caja</span></div></div>
+<div class="vel"></div>
+<div class="dlgb">
+<div class="cab"><b>Gasto</b><span>Cancelar</span></div>
+<div class="med">
+<div class="campo"><label>¿Cuánto se gastó?</label><div class="monto" style="min-height:60px"><span>S/</span><b style="font-size:32px">10</b></div></div>
+<p class="sec">¿En qué?</p>
+<div class="chips"><span class="chip on">Comida</span><span class="chip">Pasaje</span><span class="chip">Mercadería</span><span class="chip">Servicios</span><span class="chip">Otro</span></div>
+<p class="sec">¿De dónde salió?</p>
+<div class="chips"><span class="chip on">Efectivo</span><span class="chip">Yape</span><span class="chip">Plin</span><span class="chip">Transferencia</span></div>
+</div>
+<div class="abajo"><div class="rodar">Desliza para ver la nota</div><div class="btn b1">Guardar gasto · S/ 10,00</div></div>
+</div></div>
+<div class="cap" style="max-width:1180px"><b>El diálogo nunca es más alto que la ventana.</b> Deja 16 px arriba y abajo; el título y «Guardar» quedan fijos y lo del medio se desliza.</div>
+
+<h3>TV (1 600 px o más): solo se mira</h3>
+<div class="tv">
+<div style="display:flex;align-items:center;gap:16px"><b style="font-size:28px">Caja · hoy</b><span class="live" style="font-size:16px">● En vivo</span></div>
+<div class="tvk"><div>Ventas de hoy<b>S/ 317,40</b><small>13 ventas</small></div><div>Efectivo en caja<b>S/ 207,40</b><small>de hoy</small></div><div>Gastos<b>S/ 10,00</b><small>1 gasto</small></div><div>Queda del día<b>S/ 307,40</b><small>ventas − gastos</small></div></div>
+<div class="tvk"><div>Tienda web<b>S/ 100,00</b><small>entregado</small></div><div>Local<b>S/ 217,40</b><small>en mostrador</small></div><div style="flex:2">Gastos de hoy por motivo<b style="font-size:26px;margin-top:8px">Comida S/ 10,00</b><small>Para anotar un gasto usa el celular, la tableta o la PC</small></div></div>
+</div>
+<div class="cap" style="max-width:1180px"><b>TV.</b> Letra grande para ver de lejos. En la TV <b>no se cobra ni se anotan gastos</b> (igual que en Pedidos): solo se mira el día.</div>
+
+<h2>De dónde sale cada número y cuánto cuesta</h2>
+<table>
+<tr><th>Lo que se ve</th><th>De dónde sale</th><th>Lecturas de Firebase</th></tr>
+<tr><td><b>Ventas de hoy, tienda web, local</b></td><td>El resumen del día (lo web entregado + lo cobrado en el local)</td><td>1 al abrir Caja y 1 por cada venta o gasto</td></tr>
+<tr><td><b>Efectivo en caja</b></td><td>Vendido en efectivo − gastado en efectivo, de hoy</td><td>Ninguna más (mismo documento)</td></tr>
+<tr><td><b>Gastos y Queda del día</b></td><td>Gastos de hoy; ventas − gastos</td><td>Ninguna más</td></tr>
+<tr><td><b>Stock de la lista tras cobrar o anular</b></td><td>Se ajusta en memoria</td><td>0 (recargar costaría 20)</td></tr>
+<tr><td><b>Guardar o anular un gasto</b></td><td>El gasto y el resumen, todo o nada</td><td>2 lecturas y 2 escrituras por gasto</td></tr>
+</table>
+
+<h2>Lo que esta maqueta NO incluye (va después)</h2>
+<div class="band"><b>Historial</b> (ventas web y del local por día, lista de gastos del día y anular) e <b>Informes</b> (hoy, semana, mes; web contra local; <b>más vendidos y menos vendidos</b>; gastos por motivo). No se quitó nada de la maqueta aprobada: el buscador, los filtros y la hoja del producto siguen igual.</div>
+</body>
+</html>
