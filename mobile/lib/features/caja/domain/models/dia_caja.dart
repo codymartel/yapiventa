@@ -90,8 +90,12 @@ class DiaCaja {
   /// más de lo que se vendió).
   int get quedaCentavos => ventasCentavos - gastosCentavos;
 
-  /// Efectivo que debe haber por lo de HOY: lo vendido en efectivo menos lo
-  /// gastado en efectivo. Negativo si se sacó más de lo que entró hoy.
+  /// Entregado hoy y todavía sin cobrar (no está en la caja).
+  int get porCobrarCentavos => ventas.contadores.porCobrarCentavos;
+
+  /// Efectivo que debe haber por lo de HOY: lo COBRADO hoy en efectivo menos
+  /// lo gastado en efectivo (lo entregado sin cobrar no entra). Negativo si
+  /// se sacó más de lo que entró hoy.
   int get efectivoCentavos =>
       (ventas.contadores.porPago[claveEfectivo] ?? 0) -
       (gastos.porPago[claveEfectivo] ?? 0);

@@ -38,7 +38,6 @@ class AporteVenta {
   const AporteVenta({
     required this.totalCentavos,
     this.esMostrador = false,
-    this.pago = '',
     this.entrega = '',
     this.hora = '',
     this.productos = const {},
@@ -49,9 +48,8 @@ class AporteVenta {
   final int totalCentavos;
   final bool esMostrador;
 
-  /// Claves normalizadas: forma de pago, entrega (local, recojo o delivery) y
-  /// hora de Lima («09», «14»).
-  final String pago;
+  /// Claves normalizadas: entrega (local, recojo o delivery) y hora de Lima
+  /// («09», «14»).
   final String entrega;
   final String hora;
   final Map<String, ItemContador> productos;
@@ -71,6 +69,8 @@ class ContadoresDia {
     this.porProducto = const {},
     this.porVariante = const {},
     this.porCombo = const {},
+    this.porCobrarCentavos = 0,
+    this.porCobrar = 0,
   });
 
   /// Un día sin movimientos.
@@ -84,10 +84,39 @@ class ContadoresDia {
   final int anuladas;
   final int anuladasCentavos;
 
+  /// Lo COBRADO ese día por forma de pago (la plata entra el día en que se
+  /// cobra, aunque el pedido se entregue otro día).
   final Map<String, int> porPago;
+
+  /// Entregado ese día y todavía sin cobrar: monto y cuántos pedidos.
+  final int porCobrarCentavos;
+  final int porCobrar;
+
   final Map<String, int> porEntrega;
   final Map<String, int> porHora;
   final Map<String, ItemContador> porProducto;
   final Map<String, ItemContador> porVariante;
   final Map<String, ItemContador> porCombo;
+
+  /// Los mismos contadores con otros cobros (lo demás no cambia).
+  ContadoresDia conCobros({
+    required Map<String, int> porPago,
+    required int porCobrarCentavos,
+    required int porCobrar,
+  }) {
+    return ContadoresDia(
+      mostradorCentavos: mostradorCentavos,
+      mostrador: mostrador,
+      anuladas: anuladas,
+      anuladasCentavos: anuladasCentavos,
+      porPago: porPago,
+      porEntrega: porEntrega,
+      porHora: porHora,
+      porProducto: porProducto,
+      porVariante: porVariante,
+      porCombo: porCombo,
+      porCobrarCentavos: porCobrarCentavos,
+      porCobrar: porCobrar,
+    );
+  }
 }

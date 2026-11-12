@@ -56,7 +56,16 @@ class BarraDiaCaja extends StatelessWidget {
                 dia: dia,
               ),
               EstiloDiaCaja.fila => _Fila(
-                datos: _datos(dia, todos: true, onVerGastos: onVerGastos),
+                datos: [
+                  ..._datos(dia, todos: true, onVerGastos: onVerGastos),
+                  if (dia.porCobrarCentavos > 0)
+                    _Dato(
+                      'Por cobrar',
+                      dia.porCobrarCentavos,
+                      'entregado sin cobrar',
+                      corto: 'Por cobrar',
+                    ),
+                ],
                 onReintentar: provider.error ? provider.reintentar : null,
               ),
               EstiloDiaCaja.tablero => _Tablero(
@@ -98,7 +107,9 @@ List<_Dato> _datos(
   final ventas = _Dato(
     'Ventas de hoy',
     dia.ventasCentavos,
-    TextosDiaCaja.cuantasVentas(dia.ventas.entregados),
+    todos
+        ? TextosDiaCaja.notaVentas(dia)
+        : TextosDiaCaja.cuantasVentas(dia.ventas.entregados),
     corto: 'Hoy',
   );
   final efectivo = _Dato(
@@ -299,6 +310,15 @@ class _LocalYWeb extends StatelessWidget {
         const Text('·', style: etiqueta),
         const Text('Tienda web', style: etiqueta),
         Text(TextosDiaCaja.plata(TextosDiaCaja.webCentavos(dia)), style: valor),
+        // Entregado sin cobrar: no está en la caja (solo si hay algo).
+        if (dia.porCobrarCentavos > 0) ...[
+          const Text('·', style: etiqueta),
+          const Text('Por cobrar', style: etiqueta),
+          Text(
+            TextosDiaCaja.plata(dia.porCobrarCentavos),
+            style: valor.copyWith(color: AppColors.aviso),
+          ),
+        ],
       ],
     );
   }

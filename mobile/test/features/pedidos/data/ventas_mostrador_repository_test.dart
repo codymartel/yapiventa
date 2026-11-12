@@ -299,8 +299,17 @@ void main() {
         expect(p['totalCentavos'], 900 + 500);
         expect((p['historial'] as List), hasLength(1));
         expect((await leerProducto('gaseosa'))!.stock, 22);
-        // Todavía no es una venta: el resumen del día no se toca.
-        expect(await leerResumen(), isNull);
+        // Todavía no es una venta (no suma a ventas), pero ya se cobró en el
+        // mostrador: la plata entra hoy a la caja y el pedido lo recuerda.
+        final r2 = (await leerResumen())!;
+        expect(r2['ventasCentavos'], 0);
+        expect(r2['entregados'], 0);
+        expect(r2['porPago'], {'efectivo': 1400});
+        expect(p['cobro'], {
+          'dia': '2026-11-05',
+          'pago': 'efectivo',
+          'centavos': 1400,
+        });
       },
     );
 

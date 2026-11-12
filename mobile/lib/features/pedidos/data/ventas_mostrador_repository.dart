@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mobile/features/productos/domain/models/producto.dart';
 
 import '../application/services/calculo_stock_pedido.dart';
+import '../application/services/cobros_dia.dart';
 import '../application/services/contadores_venta.dart';
 import '../application/services/resumen_dia_pedidos.dart';
 import '../application/services/resumen_ventas_dia_calculo.dart';
@@ -9,24 +10,24 @@ import '../application/services/transiciones_pedido.dart';
 import '../application/services/verificacion_total_pedido.dart';
 import '../domain/models/estado_pedido.dart';
 import '../domain/models/pedido.dart';
-import '../domain/models/resumen_ventas_dia.dart';
 import '../domain/repositories/repositorio_ventas_mostrador.dart';
 import 'ayudas_pedidos_firestore.dart';
 import 'pedido_mapper.dart';
-import 'resumen_ventas_dia_mapper.dart';
 
 /// Ventas de mostrador (Caja). Registrar una venta mueve el stock de varios
 /// productos, crea el pedido y suma al resumen del día: va en UNA transacción
 /// (todo o nada), con todas las lecturas antes de las escrituras.
 ///
 /// Lecturas: los productos de la venta (más las partes de sus combos) y, si la
-/// venta queda entregada, 1 resumen del día. Escrituras: 1 pedido, los
-/// productos cuyo stock cambia y 1 resumen. Una venta de 2 productos en el
+/// venta queda entregada o cobrada, 1 resumen del día. Escrituras: 1 pedido,
+/// los productos cuyo stock cambia y 1 resumen. Una venta de 2 productos en el
 /// local: 3 lecturas y 4 escrituras.
 ///
-///   En el local y recojo → nace ENTREGADA y cobrada, y suma a las ventas.
+///   En el local y recojo → nace ENTREGADA y cobrada, y suma a las ventas y
+///                          a la caja.
 ///   Delivery             → nace CONFIRMADA (stock ya descontado) y sigue en
-///                          Pedidos; suma a las ventas cuando se entregue.
+///                          Pedidos; suma a las ventas cuando se entregue. Si
+///                          se cobró en el mostrador, la plata entra hoy.
 class VentasMostradorRepository implements RepositorioVentasMostrador {
   VentasMostradorRepository({FirebaseFirestore? db, DateTime Function()? reloj})
     : _db = db ?? FirebaseFirestore.instance,
@@ -137,18 +138,14 @@ class VentasMostradorRepository implements RepositorioVentasMostrador {
       );
 
       // El resumen del día se lee ANTES de escribir (regla de las
-      // transacciones) y se guarda el valor ya sumado.
-      final refResumen = _ayudas.resumen(
-        negocioId,
-        ResumenDiaPedidos.claveDia(ahora),
-      );
-      var resumenActual = ResumenVentasDia.vacio(refResumen.id);
-      if (entregada) {
-        resumenActual = ResumenVentasDiaMapper.desdeFirestore(
-          refResumen.id,
-          (await tx.get(refResumen)).data(),
-        );
-      }
+      // transacciones) y se guarda el valor ya sumado. Si la venta nace
+      // cobrada (aunque sea delivery), la plata entra hoy a la caja.
+      final hoy = ResumenDiaPedidos.claveDia(ahora);
+      final plan = CobrosDia.alNacer(pedido, ahora);
+      final resumenes = await _ayudas.leerResumenes(tx, negocioId, {
+        if (entregada) hoy,
+        ...plan.dias,
+      });
 
       // ── Escrituras ──────────────────────────────────────────────────
       // `vendidos` sube 1 por producto de las líneas (cuenta ventas, no
@@ -196,25 +193,31 @@ class VentasMostradorRepository implements RepositorioVentasMostrador {
         'stockDescontado': PedidoMapper.descuentosAMapas(calculo.descuentos),
         'reembolso': EstadoReembolso.ninguno.valor,
         'historial': PedidoMapper.historialAMapas(pedido.historial),
+        if (plan.cobro case final cobro?)
+          'cobro': PedidoMapper.cobroAMapa(cobro),
         'actualizadoEn': FieldValue.serverTimestamp(),
       });
 
       if (entregada) {
-        _ayudas.guardarResumenVentas(
-          tx,
-          refResumen,
-          ventasCentavos: resumenActual.ventasCentavos + pedido.totalCentavos,
-          entregados: resumenActual.entregados + 1,
+        final actual = resumenes[hoy]!;
+        resumenes[hoy] = actual.copyWith(
+          ventasCentavos: actual.ventasCentavos + pedido.totalCentavos,
+          entregados: actual.entregados + 1,
           ultimosEntregados: ResumenVentasDiaCalculo.conNuevoEntregado(
-            resumenActual.ultimosEntregados,
+            actual.ultimosEntregados,
             ResumenVentasDiaCalculo.entregadoDe(pedido, ahora),
           ),
           contadores: ContadoresVenta.sumar(
-            resumenActual.contadores,
+            actual.contadores,
             ContadoresVenta.aporteDe(pedido, ahora),
           ),
         );
       }
+      _ayudas.guardarResumenes(
+        tx,
+        negocioId,
+        CobrosDia.aplicar(resumenes, plan.ajustes),
+      );
 
       return ResultadoVentaMostrador(
         pedidoId: ref.id,
@@ -244,16 +247,15 @@ class VentasMostradorRepository implements RepositorioVentasMostrador {
 
       // Se resta del día en que se vendió (no de hoy), con la misma hora que
       // se usó al sumar.
+      // Lo cobrado se resta del día en que entró la plata (puede ser otro).
       final ahora = _ayudas.ahora();
       final momento = ResumenVentasDiaCalculo.momentoDeEntrega(pedido) ?? ahora;
-      final refResumen = _ayudas.resumen(
-        negocioId,
-        ResumenDiaPedidos.claveDia(momento),
-      );
-      final resumenActual = ResumenVentasDiaMapper.desdeFirestore(
-        refResumen.id,
-        (await tx.get(refResumen)).data(),
-      );
+      final diaVenta = ResumenDiaPedidos.claveDia(momento);
+      final plan = CobrosDia.alQuitar(pedido, diaEntrega: diaVenta);
+      final resumenes = await _ayudas.leerResumenes(tx, negocioId, {
+        diaVenta,
+        ...plan.dias,
+      });
 
       // Se devuelve lo guardado en el pedido (no se recalcula).
       final sinDevolver = await _ayudas.devolverStock(
@@ -269,21 +271,25 @@ class VentasMostradorRepository implements RepositorioVentasMostrador {
         'historial': _ayudas.historialCon(pedido, EstadoPedido.cancelado),
         'actualizadoEn': FieldValue.serverTimestamp(),
       });
-      _ayudas.guardarResumenVentas(
-        tx,
-        refResumen,
+      final actual = resumenes[diaVenta]!;
+      resumenes[diaVenta] = actual.copyWith(
         ventasCentavos: _noNegativo(
-          resumenActual.ventasCentavos - pedido.totalCentavos,
+          actual.ventasCentavos - pedido.totalCentavos,
         ),
-        entregados: _noNegativo(resumenActual.entregados - 1),
+        entregados: _noNegativo(actual.entregados - 1),
         ultimosEntregados: ResumenVentasDiaCalculo.sinEntregado(
-          resumenActual.ultimosEntregados,
+          actual.ultimosEntregados,
           pedido.id,
         ),
         contadores: ContadoresVenta.restar(
-          resumenActual.contadores,
+          actual.contadores,
           ContadoresVenta.aporteDe(pedido, momento),
         ),
+      );
+      _ayudas.guardarResumenes(
+        tx,
+        negocioId,
+        CobrosDia.aplicar(resumenes, plan.ajustes),
       );
       return ResultadoAnulacion(sinDevolver: sinDevolver);
     });

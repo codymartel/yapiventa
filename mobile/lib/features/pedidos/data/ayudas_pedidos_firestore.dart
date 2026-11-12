@@ -180,6 +180,41 @@ class AyudasPedidosFirestore {
     ]);
   }
 
+  /// Lee dentro de la transacción el resumen de cada día de [dias] (una vez
+  /// cada uno; uno que no existe vale como día vacío). Va ANTES de escribir.
+  Future<Map<String, ResumenVentasDia>> leerResumenes(
+    Transaction tx,
+    String negocioId,
+    Iterable<String> dias,
+  ) async {
+    final leidos = <String, ResumenVentasDia>{};
+    for (final dia in dias) {
+      if (leidos.containsKey(dia)) continue;
+      final doc = await tx.get(resumen(negocioId, dia));
+      leidos[dia] = ResumenVentasDiaMapper.desdeFirestore(dia, doc.data());
+    }
+    return leidos;
+  }
+
+  /// Escribe cada resumen de [resumenes] una sola vez (ver
+  /// [guardarResumenVentas]).
+  void guardarResumenes(
+    Transaction tx,
+    String negocioId,
+    Map<String, ResumenVentasDia> resumenes,
+  ) {
+    for (final r in resumenes.values) {
+      guardarResumenVentas(
+        tx,
+        resumen(negocioId, r.dia),
+        ventasCentavos: r.ventasCentavos,
+        entregados: r.entregados,
+        ultimosEntregados: r.ultimosEntregados,
+        contadores: r.contadores,
+      );
+    }
+  }
+
   /// Escribe el resumen del día de ventas con los valores ya calculados
   /// (cobrar, entregar y anular). Reemplaza esos campos enteros: un merge
   /// normal juntaría los mapas con lo que ya había y no quitaría lo que llegó

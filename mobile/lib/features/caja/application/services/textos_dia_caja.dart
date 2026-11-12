@@ -41,7 +41,15 @@ abstract final class TextosDiaCaja {
     _ => '$gastos gastos',
   };
 
-  /// Lo cobrado en el mostrador hoy.
+  /// Bajo «Ventas de hoy» en PC: «4 ventas · S/ 40,00 por cobrar» (lo de
+  /// por cobrar solo si hay algo entregado sin cobrar).
+  static String notaVentas(DiaCaja dia) {
+    final ventas = cuantasVentas(dia.ventas.entregados);
+    if (dia.porCobrarCentavos <= 0) return ventas;
+    return '$ventas · ${plata(dia.porCobrarCentavos)} por cobrar';
+  }
+
+  /// Lo vendido en el mostrador hoy.
   static int localCentavos(DiaCaja dia) =>
       dia.ventas.contadores.mostradorCentavos;
 

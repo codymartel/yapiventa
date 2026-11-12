@@ -1,3 +1,4 @@
+import 'cobro_pedido.dart';
 import 'descuento_stock.dart';
 import 'estado_pedido.dart';
 import 'linea_pedido.dart';
@@ -83,6 +84,7 @@ class Pedido {
     this.stockDescontado = const [],
     this.reembolso = EstadoReembolso.ninguno,
     this.historial = const [],
+    this.cobro,
   });
 
   final String id;
@@ -113,6 +115,10 @@ class Pedido {
   final EstadoReembolso reembolso;
   final List<CambioEstado> historial;
 
+  /// Dónde entró (o quedó pendiente) la plata en la caja. null en pedidos
+  /// viejos y en los que todavía no se cobran ni se entregan.
+  final CobroPedido? cobro;
+
   /// Una venta que ya se había entregado y luego se anuló (no se borra: queda
   /// cancelada y tachada). Se reconoce porque su historial pasó por entregado.
   bool get anulada =>
@@ -125,6 +131,7 @@ class Pedido {
     EstadoReembolso? reembolso,
     List<DescuentoStock>? stockDescontado,
     List<CambioEstado>? historial,
+    CobroPedido? cobro,
   }) {
     return Pedido(
       id: id,
@@ -147,6 +154,7 @@ class Pedido {
       stockDescontado: stockDescontado ?? this.stockDescontado,
       reembolso: reembolso ?? this.reembolso,
       historial: historial ?? this.historial,
+      cobro: cobro ?? this.cobro,
     );
   }
 }

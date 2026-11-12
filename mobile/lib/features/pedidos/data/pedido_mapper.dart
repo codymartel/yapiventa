@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mobile/features/productos/data/mappers/lectura_firestore.dart';
 
+import '../domain/models/cobro_pedido.dart';
 import '../domain/models/descuento_stock.dart';
 import '../domain/models/estado_pedido.dart';
 import '../domain/models/linea_pedido.dart';
@@ -58,7 +59,18 @@ abstract final class PedidoMapper {
               fecha: fecha,
             ),
       ],
+      cobro: _cobro(data['cobro']),
     );
+  }
+
+  /// El `cobro` como se guarda: solo los textos que tienen algo.
+  static Map<String, dynamic> cobroAMapa(CobroPedido c) {
+    return {
+      if (c.dia.isNotEmpty) 'dia': c.dia,
+      if (c.pago.isNotEmpty) 'pago': c.pago,
+      'centavos': c.centavos,
+      if (c.porCobrarDia.isNotEmpty) 'porCobrarDia': c.porCobrarDia,
+    };
   }
 
   static List<Map<String, dynamic>> descuentosAMapas(
@@ -167,6 +179,18 @@ abstract final class PedidoMapper {
       ],
       subtotalCentavos: LecturaFirestore.entero(m['subtotalCentavos']),
       esCombo: m['esCombo'] == true,
+    );
+  }
+
+  /// null si el pedido no trae `cobro` (pedido viejo o aún sin cobrar).
+  static CobroPedido? _cobro(Object? valor) {
+    if (valor is! Map) return null;
+    final centavos = LecturaFirestore.entero(valor['centavos']);
+    return CobroPedido(
+      dia: LecturaFirestore.texto(valor['dia']),
+      pago: LecturaFirestore.texto(valor['pago']),
+      centavos: centavos < 0 ? 0 : centavos,
+      porCobrarDia: LecturaFirestore.texto(valor['porCobrarDia']),
     );
   }
 

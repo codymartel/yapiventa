@@ -35,6 +35,18 @@ class EntregadoReciente {
 
   /// Momento en que se entregó.
   final DateTime? hora;
+
+  /// El mismo entregado, ya cobrado.
+  EntregadoReciente comoCobrado() => EntregadoReciente(
+    pedidoId: pedidoId,
+    clave: clave,
+    cliente: cliente,
+    productos: productos,
+    totalCentavos: totalCentavos,
+    metodoPago: metodoPago,
+    cobrado: true,
+    hora: hora,
+  );
 }
 
 class ResumenVentasDia {
@@ -69,6 +81,23 @@ class ResumenVentasDia {
   /// Lo vendido por forma de pago, entrega, hora, producto, variable y combo,
   /// lo de mostrador y lo anulado. Un resumen viejo no los trae: vienen vacíos.
   final ContadoresDia contadores;
+
+  ResumenVentasDia copyWith({
+    int? ventasCentavos,
+    int? entregados,
+    List<EntregadoReciente>? ultimosEntregados,
+    ContadoresDia? contadores,
+  }) {
+    return ResumenVentasDia(
+      dia: dia,
+      ventasCentavos: ventasCentavos ?? this.ventasCentavos,
+      entregados: entregados ?? this.entregados,
+      confirmados: confirmados,
+      sumaMinutosConfirmar: sumaMinutosConfirmar,
+      ultimosEntregados: ultimosEntregados ?? this.ultimosEntregados,
+      contadores: contadores ?? this.contadores,
+    );
+  }
 
   /// Venta promedio por pedido entregado, en céntimos, redondeada hacia abajo
   /// una sola vez. null si todavía no se entregó nada (no se divide entre 0).

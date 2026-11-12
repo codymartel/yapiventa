@@ -49,12 +49,11 @@ Pedido _venta({
 
 void main() {
   group('lo que aporta una venta', () {
-    test('de mostrador en el local: por pago, entrega, hora y producto', () {
+    test('de mostrador en el local: entrega, hora y producto', () {
       final a = ContadoresVenta.aporteDe(_venta(), _tarde);
 
       expect(a.totalCentavos, 1740);
       expect(a.esMostrador, isTrue);
-      expect(a.pago, 'efectivo');
       expect(a.entrega, 'local');
       expect(a.hora, '14');
       expect(a.productos['queso']!.cantidad, 350);
@@ -185,7 +184,8 @@ void main() {
 
       expect(d.mostrador, 1);
       expect(d.mostradorCentavos, 1740);
-      expect(d.porPago, {'efectivo': 1740});
+      // Lo cobrado por forma de pago lo suma CobrosDia, no la venta.
+      expect(d.porPago, isEmpty);
       expect(d.porEntrega, {'local': 1740});
       expect(d.porHora, {'14': 1740});
       expect(d.porProducto['queso']!.centavos, 840);
@@ -210,17 +210,35 @@ void main() {
 
       expect(d.mostrador, 1);
       expect(d.mostradorCentavos, 1740);
-      expect(d.porPago, {'efectivo': 1740, 'yape': 1200});
+      expect(d.porEntrega, {'local': 1740, 'recojo': 1200});
       expect(d.porHora, {'14': 2940});
       expect(d.porProducto['gaseosa']!.cantidad, 4);
     });
 
     test('no cambia el resumen que recibe (copia nueva)', () {
-      const antes = ContadoresDia(porPago: {'efectivo': 100});
+      const antes = ContadoresDia(porHora: {'09': 100});
 
       ContadoresVenta.sumar(antes, ContadoresVenta.aporteDe(_venta(), _tarde));
 
-      expect(antes.porPago, {'efectivo': 100});
+      expect(antes.porHora, {'09': 100});
+    });
+
+    test('conserva lo cobrado y lo por cobrar del día', () {
+      const antes = ContadoresDia(
+        porPago: {'efectivo': 100},
+        porCobrarCentavos: 4000,
+        porCobrar: 1,
+      );
+      final aporte = ContadoresVenta.aporteDe(_venta(), _tarde);
+
+      for (final d in [
+        ContadoresVenta.sumar(antes, aporte),
+        ContadoresVenta.restar(antes, aporte),
+      ]) {
+        expect(d.porPago, {'efectivo': 100});
+        expect(d.porCobrarCentavos, 4000);
+        expect(d.porCobrar, 1);
+      }
     });
   });
 
@@ -251,7 +269,7 @@ void main() {
 
       final d = ContadoresVenta.restar(sumado, segunda);
 
-      expect(d.porPago, {'efectivo': 1740});
+      expect(d.porEntrega, {'local': 1740});
       expect(d.porProducto['gaseosa']!.cantidad, 2);
       expect(d.mostrador, 1);
     });

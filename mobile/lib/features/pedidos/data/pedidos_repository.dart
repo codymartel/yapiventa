@@ -2,11 +2,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mobile/features/productos/domain/models/producto.dart';
 
 import '../application/services/calculo_stock_pedido.dart';
+import '../application/services/cobros_dia.dart';
 import '../application/services/contadores_venta.dart';
 import '../application/services/resumen_dia_pedidos.dart';
 import '../application/services/resumen_ventas_dia_calculo.dart';
 import '../application/services/transiciones_pedido.dart';
 import '../application/services/verificacion_total_pedido.dart';
+import '../domain/models/cobro_pedido.dart';
 import '../domain/models/estado_pedido.dart';
 import '../domain/models/filtro_pedidos.dart';
 import '../domain/models/pedido.dart';
@@ -296,6 +298,11 @@ class PedidosRepository implements RepositorioPedidos {
       // Se devuelve lo guardado en el pedido (no se recalcula). Un pedido
       // nuevo no descontó nada: no lee ningún producto.
       // Una venta de Caja (delivery en proceso) ya sumó a `vendidos`.
+      // Si ya se cobró (pago adelantado), esa plata sale de la caja del día en
+      // que entró: se devuelve al cliente (queda en Reembolsos). Los
+      // resúmenes se leen antes que los productos (lecturas primero).
+      final plan = CobrosDia.alQuitar(pedido);
+      final resumenes = await _ayudas.leerResumenes(tx, negocioId, plan.dias);
       final omitidos = await _ayudas.devolverStock(
         tx,
         negocioId,
@@ -308,6 +315,11 @@ class PedidosRepository implements RepositorioPedidos {
         'historial': _ayudas.historialCon(pedido, EstadoPedido.cancelado),
         'actualizadoEn': FieldValue.serverTimestamp(),
       });
+      _ayudas.guardarResumenes(
+        tx,
+        negocioId,
+        CobrosDia.aplicar(resumenes, plan.ajustes),
+      );
       return omitidos;
     });
   }
@@ -338,39 +350,47 @@ class PedidosRepository implements RepositorioPedidos {
       // todas las escrituras (regla de las transacciones).
       final ahora = _reloj();
       final entregando = nuevo == EstadoPedido.entregado;
-      final refResumen = _ayudas.resumen(
-        negocioId,
-        ResumenDiaPedidos.claveDia(ahora),
-      );
-      var resumenActual = ResumenVentasDia.vacio(refResumen.id);
-      if (entregando) {
-        resumenActual = ResumenVentasDiaMapper.desdeFirestore(
-          refResumen.id,
-          (await tx.get(refResumen)).data(),
-        );
-      }
+      // Un cobro que ya está en la caja no se desmarca al entregar.
+      final pagoFinal = (pedido.cobro?.contado ?? false) ? null : pago;
+      // Con el pago ya marcado, como queda el pedido al entregarse.
+      final entregadoAhora = pedido.copyWith(estadoPago: pagoFinal);
+      final hoy = ResumenDiaPedidos.claveDia(ahora);
+      final plan = entregando
+          ? CobrosDia.alEntregar(
+              pedido,
+              cobradoAhora: entregadoAhora.estadoPago == EstadoPago.pagado,
+              ahora: ahora,
+            )
+          : PlanCobro.nada;
+      final resumenes = entregando
+          ? await _ayudas.leerResumenes(tx, negocioId, {hoy, ...plan.dias})
+          : const <String, ResumenVentasDia>{};
       tx.update(ref, {
         'estado': nuevo.valor,
-        'estadoPago': ?pago?.valor,
+        'estadoPago': ?pagoFinal?.valor,
         'historial': _ayudas.historialCon(pedido, nuevo, en: ahora),
+        if (plan.cobro case final cobro?)
+          'cobro': PedidoMapper.cobroAMapa(cobro),
         'actualizadoEn': FieldValue.serverTimestamp(),
       });
       if (entregando) {
-        // Con el pago ya marcado, como queda el pedido al entregarse.
-        final entregadoAhora = pedido.copyWith(estadoPago: pago);
-        _ayudas.guardarResumenVentas(
-          tx,
-          refResumen,
-          ventasCentavos: resumenActual.ventasCentavos + pedido.totalCentavos,
-          entregados: resumenActual.entregados + 1,
+        final actual = resumenes[hoy]!;
+        final conVenta = actual.copyWith(
+          ventasCentavos: actual.ventasCentavos + pedido.totalCentavos,
+          entregados: actual.entregados + 1,
           ultimosEntregados: ResumenVentasDiaCalculo.conNuevoEntregado(
-            resumenActual.ultimosEntregados,
+            actual.ultimosEntregados,
             ResumenVentasDiaCalculo.entregadoDe(entregadoAhora, ahora),
           ),
           contadores: ContadoresVenta.sumar(
-            resumenActual.contadores,
+            actual.contadores,
             ContadoresVenta.aporteDe(entregadoAhora, ahora),
           ),
+        );
+        _ayudas.guardarResumenes(
+          tx,
+          negocioId,
+          CobrosDia.aplicar({...resumenes, hoy: conVenta}, plan.ajustes),
         );
       }
     });
@@ -384,10 +404,26 @@ class PedidosRepository implements RepositorioPedidos {
       if (!TransicionesPedido.puedeCambiarPago(pedido.estado)) {
         throw StateError('Un pedido cancelado no cambia de pago.');
       }
+      if (pago == EstadoPago.pendiente && (pedido.cobro?.contado ?? false)) {
+        throw StateError('Ese cobro ya está en la caja: no se desmarca.');
+      }
+      // Cobrar mete la plata en la caja de HOY (y quita el «por cobrar» del
+      // día en que se entregó). Lecturas antes de escribir.
+      final plan = pago == EstadoPago.pagado
+          ? CobrosDia.alCobrar(pedido, _reloj())
+          : PlanCobro.nada;
+      final resumenes = await _ayudas.leerResumenes(tx, negocioId, plan.dias);
       tx.update(ref, {
         'estadoPago': pago.valor,
+        if (plan.cobro case final cobro?)
+          'cobro': PedidoMapper.cobroAMapa(cobro),
         'actualizadoEn': FieldValue.serverTimestamp(),
       });
+      _ayudas.guardarResumenes(
+        tx,
+        negocioId,
+        CobrosDia.aplicar(resumenes, plan.ajustes),
+      );
     });
   }
 

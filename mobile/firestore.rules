@@ -114,8 +114,9 @@ service cloud.firestore {
           'fecha', 'cliente', 'zona', 'deliveryCentavos', 'descuentoCentavos',
           'subtotalCentavos', 'totalCentavos', 'lineas', 'metodoPago',
           'estadoPago', 'notas', 'stockDescontado', 'reembolso', 'historial',
-          'actualizadoEn'
+          'actualizadoEn', 'cobro'
         ]) &&
+        (!('cobro' in d) || cobroValido(d.cobro)) &&
         d.keys().hasAll([
           'negocioId', 'clave', 'estado', 'origen', 'tipoEntrega', 'fecha',
           'cliente', 'deliveryCentavos', 'descuentoCentavos',
@@ -151,6 +152,17 @@ service cloud.firestore {
         (!('actualizadoEn' in d) || d.actualizadoEn == request.time);
     }
 
+    // Dónde entró la plata de un pedido en la caja (día AAAA-MM-DD o vacío,
+    // clave de pago corta, céntimos enteros >= 0) y ningún campo extra.
+    function cobroValido(c) {
+      let diaOk = '^([0-9]{4}-[0-9]{2}-[0-9]{2})?$';
+      return c is map && c.keys().hasOnly(['dia', 'pago', 'centavos', 'porCobrarDia']) &&
+        c.get('dia', '') is string && c.get('dia', '').matches(diaOk) &&
+        c.get('porCobrarDia', '') is string && c.get('porCobrarDia', '').matches(diaOk) &&
+        c.get('pago', '') is string && c.get('pago', '').matches('^[a-z0-9_-]{0,30}$') &&
+        c.get('centavos', 0) is int && c.get('centavos', 0) >= 0;
+    }
+
     // Contadores del día: enteros >= 0 y mapas de como máximo 251 entradas
     // (250 productos distintos por día más «otros»).
     function contadoresDiaValidos(d) {
@@ -158,6 +170,9 @@ service cloud.firestore {
           (d.mostradorCentavos is int && d.mostradorCentavos >= 0)) &&
         (!('mostrador' in d) || (d.mostrador is int && d.mostrador >= 0)) &&
         (!('anuladas' in d) || (d.anuladas is int && d.anuladas >= 0)) &&
+        (!('porCobrar' in d) || (d.porCobrar is int && d.porCobrar >= 0)) &&
+        (!('porCobrarCentavos' in d) ||
+          (d.porCobrarCentavos is int && d.porCobrarCentavos >= 0)) &&
         (!('anuladasCentavos' in d) ||
           (d.anuladasCentavos is int && d.anuladasCentavos >= 0)) &&
         (!('porPago' in d) || (d.porPago is map && d.porPago.size() <= 251)) &&
@@ -220,6 +235,8 @@ service cloud.firestore {
           'porProducto',
           'porVariante',
           'porCombo',
+          'porCobrarCentavos',
+          'porCobrar',
           'gastosCentavos',
           'gastos',
           'porGastoPago',
@@ -374,7 +391,7 @@ service cloud.firestore {
       //   válida; nadie puede leerlo ni cambiarlo desde fuera. Solo el dueño
       //   crea una venta de mostrador (origen 'mostrador', ya entregada o
       //   confirmada): la tienda anónima no puede usar ese origen.
-      //   El propietario lee y cambia solo estado, pago, reembolso, stock
+      //   El propietario lee y cambia solo estado, pago, cobro, reembolso, stock
       //   descontado e historial. Nunca se borra, salvo al eliminar la cuenta.
       match /pedidos/{pedidoId} {
         allow create: if pedidoNuevoValido(negocioId, request.resource.data) ||
@@ -388,8 +405,11 @@ service cloud.firestore {
             'reembolso',
             'stockDescontado',
             'historial',
-            'actualizadoEn'
-          ]);
+            'actualizadoEn',
+            'cobro'
+          ]) &&
+          (!('cobro' in request.resource.data) ||
+            cobroValido(request.resource.data.cobro));
         // Solo al eliminar la cuenta (negocio marcado `eliminando`).
         allow delete: if negocioEnBorrado(negocioId);
       }

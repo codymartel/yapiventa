@@ -173,6 +173,25 @@ void main() {
       expect(r.ventasCentavos, 1200);
       expect(r.minutosPromedioConfirmar, 7);
       expect(r.contadores.porPago, isEmpty);
+      expect(r.contadores.porCobrarCentavos, 0);
+    });
+
+    test('lo por cobrar va y vuelve; un negativo se lee como 0', () {
+      const c = ContadoresDia(porCobrarCentavos: 4000, porCobrar: 1);
+      final campos = ContadoresDiaMapper.aCampos(c);
+
+      expect(campos['porCobrarCentavos'], 4000);
+      expect(campos['porCobrar'], 1);
+      expect(ContadoresDiaMapper.camposContadores, contains('porCobrar'));
+      final leido = ContadoresDiaMapper.desdeFirestore(campos);
+      expect(leido.porCobrarCentavos, 4000);
+      expect(leido.porCobrar, 1);
+      expect(
+        ContadoresDiaMapper.desdeFirestore({
+          'porCobrarCentavos': -5,
+        }).porCobrarCentavos,
+        0,
+      );
     });
   });
 }

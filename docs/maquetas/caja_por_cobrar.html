@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Caja · por cobrar</title>
+<style>
+  :root{--fondo:#070C18;--card:#111D33;--texto:#E8EDF5;--muted:#9AA9C2;--hint:#8191AA;--azul:#8AB2FF;--aviso:#FBBF24;--borde:rgba(96,140,230,.30)}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--fondo);color:var(--texto);font:14px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding:24px 16px}
+  h1{font-size:18px;margin:0 0 4px}
+  h2{font-size:14px;color:var(--muted);font-weight:600;margin:28px 0 10px}
+  p.caso{color:var(--muted);max-width:760px;margin:0 0 8px}
+  .fila{display:flex;gap:24px;flex-wrap:wrap}
+  .cel{width:360px;max-width:100%}
+  .pc{width:1000px;max-width:100%}
+  .etq{font-size:12px;color:var(--hint);margin-bottom:6px}
+  .tarjetas{display:flex;gap:8px}
+  .t{flex:1;background:var(--card);border:1px solid var(--borde);border-radius:12px;padding:8px 10px;min-width:0}
+  .t .ti{font-size:11px;color:var(--muted)}
+  .t .v{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums}
+  .t .n{font-size:11px;color:var(--hint)}
+  .mal{outline:2px solid #f87171;outline-offset:2px}
+  .lw{font-size:12px;color:var(--muted);margin-top:8px}
+  .lw b{color:var(--texto);font-weight:600}
+  .lw .pc-c{color:var(--aviso)}
+  .chips{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{background:var(--card);border:1px solid var(--borde);border-radius:10px;padding:6px 10px;font-size:12px;color:var(--muted)}
+  .chip b{color:var(--texto)}
+  .chip.pc-c b{color:var(--aviso)}
+  .nuevo{font-size:11px;color:var(--aviso)}
+</style>
+</head>
+<body>
+<h1>Caja · «Efectivo en caja» solo con lo cobrado</h1>
+<p class="caso">Bodega de Rosa, hoy: 3 ventas en el local en efectivo (S/ 100,00) y 1 delivery de S/ 40,00 en efectivo
+entregado con «¿ya cobraste? → todavía no». En el cajón hay S/ 100,00.</p>
+
+<h2>Celular y tableta (tarjetas)</h2>
+<div class="fila">
+  <div class="cel">
+    <div class="etq">HOY (mal)</div>
+    <div class="tarjetas">
+      <div class="t"><div class="ti">Ventas de hoy</div><div class="v">S/ 140,00</div><div class="n">4 ventas</div></div>
+      <div class="t mal"><div class="ti">Efectivo en caja</div><div class="v">S/ 140,00</div><div class="n">de hoy</div></div>
+      <div class="t"><div class="ti">Gastos ›</div><div class="v">S/ 0,00</div><div class="n">ninguno</div></div>
+    </div>
+    <div class="lw">Local <b>S/ 140,00</b> · Tienda web <b>S/ 0,00</b></div>
+  </div>
+  <div class="cel">
+    <div class="etq">PROPUESTA</div>
+    <div class="tarjetas">
+      <div class="t"><div class="ti">Ventas de hoy</div><div class="v">S/ 140,00</div><div class="n">4 ventas</div></div>
+      <div class="t"><div class="ti">Efectivo en caja</div><div class="v">S/ 100,00</div><div class="n">de hoy</div></div>
+      <div class="t"><div class="ti">Gastos ›</div><div class="v">S/ 0,00</div><div class="n">ninguno</div></div>
+    </div>
+    <div class="lw">Local <b>S/ 140,00</b> · Tienda web <b>S/ 0,00</b> · <span class="pc-c">Por cobrar <b class="pc-c">S/ 40,00</b></span></div>
+    <div class="nuevo">«Por cobrar» solo aparece si hay algo entregado hoy sin cobrar.</div>
+  </div>
+</div>
+
+<h2>Al marcarlo cobrado (en Pedidos: «Cobrado»)</h2>
+<div class="fila">
+  <div class="cel">
+    <div class="tarjetas">
+      <div class="t"><div class="ti">Ventas de hoy</div><div class="v">S/ 140,00</div><div class="n">4 ventas</div></div>
+      <div class="t"><div class="ti">Efectivo en caja</div><div class="v">S/ 140,00</div><div class="n">de hoy</div></div>
+      <div class="t"><div class="ti">Gastos ›</div><div class="v">S/ 0,00</div><div class="n">ninguno</div></div>
+    </div>
+    <div class="lw">Local <b>S/ 140,00</b> · Tienda web <b>S/ 0,00</b></div>
+  </div>
+</div>
+
+<h2>PC (tablero de 6) y fila delgada</h2>
+<div class="pc">
+  <div class="tarjetas">
+    <div class="t"><div class="ti">Ventas de hoy</div><div class="v">S/ 140,00</div><div class="n">4 ventas · S/ 40,00 por cobrar</div></div>
+    <div class="t"><div class="ti">Tienda web</div><div class="v">S/ 0,00</div><div class="n">entregado</div></div>
+    <div class="t"><div class="ti">Local</div><div class="v">S/ 140,00</div><div class="n">en mostrador</div></div>
+    <div class="t"><div class="ti">Efectivo en caja</div><div class="v">S/ 100,00</div><div class="n">de hoy</div></div>
+    <div class="t"><div class="ti">Gastos ›</div><div class="v">S/ 0,00</div><div class="n">ninguno</div></div>
+    <div class="t"><div class="ti">Queda del día</div><div class="v">S/ 140,00</div><div class="n">ventas − gastos</div></div>
+  </div>
+  <div style="height:14px"></div>
+  <div class="chips">
+    <span class="chip">Hoy <b>140,00</b></span><span class="chip">Web <b>0,00</b></span><span class="chip">Local <b>140,00</b></span>
+    <span class="chip">Efectivo <b>100,00</b></span><span class="chip">Gastos <b>0,00</b> ›</span><span class="chip">Queda <b>140,00</b></span>
+    <span class="chip pc-c">Por cobrar <b>40,00</b></span>
+  </div>
+</div>
+</body>
+</html>

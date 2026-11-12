@@ -9,8 +9,9 @@ import 'verificacion_total_pedido.dart';
 // Lo que una venta suma o resta a los contadores del resumen del día.
 // Funciones puras: las usa el repositorio dentro de su transacción.
 //
-//   aporteDe → lo que aporta un pedido (por pago, entrega, hora, producto,
-//              variable y combo)
+//   aporteDe → lo que aporta un pedido (por entrega, hora, producto,
+//              variable y combo; lo cobrado por forma de pago va aparte, en
+//              CobrosDia)
 //   sumar    → una venta entregada
 //   restar   → una venta anulada (resta lo que sumó y cuenta la anulación)
 //
@@ -62,7 +63,6 @@ abstract final class ContadoresVenta {
     return AporteVenta(
       totalCentavos: pedido.totalCentavos,
       esMostrador: pedido.origen == OrigenPedido.mostrador,
-      pago: clavePago(pedido.metodoPago),
       entrega: claveEntrega(pedido),
       hora: claveHora(momento),
       productos: productos,
@@ -115,7 +115,11 @@ abstract final class ContadoresVenta {
       mostrador: actual.mostrador + (aporte.esMostrador ? 1 : 0),
       anuladas: actual.anuladas,
       anuladasCentavos: actual.anuladasCentavos,
-      porPago: _sumarClave(actual.porPago, aporte.pago, aporte.totalCentavos),
+      // Lo cobrado (porPago) y lo por cobrar los lleva CobrosDia: la plata
+      // entra el día en que se cobra, no el día en que se entrega.
+      porPago: actual.porPago,
+      porCobrarCentavos: actual.porCobrarCentavos,
+      porCobrar: actual.porCobrar,
       porEntrega: _sumarClave(
         actual.porEntrega,
         aporte.entrega,
@@ -137,7 +141,9 @@ abstract final class ContadoresVenta {
       mostrador: _piso(actual.mostrador - (aporte.esMostrador ? 1 : 0)),
       anuladas: actual.anuladas + 1,
       anuladasCentavos: actual.anuladasCentavos + aporte.totalCentavos,
-      porPago: _restarClave(actual.porPago, aporte.pago, aporte.totalCentavos),
+      porPago: actual.porPago,
+      porCobrarCentavos: actual.porCobrarCentavos,
+      porCobrar: actual.porCobrar,
       porEntrega: _restarClave(
         actual.porEntrega,
         aporte.entrega,

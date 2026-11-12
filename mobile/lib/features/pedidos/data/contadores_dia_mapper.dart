@@ -11,6 +11,7 @@ import '../domain/models/contadores_dia.dart';
 // documento:
 //
 //   mostradorCentavos, mostrador, anuladas, anuladasCentavos  → enteros
+//   porCobrarCentavos, porCobrar                              → enteros
 //   porPago, porEntrega, porHora                              → {clave: céntimos}
 //   porProducto, porVariante, porCombo → {clave: {nombre, cantidad, centavos}}
 //
@@ -35,6 +36,8 @@ abstract final class ContadoresDiaMapper {
     'porProducto',
     'porVariante',
     'porCombo',
+    'porCobrarCentavos',
+    'porCobrar',
   ];
 
   /// Cuántas entradas se leen de cada lista como máximo (el tope del día más
@@ -53,6 +56,8 @@ abstract final class ContadoresDiaMapper {
       porProducto: _items(data['porProducto']),
       porVariante: _items(data['porVariante']),
       porCombo: _items(data['porCombo']),
+      porCobrarCentavos: _noNegativo(data['porCobrarCentavos']),
+      porCobrar: _noNegativo(data['porCobrar']),
     );
   }
 
@@ -68,6 +73,8 @@ abstract final class ContadoresDiaMapper {
       'porProducto': _itemsAMapa(c.porProducto),
       'porVariante': _itemsAMapa(c.porVariante),
       'porCombo': _itemsAMapa(c.porCombo),
+      'porCobrarCentavos': c.porCobrarCentavos,
+      'porCobrar': c.porCobrar,
     };
   }
 

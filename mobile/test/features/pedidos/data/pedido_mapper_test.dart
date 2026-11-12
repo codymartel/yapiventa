@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mobile/features/pedidos/data/pedido_mapper.dart';
+import 'package:mobile/features/pedidos/domain/models/cobro_pedido.dart';
 import 'package:mobile/features/pedidos/domain/models/descuento_stock.dart';
 import 'package:mobile/features/pedidos/domain/models/estado_pedido.dart';
 import 'package:mobile/features/pedidos/domain/models/pedido.dart';
@@ -157,6 +158,29 @@ void main() {
         p.copyWith(estado: EstadoPedido.entregado).origen,
         OrigenPedido.mostrador,
       );
+    });
+  });
+
+  group('cobro', () {
+    test('va y vuelve, sin escribir los textos vacíos', () {
+      const cobro = CobroPedido(centavos: 4000, porCobrarDia: '2026-11-05');
+      final mapa = PedidoMapper.cobroAMapa(cobro);
+
+      expect(mapa, {'centavos': 4000, 'porCobrarDia': '2026-11-05'});
+      final p = PedidoMapper.desdeFirestore('x', {'cobro': mapa});
+      expect(p.cobro!.pendiente, isTrue);
+      expect(p.cobro!.centavos, 4000);
+      expect(p.copyWith(estado: EstadoPedido.entregado).cobro, isNotNull);
+    });
+
+    test('un pedido viejo no trae cobro; uno raro tampoco rompe', () {
+      expect(PedidoMapper.desdeFirestore('x', {}).cobro, isNull);
+      expect(PedidoMapper.desdeFirestore('x', {'cobro': 'raro'}).cobro, isNull);
+      final negativo = PedidoMapper.desdeFirestore('x', {
+        'cobro': {'dia': '2026-11-05', 'centavos': -3},
+      });
+      expect(negativo.cobro!.centavos, 0);
+      expect(negativo.cobro!.contado, isTrue);
     });
   });
 }
